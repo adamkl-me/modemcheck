@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modem Check Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+        }
+        .data-box {
+            display: inline-block;
+            width: 300px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: auto; /* Allow columns to adjust based on content */
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modem Check Viewer</h1>
+    <label for="fileInput">Upload file:</label>
+    <input type="file" id="fileInput" accept=".json" onchange="loadCheckResult()">
+    <br><br>
+    <label>Time of Check:</label>
+    <div id="checktime" class="data-box"></div>
+    <br>
+    <label>Modem Model:</label>
+    <div id="modemtype" class="data-box"></div>
+    <br>
+    <label>Modem MAC:</label>
+    <div id="modemmac" class="data-box"></div>
+    <br>
+    <label>Modem Firmware:</label>
+    <div id="firmware" class="data-box"></div>
+    <br>
+    <label>Time Since Reboot:</label>
+    <div id="uptime" class="data-box"></div>
+    <br>
+    <label>Modem Time:</label>
+    <div id="systime" class="data-box"></div>
+    <br>
+    <h2>RX Data</h2>
+    <table id="rxTable">
+        <thead>
+            <tr>
+                <th>Port ID</th>
+                <th>Frequency</th>
+                <th>Power</th>
+                <th>SNR</th>
+                <th>Octets</th>
+                <th>Correctables</th>
+                <th>Uncorrectables</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <h2>RX OFDM Data</h2>
+    <table id="rxofdmTable">
+        <thead>
+            <tr>
+                <th>Port ID</th>
+                <th>Subcarrier 0 Frequency</th>
+                <th>PLC Lock</th>
+                <th>NCP Lock</th>
+                <th>MDC1 Lock</th>
+                <th>PLC Power</th>
+                <th>PLC SNR</th>
+                <th>Octets</th>
+                <th>Correctables</th>
+                <th>Uncorrectables</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <h2>TX Data</h2>
+    <table id="txTable">
+        <thead>
+            <tr>
+                <th>Port ID</th>
+                <th>Frequency</th>
+                <th>Power</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <h2>TX OFDMA Data</h2>
+    <table id="txofdmTable">
+        <thead>
+            <tr>
+                <th>Port ID</th>
+                <th>State</th>
+                <th>Subcarrier 0 Frequency</th>
+                <th>Power</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <h2>DOCSIS Event Logs</h2>
+    <table id="eventlogTable">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>ID</th>
+                <th>Event</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <script>
+        let uploadedFile;
+
+        function loadCheckResult() {
+            const fileInput = document.getElementById('fileInput');
+            uploadedFile = fileInput.files[0];
+            if (!uploadedFile) {
+                console.error('No file uploaded');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = JSON.parse(event.target.result);
+
+                document.getElementById('checktime').textContent = data.sysinfo.checktime;
+                document.getElementById('modemtype').textContent = data.sysinfo.modemtype;
+                document.getElementById('modemmac').textContent = data.sysinfo.modemmac;
+                document.getElementById('firmware').textContent = data.sysinfo.firmware;
+                document.getElementById('uptime').textContent = data.sysinfo.uptime;
+                document.getElementById('systime').textContent = data.sysinfo.systime;
+
+                populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
+                populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
+                populateTable('txTable', data.tx, ['portid', 'frequency', 'power']);
+                populateTable('txofdmTable', data.txofdm, ['portid', 'state', 'subcarr0freq', 'power']);
+                populateTable('eventlogTable', data.eventlog, ['time', 'id', 'event']);
+            };
+            reader.readAsText(uploadedFile);
+        }
+
+        function populateTable(tableId, data, keys) {
+            const tableBody = document.getElementById(tableId).querySelector('tbody');
+            tableBody.innerHTML = '';
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                keys.forEach(key => {
+                    const cell = document.createElement('td');
+                    cell.textContent = item[key];
+                    row.appendChild(cell);
+                });
+                tableBody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
