@@ -13,6 +13,9 @@
           echo "$(date): $message" | tee -a "$log_file"
       }
 
+  # Define modem address (IP or domain)
+    modemaddress="192.168.100.1"
+
 ### MODEM SPECIFIC FUNCTIONS ###
 
   # Hitron CODA56 - basic functions
@@ -24,7 +27,7 @@
 
     # Function to clear FEC counters in modem
     function CODA56_clearfec() {
-        curl 'http://192.168.100.1/goform/ResetFECCnt' \
+        curl ''$modemaddress'/goform/ResetFECCnt' \
       --data-raw 'model=%7B%22portId%22%3A%221%22%2C%22frequency%22%3A%22591000000%22%2C%22modulation%22%3A%222%22%2C%22signalStrength%22%3A%225.700%22%2C%22snr%22%3A%2237.356%22%2C%22dsoctets%22%3A%221113110%22%2C%22correcteds%22%3A%220%22%2C%22uncorrect%22%3A%220%22%2C%22channelId%22%3A%224%22%2C%22resetval%22%3A%221%22%7D' \
       --insecure \
       > /dev/null 2>&1
@@ -32,7 +35,7 @@
 
     # Function to get modem MAC address and set variable $modemmac
     function CODA56_getmac() {
-        modemmac=$(curl -s 'http://192.168.100.1/data/getSysInfo.asp?' --insecure | jq -r '.[0].rfMac' | tr -d ':')
+        modemmac=$(curl -s ''$modemaddress'/data/getSysInfo.asp?' --insecure | jq -r '.[0].rfMac' | tr -d ':')
         if [[ $modemmac =~ ^[0-9A-Fa-f]{12}$ ]]; then
             log "Successfully retrieved modem WAN MAC address: $modemmac"
         else
@@ -45,7 +48,7 @@
 
     function CODA56_getdata() {
       # Modem sysinfo + model and check run time
-        sysinfo_data=$(curl -s http://192.168.100.1/data/getSysInfo.asp --insecure |
+        sysinfo_data=$(curl -s $modemaddress/data/getSysInfo.asp --insecure |
         jq --arg checktime "$checktime" --arg modemtype "$modemtype" --arg modemmac "$modemmac" \
          '.[0] | {systime: .systemTime, firmware: .swVersion, uptime: .systemUptime, modemtype: $modemtype, modemmac: $modemmac, checktime: $checktime}')
         modemfw=$(echo "$sysinfo_data" | jq -r '.firmware')
@@ -53,7 +56,7 @@
         modemsystime=$(echo "$sysinfo_data" | jq -r '.systime')
 
       # RX Data
-        rx_data=$(curl -s http://192.168.100.1/data/dsinfo.asp --insecure | 
+        rx_data=$(curl -s $modemaddress/data/dsinfo.asp --insecure | 
         jq 'map(del(.modulation, .channelId) | 
           .portid = .portId | del(.portId) | 
           .power = .signalStrength | del(.signalStrength) | 
@@ -62,7 +65,7 @@
           {portid, frequency, power, snr, octets, correcteds, uncorrectds})')
 
       # RX OFDM Data
-        rxofdm_data=$(curl -s http://192.168.100.1/data/dsofdminfo.asp --insecure |
+        rxofdm_data=$(curl -s $modemaddress/data/dsofdminfo.asp --insecure |
         jq 'map(del(.ffttype) | 
           .portid = .receive | del(.receive) | 
           .subcarr0freq = .Subcarr0freqFreq | del(.Subcarr0freqFreq) |
@@ -72,14 +75,14 @@
           {portid, subcarr0freq, plclock, ncplock, mdc1lock, plcpower, plcsnr, octets, correcteds, uncorrectds})')
 
       # TX Data
-        tx_data=$(curl -s http://192.168.100.1/data/usinfo.asp --insecure |
+        tx_data=$(curl -s $modemaddress/data/usinfo.asp --insecure |
         jq 'map(del(.bandwidth, .modtype, .scdmaMode, .channelId) | 
           .portid = .portId | del(.portId) | 
           .power = .signalStrength | del(.signalStrength) |
           {portid, frequency, power})')
 
       # TX OFDM Data
-        txofdm_data=$(curl -s http://192.168.100.1/data/usofdminfo.asp --insecure |
+        txofdm_data=$(curl -s $modemaddress/data/usofdminfo.asp --insecure |
         jq 'map(del(.digAtten, .digAttenBo, .channelBw, .repPower, .fftVal) |
           .portid = .uschindex | del(.uschindex) |  
           .subcarr0freq = .frequency | del(.frequency) | 
@@ -87,7 +90,7 @@
           {portid, state, subcarr0freq, power})')
 
       # Event Log Data
-        eventlog_data=$(curl -s http://192.168.100.1/data/status_log.asp --insecure |
+        eventlog_data=$(curl -s $modemaddress/data/status_log.asp --insecure |
         jq 'map(del(.index, .priority) | 
           .id = .type | del(.type) | 
           {time, id, event})')
@@ -103,7 +106,7 @@
 
     function DM1000_login {
         # Define variables
-        url="http://192.168.100.1/setup.cgi"
+        url="$modemaddress/setup.cgi"
         user="technician"
         pass="sercommdocsis"
         data="login_user=$user&pws=$(echo -n "$pass" | base64)&submit=Apply&is_parent_window=1&todo=login&this_file=login.html&next_file=&language=en&message=&passwd=$(echo -n "$pass" | base64)&cur_passwd="
@@ -111,7 +114,7 @@
         curl -s --insecure --data-raw "$data" "$url" > /dev/null 2>&1
         
         # Check if login was successful
-        response=$(curl -s 'http://192.168.100.1/setup.cgi?todo=Cm_Status' --insecure)
+        response=$(curl -s ''$modemaddress'/setup.cgi?todo=Cm_Status' --insecure)
         if [[ -n "$response" ]]; then
             log "Login successful"
         else
@@ -121,14 +124,14 @@
     }
         
     function DM1000_clearfec() {
-        curl 'http://192.168.100.1/setup.cgi' \
+        curl ''$modemaddress'/setup.cgi' \
         --data-raw 'todo=reset_FEC_Counters&this_file=status.html&next_file=status.html' \
         --insecure \
         > /dev/null 2>&1
     }
     
     function DM1000_getmac() {
-        modemmac=$(curl -s 'http://192.168.100.1/setup.cgi?todo=Interface_param' --insecure | grep '"name":"wan0"' | sed 's/.*"mac":"\([^"]*\)".*/\1/' | tr -d ':' | tr '[:lower:]' '[:upper:]')
+        modemmac=$(curl -s ''$modemaddress'/setup.cgi?todo=Interface_param' --insecure | grep '"name":"wan0"' | sed 's/.*"mac":"\([^"]*\)".*/\1/' | tr -d ':' | tr '[:lower:]' '[:upper:]')
         if [[ $modemmac =~ ^[0-9A-Fa-f]{12}$ ]]; then
             log "Successfully retrieved modem WAN MAC address: $modemmac"
         else
@@ -141,7 +144,7 @@
 
     function DM1000_getdata() {
         # Fetch the status.html page
-        status_page=$(curl -s http://192.168.100.1/status.html)
+        status_page=$(curl -s $modemaddress/status.html)
 
         # Extract the time_date value
         modemsystime=$(echo "$status_page" | grep -oP '(?<=<td  align="left" id ="time_date">)[^<]+')
@@ -150,7 +153,7 @@
         modemuptime=$(echo "$status_page" | awk -F'<td align="left">' '/<th width="20%" height="30" align="left"><script language="javascript" type="text\/javascript">dw\(str_status16\);<\/script>:/ {getline; print $2}' | awk -F'</td>' '{print $1}')
 
         # Fetch the Version_Info JSON
-        version_info=$(curl -s 'http://192.168.100.1/setup.cgi?todo=Version_Info' --insecure)
+        version_info=$(curl -s ''$modemaddress'/setup.cgi?todo=Version_Info' --insecure)
 
         # Extract the fwinfo value
         modemfw=$(echo "$version_info" | jq -r '.nodes[] | select(.fwinfo) | .fwinfo')
@@ -160,7 +163,7 @@
             '{systime: $systime, firmware: $firmware, uptime: $uptime, modemtype: $modemtype, modemmac: $modemmac, checktime: $checktime}')
 
         # RX Data
-        rx_data=$(curl -s http://192.168.100.1/setup.cgi?todo=RF_DS_param --insecure | 
+        rx_data=$(curl -s $modemaddress/setup.cgi?todo=RF_DS_param --insecure | 
         jq '.nodes | map(del(.DCIDD, .qamD) | 
             .portid = .numD | del(.numD) | 
             .frequency = .FreqD | del(.FreqD) | 
@@ -172,7 +175,7 @@
             {portid, frequency, power, snr, octets, correcteds, uncorrectds})')
 
         # RX OFDM Data
-        rxofdm_data=$(curl -s http://192.168.100.1/setup.cgi?todo=RF_DS_31_param --insecure |
+        rxofdm_data=$(curl -s $modemaddress/setup.cgi?todo=RF_DS_31_param --insecure |
         jq '.nodes | map(del(.fftType, .AV_Pilot, .AV_Data) | 
             .portid = .num | del(.num) | 
             .subcarr0freq = .OFDMFreq | del(.OFDMFreq) |
@@ -184,7 +187,7 @@
             {portid, subcarr0freq, plclock, ncplock, mdc1lock, plcpower, plcsnr, octets: "n/a", correcteds: "n/a", uncorrectds: "n/a"})')
 
         # TX Data
-        tx_data=$(curl -s http://192.168.100.1/setup.cgi?todo=RF_US_param --insecure |
+        tx_data=$(curl -s $modemaddress/setup.cgi?todo=RF_US_param --insecure |
         jq '.nodes | map(del(.rate, .modulation, .channelType, .upstream) | 
             .portid = .num | del(.num) | 
             .frequency = .Freq | del(.Freq) |
@@ -192,7 +195,7 @@
             {portid, frequency, power})')
 
         # TX OFDM Data
-        txofdm_data=$(curl -s http://192.168.100.1/setup.cgi?todo=RF_US_31_param --insecure |
+        txofdm_data=$(curl -s $modemaddress/setup.cgi?todo=RF_US_31_param --insecure |
         jq '[
             {
                 "portid": .nodes[0].index1,
@@ -209,7 +212,7 @@
         ]')
 
         # Event Log Data
-        eventlog_data=$(curl -s http://192.168.100.1/setup.cgi?todo=Event_Log --insecure |
+        eventlog_data=$(curl -s $modemaddress/setup.cgi?todo=Event_Log --insecure |
         jq '.nodes | map(del(.lv) | 
             .time = .d | del(.d) |
             .event = .text | del(.text) |  
@@ -235,7 +238,7 @@
   # Determine modem model
 
       # Pull login page with curl
-      RESPONSE=$(curl -s http://192.168.100.1/login.html)
+      RESPONSE=$(curl -s $modemaddress/login.html)
 
       # Check for unique strings on login page
       if echo "$RESPONSE" | grep -q 'This document has moved to a new'; then
