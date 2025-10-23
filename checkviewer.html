@@ -23,7 +23,8 @@
         table {
             border-collapse: collapse;
             margin-top: 20px;
-            table-layout: auto; /* Allow columns to adjust based on content */
+            table-layout: auto;
+            width: 100%;
         }
         th, td {
             border: 1px solid #ccc;
@@ -32,6 +33,10 @@
         }
         th {
             background-color: #f2f2f2;
+        }
+        /* Make TX OFDMA table scrollable horizontally on small screens */
+        .table-wrapper {
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -103,17 +108,24 @@
         <tbody></tbody>
     </table>
     <h2>TX OFDMA Data</h2>
-    <table id="txofdmTable">
-        <thead>
-            <tr>
-                <th>Port ID</th>
-                <th>State</th>
-                <th>Subcarrier 0 Frequency</th>
-                <th>Power</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="table-wrapper">
+        <table id="txofdmTable">
+            <thead>
+                <tr>
+                    <th>Port ID</th>
+                    <th>State</th>
+                    <th>Subcarrier 0 Frequency</th>
+                    <th>Power</th>
+                    <th>Active SCs</th>
+                    <th>Excluded SCs</th>
+                    <th>Not Used SCs</th>
+                    <th>Minislots</th>
+                    <th>Interface Speed (bps)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
     <h2>DOCSIS Event Logs</h2>
     <table id="eventlogTable">
         <thead>
@@ -150,7 +162,7 @@
                 populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
                 populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
                 populateTable('txTable', data.tx, ['portid', 'frequency', 'power']);
-                populateTable('txofdmTable', data.txofdm, ['portid', 'state', 'subcarr0freq', 'power']);
+                populateTable('txofdmTable', data.txofdm, ['portid', 'state', 'subcarr0freq', 'power', 'activescs', 'excludedscs', 'notusedscs', 'minislots', 'interfacespeed']);
                 populateTable('eventlogTable', data.eventlog, ['time', 'id', 'event']);
             };
             reader.readAsText(uploadedFile);
@@ -163,7 +175,8 @@
                 const row = document.createElement('tr');
                 keys.forEach(key => {
                     const cell = document.createElement('td');
-                    cell.textContent = item[key];
+                    // Handle missing fields gracefully (for CODA56 compatibility)
+                    cell.textContent = item[key] !== undefined ? item[key] : 'n/a';
                     row.appendChild(cell);
                 });
                 tableBody.appendChild(row);
