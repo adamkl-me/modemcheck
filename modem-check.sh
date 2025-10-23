@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ####################################
-####💻⚙️ Modem-Check v2.0 ⚙️💻####
+####💻⚙️ Modem-Check v2.1 ⚙️💻####
 ####################################
 
 ### GENERAL FUNCTIONS ###
@@ -97,9 +97,9 @@
 
       # Combine all data into a single JSON object
         jq -n --argjson sysinfo "$sysinfo_data" --argjson rx "$rx_data" --argjson rxofdm "$rxofdm_data" --argjson tx "$tx_data" --argjson txofdm "$txofdm_data" --argjson eventlog "$eventlog_data" \
-            '{sysinfo: $sysinfo, rx: $rx, rxofdm: $rxofdm, tx: $tx, txofdm: $txofdm, eventlog: $eventlog}' > "$checkdir/checkresult.json"
+            '{sysinfo: $sysinfo, rx: $rx, rxofdm: $rxofdm, tx: $tx, txofdm: $txofdm, eventlog: $eventlog}' > "$checkfile"
 
-      log "Modem data collected and saved to $checkdir/checkresult.json"
+      log "Modem data collected and saved to $checkfile"
     }  
 
   # Sercomm DM1000 - basic functions
@@ -201,13 +201,23 @@
                 "portid": .nodes[0].index1,
                 "state": .nodes[2].index1,
                 "subcarr0freq": .nodes[18].index1,
-                "power": .nodes[7].index1
+                "power": .nodes[7].index1,
+                "activescs": .nodes[21].index1,
+                "excludedscs": .nodes[22].index1,
+                "notusedscs": .nodes[23].index1,
+                "minislots": .nodes[24].index1,
+                "interfacespeed": .nodes[25].index1
             },
             {
                 "portid": .nodes[0].index2,
                 "state": .nodes[2].index2,
                 "subcarr0freq": .nodes[18].index2,
-                "power": .nodes[7].index2
+                "power": .nodes[7].index2,
+                "activescs": .nodes[21].index2,
+                "excludedscs": .nodes[22].index2,
+                "notusedscs": .nodes[23].index2,
+                "minislots": .nodes[24].index2,
+                "interfacespeed": .nodes[25].index2
             }
         ]')
 
@@ -220,9 +230,9 @@
 
         # Combine all data into a single JSON object
         jq -n --argjson sysinfo "$sysinfo_data" --argjson rx "$rx_data" --argjson rxofdm "$rxofdm_data" --argjson tx "$tx_data" --argjson txofdm "$txofdm_data" --argjson eventlog "$eventlog_data" \
-            '{sysinfo: $sysinfo, rx: $rx, rxofdm: $rxofdm, tx: $tx, txofdm: $txofdm, eventlog: $eventlog}' > "$checkdir/checkresult.json"
+            '{sysinfo: $sysinfo, rx: $rx, rxofdm: $rxofdm, tx: $tx, txofdm: $txofdm, eventlog: $eventlog}' > "$checkfile"
 
-        log "Modem data collected and saved to $checkdir/checkresult.json"
+        log "Modem data collected and saved to $checkfile"
     }
 
 ###################
@@ -297,10 +307,13 @@
   log "Getting modem MAC address"
   getmac
 
-  # Create folder to store results of checks, and set it as the working directory
+  # Create folder to store results of checks
   log "Creating folder to store check results"
-  checkdir="$(dirname "$0")/ModemCheck-$modemtype-$modemmac/$checktime"
+  checkdir="$(dirname "$0")/ModemCheck-$modemtype-$modemmac"
   mkdir -p "$checkdir"
+
+  # Set the full path for the timestamped JSON file
+  checkfile="$checkdir/$checktime.json"
 
   # Download modem sysinfo, power levels, and event logs
   getdata
