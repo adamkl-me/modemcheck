@@ -1,187 +1,523 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modem Check Viewer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        label {
-            display: inline-block;
-            width: 150px;
-        }
-        .data-box {
-            display: inline-block;
-            width: 300px;
-            border: 1px solid #ccc;
-            padding: 5px;
-            margin-bottom: 10px;
-        }
-        table {
-            border-collapse: collapse;
-            margin-top: 20px;
-            table-layout: auto;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        /* Make TX OFDMA table scrollable horizontally on small screens */
-        .table-wrapper {
-            overflow-x: auto;
-        }
-    </style>
-</head>
-<body>
-    <h1>Modem Check Viewer</h1>
-    <label for="fileInput">Upload file:</label>
-    <input type="file" id="fileInput" accept=".json" onchange="loadCheckResult()">
-    <br><br>
-    <label>Time of Check:</label>
-    <div id="checktime" class="data-box"></div>
-    <br>
-    <label>Modem Model:</label>
-    <div id="modemtype" class="data-box"></div>
-    <br>
-    <label>Modem MAC:</label>
-    <div id="modemmac" class="data-box"></div>
-    <br>
-    <label>Modem Firmware:</label>
-    <div id="firmware" class="data-box"></div>
-    <br>
-    <label>Time Since Reboot:</label>
-    <div id="uptime" class="data-box"></div>
-    <br>
-    <label>Modem Time:</label>
-    <div id="systime" class="data-box"></div>
-    <br>
-    <h2>RX Data</h2>
-    <table id="rxTable">
-        <thead>
-            <tr>
-                <th>Port ID</th>
-                <th>Frequency</th>
-                <th>Power</th>
-                <th>SNR</th>
-                <th>Octets</th>
-                <th>Correctables</th>
-                <th>Uncorrectables</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <h2>RX OFDM Data</h2>
-    <table id="rxofdmTable">
-        <thead>
-            <tr>
-                <th>Port ID</th>
-                <th>Subcarrier 0 Frequency</th>
-                <th>PLC Lock</th>
-                <th>NCP Lock</th>
-                <th>MDC1 Lock</th>
-                <th>PLC Power</th>
-                <th>PLC SNR</th>
-                <th>Octets</th>
-                <th>Correctables</th>
-                <th>Uncorrectables</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <h2>TX Data</h2>
-    <table id="txTable">
-        <thead>
-            <tr>
-                <th>Port ID</th>
-                <th>Frequency</th>
-                <th>Power</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <h2>TX OFDMA Data</h2>
-    <div class="table-wrapper">
-        <table id="txofdmTable">
-            <thead>
-                <tr>
-                    <th>Port ID</th>
-                    <th>State</th>
-                    <th>Subcarrier 0 Frequency</th>
-                    <th>Power</th>
-                    <th>Active SCs</th>
-                    <th>Excluded SCs</th>
-                    <th>Not Used SCs</th>
-                    <th>Minislots</th>
-                    <th>Interface Speed (bps)</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-    <h2>DOCSIS Event Logs</h2>
-    <table id="eventlogTable">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>ID</th>
-                <th>Event</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <script>
-        let uploadedFile;
-
-        function loadCheckResult() {
-            const fileInput = document.getElementById('fileInput');
-            uploadedFile = fileInput.files[0];
-            if (!uploadedFile) {
-                console.error('No file uploaded');
-                return;
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Modem Check Viewer</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const data = JSON.parse(event.target.result);
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+                color: #333;
+            }
 
-                document.getElementById('checktime').textContent = data.sysinfo.checktime;
-                document.getElementById('modemtype').textContent = data.sysinfo.modemtype;
-                document.getElementById('modemmac').textContent = data.sysinfo.modemmac;
-                document.getElementById('firmware').textContent = data.sysinfo.firmware;
-                document.getElementById('uptime').textContent = data.sysinfo.uptime;
-                document.getElementById('systime').textContent = data.sysinfo.systime;
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+            }
 
-                populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
-                populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
-                populateTable('txTable', data.tx, ['portid', 'frequency', 'power']);
-                populateTable('txofdmTable', data.txofdm, ['portid', 'state', 'subcarr0freq', 'power', 'activescs', 'excludedscs', 'notusedscs', 'minislots', 'interfacespeed']);
-                populateTable('eventlogTable', data.eventlog, ['time', 'id', 'event']);
-            };
-            reader.readAsText(uploadedFile);
-        }
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+            }
 
-        function populateTable(tableId, data, keys) {
-            const tableBody = document.getElementById(tableId).querySelector('tbody');
-            tableBody.innerHTML = '';
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                keys.forEach(key => {
-                    const cell = document.createElement('td');
-                    // Handle missing fields gracefully (for CODA56 compatibility)
-                    cell.textContent = item[key] !== undefined ? item[key] : 'n/a';
+            .header h1 {
+                font-size: 2.5em;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+
+            .upload-section {
+                padding: 30px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .file-input-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 15px;
+            }
+
+            .file-input-wrapper label {
+                font-weight: 600;
+                color: #555;
+                font-size: 1.1em;
+            }
+
+            input[type="file"] {
+                padding: 10px 20px;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                background: white;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 1em;
+            }
+
+            input[type="file"]:hover {
+                background: #667eea;
+                color: white;
+            }
+
+            .content {
+                padding: 30px;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .info-card {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .info-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .info-card label {
+                display: block;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: #555;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 8px;
+            }
+
+            .info-card .value {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #2d3748;
+                word-break: break-word;
+            }
+
+            .speed-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .speed-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 12px;
+                padding: 25px;
+                text-align: center;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .speed-card label {
+                display: block;
+                font-size: 0.9em;
+                opacity: 0.9;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .speed-card .value {
+                font-size: 1.8em;
+                font-weight: 700;
+            }
+
+            .table-section {
+                margin-bottom: 40px;
+            }
+
+            .table-section h2 {
+                font-size: 1.6em;
+                color: #2d3748;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+                display: inline-block;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: white;
+                min-width: 600px;
+            }
+
+            thead {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            th {
+                padding: 15px 12px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 0.9em;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                white-space: nowrap;
+            }
+
+            td {
+                padding: 12px;
+                border-bottom: 1px solid #e0e0e0;
+                font-size: 0.95em;
+            }
+
+            tbody tr {
+                transition: background-color 0.2s ease;
+            }
+
+            tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            tbody tr:nth-child(even) {
+                background-color: #fafbfc;
+            }
+
+            tbody tr:nth-child(even):hover {
+                background-color: #f0f2f5;
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 40px;
+                color: #999;
+                font-style: italic;
+            }
+
+            @media (max-width: 768px) {
+                .header h1 {
+                    font-size: 1.8em;
+                }
+
+                .info-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .speed-cards {
+                    grid-template-columns: 1fr;
+                }
+
+                th, td {
+                    padding: 8px 6px;
+                    font-size: 0.85em;
+                }
+            }
+
+            .status-indicator {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                margin-right: 6px;
+            }
+
+            .status-good {
+                background-color: #48bb78;
+            }
+
+            .status-warning {
+                background-color: #ed8936;
+            }
+
+            .status-error {
+                background-color: #f56565;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📡 Modem Check Viewer</h1>
+                <p>Analyze your modem diagnostics data</p>
+            </div>
+
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <label for="fileInput">📁 Upload JSON File:</label>
+                    <input
+                        type="file"
+                        id="fileInput"
+                        accept=".json"
+                        onchange="loadCheckResult()"
+                    />
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="info-grid">
+                    <div class="info-card">
+                        <label>⏰ Time of Check</label>
+                        <div id="checktime" class="value">-</div>
+                    </div>
+                    <div class="info-card">
+                        <label>📟 Modem Model</label>
+                        <div id="modemtype" class="value">-</div>
+                    </div>
+                    <div class="info-card">
+                        <label>🔢 Modem MAC</label>
+                        <div id="modemmac" class="value">-</div>
+                    </div>
+                    <div class="info-card">
+                        <label>💾 Firmware Version</label>
+                        <div id="firmware" class="value">-</div>
+                    </div>
+                    <div class="info-card">
+                        <label>⏱️ Time Since Reboot</label>
+                        <div id="uptime" class="value">-</div>
+                    </div>
+                    <div class="info-card">
+                        <label>🕐 Modem Time</label>
+                        <div id="systime" class="value">-</div>
+                    </div>
+                </div>
+
+                <div class="speed-cards">
+                    <div class="speed-card">
+                        <label>⬇️ Download Speed</label>
+                        <div id="iperf3_dl" class="value">-</div>
+                    </div>
+                    <div class="speed-card">
+                        <label>⬆️ Upload Speed</label>
+                        <div id="iperf3_ul" class="value">-</div>
+                    </div>
+                </div>
+
+                <div class="table-section">
+                    <h2>📥 RX Data (Downstream SC-QAM)</h2>
+                    <div class="table-wrapper">
+                        <table id="rxTable">
+                            <thead>
+                                <tr>
+                                    <th>Port ID</th>
+                                    <th>Frequency (MHz)</th>
+                                    <th>Power (dBmV)</th>
+                                    <th>SNR (dB)</th>
+                                    <th>Octets</th>
+                                    <th>Correctables</th>
+                                    <th>Uncorrectables</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-section">
+                    <h2>📥 RX OFDM Data (Downstream OFDM)</h2>
+                    <div class="table-wrapper">
+                        <table id="rxofdmTable">
+                            <thead>
+                                <tr>
+                                    <th>Port ID</th>
+                                    <th>Subcarrier 0 Freq</th>
+                                    <th>PLC Lock</th>
+                                    <th>NCP Lock</th>
+                                    <th>MDC1 Lock</th>
+                                    <th>PLC Power</th>
+                                    <th>PLC SNR</th>
+                                    <th>Octets</th>
+                                    <th>Correctables</th>
+                                    <th>Uncorrectables</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-section">
+                    <h2>📤 TX Data (Upstream SC-QAM)</h2>
+                    <div class="table-wrapper">
+                        <table id="txTable">
+                            <thead>
+                                <tr>
+                                    <th>Port ID</th>
+                                    <th>Frequency (MHz)</th>
+                                    <th>Power (dBmV)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-section">
+                    <h2>📤 TX OFDMA Data (Upstream OFDMA)</h2>
+                    <div class="table-wrapper">
+                        <table id="txofdmTable">
+                            <thead>
+                                <tr>
+                                    <th>Port ID</th>
+                                    <th>State</th>
+                                    <th>Subcarrier 0 Freq</th>
+                                    <th>Power</th>
+                                    <th>Active SCs</th>
+                                    <th>Excluded SCs</th>
+                                    <th>Not Used SCs</th>
+                                    <th>Minislots</th>
+                                    <th>Interface Speed</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-section">
+                    <h2>📋 DOCSIS Event Logs</h2>
+                    <div class="table-wrapper">
+                        <table id="eventlogTable">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>ID</th>
+                                    <th>Event</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function loadCheckResult() {
+                const fileInput = document.getElementById("fileInput");
+                const uploadedFile = fileInput.files[0];
+                if (!uploadedFile) {
+                    console.error("No file uploaded");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const data = JSON.parse(event.target.result);
+
+                    document.getElementById("checktime").textContent =
+                        data.sysinfo.checktime || "-";
+                    document.getElementById("modemtype").textContent =
+                        data.sysinfo.modemtype || "-";
+                    document.getElementById("modemmac").textContent =
+                        data.sysinfo.modemmac || "-";
+                    document.getElementById("firmware").textContent =
+                        data.sysinfo.firmware || "-";
+                    document.getElementById("uptime").textContent =
+                        data.sysinfo.uptime || "-";
+                    document.getElementById("systime").textContent =
+                        data.sysinfo.systime || "-";
+
+                    document.getElementById("iperf3_ul").textContent =
+                        data.iperf3test_ul || "-";
+                    document.getElementById("iperf3_dl").textContent =
+                        data.iperf3test_dl || "-";
+
+                    populateTable("rxTable", data.rx, [
+                        "portid",
+                        "frequency",
+                        "power",
+                        "snr",
+                        "octets",
+                        "correcteds",
+                        "uncorrectds",
+                    ]);
+                    populateTable("rxofdmTable", data.rxofdm, [
+                        "portid",
+                        "subcarr0freq",
+                        "plclock",
+                        "ncplock",
+                        "mdc1lock",
+                        "plcpower",
+                        "plcsnr",
+                        "octets",
+                        "correcteds",
+                        "uncorrectds",
+                    ]);
+                    populateTable("txTable", data.tx, [
+                        "portid",
+                        "frequency",
+                        "power",
+                    ]);
+                    populateTable("txofdmTable", data.txofdm, [
+                        "portid",
+                        "state",
+                        "subcarr0freq",
+                        "power",
+                        "activescs",
+                        "excludedscs",
+                        "notusedscs",
+                        "minislots",
+                        "interfacespeed",
+                    ]);
+                    populateTable("eventlogTable", data.eventlog, [
+                        "time",
+                        "id",
+                        "event",
+                    ]);
+                };
+                reader.readAsText(uploadedFile);
+            }
+
+            function populateTable(tableId, data, keys) {
+                const tableBody = document
+                    .getElementById(tableId)
+                    .querySelector("tbody");
+                tableBody.innerHTML = "";
+                
+                if (!data || data.length === 0) {
+                    const row = document.createElement("tr");
+                    const cell = document.createElement("td");
+                    cell.colSpan = keys.length;
+                    cell.className = "empty-state";
+                    cell.textContent = "No data available";
                     row.appendChild(cell);
+                    tableBody.appendChild(row);
+                    return;
+                }
+
+                data.forEach((item) => {
+                    const row = document.createElement("tr");
+                    keys.forEach((key) => {
+                        const cell = document.createElement("td");
+                        cell.textContent =
+                            item[key] !== undefined ? item[key] : "n/a";
+                        row.appendChild(cell);
+                    });
+                    tableBody.appendChild(row);
                 });
-                tableBody.appendChild(row);
-            });
-        }
-    </script>
-</body>
+            }
+        </script>
+    </body>
 </html>
