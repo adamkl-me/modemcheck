@@ -1,54 +1,109 @@
-# Modem-Check v3.0
+# Modem-Check v3.2
 
-Modem-Check is a Bash script designed to collect diagnostic data from supported cable modems, including system information, power levels, and event logs. It supports multiple modem models and outputs the collected data in JSON format for easy analysis using the included `checkviewer.html`.
+Modem-Check is a Bash script designed to collect diagnostic data from supported cable modems, including system information, power levels, event logs, and speed test results. It supports multiple modem models and outputs the collected data in JSON format for easy analysis using the included `checkviewer.html`.
 
 ## Features
 
 * **Supported Modems**:
     * Hitron CODA56
     * Sercomm DM1000
-    * Rogers Xfinity Gateways (Tested on XB7/XB8 - requires credentials)
+    * Rogers Xfinity Gateways (XB7/XB8 - requires credentials)
 * **Collected Data**:
     * System information (firmware version, uptime, system time, MAC address)
     * RX/Downstream power levels & SNR (SC-QAM & OFDM/OFDMA)
     * TX/Upstream power levels (SC-QAM & OFDMA)
     * Codeword error counts (Corrected/Uncorrected)
     * Event logs (Not available on Xfinity modems)
+    * iPerf3 speed test results (optional)
 * **Additional Functionality**:
-    * Automatically detects modem model
+    * Automatic modem detection across common IP addresses
     * Logs script actions to `modem-check_logs.txt`
     * Clears modem FEC counters after data collection (where supported)
     * Saves timestamped JSON output files for historical tracking
-    * (Optional) Runs iPerf3 upload and download speed tests and adds results to JSON output
+    * Configurable bandwidth-limited iPerf3 speed tests
 
 ## Requirements
 
 * Bash shell
 * `curl` for HTTP requests
 * `jq` for JSON processing
-* A supported modem accessible via its web interface IP address (default is `172.16.0.1`, configurable in the script)
-* (Optional) `iperf3` installed if you want to run speed tests.
-* (If using Rogers Xfinity) Username and password must be set in the `igniteusername` and `ignitepassword` variables within the script.
+* A supported modem accessible via its web interface
+* (Optional) `iperf3` installed for speed testing
+* (If using Rogers Xfinity) Username and password configured in the script
 
-## What's New in v3.0
+## What's New in v3.2
 
-* **Rogers Xfinity Support**: Added ability to log in and parse diagnostic data from Rogers Xfinity gateway pages (`network_setup.jst`, `software.jst`). Tested on XB7 and XB8 models. *Note: Event logs are not available.*
-* **iPerf3 Integration**: Added optional iPerf3 upload and download speed tests. Results are appended to the JSON output file. Requires `iperf3` to be installed and server/port variables configured in the script.
-* **Improved Modem Detection**: Enhanced logic to identify Xfinity modems based on initial page responses.
-* **Refactored Function Handling**: Streamlined how modem-specific functions are called based on detected model.
-* **Updated Viewer**: `checkviewer_new.html` (intended to replace `checkviewer.html`) includes a redesigned layout and fields to display the new iPerf3 speed test results.
-* **Default IP Change**: Updated default `modemaddress` to `172.16.0.1`.
+* **Auto-Detection**: Enhanced modem detection that automatically scans common IP addresses (192.168.100.1, 192.168.0.1, 10.0.0.1, 172.20.0.1)
+* **Bandwidth Limiting**: iPerf3 tests now support configurable bandwidth limits to prevent network saturation
+* **Multi-Stream Testing**: Configurable number of parallel streams for more accurate speed measurements
+* **Improved Error Handling**: Better timeout handling and validation for speed tests
+* **Enhanced Viewer**: Updated HTML viewer displays bandwidth limit information alongside test results
+* **Xfinity Improvements**: Better authentication error handling and detection of XB7/XB8 variants
+
+## Configuration
+
+Edit `modem-check.sh` to customize settings:
+
+### Modem Connection
+```bash
+modemaddress="autodetect"  # Or specify IP directly (e.g., "192.168.100.1")
+ignitepassword="password"  # For Rogers Xfinity modems
+```
+
+### iPerf3 Speed Tests
+```bash
+iperf3enabled="true"           # Enable/disable speed tests
+iperf3server="your.server.ip"  # iPerf3 server address
+iperf3port="5201"              # Server port
+iperf3streams=4                # Number of parallel streams
+iperf3uploadlimit="150"        # Upload bandwidth limit (Mbps)
+iperf3downloadlimit="1500"     # Download bandwidth limit (Mbps)
+```
 
 ## Usage
 
-1.  **Configure Script (if needed)**:
-    * Edit `modem-check.sh`.
-    * Change `modemaddress` if your modem uses a different IP (e.g., `192.168.100.1`).
-    * If using a Rogers Xfinity modem, set `igniteusername` and `ignitepassword`.
-    * If using iPerf3 tests, ensure `iperf3` is installed and set the `iperf3server` and `iperf3port` variables.
-2.  **Make Executable**: `chmod +x modem-check.sh`
-3.  **Run the script**: `./modem-check.sh`
-4.  **View Results**:
-    * Open `checkviewer.html` (or the newer `checkviewer_new.html`) in a web browser.
-    * Click the "Upload File" button and select the generated JSON file.
-    * The JSON files are saved in a directory named `ModemCheck-[MODEL]-[MAC]/[TIMESTAMP].json`.
+1. **Configure the script** (see Configuration section above)
+2. **Make executable**: 
+   ```bash
+   chmod +x modem-check.sh
+   ```
+3. **Run the script**: 
+   ```bash
+   ./modem-check.sh
+   ```
+4. **View Results**:
+    * Open `checkviewer.html` in a web browser
+    * Click "Upload JSON File" and select the generated file
+    * JSON files are saved in `ModemCheck-[MODEL]-[MAC]/[TIMESTAMP].json`
+
+## How It Works
+
+1. **Detection**: Automatically detects your modem model by checking common IP addresses
+2. **Authentication**: Logs into the modem using model-specific methods
+3. **Data Collection**: Retrieves diagnostic data from modem's web interface
+4. **Speed Testing**: (Optional) Runs bandwidth-limited iPerf3 tests
+5. **FEC Reset**: Clears Forward Error Correction counters for next check
+6. **Output**: Saves comprehensive JSON file with all collected data
+
+## Troubleshooting
+
+* **Modem not detected**: Manually set `modemaddress` to your modem's IP
+* **Xfinity login fails**: Verify `ignitepassword` is correct
+* **Speed tests timeout**: Check `iperf3server` connectivity and adjust limits
+* **No data in viewer**: Ensure JSON file is complete and not corrupted
+
+## Output Data Structure
+
+The generated JSON includes:
+- `sysinfo`: Firmware, uptime, timestamps
+- `rx`: Downstream SC-QAM channel data
+- `rxofdm`: Downstream OFDM channel data
+- `tx`: Upstream SC-QAM channel data
+- `txofdm`: Upstream OFDMA channel data
+- `eventlog`: Modem event history
+- `iperf3test_ul`/`iperf3test_dl`: Speed test results
+- `iperf3uploadlimit`/`iperf3downloadlimit`: Test configuration
+
+## License
+
+This project is provided as-is for personal and educational use.
