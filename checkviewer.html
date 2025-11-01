@@ -307,10 +307,12 @@
                     <div class="speed-card">
                         <label>⬇️ Download Speed</label>
                         <div id="iperf3_dl" class="value">-</div>
+                        <div id="iperf3_dl_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                     </div>
                     <div class="speed-card">
                         <label>⬆️ Upload Speed</label>
                         <div id="iperf3_ul" class="value">-</div>
+                        <div id="iperf3_ul_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                     </div>
                 </div>
 
@@ -443,6 +445,22 @@
                         data.iperf3test_ul || "-";
                     document.getElementById("iperf3_dl").textContent =
                         data.iperf3test_dl || "-";
+
+                    // Display speed limits if available
+                    const ulLimit = document.getElementById("iperf3_ul_limit");
+                    const dlLimit = document.getElementById("iperf3_dl_limit");
+                    
+                    if (data.iperf3uploadlimit) {
+                        ulLimit.textContent = `(Test limited to ${data.iperf3uploadlimit} Mbps)`;
+                    } else {
+                        ulLimit.textContent = "";
+                    }
+                    
+                    if (data.iperf3downloadlimit) {
+                        dlLimit.textContent = `(Test limited to ${data.iperf3downloadlimit} Mbps)`;
+                    } else {
+                        dlLimit.textContent = "";
+                    }
 
                     populateTable("rxTable", data.rx, [
                         "portid",
