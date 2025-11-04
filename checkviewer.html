@@ -3,7 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Modem Check Viewer</title>
+        <title>Modem Check Viewer - Enhanced</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <style>
             * {
                 margin: 0;
@@ -20,7 +21,7 @@
             }
 
             .container {
-                max-width: 1400px;
+                max-width: 1600px;
                 margin: 0 auto;
                 background: white;
                 border-radius: 16px;
@@ -47,11 +48,44 @@
                 border-bottom: 1px solid #e0e0e0;
             }
 
+            .view-switcher {
+                padding: 20px 30px;
+                background: #fff;
+                border-bottom: 2px solid #e0e0e0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .view-btn {
+                padding: 10px 25px;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                background: white;
+                color: #667eea;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 1em;
+                font-weight: 600;
+            }
+
+            .view-btn:hover {
+                background: #f0f2ff;
+            }
+
+            .view-btn.active {
+                background: #667eea;
+                color: white;
+            }
+
             .file-input-wrapper {
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 gap: 15px;
+                flex-wrap: wrap;
             }
 
             .file-input-wrapper label {
@@ -75,8 +109,98 @@
                 color: white;
             }
 
+            .timeline-nav {
+                padding: 20px 30px;
+                background: #fff;
+                border-bottom: 2px solid #e0e0e0;
+                display: none;
+            }
+
+            .timeline-nav.active {
+                display: block;
+            }
+
+            .timeline-controls {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+
+            .nav-btn {
+                padding: 10px 20px;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                background: white;
+                color: #667eea;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 1em;
+                font-weight: 600;
+            }
+
+            .nav-btn:hover:not(:disabled) {
+                background: #667eea;
+                color: white;
+            }
+
+            .nav-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .timeline-slider {
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+
+            .timeline-slider input[type="range"] {
+                width: 100%;
+                height: 8px;
+                border-radius: 4px;
+                background: #e0e0e0;
+                outline: none;
+                -webkit-appearance: none;
+            }
+
+            .timeline-slider input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #667eea;
+                cursor: pointer;
+            }
+
+            .timeline-slider input[type="range"]::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #667eea;
+                cursor: pointer;
+            }
+
+            .timeline-info {
+                text-align: center;
+                margin-top: 10px;
+                color: #555;
+                font-weight: 600;
+            }
+
             .content {
                 padding: 30px;
+            }
+
+            .view-mode {
+                display: none;
+            }
+
+            .view-mode.active {
+                display: block;
             }
 
             .info-grid {
@@ -144,6 +268,32 @@
             .speed-card .value {
                 font-size: 1.8em;
                 font-weight: 700;
+            }
+
+            .chart-section {
+                margin-bottom: 40px;
+            }
+
+            .chart-section h2 {
+                font-size: 1.6em;
+                color: #2d3748;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+                display: inline-block;
+            }
+
+            .chart-wrapper {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+
+            .chart-container {
+                position: relative;
+                height: 300px;
             }
 
             .table-section {
@@ -216,6 +366,20 @@
                 font-style: italic;
             }
 
+            .loading {
+                text-align: center;
+                padding: 40px;
+                color: #667eea;
+                font-size: 1.2em;
+            }
+
+            .error {
+                text-align: center;
+                padding: 40px;
+                color: #f56565;
+                font-size: 1.1em;
+            }
+
             @media (max-width: 768px) {
                 .header h1 {
                     font-size: 1.8em;
@@ -233,307 +397,1227 @@
                     padding: 8px 6px;
                     font-size: 0.85em;
                 }
-            }
 
-            .status-indicator {
-                display: inline-block;
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                margin-right: 6px;
-            }
-
-            .status-good {
-                background-color: #48bb78;
-            }
-
-            .status-warning {
-                background-color: #ed8936;
-            }
-
-            .status-error {
-                background-color: #f56565;
+                .chart-container {
+                    height: 250px;
+                }
             }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>📡 Modem Check Viewer</h1>
-                <p>Analyze your modem diagnostics data</p>
+                <h1>📡 Modem Check Viewer - Enhanced</h1>
+                <p>View single results or explore trends over time</p>
             </div>
 
             <div class="upload-section">
                 <div class="file-input-wrapper">
-                    <label for="fileInput">📁 Upload JSON File:</label>
+                    <label for="fileInput">📁 Upload JSON File(s):</label>
                     <input
                         type="file"
                         id="fileInput"
                         accept=".json"
-                        onchange="loadCheckResult()"
+                        multiple
+                        onchange="loadJsonFiles()"
                     />
                 </div>
             </div>
 
+            <div class="view-switcher">
+                <button class="view-btn active" onclick="showSingleView()">📊 Single View</button>
+                <button class="view-btn" onclick="showTrendsView()">📈 Trends</button>
+            </div>
+
+            <div class="timeline-nav" id="timelineNav">
+                <div class="timeline-controls">
+                    <button class="nav-btn" id="firstBtn" onclick="navigateToFirst()">⏮️ First</button>
+                    <button class="nav-btn" id="prevBtn" onclick="navigatePrevious()">⏪ Previous</button>
+                    <button class="nav-btn" id="nextBtn" onclick="navigateNext()">Next ⏩</button>
+                    <button class="nav-btn" id="lastBtn" onclick="navigateToLast()">Last ⏭️</button>
+                </div>
+                <div class="timeline-slider">
+                    <input 
+                        type="range" 
+                        id="timelineSlider" 
+                        min="0" 
+                        max="0" 
+                        value="0"
+                        oninput="navigateToIndex(this.value)"
+                    />
+                    <div class="timeline-info" id="timelineInfo">No data loaded</div>
+                </div>
+            </div>
+
             <div class="content">
-                <div class="info-grid">
-                    <div class="info-card">
-                        <label>⏰ Time of Check</label>
-                        <div id="checktime" class="value">-</div>
+                <!-- Single Check View -->
+                <div class="view-mode active" id="singleView">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <label>⏰ Time of Check</label>
+                            <div id="checktime" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>📟 Modem Model</label>
+                            <div id="modemtype" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🔢 Modem MAC</label>
+                            <div id="modemmac" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>💾 Firmware Version</label>
+                            <div id="firmware" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>⏱️ Time Since Reboot</label>
+                            <div id="uptime" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🕐 Modem Time</label>
+                            <div id="systime" class="value">-</div>
+                        </div>
                     </div>
-                    <div class="info-card">
-                        <label>📟 Modem Model</label>
-                        <div id="modemtype" class="value">-</div>
+
+                    <div class="speed-cards">
+                        <div class="speed-card">
+                            <label>⬇️ Download Speed</label>
+                            <div id="iperf3_dl" class="value">-</div>
+                            <div id="iperf3_dl_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>⬆️ Upload Speed</label>
+                            <div id="iperf3_ul" class="value">-</div>
+                            <div id="iperf3_ul_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
                     </div>
-                    <div class="info-card">
-                        <label>🔢 Modem MAC</label>
-                        <div id="modemmac" class="value">-</div>
+
+                    <div class="table-section">
+                        <h2>📥 RX Data (Downstream SC-QAM)</h2>
+                        <div class="table-wrapper">
+                            <table id="rxTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Frequency (MHz)</th>
+                                        <th>Power (dBmV)</th>
+                                        <th>SNR (dB)</th>
+                                        <th>Octets</th>
+                                        <th>Correctables</th>
+                                        <th>Uncorrectables</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="info-card">
-                        <label>💾 Firmware Version</label>
-                        <div id="firmware" class="value">-</div>
+
+                    <div class="table-section">
+                        <h2>📥 RX OFDM Data (Downstream OFDM)</h2>
+                        <div class="table-wrapper">
+                            <table id="rxofdmTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Subcarrier 0 Freq</th>
+                                        <th>PLC Lock</th>
+                                        <th>NCP Lock</th>
+                                        <th>MDC1 Lock</th>
+                                        <th>PLC Power</th>
+                                        <th>PLC SNR</th>
+                                        <th>Octets</th>
+                                        <th>Correctables</th>
+                                        <th>Uncorrectables</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="info-card">
-                        <label>⏱️ Time Since Reboot</label>
-                        <div id="uptime" class="value">-</div>
+
+                    <div class="table-section">
+                        <h2>📤 TX Data (Upstream SC-QAM)</h2>
+                        <div class="table-wrapper">
+                            <table id="txTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Frequency (MHz)</th>
+                                        <th>Power (dBmV)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="info-card">
-                        <label>🕐 Modem Time</label>
-                        <div id="systime" class="value">-</div>
+
+                    <div class="table-section">
+                        <h2>📤 TX OFDMA Data (Upstream OFDMA)</h2>
+                        <div class="table-wrapper">
+                            <table id="txofdmTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>State</th>
+                                        <th>Subcarrier 0 Freq</th>
+                                        <th>Power</th>
+                                        <th>Active SCs</th>
+                                        <th>Excluded SCs</th>
+                                        <th>Not Used SCs</th>
+                                        <th>Minislots</th>
+                                        <th>Interface Speed</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📋 DOCSIS Event Logs</h2>
+                        <div class="table-wrapper">
+                            <table id="eventlogTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>ID</th>
+                                        <th>Event</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div class="speed-cards">
-                    <div class="speed-card">
-                        <label>⬇️ Download Speed</label>
-                        <div id="iperf3_dl" class="value">-</div>
-                        <div id="iperf3_dl_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                <!-- Trends View -->
+                <div class="view-mode" id="trendsView">
+                    <div class="chart-section">
+                        <h2>📊 Speed Trends</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="speedChart"></canvas>
+                            </div>
+                        </div>
                     </div>
-                    <div class="speed-card">
-                        <label>⬆️ Upload Speed</label>
-                        <div id="iperf3_ul" class="value">-</div>
-                        <div id="iperf3_ul_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
-                    </div>
-                </div>
 
-                <div class="table-section">
-                    <h2>📥 RX Data (Downstream SC-QAM)</h2>
-                    <div class="table-wrapper">
-                        <table id="rxTable">
-                            <thead>
-                                <tr>
-                                    <th>Port ID</th>
-                                    <th>Frequency (MHz)</th>
-                                    <th>Power (dBmV)</th>
-                                    <th>SNR (dB)</th>
-                                    <th>Octets</th>
-                                    <th>Correctables</th>
-                                    <th>Uncorrectables</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="chart-section">
+                        <h2>📶 Downstream Power Levels</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="rxPowerChart"></canvas>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="table-section">
-                    <h2>📥 RX OFDM Data (Downstream OFDM)</h2>
-                    <div class="table-wrapper">
-                        <table id="rxofdmTable">
-                            <thead>
-                                <tr>
-                                    <th>Port ID</th>
-                                    <th>Subcarrier 0 Freq</th>
-                                    <th>PLC Lock</th>
-                                    <th>NCP Lock</th>
-                                    <th>MDC1 Lock</th>
-                                    <th>PLC Power</th>
-                                    <th>PLC SNR</th>
-                                    <th>Octets</th>
-                                    <th>Correctables</th>
-                                    <th>Uncorrectables</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="chart-section">
+                        <h2>📡 Downstream SNR</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="rxSnrChart"></canvas>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="table-section">
-                    <h2>📤 TX Data (Upstream SC-QAM)</h2>
-                    <div class="table-wrapper">
-                        <table id="txTable">
-                            <thead>
-                                <tr>
-                                    <th>Port ID</th>
-                                    <th>Frequency (MHz)</th>
-                                    <th>Power (dBmV)</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="chart-section">
+                        <h2>⚠️ Codeword Error Rates (BER & Corrected)</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="berChart"></canvas>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="table-section">
-                    <h2>📤 TX OFDMA Data (Upstream OFDMA)</h2>
-                    <div class="table-wrapper">
-                        <table id="txofdmTable">
-                            <thead>
-                                <tr>
-                                    <th>Port ID</th>
-                                    <th>State</th>
-                                    <th>Subcarrier 0 Freq</th>
-                                    <th>Power</th>
-                                    <th>Active SCs</th>
-                                    <th>Excluded SCs</th>
-                                    <th>Not Used SCs</th>
-                                    <th>Minislots</th>
-                                    <th>Interface Speed</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="table-section">
-                    <h2>📋 DOCSIS Event Logs</h2>
-                    <div class="table-wrapper">
-                        <table id="eventlogTable">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>ID</th>
-                                    <th>Event</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <div class="chart-section">
+                        <h2>📤 Upstream Channels & Power</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="txPowerChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <script>
-            function loadCheckResult() {
-                const fileInput = document.getElementById("fileInput");
-                const uploadedFile = fileInput.files[0];
-                if (!uploadedFile) {
-                    console.error("No file uploaded");
+            // Global state
+            let allChecks = [];
+            let currentCheckIndex = 0;
+            let charts = {};
+
+            // File loading
+            function loadJsonFiles() {
+                const fileInput = document.getElementById('fileInput');
+                const files = Array.from(fileInput.files);
+                
+                if (files.length === 0) {
                     return;
                 }
+                
+                allChecks = [];
+                let loadedCount = 0;
+                
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            allChecks.push(data);
+                            loadedCount++;
+                            
+                            if (loadedCount === files.length) {
+                                // Sort by check time
+                                allChecks.sort((a, b) => {
+                                    const timeA = a.sysinfo?.checktime || '';
+                                    const timeB = b.sysinfo?.checktime || '';
+                                    return timeA.localeCompare(timeB);
+                                });
+                                
+                                currentCheckIndex = allChecks.length - 1; // Start with most recent
+                                updateTimelineNav();
+                                
+                                if (allChecks.length > 1) {
+                                    showTrendsView();
+                                } else {
+                                    showSingleView();
+                                }
+                                
+                                displayCurrentCheck();
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            }
 
-                const reader = new FileReader();
-                reader.onload = function (event) {
-                    const data = JSON.parse(event.target.result);
+            // View switching
+            function showSingleView() {
+                document.getElementById('singleView').classList.add('active');
+                document.getElementById('trendsView').classList.remove('active');
+                document.querySelectorAll('.view-btn')[0].classList.add('active');
+                document.querySelectorAll('.view-btn')[1].classList.remove('active');
+                
+                // Show timeline navigation in single view
+                const nav = document.getElementById('timelineNav');
+                if (allChecks.length > 0) {
+                    nav.classList.add('active');
+                }
+            }
 
-                    document.getElementById("checktime").textContent =
-                        data.sysinfo.checktime || "-";
-                    document.getElementById("modemtype").textContent =
-                        data.sysinfo.modemtype || "-";
-                    document.getElementById("modemmac").textContent =
-                        data.sysinfo.modemmac || "-";
-                    document.getElementById("firmware").textContent =
-                        data.sysinfo.firmware || "-";
-                    document.getElementById("uptime").textContent =
-                        data.sysinfo.uptime || "-";
-                    document.getElementById("systime").textContent =
-                        data.sysinfo.systime || "-";
+            function showTrendsView() {
+                document.getElementById('singleView').classList.remove('active');
+                document.getElementById('trendsView').classList.add('active');
+                document.querySelectorAll('.view-btn')[0].classList.remove('active');
+                document.querySelectorAll('.view-btn')[1].classList.add('active');
+                
+                // Hide timeline navigation in trends view
+                document.getElementById('timelineNav').classList.remove('active');
+                
+                renderTrendChartsFromChecks();
+            }
 
-                    document.getElementById("iperf3_ul").textContent =
-                        data.iperf3test_ul || "-";
-                    document.getElementById("iperf3_dl").textContent =
-                        data.iperf3test_dl || "-";
+            // Timeline navigation
+            function updateTimelineNav() {
+                const nav = document.getElementById('timelineNav');
+                const slider = document.getElementById('timelineSlider');
+                const info = document.getElementById('timelineInfo');
+                
+                if (allChecks.length === 0) {
+                    nav.classList.remove('active');
+                    return;
+                }
+                
+                nav.classList.add('active');
+                slider.max = allChecks.length - 1;
+                slider.value = currentCheckIndex;
+                
+                const current = allChecks[currentCheckIndex];
+                const checkTime = current.sysinfo?.checktime || 'Unknown';
+                info.textContent = `Check ${currentCheckIndex + 1} of ${allChecks.length}: ${checkTime}`;
+                
+                // Update buttons
+                document.getElementById('firstBtn').disabled = currentCheckIndex === 0;
+                document.getElementById('prevBtn').disabled = currentCheckIndex === 0;
+                document.getElementById('nextBtn').disabled = currentCheckIndex === allChecks.length - 1;
+                document.getElementById('lastBtn').disabled = currentCheckIndex === allChecks.length - 1;
+            }
 
-                    // Display speed limits if available
-                    const ulLimit = document.getElementById("iperf3_ul_limit");
-                    const dlLimit = document.getElementById("iperf3_dl_limit");
-                    
-                    if (data.iperf3uploadlimit) {
-                        ulLimit.textContent = `(Test limited to ${data.iperf3uploadlimit} Mbps)`;
-                    } else {
-                        ulLimit.textContent = "";
-                    }
-                    
-                    if (data.iperf3downloadlimit) {
-                        dlLimit.textContent = `(Test limited to ${data.iperf3downloadlimit} Mbps)`;
-                    } else {
-                        dlLimit.textContent = "";
-                    }
+            function navigateToIndex(index) {
+                currentCheckIndex = parseInt(index);
+                updateTimelineNav();
+                displayCurrentCheck();
+            }
 
-                    populateTable("rxTable", data.rx, [
-                        "portid",
-                        "frequency",
-                        "power",
-                        "snr",
-                        "octets",
-                        "correcteds",
-                        "uncorrectds",
-                    ]);
-                    populateTable("rxofdmTable", data.rxofdm, [
-                        "portid",
-                        "subcarr0freq",
-                        "plclock",
-                        "ncplock",
-                        "mdc1lock",
-                        "plcpower",
-                        "plcsnr",
-                        "octets",
-                        "correcteds",
-                        "uncorrectds",
-                    ]);
-                    populateTable("txTable", data.tx, [
-                        "portid",
-                        "frequency",
-                        "power",
-                    ]);
-                    populateTable("txofdmTable", data.txofdm, [
-                        "portid",
-                        "state",
-                        "subcarr0freq",
-                        "power",
-                        "activescs",
-                        "excludedscs",
-                        "notusedscs",
-                        "minislots",
-                        "interfacespeed",
-                    ]);
-                    populateTable("eventlogTable", data.eventlog, [
-                        "time",
-                        "id",
-                        "event",
-                    ]);
-                };
-                reader.readAsText(uploadedFile);
+            function navigateToFirst() {
+                navigateToIndex(0);
+            }
+
+            function navigatePrevious() {
+                if (currentCheckIndex > 0) {
+                    navigateToIndex(currentCheckIndex - 1);
+                }
+            }
+
+            function navigateNext() {
+                if (currentCheckIndex < allChecks.length - 1) {
+                    navigateToIndex(currentCheckIndex + 1);
+                }
+            }
+
+            function navigateToLast() {
+                navigateToIndex(allChecks.length - 1);
+            }
+
+            // Display current check
+            function displayCurrentCheck() {
+                if (allChecks.length === 0) return;
+                
+                const data = allChecks[currentCheckIndex];
+                
+                // Display system info
+                document.getElementById('checktime').textContent = data.sysinfo?.checktime || '-';
+                document.getElementById('modemtype').textContent = data.sysinfo?.modemtype || '-';
+                document.getElementById('modemmac').textContent = data.sysinfo?.modemmac || '-';
+                document.getElementById('firmware').textContent = data.sysinfo?.firmware || '-';
+                document.getElementById('uptime').textContent = data.sysinfo?.uptime || '-';
+                document.getElementById('systime').textContent = data.sysinfo?.systime || '-';
+                
+                // Display speed test results
+                document.getElementById('iperf3_ul').textContent = data.iperf3test_ul || '-';
+                document.getElementById('iperf3_dl').textContent = data.iperf3test_dl || '-';
+                
+                const ulLimit = document.getElementById('iperf3_ul_limit');
+                const dlLimit = document.getElementById('iperf3_dl_limit');
+                
+                ulLimit.textContent = data.iperf3uploadlimit ? `(Test limited to ${data.iperf3uploadlimit} Mbps)` : '';
+                dlLimit.textContent = data.iperf3downloadlimit ? `(Test limited to ${data.iperf3downloadlimit} Mbps)` : '';
+                
+                // Populate tables
+                populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
+                populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
+                populateTable('txTable', data.tx, ['portid', 'frequency', 'power']);
+                populateTable('txofdmTable', data.txofdm, ['portid', 'state', 'subcarr0freq', 'power', 'activescs', 'excludedscs', 'notusedscs', 'minislots', 'interfacespeed']);
+                populateTable('eventlogTable', data.eventlog, ['time', 'id', 'event']);
             }
 
             function populateTable(tableId, data, keys) {
-                const tableBody = document
-                    .getElementById(tableId)
-                    .querySelector("tbody");
-                tableBody.innerHTML = "";
+                const tableBody = document.getElementById(tableId).querySelector('tbody');
+                tableBody.innerHTML = '';
                 
                 if (!data || data.length === 0) {
-                    const row = document.createElement("tr");
-                    const cell = document.createElement("td");
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
                     cell.colSpan = keys.length;
-                    cell.className = "empty-state";
-                    cell.textContent = "No data available";
+                    cell.className = 'empty-state';
+                    cell.textContent = 'No data available';
                     row.appendChild(cell);
                     tableBody.appendChild(row);
                     return;
                 }
-
-                data.forEach((item) => {
-                    const row = document.createElement("tr");
-                    keys.forEach((key) => {
-                        const cell = document.createElement("td");
-                        cell.textContent =
-                            item[key] !== undefined ? item[key] : "n/a";
+                
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    keys.forEach(key => {
+                        const cell = document.createElement('td');
+                        cell.textContent = item[key] !== undefined && item[key] !== null ? item[key] : 'n/a';
                         row.appendChild(cell);
                     });
                     tableBody.appendChild(row);
+                });
+            }
+
+            // Chart rendering
+            function renderTrendChartsFromChecks() {
+                if (allChecks.length < 2) return;
+                
+                // Extract data for charts
+                const labels = allChecks.map(c => c.sysinfo?.checktime || '');
+                
+                // Speed data with limits
+                const uploadSpeeds = allChecks.map(c => parseSpeed(c.iperf3test_ul));
+                const downloadSpeeds = allChecks.map(c => parseSpeed(c.iperf3test_dl));
+                const uploadLimits = allChecks.map(c => c.iperf3uploadlimit || null);
+                const downloadLimits = allChecks.map(c => c.iperf3downloadlimit || null);
+                
+                // RX SC-QAM Power data
+                const rxScqamPowerData = allChecks.map(c => {
+                    if (!c.rx || c.rx.length === 0) return { min: null, avg: null, max: null };
+                    const powers = c.rx.map(ch => parseFloat(ch.power)).filter(p => !isNaN(p) && isFinite(p));
+                    if (powers.length === 0) return { min: null, avg: null, max: null };
+                    return {
+                        min: Math.min(...powers),
+                        avg: powers.reduce((a, b) => a + b) / powers.length,
+                        max: Math.max(...powers)
+                    };
+                });
+                
+                // RX OFDM Power data
+                const rxOfdmPowerData = allChecks.map(c => {
+                    if (!c.rxofdm || c.rxofdm.length === 0) return { min: null, avg: null, max: null };
+                    const powers = c.rxofdm.map(ch => parseFloat(ch.plcpower)).filter(p => !isNaN(p) && isFinite(p));
+                    if (powers.length === 0) return { min: null, avg: null, max: null };
+                    return {
+                        min: Math.min(...powers),
+                        avg: powers.reduce((a, b) => a + b) / powers.length,
+                        max: Math.max(...powers)
+                    };
+                });
+                
+                // RX SC-QAM SNR data
+                const rxScqamSnrData = allChecks.map(c => {
+                    if (!c.rx || c.rx.length === 0) return { min: null, avg: null, max: null };
+                    const snrs = c.rx.map(ch => parseFloat(ch.snr)).filter(s => !isNaN(s) && isFinite(s));
+                    if (snrs.length === 0) return { min: null, avg: null, max: null };
+                    return {
+                        min: Math.min(...snrs),
+                        avg: snrs.reduce((a, b) => a + b) / snrs.length,
+                        max: Math.max(...snrs)
+                    };
+                });
+                
+                // RX OFDM SNR data
+                const rxOfdmSnrData = allChecks.map(c => {
+                    if (!c.rxofdm || c.rxofdm.length === 0) return { min: null, avg: null, max: null };
+                    const snrs = c.rxofdm.map(ch => parseFloat(ch.plcsnr)).filter(s => !isNaN(s) && isFinite(s));
+                    if (snrs.length === 0) return { min: null, avg: null, max: null };
+                    return {
+                        min: Math.min(...snrs),
+                        avg: snrs.reduce((a, b) => a + b) / snrs.length,
+                        max: Math.max(...snrs)
+                    };
+                });
+                
+                // BER data (Bit Error Rate = uncorrectables / octets * 100)
+                const rxScqamBerData = allChecks.map(c => {
+                    if (!c.rx || c.rx.length === 0) return { avg: null, max: null };
+                    const bers = c.rx.map(ch => {
+                        const octets = parseInt(ch.octets) || 0;
+                        const uncorrectds = parseInt(ch.uncorrectds) || 0;
+                        if (octets === 0) return 0;
+                        return (uncorrectds / octets) * 100;
+                    }).filter(b => !isNaN(b) && isFinite(b));
+                    if (bers.length === 0) return { avg: null, max: null };
+                    return {
+                        avg: bers.reduce((a, b) => a + b) / bers.length,
+                        max: Math.max(...bers)
+                    };
+                });
+                
+                const rxOfdmBerData = allChecks.map(c => {
+                    if (!c.rxofdm || c.rxofdm.length === 0) return { avg: null, max: null };
+                    const bers = c.rxofdm.map(ch => {
+                        const octets = parseInt(ch.octets) || 0;
+                        const uncorrectds = parseInt(ch.uncorrectds) || 0;
+                        if (octets === 0) return 0;
+                        return (uncorrectds / octets) * 100;
+                    }).filter(b => !isNaN(b) && isFinite(b));
+                    if (bers.length === 0) return { avg: null, max: null };
+                    return {
+                        avg: bers.reduce((a, b) => a + b) / bers.length,
+                        max: Math.max(...bers)
+                    };
+                });
+                
+                // Correctable codeword error rate data (correcteds / octets * 100)
+                const rxScqamCorrectedData = allChecks.map(c => {
+                    if (!c.rx || c.rx.length === 0) return { avg: null, max: null };
+                    const rates = c.rx.map(ch => {
+                        const octets = parseInt(ch.octets) || 0;
+                        const correcteds = parseInt(ch.correcteds) || 0;
+                        if (octets === 0) return 0;
+                        return (correcteds / octets) * 100;
+                    }).filter(r => !isNaN(r) && isFinite(r));
+                    if (rates.length === 0) return { avg: null, max: null };
+                    return {
+                        avg: rates.reduce((a, b) => a + b) / rates.length,
+                        max: Math.max(...rates)
+                    };
+                });
+                
+                const rxOfdmCorrectedData = allChecks.map(c => {
+                    if (!c.rxofdm || c.rxofdm.length === 0) return { avg: null, max: null };
+                    const rates = c.rxofdm.map(ch => {
+                        const octets = parseInt(ch.octets) || 0;
+                        const correcteds = parseInt(ch.correcteds) || 0;
+                        if (octets === 0) return 0;
+                        return (correcteds / octets) * 100;
+                    }).filter(r => !isNaN(r) && isFinite(r));
+                    if (rates.length === 0) return { avg: null, max: null };
+                    return {
+                        avg: rates.reduce((a, b) => a + b) / rates.length,
+                        max: Math.max(...rates)
+                    };
+                });
+                
+                // TX SC-QAM Power data and bonded channels
+                const txScqamData = allChecks.map(c => {
+                    if (!c.tx || c.tx.length === 0) return { min: null, avg: null, max: null, bonded: 0 };
+                    const powers = c.tx.map(ch => parseFloat(ch.power)).filter(p => !isNaN(p) && isFinite(p) && p !== 0);
+                    return {
+                        min: powers.length > 0 ? Math.min(...powers) : null,
+                        avg: powers.length > 0 ? powers.reduce((a, b) => a + b) / powers.length : null,
+                        max: powers.length > 0 ? Math.max(...powers) : null,
+                        bonded: powers.length
+                    };
+                });
+                
+                // TX OFDMA data
+                const txOfdmaData = allChecks.map(c => {
+                    if (!c.txofdm || c.txofdm.length === 0) return { bonded: 0, impaired: 0, avgPower: null };
+                    
+                    const operateStates = ['OPERATE', 'Locked'];
+                    const impairedStates = ['Not Locked', 'RNG1', 'RNG2', 'RNG3', 'Partial Service'];
+                    
+                    let bonded = 0;
+                    let impaired = 0;
+                    const powers = [];
+                    
+                    c.txofdm.forEach(ch => {
+                        const state = ch.state || '';
+                        if (operateStates.some(s => state.includes(s))) {
+                            bonded++;
+                        } else if (impairedStates.some(s => state.includes(s))) {
+                            impaired++;
+                        }
+                        
+                        const power = parseFloat(ch.power);
+                        if (!isNaN(power) && isFinite(power)) {
+                            powers.push(power);
+                        }
+                    });
+                    
+                    return {
+                        bonded: bonded,
+                        impaired: impaired,
+                        avgPower: powers.length > 0 ? powers.reduce((a, b) => a + b) / powers.length : null
+                    };
+                });
+                
+                // Render all charts
+                renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+                renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
+                renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
+                renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
+                renderTxPowerChart(labels, txScqamData, txOfdmaData);
+            }
+
+            // Old API function - can be removed if no longer needed
+            function renderTrendCharts(speedData, signalData) {
+                // Debug logging
+                console.log('Speed data sample:', speedData[0]);
+                console.log('Signal data sample:', signalData[0]);
+                
+                // Extract labels from speed data (all checks should have same timestamps)
+                const labels = speedData.map(d => d.check_time);
+                
+                // Extract speed test data
+                const uploadSpeeds = speedData.map(d => parseSpeed(d.iperf3_upload));
+                const downloadSpeeds = speedData.map(d => parseSpeed(d.iperf3_download));
+                const uploadLimits = speedData.map(d => d.iperf3_upload_limit ? parseSpeed(d.iperf3_upload_limit) : null);
+                const downloadLimits = speedData.map(d => d.iperf3_download_limit ? parseSpeed(d.iperf3_download_limit) : null);
+                
+                // Extract RX SC-QAM data (handle null values)
+                const rxScqamPowerData = signalData.map(d => ({
+                    min: d.rx_scqam?.min_power ?? null,
+                    avg: d.rx_scqam?.avg_power ?? null,
+                    max: d.rx_scqam?.max_power ?? null
+                }));
+                
+                const rxScqamSnrData = signalData.map(d => ({
+                    min: d.rx_scqam?.min_snr ?? null,
+                    avg: d.rx_scqam?.avg_snr ?? null,
+                    max: d.rx_scqam?.max_snr ?? null
+                }));
+                
+                const rxScqamBerData = signalData.map(d => ({
+                    avg: d.rx_scqam?.avg_ber ?? null,
+                    max: d.rx_scqam?.max_ber ?? null
+                }));
+                
+                // Extract RX OFDM data (handle null values)
+                const rxOfdmPowerData = signalData.map(d => ({
+                    min: d.rx_ofdm?.min_power ?? null,
+                    avg: d.rx_ofdm?.avg_power ?? null,
+                    max: d.rx_ofdm?.max_power ?? null
+                }));
+                
+                const rxOfdmSnrData = signalData.map(d => ({
+                    min: d.rx_ofdm?.min_snr ?? null,
+                    avg: d.rx_ofdm?.avg_snr ?? null,
+                    max: d.rx_ofdm?.max_snr ?? null
+                }));
+                
+                const rxOfdmBerData = signalData.map(d => ({
+                    avg: d.rx_ofdm?.avg_ber ?? null,
+                    max: d.rx_ofdm?.max_ber ?? null
+                }));
+                
+                // Extract TX SC-QAM data (handle null values)
+                const txScqamData = signalData.map(d => ({
+                    min: d.tx_scqam?.min_power ?? null,
+                    avg: d.tx_scqam?.avg_power ?? null,
+                    max: d.tx_scqam?.max_power ?? null,
+                    bonded: d.tx_scqam?.bonded_count ?? 0
+                }));
+                
+                // Extract TX OFDMA data (handle null values)
+                const txOfdmaData = signalData.map(d => ({
+                    avgPower: d.tx_ofdma?.avg_power ?? null,
+                    bonded: d.tx_ofdma?.bonded_count ?? 0,
+                    impaired: d.tx_ofdma?.impaired_count ?? 0
+                }));
+                
+                console.log('Extracted data samples:');
+                console.log('  Labels:', labels.slice(0, 3));
+                console.log('  RX SC-QAM Power:', rxScqamPowerData.slice(0, 3));
+                console.log('  RX OFDM Power:', rxOfdmPowerData.slice(0, 3));
+                console.log('  RX SC-QAM SNR:', rxScqamSnrData.slice(0, 3));
+                console.log('  TX SC-QAM:', txScqamData.slice(0, 3));
+                console.log('  TX OFDMA:', txOfdmaData.slice(0, 3));
+                
+                // Render all charts (Note: API function doesn't calculate corrected data, so passing empty arrays)
+                renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+                renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
+                renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
+                renderBerChart(labels, rxScqamBerData, rxOfdmBerData, [], []);
+                renderTxPowerChart(labels, txScqamData, txOfdmaData);
+            }
+
+            function parseSpeed(speedString) {
+                if (!speedString || speedString === '-' || speedString === 'Failed' || speedString === 'Disabled') {
+                    return null;
+                }
+                
+                const match = speedString.match(/(\d+\.?\d*)\s*(\w+)/);
+                if (!match) return null;
+                
+                const value = parseFloat(match[1]);
+                const unit = match[2].toLowerCase();
+                
+                // Convert to Mbps
+                if (unit.includes('gbits') || unit.includes('gb')) {
+                    return value * 1000;
+                } else if (unit.includes('mbits') || unit.includes('mb')) {
+                    return value;
+                } else if (unit.includes('kbits') || unit.includes('kb')) {
+                    return value / 1000;
+                }
+                
+                return value;
+            }
+
+            function renderSpeedChart(labels, uploadData, downloadData, uploadLimits, downloadLimits) {
+                const ctx = document.getElementById('speedChart');
+                
+                if (charts.speed) {
+                    charts.speed.destroy();
+                }
+                
+                const datasets = [{
+                    label: 'Download Speed',
+                    data: downloadData,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Upload Speed',
+                    data: uploadData,
+                    borderColor: '#764ba2',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }];
+                
+                // Add download limit line if available
+                if (downloadLimits && downloadLimits.some(l => l !== null)) {
+                    datasets.push({
+                        label: 'Download Limit',
+                        data: downloadLimits,
+                        borderColor: 'rgba(102, 126, 234, 0.5)',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    });
+                }
+                
+                // Add upload limit line if available
+                if (uploadLimits && uploadLimits.some(l => l !== null)) {
+                    datasets.push({
+                        label: 'Upload Limit',
+                        data: uploadLimits,
+                        borderColor: 'rgba(118, 75, 162, 0.5)',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0
+                    });
+                }
+                
+                charts.speed = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Speed (Mbps)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderRxPowerChart(labels, rxScqamData, rxOfdmData) {
+                const ctx = document.getElementById('rxPowerChart');
+                
+                if (charts.rxPower) {
+                    charts.rxPower.destroy();
+                }
+                
+                charts.rxPower = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Min RX SC-QAM Power',
+                            data: rxScqamData.map(d => d.min),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2,
+                            spanGaps: true
+                        }, {
+                            label: 'Avg RX SC-QAM Power',
+                            data: rxScqamData.map(d => d.avg),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true
+                        }, {
+                            label: 'Max RX SC-QAM Power',
+                            data: rxScqamData.map(d => d.max),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Min RX OFDM Power',
+                            data: rxOfdmData.map(d => d.min),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX OFDM Power',
+                            data: rxOfdmData.map(d => d.avg),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true
+                        }, {
+                            label: 'Max RX OFDM Power',
+                            data: rxOfdmData.map(d => d.max),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Power (dBmV)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderRxSnrChart(labels, rxScqamData, rxOfdmData) {
+                const ctx = document.getElementById('rxSnrChart');
+                
+                if (charts.rxSnr) {
+                    charts.rxSnr.destroy();
+                }
+                
+                charts.rxSnr = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Min RX SC-QAM SNR',
+                            data: rxScqamData.map(d => d.min),
+                            borderColor: '#ed8936',
+                            backgroundColor: 'rgba(237, 137, 54, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX SC-QAM SNR',
+                            data: rxScqamData.map(d => d.avg),
+                            borderColor: '#ed8936',
+                            backgroundColor: 'rgba(237, 137, 54, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true
+                        }, {
+                            label: 'Max RX SC-QAM SNR',
+                            data: rxScqamData.map(d => d.max),
+                            borderColor: '#ed8936',
+                            backgroundColor: 'rgba(237, 137, 54, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Min RX OFDM SNR',
+                            data: rxOfdmData.map(d => d.min),
+                            borderColor: '#9f7aea',
+                            backgroundColor: 'rgba(159, 122, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX OFDM SNR',
+                            data: rxOfdmData.map(d => d.avg),
+                            borderColor: '#9f7aea',
+                            backgroundColor: 'rgba(159, 122, 234, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true
+                        }, {
+                            label: 'Max RX OFDM SNR',
+                            data: rxOfdmData.map(d => d.max),
+                            borderColor: '#9f7aea',
+                            backgroundColor: 'rgba(159, 122, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'SNR (dB)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData) {
+                const ctx = document.getElementById('berChart');
+                
+                if (charts.ber) {
+                    charts.ber.destroy();
+                }
+                
+                charts.ber = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Avg RX SC-QAM BER (Uncorrectable)',
+                            data: rxScqamBerData.map(d => d.avg),
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Max RX SC-QAM BER (Uncorrectable)',
+                            data: rxScqamBerData.map(d => d.max),
+                            borderColor: '#c53030',
+                            backgroundColor: 'rgba(197, 48, 48, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX OFDM BER (Uncorrectable)',
+                            data: rxOfdmBerData.map(d => d.avg),
+                            borderColor: '#ed8936',
+                            backgroundColor: 'rgba(237, 137, 54, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Max RX OFDM BER (Uncorrectable)',
+                            data: rxOfdmBerData.map(d => d.max),
+                            borderColor: '#c05621',
+                            backgroundColor: 'rgba(192, 86, 33, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX SC-QAM Corrected',
+                            data: rxScqamCorrectedData.map(d => d.avg),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Max RX SC-QAM Corrected',
+                            data: rxScqamCorrectedData.map(d => d.max),
+                            borderColor: '#38a169',
+                            backgroundColor: 'rgba(56, 161, 105, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }, {
+                            label: 'Avg RX OFDM Corrected',
+                            data: rxOfdmCorrectedData.map(d => d.avg),
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Max RX OFDM Corrected',
+                            data: rxOfdmCorrectedData.map(d => d.max),
+                            borderColor: '#3182ce',
+                            backgroundColor: 'rgba(49, 130, 206, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y.toExponential(2) + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'logarithmic',
+                                title: {
+                                    display: true,
+                                    text: 'Error Rate (%)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toExponential(0);
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderTxPowerChart(labels, txScqamData, txOfdmaData) {
+                const ctx = document.getElementById('txPowerChart');
+                
+                if (charts.txPower) {
+                    charts.txPower.destroy();
+                }
+                
+                charts.txPower = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Min TX SC-QAM Power',
+                            data: txScqamData.map(d => d.min),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Avg TX SC-QAM Power',
+                            data: txScqamData.map(d => d.avg),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Max TX SC-QAM Power',
+                            data: txScqamData.map(d => d.max),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 2,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Avg TX OFDMA Power',
+                            data: txOfdmaData.map(d => d.avgPower),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'TX SC-QAM Bonded Channels',
+                            data: txScqamData.map(d => d.bonded),
+                            borderColor: '#9f7aea',
+                            backgroundColor: 'rgba(159, 122, 234, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }, {
+                            label: 'TX OFDMA Bonded Channels',
+                            data: txOfdmaData.map(d => d.bonded),
+                            borderColor: '#38b2ac',
+                            backgroundColor: 'rgba(56, 178, 172, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }, {
+                            label: 'TX OFDMA Impaired Channels',
+                            data: txOfdmaData.map(d => d.impaired),
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Power (dBmV)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Channel Count'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
                 });
             }
         </script>
