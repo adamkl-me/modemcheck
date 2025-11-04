@@ -37,7 +37,11 @@ Modem-Check is a Bash script designed to collect diagnostic data from supported 
 * **Bandwidth Limiting**: iPerf3 tests now support configurable bandwidth limits to prevent network saturation
 * **Multi-Stream Testing**: Configurable number of parallel streams for more accurate speed measurements
 * **Improved Error Handling**: Better timeout handling and validation for speed tests
-* **Enhanced Viewer**: Updated HTML viewer displays bandwidth limit information alongside test results
+* **Enhanced Viewer**: Updated HTML viewer with dual-mode functionality
+  - Single View: Detailed diagnostics with timeline navigation
+  - Trends View: Interactive Chart.js visualizations for historical data analysis
+  - Multi-file upload support for trend analysis
+  - Visual tracking of power levels, SNR, error rates, and channel bonding over time
 * **Xfinity Improvements**: Better authentication error handling and detection of XB7/XB8 variants
 
 ## Configuration
@@ -73,7 +77,9 @@ iperf3downloadlimit="1500"     # Download bandwidth limit (Mbps)
    ```
 4. **View Results**:
     * Open `checkviewer.html` in a web browser
-    * Click "Upload JSON File" and select the generated file
+    * **Single View Mode**: Upload one JSON file to view detailed diagnostics
+    * **Trends Mode**: Upload multiple JSON files to visualize trends over time with interactive charts
+    * Navigate through historical checks using the timeline controls
     * JSON files are saved in `ModemCheck-[MODEL]-[MAC]/[TIMESTAMP].json`
 
 ## How It Works
