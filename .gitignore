@@ -2,4 +2,11 @@
 Modem-DataFiles/
 ModemCheck-*/
 modem-check_logs.txt
+
+# Go build artifacts
+modem-check
+modem-check-*
+*.exe
+dist/
+config.json
 ```
