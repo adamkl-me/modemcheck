@@ -56,13 +56,15 @@ ignitepassword="password"  # For Rogers Xfinity modems
 
 ### iPerf3 Speed Tests
 ```bash
-iperf3enabled="true"           # Enable/disable speed tests
+iperf3enabled="false"          # Enable/disable speed tests (disabled by default)
 iperf3server="your.server.ip"  # iPerf3 server address
 iperf3port="5201"              # Server port
 iperf3streams=4                # Number of parallel streams
 iperf3uploadlimit="150"        # Upload bandwidth limit (Mbps)
 iperf3downloadlimit="1500"     # Download bandwidth limit (Mbps)
 ```
+
+**Note**: Speed tests are disabled by default. Set `iperf3enabled="true"` and configure your iPerf3 server details to enable this feature.
 
 ## Usage
 
