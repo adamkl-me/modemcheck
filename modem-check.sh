@@ -19,7 +19,7 @@ modemaddress="autodetect" # Set to "autodetect" or specify IP/hostname directly
 ignitepassword="password"  # Only used if Rogers Xfinity modem is detected
 
 # iPerf3 speed test configuration
-iperf3enabled="true"   # Set to true or false to enable/disable iPerf3 tests
+iperf3enabled="false"   # Set to true or false to enable/disable iPerf3 tests
 iperf3server="fillme" # IP or hostname of the iPerf3 server to use
 iperf3port="5201"   # Port of the iPerf3 server (default is 5201)
 iperf3streams=4          # Number of parallel streams to use for the test

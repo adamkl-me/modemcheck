@@ -1,2 +1,5 @@
+# Test data and logs
 Modem-DataFiles/
+ModemCheck-*/
+modem-check_logs.txt
 ```
