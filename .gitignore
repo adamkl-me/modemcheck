@@ -1,12 +1,25 @@
 # Test data and logs
+ModemCheck-DataFiles/
 Modem-DataFiles/
-ModemCheck-*/
+ModemCheck-Results/
+ModemCheck-ConfigFiles/
 modem-check_logs.txt
+.upload_queue.json
 
 # Go build artifacts
 modem-check
 modem-check-*
 *.exe
 dist/
+
+# Configuration files (may contain passwords/API keys)
 config.json
-```
+*.local.json
+
+# Cloud server runtime data (created by Docker)
+cloudserver/config/
+cloudserver/datafiles/
+
+# Claude AI assistant context
+CLAUDE.md
+.claude/

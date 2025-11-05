@@ -1,12 +1,17 @@
 {
   "ModemAddress": "autodetect",
   "IgnitePassword": "password",
-  "Iperf3Enabled": false,
+  "Iperf3Enabled": true,
   "Iperf3Server": "speedtest.mtl2.ca.leaseweb.net",
-  "Iperf3Port": "5201",
+  "Iperf3Port": "5201-5210",
   "Iperf3Streams": 4,
   "Iperf3UploadLimit": 150,
   "Iperf3DownloadLimit": 1500,
   "Silent": false,
-  "NoLogs": false
+  "NoLogs": false,
+  "EnableCloud": false,
+  "CloudHost": "fillme",
+  "CloudPort": "fillme",
+  "CloudAPIKey": "",
+  "CloudPath": "/datafiles"
 }

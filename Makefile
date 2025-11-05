@@ -95,11 +95,13 @@ test:
 	@rm /tmp/$(BINARY_NAME)-test
 	@echo "Compilation test passed!"
 
-# Install dependencies (none needed for this project)
+# Check dependencies
 deps:
 	@echo "Checking Go installation..."
 	@go version
-	@echo "No external dependencies required!"
+	@echo "Checking Go modules..."
+	@go mod verify
+	@echo "All dependencies OK! (No external dependencies required)"
 
 # Show help
 help:

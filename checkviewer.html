@@ -490,6 +490,16 @@
                             <div id="iperf3_ul" class="value">-</div>
                             <div id="iperf3_ul_limit" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                         </div>
+                        <div class="speed-card">
+                            <label>🌐 Ping Google</label>
+                            <div id="ping_google" class="value">-</div>
+                            <div id="ping_google_loss" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>☁️ Ping Cloudflare</label>
+                            <div id="ping_cloudflare" class="value">-</div>
+                            <div id="ping_cloudflare_loss" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
                     </div>
 
                     <div class="table-section">
@@ -597,6 +607,15 @@
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="speedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>🌐 Ping Latency & Packet Loss</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="pingChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -794,6 +813,17 @@
                 
                 ulLimit.textContent = data.iperf3uploadlimit ? `(Test limited to ${data.iperf3uploadlimit} Mbps)` : '';
                 dlLimit.textContent = data.iperf3downloadlimit ? `(Test limited to ${data.iperf3downloadlimit} Mbps)` : '';
+                
+                // Display ping test results
+                const pingGoogleAvg = data.ping_google_avg || '-';
+                const pingGoogleLoss = data.ping_google_loss || '';
+                document.getElementById('ping_google').textContent = pingGoogleAvg !== '-' && pingGoogleAvg !== 'Failed' ? `${pingGoogleAvg} ms` : pingGoogleAvg;
+                document.getElementById('ping_google_loss').textContent = pingGoogleLoss ? `Packet loss: ${pingGoogleLoss}` : '';
+                
+                const pingCloudflareAvg = data.ping_cloudflare_avg || '-';
+                const pingCloudflareLoss = data.ping_cloudflare_loss || '';
+                document.getElementById('ping_cloudflare').textContent = pingCloudflareAvg !== '-' && pingCloudflareAvg !== 'Failed' ? `${pingCloudflareAvg} ms` : pingCloudflareAvg;
+                document.getElementById('ping_cloudflare_loss').textContent = pingCloudflareLoss ? `Packet loss: ${pingCloudflareLoss}` : '';
                 
                 // Populate tables
                 populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
@@ -996,8 +1026,15 @@
                     };
                 });
                 
+                // Ping data
+                const pingGoogleAvg = allChecks.map(c => parseFloat(c.ping_google_avg) || null);
+                const pingGoogleLoss = allChecks.map(c => parseFloat(c.ping_google_loss) || null);
+                const pingCloudflareAvg = allChecks.map(c => parseFloat(c.ping_cloudflare_avg) || null);
+                const pingCloudflareLoss = allChecks.map(c => parseFloat(c.ping_cloudflare_loss) || null);
+                
                 // Render all charts
                 renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+                renderPingChart(labels, pingGoogleAvg, pingGoogleLoss, pingCloudflareAvg, pingCloudflareLoss);
                 renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
                 renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
                 renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
@@ -1184,6 +1221,120 @@
                                 title: {
                                     display: true,
                                     text: 'Speed (Mbps)'
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderPingChart(labels, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss) {
+                const ctx = document.getElementById('pingChart');
+                
+                if (charts.ping) {
+                    charts.ping.destroy();
+                }
+                
+                charts.ping = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Google Ping (ms)',
+                            data: googleAvg,
+                            borderColor: '#4285f4',
+                            backgroundColor: 'rgba(66, 133, 244, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Cloudflare Ping (ms)',
+                            data: cloudflareAvg,
+                            borderColor: '#f6821f',
+                            backgroundColor: 'rgba(246, 130, 31, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Google Packet Loss (%)',
+                            data: googleLoss,
+                            borderColor: 'rgba(234, 67, 53, 0.7)',
+                            backgroundColor: 'rgba(234, 67, 53, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            yAxisID: 'y1'
+                        }, {
+                            label: 'Cloudflare Packet Loss (%)',
+                            data: cloudflareLoss,
+                            borderColor: 'rgba(251, 188, 5, 0.7)',
+                            backgroundColor: 'rgba(251, 188, 5, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            if (label.includes('Loss')) {
+                                                label += context.parsed.y.toFixed(1) + '%';
+                                            } else {
+                                                label += context.parsed.y.toFixed(2) + ' ms';
+                                            }
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Latency (ms)'
+                                },
+                                beginAtZero: true
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Packet Loss (%)'
+                                },
+                                beginAtZero: true,
+                                max: 100,
+                                grid: {
+                                    drawOnChartArea: false,
                                 }
                             }
                         },

@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModemCheck - API Key Management</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: none; /* Hidden until auth verified */
+        }
+
+        .container.authenticated {
+            display: block;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .action-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .keys-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .keys-table th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .keys-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .keys-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .key-preview {
+            font-family: 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .key-display {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .tab-navigation {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 0 30px;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #6b7280;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: transparent;
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 0 0 10px 10px;
+        }
+
+        @media (max-width: 768px) {
+            .keys-table {
+                font-size: 12px;
+            }
+
+            .keys-table th,
+            .keys-table td {
+                padding: 8px;
+            }
+
+            .btn-small {
+                display: block;
+                margin: 5px 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ModemCheck Admin Dashboard</h1>
+            <p class="subtitle">Manage API keys and user accounts</p>
+            <button id="logoutBtn" style="position: absolute; top: 30px; right: 30px; padding: 10px 20px; background: rgba(255,255,255,0.2); border: 2px solid white; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Logout</button>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button id="apiKeysTab" class="tab-btn active" onclick="showTab('apiKeys')">API Keys</button>
+            <button id="usersTab" class="tab-btn" onclick="showTab('users')">User Management</button>
+        </div>
+
+        <!-- API Keys Section -->
+        <div id="apiKeysSection" class="tab-content">
+            <div class="action-section">
+                <h2>Create New API Key</h2>
+            <div class="form-group">
+                <label for="keyName">Key Name / Description</label>
+                <input type="text" id="keyName" placeholder="e.g., Home Router, Office Modem, etc.">
+            </div>
+            <button class="btn btn-primary" onclick="createKey()">Create API Key</button>
+        </div>
+
+            <div class="keys-section">
+                <h2>Existing API Keys</h2>
+                <div id="keysContainer">
+                    <div class="loading">Loading API keys...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Section -->
+        <div id="usersSection" class="tab-content" style="display: none;">
+            <div class="action-section">
+                <h2>Create New User</h2>
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter password">
+                </div>
+                <div class="form-group">
+                    <label for="newUserRole">Role</label>
+                    <select id="newUserRole" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+                        <option value="basic">Basic (Viewer only)</option>
+                        <option value="admin">Admin (Full access)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="createUser()">Create User</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Existing Users</h2>
+                <div id="usersContainer">
+                    <div class="loading">Loading users...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for showing new key -->
+    <div id="newKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API Key Created Successfully!</h2>
+            </div>
+            <div>
+                <p style="margin-bottom: 15px; color: #374151;">
+                    <strong>Important:</strong> Copy this API key now. You won't be able to see it again!
+                </p>
+                <div class="key-display" id="newKeyDisplay"></div>
+                <button class="copy-btn" onclick="copyNewKey()">Copy to Clipboard</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeNewKeyModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing key -->
+    <div id="editKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit API Key</h2>
+            </div>
+            <div class="form-group">
+                <label for="editKeyName">Key Name / Description</label>
+                <input type="text" id="editKeyName">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="editKeyActive"> Active
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveKeyEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/cgi-bin/admin-api.py';
+        const USER_API_BASE = '/cgi-bin/user-management.py';
+        let currentEditKey = null;
+        let newKeyValue = null;
+
+        // Check authentication
+        async function checkAuth() {
+            try {
+                const response = await fetch('/cgi-bin/auth.py');
+                const data = await response.json();
+
+                if (!data.authenticated) {
+                    window.location.href = '/admin-login.html';
+                    return false;
+                }
+
+                // Enforce role-based access control
+                if (data.role !== 'admin') {
+                    // Basic users cannot access admin dashboard
+                    // Redirect to admin login with error indication
+                    window.location.href = '/admin-login.html?error=access_denied';
+                    return false;
+                }
+                
+                // Show the page content now that auth is verified
+                document.querySelector('.container').classList.add('authenticated');
+
+                // Check if password change is required
+                if (data.must_change_password || sessionStorage.getItem('must_change_password') === 'true') {
+                    sessionStorage.removeItem('must_change_password');
+                    showPasswordChangeDialog();
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/admin-login.html';
+                return false;
+            }
+        }
+
+        // Show password change dialog
+        function showPasswordChangeDialog() {
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            dialog.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
+                    <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password Required</h2>
+                    <p style="margin: 0 0 20px 0; color: #666;">You must change your password before continuing.</p>
+                    <div id="pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 6 characters)</label>
+                        <input type="password" id="new-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Confirm Password</label>
+                        <input type="password" id="confirm-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                    </div>
+                    <button id="change-pwd-btn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+            
+            document.getElementById('change-pwd-btn').addEventListener('click', async () => {
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                const errorDiv = document.getElementById('pwd-error');
+                
+                errorDiv.style.display = 'none';
+                
+                if (!newPassword || newPassword.length < 6) {
+                    errorDiv.textContent = 'Password must be at least 6 characters';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    errorDiv.textContent = 'Passwords do not match';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('action', 'change_own_password');
+                    formData.append('new_password', newPassword);
+                    
+                    const response = await fetch('/cgi-bin/auth.py', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.body.removeChild(dialog);
+                        showMessage('Password changed successfully!', 'success');
+                    } else {
+                        errorDiv.textContent = data.error || 'Failed to change password';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                }
+            });
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'logout');
+                
+                await fetch('/cgi-bin/auth.py', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab content sections
+            document.getElementById('apiKeysSection').style.display = 'none';
+            document.getElementById('usersSection').style.display = 'none';
+
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab and activate its button
+            if (tabName === 'apiKeys') {
+                document.getElementById('apiKeysSection').style.display = 'block';
+                document.getElementById('apiKeysTab').classList.add('active');
+            } else if (tabName === 'users') {
+                document.getElementById('usersSection').style.display = 'block';
+                document.getElementById('usersTab').classList.add('active');
+                loadUsers();
+            }
+        }
+
+        // Load keys on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+            
+            // Setup logout button
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            loadKeys();
+        });
+
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type} show`;
+            setTimeout(() => {
+                messageEl.classList.remove('show');
+            }, 5000);
+        }
+
+        async function loadKeys() {
+            try {
+                const response = await fetch(`${API_BASE}?action=list`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load keys');
+                }
+
+                displayKeys(data.keys);
+            } catch (error) {
+                document.getElementById('keysContainer').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading API keys: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayKeys(keys) {
+            const container = document.getElementById('keysContainer');
+
+            if (keys.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No API keys found. Create one above to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Name</th>
+                            <th>Created</th>
+                            <th>Last Used</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            keys.forEach(key => {
+                const createdDate = new Date(key.created).toLocaleString();
+                const lastUsed = key.last_used && key.last_used !== 'Never'
+                    ? new Date(key.last_used).toLocaleString()
+                    : 'Never';
+                const statusClass = key.active ? 'status-active' : 'status-inactive';
+                const statusText = key.active ? 'Active' : 'Inactive';
+
+                html += `
+                    <tr>
+                        <td><span class="key-preview">${key.key_preview}</span></td>
+                        <td>${escapeHtml(key.name)}</td>
+                        <td>${createdDate}</td>
+                        <td>${lastUsed}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <button class="btn btn-secondary btn-small" onclick='editKey(${JSON.stringify(key)})'>Edit</button>
+                            <button class="btn btn-secondary btn-small" onclick='copyKey("${key.full_key}")'>Copy Key</button>
+                            <button class="btn btn-danger btn-small" onclick='deleteKey("${key.full_key}", "${escapeHtml(key.name)}")'>Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        async function createKey() {
+            const name = document.getElementById('keyName').value.trim();
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'create',
+                        name: name
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to create key');
+                }
+
+                // Show the new key in a modal
+                newKeyValue = data.key;
+                document.getElementById('newKeyDisplay').textContent = data.key;
+                document.getElementById('newKeyModal').classList.add('show');
+
+                // Clear the input
+                document.getElementById('keyName').value = '';
+
+                // Reload keys
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function copyNewKey() {
+            copyToClipboard(newKeyValue);
+            showMessage('API key copied to clipboard!', 'success');
+        }
+
+        function closeNewKeyModal() {
+            document.getElementById('newKeyModal').classList.remove('show');
+            newKeyValue = null;
+        }
+
+        function editKey(key) {
+            currentEditKey = key.full_key;
+            document.getElementById('editKeyName').value = key.name;
+            document.getElementById('editKeyActive').checked = key.active;
+            document.getElementById('editKeyModal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editKeyModal').classList.remove('show');
+            currentEditKey = null;
+        }
+
+        async function saveKeyEdit() {
+            const name = document.getElementById('editKeyName').value.trim();
+            const active = document.getElementById('editKeyActive').checked;
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'update',
+                        key: currentEditKey,
+                        name: name,
+                        active: active
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to update key');
+                }
+
+                showMessage('API key updated successfully', 'success');
+                closeEditModal();
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteKey(key, name) {
+            if (!confirm(`Are you sure you want to delete the API key "${name}"?\n\nThis action cannot be undone and any devices using this key will stop working.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'delete',
+                        key: key
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete key');
+                }
+
+                showMessage('API key deleted successfully', 'success');
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function copyKey(key) {
+            copyToClipboard(key);
+            showMessage('API key copied to clipboard!', 'success');
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text);
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                }
+                textArea.remove();
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // User Management Functions
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${USER_API_BASE}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load users');
+                }
+
+                displayUsers(data.users);
+            } catch (error) {
+                document.getElementById('usersContainer').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading users: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersContainer');
+
+            if (!users || users.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No users found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const userCards = users.map(user => `
+                <div class="key-card">
+                    <div class="key-header">
+                        <div>
+                            <div class="key-name">${escapeHtml(user.username)}</div>
+                            <div class="key-date">Created: ${new Date(user.created).toLocaleString()}</div>
+                        </div>
+                        <div class="key-actions">
+                            <span class="badge ${user.role === 'admin' ? 'badge-success' : 'badge-info'}">${user.role.toUpperCase()}</span>
+                        </div>
+                    </div>
+                    <div class="key-actions">
+                        <button class="btn btn-secondary" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
+                        <button class="btn btn-danger" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = userCards;
+        }
+
+        async function createUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newUserRole').value;
+
+            if (!username || !password) {
+                showMessage('Please enter username and password', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'create');
+                formData.append('username', username);
+                formData.append('password', password);
+                formData.append('role', role);
+
+                const response = await fetch(USER_API_BASE, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to create user');
+                }
+
+                showMessage('User created successfully', 'success');
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newUserRole').value = 'basic';
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function changePassword(username) {
+            const newPassword = prompt(`Enter new password for ${username}:`);
+            
+            if (!newPassword) return;
+
+            if (newPassword.length < 6) {
+                showMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'change_password');
+                formData.append('username', username);
+                formData.append('new_password', newPassword);
+
+                const response = await fetch(USER_API_BASE, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to change password');
+                }
+
+                showMessage('Password changed successfully', 'success');
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                formData.append('username', username);
+
+                const response = await fetch(USER_API_BASE, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete user');
+                }
+
+                showMessage('User deleted successfully', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

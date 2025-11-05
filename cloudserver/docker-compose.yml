@@ -1,0 +1,32 @@
+name: modemcheck
+
+services:
+  modemcheck-cloud:
+    container_name: modemcheck-cloud
+    build: .
+    ports:
+      - "22557:22557"  # Upload API
+      - "23890:23890"  # Web UI (Viewer)
+      - "23891:23891"  # Admin Dashboard
+    volumes:
+      - modemcheck-cloud_data:/modemcheck-cloud/datafiles
+      - modemcheck-cloud_config:/modemcheck-cloud/config
+    restart: unless-stopped
+    networks:
+      - modemcheck
+
+networks:
+  modemcheck:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1
+
+volumes:
+  modemcheck-cloud_data:
+    external: true
+    name: modemcheck-cloud_data
+  modemcheck-cloud_config:
+    external: true
+    name: modemcheck-cloud_config
