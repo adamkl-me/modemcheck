@@ -1,6 +1,6 @@
-# Modem-Check v4.0
+# Modem-Check v4.1.1
 
-Modem-Check is a cross-platform tool designed to collect diagnostic data from supported cable modems, including system information, power levels, event logs, and speed test results. Built in Go for portability and ease of use, it outputs collected data in JSON format for analysis using the included `checkviewer.html`.
+Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with zero external dependencies, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
 ## Features
 
@@ -15,26 +15,58 @@ Modem-Check is a cross-platform tool designed to collect diagnostic data from su
     * RX/Downstream power levels & SNR (SC-QAM & OFDM/OFDMA)
     * TX/Upstream power levels (SC-QAM & OFDMA)
     * Codeword error counts (Corrected/Uncorrected)
-    * Event logs (Not available on Xfinity modems)
+    * Event logs (not available on Xfinity modems)
+    * Ping test results (google.ca and one.one.one.one)
     * iPerf3 speed test results (optional)
 * **Additional Functionality**:
     * Automatic modem detection across common IP addresses
-    * Optional logging to `modem-check_logs.txt`
+    * Upload queue with automatic retry for failed cloud uploads
+    * Optional logging to `modem-check_logs.txt` with automatic cleanup (30 days)
     * Silent mode for automated/scripted execution
     * Clears modem FEC counters after data collection (where supported)
     * Saves timestamped JSON output files for historical tracking
     * Configurable bandwidth-limited iPerf3 speed tests
 
-## What's New in v4.0
+## What's New in v4.1.1 (Security Hardening)
 
-* **Complete Go Rewrite**: No dependencies on bash, curl, jq, or other external tools
-* **Cross-Platform Support**: Native support for Windows, Linux, macOS, and ARM devices
-* **CODA45 Support**: Added detection and support for Hitron CODA45 modems
-* **Silent Mode**: `--silent` flag suppresses terminal output for automated execution
-* **Disable Logging**: `--nologs` flag disables log file creation
-* **Improved Parsing**: Enhanced HTML parsing for better compatibility with XB8 modems
-* **Configuration Files**: Support for JSON configuration files
-* **Flexible Deployment**: Single binary, easy distribution, no installation required
+### 🔒 Critical Security Fixes
+* **Path Traversal Protection**: Strict input validation prevents malicious file path attacks
+* **File Size Limits**: 10MB upload limit prevents denial-of-service attacks
+* **Input Validation**: All user-supplied parameters validated with regex patterns
+* **Path Resolution Checks**: Ensures file operations stay within allowed directories
+
+### Authentication Enhancements
+* **Forced Password Changes**: All new users must change password on first login
+* **Admin Password Resets**: Trigger forced password change for security
+* **Separate Login Pages**: Distinct login flows for viewer and admin dashboards
+* **Enhanced Access Control**: Role-based validation on all endpoints
+
+
+
+## What's New in v4.1
+
+### Core Improvements
+* **Zero External Dependencies**: Uses only Go standard library
+* **HTTPS API Architecture**: Cloud uploads use simple HTTPS POST instead of SFTP
+* **API Key Authentication**: Secure token-based authentication (32-byte random tokens)
+* **Admin Dashboard**: Web interface for API key and user management
+* **Cleaner Naming**: Xfinity modems display as "XB8" instead of "Xfinity-XB8"
+* **Simplified Directories**: `DM1000-AABBCC112233` instead of `ModemCheck-DM1000-AABBCC112233`
+
+### Cloud Features
+* **Upload Queue**: Failed uploads automatically retry on next run
+* **Smart Protocol Detection**: HTTP for localhost, HTTPS for external domains
+* **Queue Cleanup**: Automatic removal of old entries (14 days, 100 max)
+* **Session-Based Authentication**: Secure viewer access with 7-day session expiry
+* **User Management**: Admin can create basic and admin users
+* **14-Day Default Date Range**: Viewer pre-populates last 14 days automatically
+
+### Monitoring Enhancements
+* **Concurrent Ping Tests**: Tests google.ca and one.one.one.one (25 pings each)
+* **Enhanced Logging**: Better error messages and debugging information
+* **Log Cleanup**: Automatic purge of entries older than 30 days
+
+
 
 ## Requirements
 
@@ -61,12 +93,10 @@ chmod +x modem-check
 
 ```bash
 # Build for your current platform
-go build -o modem-check modem-check.go
+make
 
-# Cross-compile for other platforms
-GOOS=windows GOARCH=amd64 go build -o modem-check.exe modem-check.go
-GOOS=linux GOARCH=amd64 go build -o modem-check-linux modem-check.go
-GOOS=darwin GOARCH=arm64 go build -o modem-check-mac modem-check.go
+# Cross-compile for all platforms
+make cross-compile
 
 # Build with optimizations for smaller size
 go build -ldflags="-s -w" -o modem-check modem-check.go
@@ -111,20 +141,25 @@ go build -ldflags="-s -w" -o modem-check modem-check.go
 
 ### Configuration File
 
-Create a `config.json` file (see `config.json.example`):
+Create a `config.json` file (see `config.json.example` or `ModemCheck-ConfigFiles/` for examples):
 
 ```json
 {
   "ModemAddress": "autodetect",
   "IgnitePassword": "password",
   "Iperf3Enabled": false,
-  "Iperf3Server": "your.server.ip",
-  "Iperf3Port": 5201,
+  "Iperf3Server": "your.iperf3.server",
+  "Iperf3Port": "5201",
   "Iperf3Streams": 4,
-  "Iperf3UploadLimit": 150,
-  "Iperf3DownloadLimit": 1500,
+  "Iperf3UploadLimit": 50,
+  "Iperf3DownloadLimit": 1000,
   "Silent": false,
-  "NoLogs": false
+  "NoLogs": false,
+  "EnableCloud": true,
+  "CloudHost": "your.cloud.server",
+  "CloudPort": "22557",
+  "CloudAPIKey": "your-api-key-here",
+  "CloudPath": "/datafiles"
 }
 ```
 
@@ -161,31 +196,120 @@ Then run:
 ./modem-check -address 192.168.100.1
 
 # Xfinity modem with password
-./modem-check -address 172.20.0.1 -password mypassword
+./modem-check -address 10.0.0.1 -password mypassword
 
 # Run with speed tests enabled
-./modem-check -iperf3 -iperf3-server 192.168.1.100
+./modem-check -iperf3 -iperf3-server your.iperf3.server
 
 # Silent execution (for cron jobs)
 ./modem-check --silent --nologs
+
+# Use configuration file
+./modem-check -config ~/modem-configs/xb8.json
 ```
 
 ### View Results
 
+#### Local Viewer
 1. Open `checkviewer.html` in a web browser
 2. **Single View Mode**: Upload one JSON file to view detailed diagnostics
 3. **Trends Mode**: Upload multiple JSON files to visualize trends over time with interactive charts
 4. Navigate through historical checks using the timeline controls
-5. JSON files are saved in `ModemCheck-[MODEL]-[MAC]/[TIMESTAMP].json`
+4. JSON files are saved in `ModemCheck-Results/[MODEL]-[MAC]/[TIMESTAMP].json`
+   - Example: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
+
+#### Cloud Viewer
+Access your cloud instance at your configured URL (e.g., `http://localhost:23890`) to view all uploaded data with:
+- Automatic 14-day date range selection
+- Multiple modem support
+- Historical trend analysis
+- Searchable modem selection
+
+## Cloud Mode (Optional)
+
+Modem-Check can upload results to a self-hosted cloud server for centralized storage and web-based viewing.
+
+### Setup Cloud Server
+
+See the `cloudserver/` directory for Docker-based cloud server setup:
+
+```bash
+cd cloudserver
+# Create required volumes
+docker volume create modemcheck-cloud_data
+docker volume create modemcheck-cloud_config
+# Start the server
+docker compose up -d
+```
+
+The cloud server provides:
+- **HTTPS API upload** on port 22557 with API key authentication
+- **Web viewer** on port 23890 with session-based authentication
+- **Admin dashboard** on port 23891 (local network only) for managing API keys and users
+- **Centralized storage** of all modem check results
+- **Multi-modem support** with date range filtering
+- **Automatic retry** for failed uploads
+
+For detailed setup instructions, see `cloudserver/README.md` and `cloudserver/AUTHENTICATION.md`.
+
+### Generate an API Key
+
+1. Open the admin dashboard in your browser: `http://localhost:23891`
+2. Login with default credentials: `admin` / `changeme` (change on first login)
+3. Navigate to "API Keys" tab
+4. Enter a descriptive name (e.g., "Home Router", "Office Modem")
+5. Click "Create API Key"
+6. **Copy the key immediately** - you won't be able to see it again!
+
+### Enable Cloud Mode
+
+Add cloud settings to your `config.json`:
+
+```json
+{
+  "ModemAddress": "autodetect",
+  "EnableCloud": true,
+  "CloudHost": "your.cloud.server",
+  "CloudPort": "22557",
+  "CloudAPIKey": "your-api-key-from-admin-dashboard",
+  "CloudPath": "/datafiles"
+}
+```
+
+**Storage Options:**
+- `"EnableCloud": false` (default): Results stored locally in `ModemCheck-Results/`, no cloud upload
+- `"EnableCloud": true`: Results stored locally AND uploaded to cloud server (recommended)
+
+### Cloud Server Features
+
+- **API Key Management**: Create, view, edit, and delete API keys through web dashboard
+- **User Management**: Create viewer and admin users with forced password changes
+- **Usage Tracking**: See when each API key was last used
+- **Automatic modem detection**: Server recognizes different modem models by MAC
+- **Date range filtering**: Select specific time periods to analyze (default: last 14 days)
+- **Trend analysis**: View signal quality, speed tests, and error rates over time
+- **Multi-modem support**: Track multiple modems from one interface
+- **Upload Queue**: Failed uploads automatically retry on next run
+- **Security Hardened**: Input validation, path traversal protection, file size limits
+
+### Public Deployment
+
+For secure public access, use a reverse proxy (nginx, Caddy, Apache) or VPN. The admin dashboard should remain on your local network only (port 23891) for security.
+
+See `cloudserver/README.md` for detailed deployment instructions including reverse proxy examples.
 
 ## How It Works
 
-1. **Detection**: Automatically detects your modem model by checking common IP addresses
-2. **Authentication**: Logs into the modem using model-specific methods
-3. **Data Collection**: Retrieves diagnostic data from modem's web interface
-4. **Speed Testing**: (Optional) Runs bandwidth-limited iPerf3 tests
-5. **FEC Reset**: Clears Forward Error Correction counters for next check
-6. **Output**: Saves comprehensive JSON file with all collected data
+1. **Retry Failed Uploads**: Attempts to upload any previously failed files from queue
+2. **Cleanup**: Purges old log entries (30+ days) and queue entries (14+ days)
+3. **Detection**: Automatically detects your modem model by checking common IP addresses
+4. **Authentication**: Logs into the modem using model-specific methods
+5. **Data Collection**: Retrieves diagnostic data from modem's web interface
+6. **Ping Tests**: Concurrent tests to google.ca and one.one.one.one (25 pings each)
+7. **Speed Testing**: (Optional) Runs bandwidth-limited iPerf3 tests
+8. **FEC Reset**: Clears Forward Error Correction counters for next check
+9. **Save & Upload**: Saves JSON file locally and uploads to cloud (if enabled)
+10. **Queue Failed Uploads**: Adds to retry queue if upload fails
 
 ## Troubleshooting
 
@@ -194,6 +318,13 @@ Then run:
 * **Modem not detected**: Manually specify the IP address with `-address 192.168.100.1`
 * **Xfinity login fails**: Verify password is correct with `-password your_actual_password`
 * **Permission denied**: Make sure the binary is executable (`chmod +x modem-check`)
+* **Cloud upload fails**: Check API key, verify server is accessible, review upload queue
+
+### Upload Issues
+
+* **Check upload queue**: Look for `.upload_queue.json` in `ModemCheck-Results/` directory
+* **Failed uploads retry**: System automatically retries failed uploads on next run
+* **Queue cleanup**: Old entries (14+ days) are automatically removed
 
 ### Speed Test Issues
 
@@ -201,10 +332,10 @@ Then run:
   ```bash
   # Ubuntu/Debian
   sudo apt install iperf3
-  
+
   # macOS
   brew install iperf3
-  
+
   # Windows - download from https://iperf.fr/iperf-download.php
   ```
 
@@ -218,14 +349,18 @@ Then run:
 ## Output Data Structure
 
 The generated JSON includes:
-- `sysinfo`: Firmware, uptime, timestamps
-- `rx`: Downstream SC-QAM channel data
+- `sysinfo`: Firmware, uptime, timestamps, modem type, MAC address
+- `rx`: Downstream SC-QAM channel data (power, SNR, errors)
 - `rxofdm`: Downstream OFDM channel data
 - `tx`: Upstream SC-QAM channel data
 - `txofdm`: Upstream OFDMA channel data
-- `eventlog`: Modem event history
+- `eventlog`: Modem event history (not available on Xfinity modems)
+- `ping_google_avg`/`ping_google_loss`: Ping test results to google.ca
+- `ping_cloudflare_avg`/`ping_cloudflare_loss`: Ping test results to one.one.one.one
 - `iperf3test_ul`/`iperf3test_dl`: Speed test results
 - `iperf3uploadlimit`/`iperf3downloadlimit`: Test configuration
+
+Example filename: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
 ## Enhanced Viewer Features
 
@@ -237,6 +372,37 @@ The included `checkviewer.html` provides:
 * **Multi-File Upload**: Drag and drop multiple JSON files for trend analysis
 * **Visual Tracking**: Power levels, SNR, error rates, and channel bonding over time
 * **Responsive Design**: Works on desktop and mobile browsers
+
+The cloud viewer additionally includes:
+* **14-Day Default Date Range**: Automatically pre-populated for quick access
+* **Multi-Modem Support**: View data from multiple modems in one dashboard
+* **Secure Authentication**: Session-based login with forced password changes
+* **Real-Time Loading**: Direct access to all stored data
+
+## Security
+
+### Public Endpoint Security
+
+**Implemented Protections:**
+- ✅ Path traversal attacks blocked via strict input validation
+- ✅ File size limits (10MB) prevent DoS attacks
+- ✅ Regex-based validation on all file paths and parameters
+- ✅ Path resolution checks ensure operations stay in allowed directories
+- ✅ Error messages sanitized to prevent information disclosure
+
+**Authentication:**
+- ✅ API keys: 32-byte cryptographically random tokens with revocation capability
+- ✅ Passwords: PBKDF2-HMAC-SHA256 with 100,000 iterations
+- ✅ Sessions: HttpOnly, SameSite=Strict cookies with 7-day expiry
+- ✅ Forced password changes for all new users
+
+**Network Security:**
+- ✅ HTTPS enforcement via Cloudflare Tunnel for public access
+- ✅ Admin dashboard isolated to local network only
+- ✅ Docker network isolation (172.25.0.0/16)
+- ✅ Security headers: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection
+
+**For complete security audit, see:** `SECURITY_REVIEW.md`
 
 ## Automated Execution
 
@@ -251,6 +417,9 @@ crontab -e
 
 # Run every 15 minutes
 */15 * * * * /path/to/modem-check --silent --nologs
+
+# Run with config file
+0 * * * * /path/to/modem-check -config /path/to/config.json --silent
 ```
 
 ### Windows Task Scheduler
@@ -260,8 +429,57 @@ crontab -e
 3. Set trigger (e.g., hourly)
 4. Action: Start a program
 5. Program: `C:\path\to\modem-check.exe`
-6. Arguments: `--silent --nologs`
+6. Arguments: `--silent --nologs` or `-config C:\path\to\config.json --silent`
+
+## Project Structure
+
+```
+modemcheck/
+├── modem-check.go              # Main application (1710 lines)
+├── go.mod                      # Go module definition
+├── Makefile                    # Build automation
+├── README.md                   # This file
+├── SECURITY_REVIEW.md          # Security audit documentation
+├── CLAUDE.md                   # Comprehensive project documentation
+├── config.json.example         # Example configuration
+├── checkviewer.html            # Local web viewer (1777 lines)
+├── dist/                       # Pre-compiled binaries (7 platforms)
+├── ModemCheck-Results/         # Local data storage
+│   └── [MODEL]-[MAC]/          # Per-modem directories
+│       └── *.json              # Timestamped check results
+├── ModemCheck-ConfigFiles/     # Example configs for different modems
+└── cloudserver/                # Docker-based cloud server
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── nginx.conf
+    ├── index.html              # Viewer dashboard
+    ├── admin.html              # Admin dashboard
+    ├── admin-login.html        # Admin login page
+    ├── login.html              # Viewer login page
+    ├── viewer.js               # Frontend JavaScript (1187 lines)
+    └── cgi-bin/                # Python CGI backend
+        ├── api.py              # Viewer data API
+        ├── upload.py           # File upload handler
+        ├── auth.py             # Authentication
+        ├── admin-api.py        # API key management
+        └── user-management.py  # User CRUD operations
+```
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+- Code follows existing style and patterns
+- Security best practices are maintained
+- Documentation is updated for user-facing changes
 
 ## License
 
 This project is provided as-is for personal and educational use.
+
+## Support
+
+For issues, questions, or feature requests:
+- Review `CLAUDE.md` for comprehensive documentation
+- Check `SECURITY_REVIEW.md` for security details
+- See `cloudserver/README.md` for deployment guidance
+- Review example configs in `ModemCheck-ConfigFiles/`
