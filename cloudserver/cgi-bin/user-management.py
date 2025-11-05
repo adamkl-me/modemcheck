@@ -38,7 +38,9 @@ def main():
             user_list.append({
                 'username': username,
                 'role': data['role'],
-                'created': data.get('created', 'Unknown')
+                'created': data.get('created', 'Unknown'),
+                'last_login': data.get('last_login', 'Never'),
+                'last_login_ip': data.get('last_login_ip', '-')
             })
         print(json.dumps({'success': True, 'users': user_list}))
     

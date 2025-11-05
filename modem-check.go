@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -1139,7 +1140,13 @@ func (m *ModemCheck) runPing(host string, count int) (avg string, loss string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "ping", "-c", strconv.Itoa(count), host)
+	// Windows uses -n for count, Linux/macOS use -c
+	countFlag := "-c"
+	if runtime.GOOS == "windows" {
+		countFlag = "-n"
+	}
+
+	cmd := exec.CommandContext(ctx, "ping", countFlag, strconv.Itoa(count), host)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -1148,8 +1155,10 @@ func (m *ModemCheck) runPing(host string, count int) (avg string, loss string) {
 
 	outputStr := string(output)
 
-	// Parse packet loss: "25 packets transmitted, 25 received, 0% packet loss"
-	lossRe := regexp.MustCompile(`(\d+)% packet loss`)
+	// Parse packet loss
+	// Linux/macOS: "25 packets transmitted, 25 received, 0% packet loss"
+	// Windows: "Packets: Sent = 25, Received = 25, Lost = 0 (0% loss)"
+	lossRe := regexp.MustCompile(`(\d+)% (?:packet )?loss`)
 	if matches := lossRe.FindStringSubmatch(outputStr); len(matches) > 1 {
 		loss = matches[1] + "%"
 	}
@@ -1157,9 +1166,17 @@ func (m *ModemCheck) runPing(host string, count int) (avg string, loss string) {
 	// Parse average ping time
 	// Linux: "rtt min/avg/max/mdev = 12.345/23.456/34.567/5.678 ms"
 	// macOS: "round-trip min/avg/max/stddev = 12.345/23.456/34.567/5.678 ms"
-	avgRe := regexp.MustCompile(`(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = [\d.]+/([\d.]+)/`)
-	if matches := avgRe.FindStringSubmatch(outputStr); len(matches) > 1 {
-		avg = matches[1]
+	// Windows: "Minimum = 12ms, Maximum = 34ms, Average = 23ms"
+	if runtime.GOOS == "windows" {
+		avgRe := regexp.MustCompile(`Average = (\d+)ms`)
+		if matches := avgRe.FindStringSubmatch(outputStr); len(matches) > 1 {
+			avg = matches[1]
+		}
+	} else {
+		avgRe := regexp.MustCompile(`(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = [\d.]+/([\d.]+)/`)
+		if matches := avgRe.FindStringSubmatch(outputStr); len(matches) > 1 {
+			avg = matches[1]
+		}
 	}
 
 	return avg, loss
@@ -1494,7 +1511,7 @@ func (m *ModemCheck) Run() error {
 		defer m.logFile.Close()
 	}
 
-	m.Log(fmt.Sprintf("Modem check script (v4.0) started at %s", m.checkTime))
+	m.Log(fmt.Sprintf("Modem check script (v4.1.2) started at %s", m.checkTime))
 
 	// Clean up old log entries (30 days)
 	if !m.config.NoLogs {

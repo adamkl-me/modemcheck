@@ -12,7 +12,9 @@ async function checkAuth() {
 
     try {
         console.log("DEBUG: Fetching auth status from /cgi-bin/auth.py");
-        const response = await fetch('/cgi-bin/auth.py');
+        const response = await fetch('/cgi-bin/auth.py', {
+            credentials: 'same-origin'
+        });
         console.log("DEBUG: Auth response status:", response.status);
 
         if (!response.ok) {
@@ -179,7 +181,9 @@ async function loadModemList() {
 
     try {
         console.log("DEBUG: About to fetch modems from API");
-        const response = await fetch(`${API_BASE}?action=list_modems`);
+        const response = await fetch(`${API_BASE}?action=list_modems`, {
+            credentials: 'same-origin'
+        });
         console.log("DEBUG: Fetch completed, status:", response.status);
         console.log("DEBUG: Response headers:", response.headers);
 
@@ -249,7 +253,9 @@ async function loadData() {
         if (startDate) url += `&start_date=${startDate}`;
         if (endDate) url += `&end_date=${endDate}`;
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            credentials: 'same-origin'
+        });
         console.log("DEBUG: Fetch completed, status:", response.status);
         const data = await response.json();
         console.log("DEBUG: JSON parsed, modems:", data.modems);
@@ -266,7 +272,10 @@ async function loadData() {
         allChecks = [];
         for (const file of data.files) {
             const fileResponse = await fetch(
-                `${API_BASE}?action=get_file&modem_id=${encodeURIComponent(modemId)}&filename=${encodeURIComponent(file.filename)}`
+                `${API_BASE}?action=get_file&modem_id=${encodeURIComponent(modemId)}&filename=${encodeURIComponent(file.filename)}`,
+                {
+                    credentials: 'same-origin'
+                }
             );
             const fileData = await fileResponse.json();
             if (fileData.success) {
@@ -289,6 +298,12 @@ async function loadData() {
         
         currentCheckIndex = allChecks.length - 1; // Start with most recent
         updateTimelineNav();
+        
+        // Hide welcome message once data is loaded
+        const welcomeMsg = document.getElementById('welcomeMessage');
+        if (welcomeMsg) {
+            welcomeMsg.style.display = 'none';
+        }
         
         if (allChecks.length > 1) {
             showTrendsView();

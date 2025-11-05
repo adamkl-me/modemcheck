@@ -1,4 +1,4 @@
-# Modem-Check v4.1.1
+# Modem-Check v4.1.2
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with zero external dependencies, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,15 +27,22 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * Configurable bandwidth-limited iPerf3 speed tests
 
-## What's New in v4.1.1 (Security Hardening)
+## What's New in v4.1.2 (Cross-Platform Improvements)
 
-### 🔒 Critical Security Fixes
+### Cross-Platform Enhancements
+* **Windows Ping Support**: Fixed ping tests to work correctly on Windows (uses `-n` flag instead of `-c`)
+* **Real IP Tracking**: Admin dashboard now shows actual client IP addresses through Cloudflare tunnels
+* **Enhanced IP Detection**: Extracts real IPs from `CF-Connecting-IP` and `X-Forwarded-For` headers
+
+### Previous v4.1.1 Updates (Security Hardening)
+
+#### 🔒 Critical Security Fixes
 * **Path Traversal Protection**: Strict input validation prevents malicious file path attacks
 * **File Size Limits**: 10MB upload limit prevents denial-of-service attacks
 * **Input Validation**: All user-supplied parameters validated with regex patterns
 * **Path Resolution Checks**: Ensures file operations stay within allowed directories
 
-### Authentication Enhancements
+#### Authentication Enhancements
 * **Forced Password Changes**: All new users must change password on first login
 * **Admin Password Resets**: Trigger forced password change for security
 * **Separate Login Pages**: Distinct login flows for viewer and admin dashboards

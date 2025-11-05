@@ -5,10 +5,49 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+SESSION_DIR = '/modemcheck-cloud/config/sessions'
+
+def verify_session(session_id):
+    """Verify session and return user info"""
+    if not session_id:
+        return None
+    session_file = os.path.join(SESSION_DIR, session_id + '.json')
+    if not os.path.exists(session_file):
+        return None
+    
+    with open(session_file, 'r') as f:
+        session_data = json.load(f)
+    
+    # Check expiration
+    expires = datetime.fromisoformat(session_data['expires'])
+    if datetime.now() > expires:
+        os.remove(session_file)
+        return None
+    
+    return session_data
+
+def get_cookie(name):
+    """Get cookie value from environment"""
+    cookie_string = os.environ.get('HTTP_COOKIE', '')
+    cookies = {}
+    for cookie in cookie_string.split(';'):
+        if '=' in cookie:
+            key, value = cookie.strip().split('=', 1)
+            cookies[key] = value
+    return cookies.get(name)
+
+# AUTHENTICATION CHECK - Require valid session
+session_id = get_cookie('modemcheck_session')
+session = verify_session(session_id)
+
 # Set content type for JSON
 print("Content-Type: application/json")
-print("Access-Control-Allow-Origin: *")
 print()
+
+# Require authentication
+if not session:
+    print(json.dumps({'success': False, 'error': 'Unauthorized - Please log in'}))
+    sys.exit(1)
 
 def list_modems():
     """List all modem directories"""

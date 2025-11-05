@@ -376,11 +376,11 @@
                 <h2>Create New User</h2>
                 <div class="form-group">
                     <label for="newUsername">Username</label>
-                    <input type="text" id="newUsername" placeholder="Enter username">
+                    <input type="text" id="newUsername" placeholder="Enter username" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="form-group">
                     <label for="newPassword">Password</label>
-                    <input type="password" id="newPassword" placeholder="Enter password">
+                    <input type="password" id="newPassword" placeholder="Enter password" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="form-group">
                     <label for="newUserRole">Role</label>
@@ -888,25 +888,37 @@
                 return;
             }
 
-            const userCards = users.map(user => `
-                <div class="key-card">
-                    <div class="key-header">
-                        <div>
-                            <div class="key-name">${escapeHtml(user.username)}</div>
-                            <div class="key-date">Created: ${new Date(user.created).toLocaleString()}</div>
-                        </div>
-                        <div class="key-actions">
-                            <span class="badge ${user.role === 'admin' ? 'badge-success' : 'badge-info'}">${user.role.toUpperCase()}</span>
-                        </div>
-                    </div>
-                    <div class="key-actions">
-                        <button class="btn btn-secondary" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
-                        <button class="btn btn-danger" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>
-                    </div>
-                </div>
-            `).join('');
+            const userTable = `
+                <table class="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Last Login</th>
+                            <th>Last IP</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td><strong>${escapeHtml(user.username)}</strong></td>
+                                <td><span class="badge ${user.role === 'admin' ? 'badge-success' : 'badge-info'}">${user.role.toUpperCase()}</span></td>
+                                <td>${user.created !== 'Unknown' ? new Date(user.created).toLocaleString() : 'Unknown'}</td>
+                                <td>${user.last_login !== 'Never' ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+                                <td>${escapeHtml(user.last_login_ip)}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
+                                    <button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
 
-            container.innerHTML = userCards;
+            container.innerHTML = userTable;
         }
 
         async function createUser() {

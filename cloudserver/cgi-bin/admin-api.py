@@ -8,6 +8,36 @@ from pathlib import Path
 
 # API keys storage file
 API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
+SESSION_DIR = '/modemcheck-cloud/config/sessions'
+
+def verify_session(session_id):
+    """Verify session and return user info"""
+    if not session_id:
+        return None
+    session_file = os.path.join(SESSION_DIR, session_id + '.json')
+    if not os.path.exists(session_file):
+        return None
+    
+    with open(session_file, 'r') as f:
+        session_data = json.load(f)
+    
+    # Check expiration
+    expires = datetime.fromisoformat(session_data['expires'])
+    if datetime.now() > expires:
+        os.remove(session_file)
+        return None
+    
+    return session_data
+
+def get_cookie(name):
+    """Get cookie value from environment"""
+    cookie_string = os.environ.get('HTTP_COOKIE', '')
+    cookies = {}
+    for cookie in cookie_string.split(';'):
+        if '=' in cookie:
+            key, value = cookie.strip().split('=', 1)
+            cookies[key] = value
+    return cookies.get(name)
 
 def load_api_keys():
     """Load API keys from storage"""
@@ -103,12 +133,18 @@ def delete_key(key):
     else:
         return False, "Failed to delete API key"
 
+# AUTHENTICATION CHECK - Admin role required
+session_id = get_cookie('modemcheck_session')
+session = verify_session(session_id)
+
 # Set response headers
 print("Content-Type: application/json")
-print("Access-Control-Allow-Origin: *")
-print("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS")
-print("Access-Control-Allow-Headers: Content-Type")
 print()
+
+# Require authentication and admin role
+if not session or session.get('role') != 'admin':
+    print(json.dumps({'success': False, 'error': 'Unauthorized - Admin access required'}))
+    sys.exit(1)
 
 # Handle CORS preflight
 if os.environ.get('REQUEST_METHOD') == 'OPTIONS':

@@ -136,6 +136,15 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
                 return
             
+            # Update last login info
+            user['last_login'] = datetime.now().isoformat()
+            # Get real IP from proxy headers (Cloudflare, nginx proxy)
+            client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
+                       os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
+                       os.environ.get('REMOTE_ADDR', 'unknown')
+            user['last_login_ip'] = client_ip
+            save_users(users)
+            
             # Create session
             session_id = create_session(username, user['role'])
             
