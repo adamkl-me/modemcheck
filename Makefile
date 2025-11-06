@@ -4,7 +4,7 @@ BINARY_NAME=modem-check
 GO_FILES=modem-check.go
 
 # Version info
-VERSION?=4.4.0
+VERSION?=4.4.1
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
