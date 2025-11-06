@@ -229,7 +229,7 @@
             transition: all 0.3s;
         }
 
-        .role-select:hover {
+        .role-select:hover:not(:disabled) {
             border-color: #667eea;
         }
 
@@ -239,12 +239,18 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        .role-select:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #f3f4f6;
+        }
+
         .role-select option[value="admin"] {
             font-weight: bold;
             color: #c53030;
         }
 
-        .role-select option[value="user"] {
+        .role-select option[value="basic"] {
             color: #2d3748;
         }
 
@@ -1078,12 +1084,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${users.map(user => `
+                        ${users.map(user => {
+                            const isAdminAccount = user.username === 'admin';
+                            const roleSelectDisabled = isAdminAccount ? 'disabled' : '';
+                            const deleteButtonHtml = isAdminAccount 
+                                ? '<button class="btn btn-secondary btn-small" disabled title="Cannot delete admin account">Delete</button>'
+                                : `<button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>`;
+                            
+                            return `
                             <tr>
                                 <td><strong>${escapeHtml(user.username)}</strong></td>
                                 <td>
-                                    <select class="role-select" data-username="${escapeHtml(user.username)}" data-current-role="${user.role}" onchange="handleRoleChange(event)">
-                                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                    <select class="role-select" data-username="${escapeHtml(user.username)}" data-current-role="${user.role}" onchange="handleRoleChange(event)" ${roleSelectDisabled}>
+                                        <option value="basic" ${user.role === 'basic' ? 'selected' : ''}>Basic</option>
                                         <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
                                     </select>
                                 </td>
@@ -1092,10 +1105,11 @@
                                 <td>
                                     <button class="btn btn-secondary btn-small" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
                                     <button class="btn btn-warning btn-small" onclick="logoutUser('${escapeHtml(user.username)}')">Logout User</button>
-                                    <button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>
+                                    ${deleteButtonHtml}
                                 </td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </tbody>
                 </table>
             `;

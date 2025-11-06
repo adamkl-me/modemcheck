@@ -118,6 +118,11 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Username required'}))
                 return
             
+            # Prevent deleting the admin account
+            if username == 'admin':
+                print(json.dumps({'success': False, 'error': 'Cannot delete the admin account'}))
+                return
+            
             # Prevent deleting own account
             if username == session['username']:
                 print(json.dumps({'success': False, 'error': 'Cannot delete your own account'}))

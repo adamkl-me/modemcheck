@@ -330,8 +330,10 @@ try:
         
         if not username or not new_role:
             result = {'success': False, 'error': 'Missing username or role'}
-        elif new_role not in ['user', 'admin']:
-            result = {'success': False, 'error': 'Invalid role. Must be "admin" or "user"'}
+        elif new_role not in ['basic', 'admin']:
+            result = {'success': False, 'error': 'Invalid role. Must be "admin" or "basic"'}
+        elif username == 'admin':
+            result = {'success': False, 'error': 'Cannot change the admin account'}
         elif username == session['username']:
             result = {'success': False, 'error': 'Cannot change your own role'}
         else:
