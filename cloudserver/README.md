@@ -1,9 +1,9 @@
 # Modem Check Cloud Server - Docker Setup
 
 This directory contains everything needed to run the Modem Check Cloud Server in a Docker container. The cloud server provides:
-- **HTTPS API** for uploading modem check results (port 23890)
+- **Upload API** for uploading modem check results (port 22557)
 - **Web Viewer** for visualizing collected data (port 23890)
-- **Admin Dashboard** for managing API keys (port 23891)
+- **Admin Dashboard** for managing API keys and users (port 23891)
 
 ## Quick Start
 
@@ -24,8 +24,9 @@ docker compose up -d
 
 This will:
 - Build the Alpine Linux container with nginx, Python, and fcgiwrap
-- Create persistent volumes for data and API key storage
-- Expose port 23890 for web viewer and file uploads
+- Create persistent volumes for data and configuration storage
+- Expose port 22557 for file uploads
+- Expose port 23890 for web viewer
 - Expose port 23891 for admin dashboard
 
 ### 3. Verify the Container is Running
@@ -54,11 +55,10 @@ Create or update your `config.json`:
 ```json
 {
   "ModemAddress": "autodetect",
-  "TestMode": "both",
+  "EnableCloud": true,
   "CloudHost": "localhost",
-  "CloudPort": "23890",
-  "CloudAPIKey": "paste-your-api-key-here",
-  "CloudPath": "/datafiles"
+  "CloudPort": "22557",
+  "CloudAPIKey": "paste-your-api-key-here"
 }
 ```
 
@@ -78,10 +78,11 @@ http://localhost:23890
 ## Architecture
 
 ### Port Layout
+- **Port 22557**:
+  - File upload API (`/cgi-bin/upload.py`)
 - **Port 23890**:
   - Data viewer web interface
-  - File upload API (`/cgi-bin/upload.py`)
-  - Data access API (`/cgi-bin/api.py`)
+  - Database API (`/cgi-bin/db-api.py`)
 - **Port 23891**:
   - Admin dashboard for user management
   - Admin API (`/cgi-bin/admin-api.py`)
@@ -183,7 +184,7 @@ echo '{"test":"data"}' > test.json
 
 Upload using curl:
 ```bash
-curl -X POST http://localhost:23890/cgi-bin/upload.py \
+curl -X POST http://localhost:22557/cgi-bin/upload.py \
   -F "api_key=your-api-key" \
   -F "modem_id=TEST-123456" \
   -F "filename=test.json" \
@@ -335,7 +336,8 @@ admin.modemcheck.example.com {
 sudo ufw allow 443/tcp
 
 # If not using reverse proxy, allow direct access:
-sudo ufw allow 23890/tcp  # Data viewer/upload
+sudo ufw allow 22557/tcp  # Upload API
+sudo ufw allow 23890/tcp  # Data viewer
 sudo ufw allow 23891/tcp  # Admin dashboard (consider restricting)
 ```
 

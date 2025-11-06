@@ -33,4 +33,5 @@ cloudserver/datafiles/
 
 # Claude AI assistant context
 CLAUDE.md
+SUGGESTIONS.md
 .claude/
