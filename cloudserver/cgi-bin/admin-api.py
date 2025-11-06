@@ -6,6 +6,14 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 
+# Import audit logging
+sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+try:
+    from audit_schema import log_user_activity
+except ImportError:
+    def log_user_activity(*args, **kwargs):
+        pass
+
 # API keys storage file
 API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
 SESSION_DIR = '/modemcheck-cloud/config/sessions'
@@ -47,7 +55,8 @@ def load_api_keys():
     try:
         with open(API_KEYS_FILE, 'r') as f:
             return json.load(f)
-    except:
+    except (IOError, json.JSONDecodeError) as e:
+        print(f"Error loading API keys: {e}", file=sys.stderr)
         return {}
 
 def save_api_keys(api_keys):
@@ -171,6 +180,12 @@ if request_method in ['POST', 'PUT', 'DELETE']:
 
 action = params.get('action', post_data.get('action', 'list'))
 
+# Get client info for logging
+client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
+           os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
+           os.environ.get('REMOTE_ADDR', 'unknown')
+user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
+
 try:
     if action == 'list':
         result = {'success': True, 'keys': list_keys()}
@@ -181,6 +196,17 @@ try:
         if error:
             result = {'success': False, 'error': error}
         else:
+            # Log API key creation
+            log_user_activity(
+                username=session['username'],
+                action_type='create_api_key',
+                ip_address=client_ip,
+                success=True,
+                user_role=session.get('role'),
+                action_details=f"Created API key '{name}'",
+                user_agent=user_agent,
+                session_id=session_id
+            )
             result = {'success': True, 'key': key, 'message': 'API key created successfully'}
 
     elif action == 'update':
@@ -196,11 +222,71 @@ try:
 
     elif action == 'delete':
         key = post_data.get('key', params.get('key', ''))
+        
+        # Get key name before deleting
+        api_keys = load_api_keys()
+        key_name = api_keys.get(key, {}).get('name', 'unknown')
+        
         success, error = delete_key(key)
         if error:
             result = {'success': False, 'error': error}
         else:
+            # Log API key deletion
+            log_user_activity(
+                username=session['username'],
+                action_type='delete_api_key',
+                ip_address=client_ip,
+                success=True,
+                user_role=session.get('role'),
+                action_details=f"Deleted API key '{key_name}'",
+                user_agent=user_agent,
+                session_id=session_id
+            )
             result = {'success': True, 'message': 'API key deleted successfully'}
+    
+    elif action == 'get_user_activity_logs':
+        # Import audit schema
+        sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+        from audit_schema import get_user_activity_logs, get_user_activity_stats
+        
+        limit = int(params.get('limit', post_data.get('limit', 100)))
+        username = params.get('username', post_data.get('username'))
+        action_type = params.get('action_type', post_data.get('action_type'))
+        start_date = params.get('start_date', post_data.get('start_date'))
+        end_date = params.get('end_date', post_data.get('end_date'))
+        ip_address = params.get('ip_address', post_data.get('ip_address'))
+        
+        logs = get_user_activity_logs(limit, username, action_type, start_date, end_date, ip_address)
+        stats = get_user_activity_stats()
+        
+        result = {
+            'success': True, 
+            'logs': logs,
+            'stats': stats,
+            'count': len(logs)
+        }
+    
+    elif action == 'get_client_submission_logs':
+        # Import audit schema
+        sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+        from audit_schema import get_client_submission_logs, get_client_submission_stats
+        
+        limit = int(params.get('limit', post_data.get('limit', 100)))
+        api_key_hash = params.get('api_key_hash', post_data.get('api_key_hash'))
+        modem_id = params.get('modem_id', post_data.get('modem_id'))
+        start_date = params.get('start_date', post_data.get('start_date'))
+        end_date = params.get('end_date', post_data.get('end_date'))
+        ip_address = params.get('ip_address', post_data.get('ip_address'))
+        
+        logs = get_client_submission_logs(limit, api_key_hash, modem_id, start_date, end_date, ip_address)
+        stats = get_client_submission_stats()
+        
+        result = {
+            'success': True,
+            'logs': logs,
+            'stats': stats,
+            'count': len(logs)
+        }
 
     else:
         result = {'success': False, 'error': 'Unknown action'}

@@ -11,6 +11,7 @@ services:
     volumes:
       - modemcheck-cloud_data:/modemcheck-cloud/datafiles
       - modemcheck-cloud_config:/modemcheck-cloud/config
+      - modemcheck-cloud_db:/modemcheck-cloud/data
     restart: unless-stopped
     networks:
       - modemcheck
@@ -30,3 +31,6 @@ volumes:
   modemcheck-cloud_config:
     external: true
     name: modemcheck-cloud_config
+  modemcheck-cloud_db:
+    external: true
+    name: modemcheck-cloud_db

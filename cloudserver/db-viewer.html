@@ -3,7 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Modem Check Cloud Viewer</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
+        <title>ModemCheck Cloud Dashboard</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <style>
             * {
@@ -84,6 +85,94 @@
             select:focus, input[type="date"]:focus {
                 outline: none;
                 border-color: #667eea;
+            }
+
+            /* Searchable dropdown styles */
+            .searchable-select {
+                position: relative;
+                width: 100%;
+            }
+
+            .searchable-select input[type="text"] {
+                width: 100%;
+                padding: 10px 35px 10px 15px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 1em;
+                background: white;
+                transition: border-color 0.3s ease;
+                cursor: pointer;
+            }
+
+            .searchable-select input[type="text"]:focus {
+                outline: none;
+                border-color: #667eea;
+                cursor: text;
+            }
+
+            .searchable-select::after {
+                content: '▼';
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                color: #666;
+                font-size: 0.8em;
+            }
+
+            .searchable-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                max-height: 300px;
+                overflow-y: auto;
+                background: white;
+                border: 2px solid #667eea;
+                border-top: none;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                display: none;
+                z-index: 1000;
+                margin-top: -2px;
+            }
+
+            .searchable-dropdown.show {
+                display: block;
+            }
+
+            .searchable-option {
+                padding: 10px 15px;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .searchable-option:hover {
+                background-color: #f0f2ff;
+            }
+
+            .searchable-option.selected {
+                background-color: #667eea;
+                color: white;
+            }
+
+            .searchable-option.hidden {
+                display: none;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar-thumb {
+                background: #667eea;
+                border-radius: 4px;
             }
 
             .load-btn {
@@ -443,18 +532,19 @@
     <body>
         <div class="container">
             <div class="header">
-                <h1>☁️ Modem Check Cloud Viewer</h1>
-                <p>View modem diagnostics from the cloud</p>
+                <h1>☁️ ModemCheck Cloud Dashboard</h1>
                 <button id="logoutBtn" style="position: absolute; top: 30px; right: 30px; padding: 10px 20px; background: rgba(255,255,255,0.2); border: 2px solid white; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Logout</button>
             </div>
 
             <div class="filter-section">
                 <div class="filter-grid">
                     <div class="filter-group">
-                        <label for="modemSelect">📡 Select Modem:</label>
-                        <select id="modemSelect" onchange="onModemChanged()">
-                            <option value="">-- Select a modem --</option>
-                        </select>
+                        <label for="modemSearchInput">📡 Select Modem:</label>
+                        <div class="searchable-select">
+                            <input type="text" id="modemSearchInput" placeholder="Select a modem or start typing to filter" autocomplete="off" readonly>
+                            <div class="searchable-dropdown" id="modemDropdown"></div>
+                        </div>
+                        <input type="hidden" id="modemSelect" value="">
                     </div>
                     <div class="filter-group">
                         <label for="startDate">📅 Start Date:</label>
@@ -499,8 +589,8 @@
 
             <div class="content" id="contentArea">
                 <div class="empty-state" id="welcomeMessage">
-                    <h2>Welcome to Modem Check Cloud Viewer</h2>
-                    <p>Select a modem and optional date range, then click "Load Data" to view diagnostics.</p>
+                    <h2>Welcome to ModemCheck Cloud Dashboard</h2>
+                    <p>Select a modem and date range (optional), then click "Load Data" to view diagnostics.</p>
                 </div>
 
                 <!-- Single Check View -->
@@ -712,7 +802,7 @@
             </div>
         </div>
 
-        <script>console.log("DEBUG: Page loaded, about to load viewer.js"); window.debugMode = true;</script>
-        <script src="viewer.js"></script>
+        <script>console.log("DEBUG: Page loaded, about to load db-viewer.js"); window.debugMode = true;</script>
+        <script src="db-viewer.js"></script>
     </body>
 </html>

@@ -21,6 +21,27 @@ import (
 	"time"
 )
 
+// Constants for configuration and limits
+const (
+	// Queue configuration
+	maxQueueSize    = 100
+	queueMaxAgeDays = 14
+
+	// Log configuration
+	logMaxAgeDays = 30
+
+	// HTTP timeouts
+	defaultHTTPTimeout = 10 * time.Second
+	iperf3Timeout      = 5 * time.Second
+	pingTimeout        = 30 * time.Second
+
+	// Test configuration
+	defaultPingCount = 25
+
+	// File size limits
+	maxFileUploadSize = 10 * 1024 * 1024 // 10MB
+)
+
 // Configuration holds all user-configurable settings
 type Configuration struct {
 	ModemAddress        string
@@ -155,7 +176,7 @@ func NewModemCheck(config Configuration) *ModemCheck {
 	client := &http.Client{
 		Transport: transport,
 		Jar:       jar,
-		Timeout:   10 * time.Second,
+		Timeout:   defaultHTTPTimeout,
 	}
 
 	return &ModemCheck{
@@ -803,13 +824,6 @@ func (m *ModemCheck) XfinityGetMAC() error {
 	return fmt.Errorf("unable to parse valid modem CM MAC")
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func (m *ModemCheck) XfinityGetData() (*ModemData, error) {
 	m.Log("Fetching data from network_setup.jst...")
 	resp, err := m.client.Get(fmt.Sprintf("http://%s/network_setup.jst", m.modemAddress))
@@ -1064,7 +1078,7 @@ func (m *ModemCheck) RunSpeedTests(data *ModemData) {
 }
 
 func (m *ModemCheck) runIperf3(args ...string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), iperf3Timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "iperf3", args...)
@@ -1102,12 +1116,12 @@ func (m *ModemCheck) RunPingTests(data *ModemData) {
 
 	// Start both pings concurrently
 	go func() {
-		avg, loss := m.runPing("google.ca", 25)
+		avg, loss := m.runPing("google.ca", defaultPingCount)
 		results <- pingResult{"google.ca", avg, loss}
 	}()
 
 	go func() {
-		avg, loss := m.runPing("one.one.one.one", 25)
+		avg, loss := m.runPing("one.one.one.one", defaultPingCount)
 		results <- pingResult{"one.one.one.one", avg, loss}
 	}()
 
@@ -1137,7 +1151,7 @@ func (m *ModemCheck) RunPingTests(data *ModemData) {
 }
 
 func (m *ModemCheck) runPing(host string, count int) (avg string, loss string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
 	defer cancel()
 
 	// Windows uses -n for count, Linux/macOS use -c
@@ -1297,12 +1311,8 @@ func (m *ModemCheck) UploadToCloud(localFile string) error {
 	return m.uploadToCloudWithModemID(localFile, modemID)
 }
 
-// Queue management functions
-const (
-	queueFilePath   = "ModemCheck-Results/.upload_queue.json"
-	maxQueueSize    = 100
-	queueMaxAgeDays = 14
-)
+// Queue management
+const queueFilePath = "ModemCheck-Results/.upload_queue.json"
 
 // loadUploadQueue loads the upload queue from disk
 func loadUploadQueue() (*UploadQueue, error) {
@@ -1468,7 +1478,7 @@ func (m *ModemCheck) cleanupLogFile() error {
 	}
 
 	lines := strings.Split(string(data), "\n")
-	cutoffDate := time.Now().AddDate(0, 0, -30)
+	cutoffDate := time.Now().AddDate(0, 0, -logMaxAgeDays)
 	var keptLines []string
 
 	for _, line := range lines {
@@ -1720,7 +1730,41 @@ func main() {
 func loadConfigFile(path string, config *Configuration) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read config file: %w", err)
 	}
-	return json.Unmarshal(data, config)
+
+	if err := json.Unmarshal(data, config); err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Validate critical configuration
+	if config.EnableCloud {
+		if config.CloudHost == "" {
+			return fmt.Errorf("CloudHost is required when EnableCloud is true")
+		}
+		if config.CloudAPIKey == "" {
+			return fmt.Errorf("CloudAPIKey is required when EnableCloud is true")
+		}
+	}
+
+	// Validate port ranges
+	if config.Iperf3Streams < 1 {
+		config.Iperf3Streams = 4 // Default
+	}
+	if config.Iperf3UploadLimit < 0 {
+		config.Iperf3UploadLimit = 0
+	}
+	if config.Iperf3DownloadLimit < 0 {
+		config.Iperf3DownloadLimit = 0
+	}
+
+	return nil
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ModemCheck - API Key Management</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+    <title>ModemCheck - Admin Dashboard</title>
     <style>
         * {
             box-sizing: border-box;
@@ -105,6 +106,15 @@
 
         .btn-danger:hover {
             background: #dc2626;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
         }
 
         .btn-secondary {
@@ -349,6 +359,8 @@
         <div class="tab-navigation">
             <button id="apiKeysTab" class="tab-btn active" onclick="showTab('apiKeys')">API Keys</button>
             <button id="usersTab" class="tab-btn" onclick="showTab('users')">User Management</button>
+            <button id="userActivityTab" class="tab-btn" onclick="showTab('userActivity')">User Activity</button>
+            <button id="clientLogsTab" class="tab-btn" onclick="showTab('clientLogs')">Client Submissions</button>
         </div>
 
         <!-- API Keys Section -->
@@ -396,6 +408,123 @@
                 <h2>Existing Users</h2>
                 <div id="usersContainer">
                     <div class="loading">Loading users...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Activity Audit Log Section -->
+        <div id="userActivitySection" class="tab-content" style="display: none;">
+            <div class="action-section">
+                <h2>User Activity Audit Log</h2>
+                <p class="subtitle">Track all user actions including logins, logouts, and administrative activities</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Actions</div>
+                        <div id="totalActions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Actions</div>
+                        <div id="failedActions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Users</div>
+                        <div id="uniqueUsers" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="activityUsername">Filter by Username</label>
+                        <input type="text" id="activityUsername" placeholder="All users">
+                    </div>
+                    <div class="form-group">
+                        <label for="activityType">Filter by Action Type</label>
+                        <select id="activityType">
+                            <option value="">All actions</option>
+                            <option value="login">Login</option>
+                            <option value="logout">Logout</option>
+                            <option value="view_checks">View Checks</option>
+                            <option value="change_password">Password Change</option>
+                            <option value="logout_user">Logout User</option>
+                            <option value="create_user">Create User</option>
+                            <option value="delete_user">Delete User</option>
+                            <option value="create_api_key">Create API Key</option>
+                            <option value="delete_api_key">Delete API Key</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="activityStartDate">Start Date</label>
+                        <input type="date" id="activityStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="activityEndDate">End Date</label>
+                        <input type="date" id="activityEndDate">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadUserActivity()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearActivityFilters()">Clear Filters</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Activity Log (<span id="activityCount">0</span> entries)</h2>
+                <div id="userActivityContainer">
+                    <div class="loading">Loading activity log...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Submission Audit Log Section -->
+        <div id="clientLogsSection" class="tab-content" style="display: none;">
+            <div class="action-section">
+                <h2>Client Submission Audit Log</h2>
+                <p class="subtitle">Monitor all check data submissions from client devices</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Submissions</div>
+                        <div id="totalSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Submissions</div>
+                        <div id="failedSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Modems</div>
+                        <div id="uniqueModems" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique API Keys</div>
+                        <div id="uniqueApiKeys" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="clientModemId">Filter by Modem ID</label>
+                        <input type="text" id="clientModemId" placeholder="All modems">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientIp">Filter by IP Address</label>
+                        <input type="text" id="clientIp" placeholder="All IPs">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientStartDate">Start Date</label>
+                        <input type="date" id="clientStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientEndDate">End Date</label>
+                        <input type="date" id="clientEndDate">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadClientLogs()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearClientFilters()">Clear Filters</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Submission Log (<span id="clientCount">0</span> entries)</h2>
+                <div id="clientLogsContainer">
+                    <div class="loading">Loading submission log...</div>
                 </div>
             </div>
         </div>
@@ -451,11 +580,19 @@
         // Check authentication
         async function checkAuth() {
             try {
-                const response = await fetch('/cgi-bin/auth.py');
+                const response = await fetch('/cgi-bin/auth.py', {
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    window.location.href = '/admin-login.html?return=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+
                 const data = await response.json();
 
                 if (!data.authenticated) {
-                    window.location.href = '/admin-login.html';
+                    window.location.href = '/admin-login.html?return=' + encodeURIComponent(window.location.pathname);
                     return false;
                 }
 
@@ -463,7 +600,7 @@
                 if (data.role !== 'admin') {
                     // Basic users cannot access admin dashboard
                     // Redirect to admin login with error indication
-                    window.location.href = '/admin-login.html?error=access_denied';
+                    window.location.href = '/admin-login.html?error=access_denied&return=' + encodeURIComponent(window.location.pathname);
                     return false;
                 }
                 
@@ -479,7 +616,7 @@
                 return true;
             } catch (error) {
                 console.error('Auth check failed:', error);
-                window.location.href = '/admin-login.html';
+                window.location.href = '/admin-login.html?return=' + encodeURIComponent(window.location.pathname);
                 return false;
             }
         }
@@ -559,13 +696,14 @@
                 
                 await fetch('/cgi-bin/auth.py', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'same-origin'
                 });
                 
-                window.location.href = '/login.html';
+                window.location.href = '/admin-login.html';
             } catch (error) {
                 console.error('Logout failed:', error);
-                window.location.href = '/login.html';
+                window.location.href = '/admin-login.html';
             }
         }
 
@@ -574,6 +712,8 @@
             // Hide all tab content sections
             document.getElementById('apiKeysSection').style.display = 'none';
             document.getElementById('usersSection').style.display = 'none';
+            document.getElementById('userActivitySection').style.display = 'none';
+            document.getElementById('clientLogsSection').style.display = 'none';
 
             // Remove active class from all tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -588,6 +728,14 @@
                 document.getElementById('usersSection').style.display = 'block';
                 document.getElementById('usersTab').classList.add('active');
                 loadUsers();
+            } else if (tabName === 'userActivity') {
+                document.getElementById('userActivitySection').style.display = 'block';
+                document.getElementById('userActivityTab').classList.add('active');
+                loadUserActivity();
+            } else if (tabName === 'clientLogs') {
+                document.getElementById('clientLogsSection').style.display = 'block';
+                document.getElementById('clientLogsTab').classList.add('active');
+                loadClientLogs();
             }
         }
 
@@ -910,6 +1058,7 @@
                                 <td>${escapeHtml(user.last_login_ip)}</td>
                                 <td>
                                     <button class="btn btn-secondary btn-small" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
+                                    <button class="btn btn-warning btn-small" onclick="logoutUser('${escapeHtml(user.username)}')">Logout User</button>
                                     <button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>
                                 </td>
                             </tr>
@@ -1023,6 +1172,211 @@
             } catch (error) {
                 showMessage(`Error: ${error.message}`, 'error');
             }
+        }
+
+        async function logoutUser(username) {
+            if (!confirm(`Are you sure you want to logout user "${username}"?\n\nThis will end all active sessions for this user.`)) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'logout_user');
+                formData.append('username', username);
+
+                const response = await fetch(USER_API_BASE, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to logout user');
+                }
+
+                showMessage(data.message || 'User logged out successfully', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // User Activity Audit Log Functions
+        async function loadUserActivity() {
+            const container = document.getElementById('userActivityContainer');
+            container.innerHTML = '<div class="loading">Loading activity log...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'get_user_activity_logs',
+                    limit: 200
+                });
+
+                // Add filters if set
+                const username = document.getElementById('activityUsername').value.trim();
+                const actionType = document.getElementById('activityType').value;
+                const startDate = document.getElementById('activityStartDate').value;
+                const endDate = document.getElementById('activityEndDate').value;
+
+                if (username) params.append('username', username);
+                if (actionType) params.append('action_type', actionType);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`${API_BASE}?${params}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load activity log');
+                }
+
+                // Update stats
+                if (data.stats) {
+                    document.getElementById('totalActions').textContent = data.stats.total_actions || 0;
+                    document.getElementById('failedActions').textContent = data.stats.failed_actions || 0;
+                    document.getElementById('uniqueUsers').textContent = data.stats.unique_users || 0;
+                }
+
+                document.getElementById('activityCount').textContent = data.count || 0;
+
+                if (!data.logs || data.logs.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No activity log entries found.</div>';
+                    return;
+                }
+
+                // Create table
+                let html = '<table class="keys-table"><thead><tr>';
+                html += '<th>Timestamp</th>';
+                html += '<th>Username</th>';
+                html += '<th>Role</th>';
+                html += '<th>Action</th>';
+                html += '<th>IP Address</th>';
+                html += '<th>Status</th>';
+                html += '<th>Details</th>';
+                html += '</tr></thead><tbody>';
+
+                data.logs.forEach(log => {
+                    const timestamp = new Date(log.timestamp).toLocaleString();
+                    const statusClass = log.success ? 'success' : 'error';
+                    const statusText = log.success ? '✓ Success' : '✗ Failed';
+                    const failureReason = log.failure_reason ? ` (${log.failure_reason})` : '';
+                    
+                    html += '<tr>';
+                    html += `<td>${timestamp}</td>`;
+                    html += `<td><strong>${log.username}</strong></td>`;
+                    html += `<td>${log.user_role || '-'}</td>`;
+                    html += `<td>${log.action_type}</td>`;
+                    html += `<td><code>${log.ip_address}</code></td>`;
+                    html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}</span></td>`;
+                    html += `<td style="font-size: 0.9em;">${log.action_details || '-'}${failureReason}</td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function clearActivityFilters() {
+            document.getElementById('activityUsername').value = '';
+            document.getElementById('activityType').value = '';
+            document.getElementById('activityStartDate').value = '';
+            document.getElementById('activityEndDate').value = '';
+            loadUserActivity();
+        }
+
+        // Client Submission Audit Log Functions
+        async function loadClientLogs() {
+            const container = document.getElementById('clientLogsContainer');
+            container.innerHTML = '<div class="loading">Loading submission log...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    action: 'get_client_submission_logs',
+                    limit: 200
+                });
+
+                // Add filters if set
+                const modemId = document.getElementById('clientModemId').value.trim();
+                const ip = document.getElementById('clientIp').value.trim();
+                const startDate = document.getElementById('clientStartDate').value;
+                const endDate = document.getElementById('clientEndDate').value;
+
+                if (modemId) params.append('modem_id', modemId);
+                if (ip) params.append('ip_address', ip);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`${API_BASE}?${params}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load submission log');
+                }
+
+                // Update stats
+                if (data.stats) {
+                    document.getElementById('totalSubmissions').textContent = data.stats.total_submissions || 0;
+                    document.getElementById('failedSubmissions').textContent = data.stats.failed_submissions || 0;
+                    document.getElementById('uniqueModems').textContent = data.stats.unique_modems || 0;
+                    document.getElementById('uniqueApiKeys').textContent = data.stats.unique_api_keys || 0;
+                }
+
+                document.getElementById('clientCount').textContent = data.count || 0;
+
+                if (!data.logs || data.logs.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No submission log entries found.</div>';
+                    return;
+                }
+
+                // Create table
+                let html = '<table class="keys-table"><thead><tr>';
+                html += '<th>Timestamp</th>';
+                html += '<th>Modem ID</th>';
+                html += '<th>Type</th>';
+                html += '<th>API Key</th>';
+                html += '<th>IP Address</th>';
+                html += '<th>File Size</th>';
+                html += '<th>Status</th>';
+                html += '<th>Processing Time</th>';
+                html += '</tr></thead><tbody>';
+
+                data.logs.forEach(log => {
+                    const timestamp = new Date(log.timestamp).toLocaleString();
+                    const statusClass = log.success ? 'success' : 'error';
+                    const statusText = log.success ? '✓ Success' : '✗ Failed';
+                    const fileSize = log.file_size ? (log.file_size / 1024).toFixed(1) + ' KB' : '-';
+                    const procTime = log.processing_time_ms ? log.processing_time_ms + ' ms' : '-';
+                    const failureReason = log.failure_reason ? `<br><small>(${log.failure_reason})</small>` : '';
+                    
+                    html += '<tr>';
+                    html += `<td>${timestamp}</td>`;
+                    html += `<td><strong>${log.modem_id}</strong></td>`;
+                    html += `<td>${log.modem_type || '-'}</td>`;
+                    html += `<td><small>${log.api_key_name || 'Unknown'}</small><br><code style="font-size: 0.75em;">${log.api_key_hash}</code></td>`;
+                    html += `<td><code>${log.ip_address}</code></td>`;
+                    html += `<td>${fileSize}</td>`;
+                    html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}${failureReason}</span></td>`;
+                    html += `<td>${procTime}</td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function clearClientFilters() {
+            document.getElementById('clientModemId').value = '';
+            document.getElementById('clientIp').value = '';
+            document.getElementById('clientStartDate').value = '';
+            document.getElementById('clientEndDate').value = '';
+            loadClientLogs();
         }
     </script>
 </body>

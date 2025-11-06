@@ -447,7 +447,6 @@ modemcheck/
 ├── Makefile                    # Build automation
 ├── README.md                   # This file
 ├── SECURITY_REVIEW.md          # Security audit documentation
-├── CLAUDE.md                   # Comprehensive project documentation
 ├── config.json.example         # Example configuration
 ├── checkviewer.html            # Local web viewer (1777 lines)
 ├── dist/                       # Pre-compiled binaries (7 platforms)
@@ -486,7 +485,6 @@ This project is provided as-is for personal and educational use.
 ## Support
 
 For issues, questions, or feature requests:
-- Review `CLAUDE.md` for comprehensive documentation
 - Check `SECURITY_REVIEW.md` for security details
 - See `cloudserver/README.md` for deployment guidance
 - Review example configs in `ModemCheck-ConfigFiles/`
