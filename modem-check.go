@@ -1870,9 +1870,27 @@ func main() {
 		CloudPath:   "",
 	}
 
-	// Load config file if specified
+	// Determine config file path
+	var configPath string
 	if *configFile != "" {
-		if err := loadConfigFile(*configFile, &config); err != nil {
+		// User specified a config file
+		configPath = *configFile
+	} else {
+		// Check for config.json in the same directory as the executable
+		exePath, err := os.Executable()
+		if err == nil {
+			exeDir := filepath.Dir(exePath)
+			defaultConfigPath := filepath.Join(exeDir, "config.json")
+			if _, err := os.Stat(defaultConfigPath); err == nil {
+				configPath = defaultConfigPath
+				log.Printf("Found config.json in executable directory: %s", configPath)
+			}
+		}
+	}
+
+	// Load config file if found or specified
+	if configPath != "" {
+		if err := loadConfigFile(configPath, &config); err != nil {
 			log.Fatalf("Error loading config file: %v", err)
 		}
 	}
