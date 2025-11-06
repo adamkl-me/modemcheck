@@ -165,8 +165,7 @@ Create a `config.json` file (see `config.json.example` or `ModemCheck-ConfigFile
   "EnableCloud": true,
   "CloudHost": "your.cloud.server",
   "CloudPort": "22557",
-  "CloudAPIKey": "your-api-key-here",
-  "CloudPath": "/datafiles"
+  "CloudAPIKey": "your-api-key-here"
 }
 ```
 
@@ -257,7 +256,7 @@ The cloud server provides:
 - **Multi-modem support** with date range filtering
 - **Automatic retry** for failed uploads
 
-For detailed setup instructions, see `cloudserver/README.md` and `cloudserver/AUTHENTICATION.md`.
+For detailed setup instructions, see `cloudserver/README.md`.
 
 ### Generate an API Key
 
@@ -278,8 +277,7 @@ Add cloud settings to your `config.json`:
   "EnableCloud": true,
   "CloudHost": "your.cloud.server",
   "CloudPort": "22557",
-  "CloudAPIKey": "your-api-key-from-admin-dashboard",
-  "CloudPath": "/datafiles"
+  "CloudAPIKey": "your-api-key-from-admin-dashboard"
 }
 ```
 
@@ -409,7 +407,7 @@ The cloud viewer additionally includes:
 - ✅ Docker network isolation (172.25.0.0/16)
 - ✅ Security headers: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection
 
-**For complete security audit, see:** `SECURITY_REVIEW.md`
+**Note:** The application has undergone security hardening with focus on input validation, path traversal prevention, and secure authentication.
 
 ## Automated Execution
 

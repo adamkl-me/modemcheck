@@ -12,6 +12,5 @@
   "EnableCloud": false,
   "CloudHost": "fillme",
   "CloudPort": "fillme",
-  "CloudAPIKey": "",
-  "CloudPath": "/datafiles"
+  "CloudAPIKey": ""
 }
