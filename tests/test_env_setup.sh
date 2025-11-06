@@ -93,38 +93,6 @@ setup_test_env() {
     mkdir -p "$TEST_DATA_DIR/data"
     mkdir -p "$TEST_DATA_DIR/config/sessions"
 
-    # Create test users
-    log_info "Creating test users..."
-    cat > "$TEST_DATA_DIR/config/users.json" <<EOF
-{
-  "testuser": {
-    "password": "pbkdf2:sha256:100000:test_salt:test_hash_basic",
-    "role": "basic",
-    "must_change_password": false
-  },
-  "testadmin": {
-    "password": "pbkdf2:sha256:100000:test_salt:test_hash_admin",
-    "role": "admin",
-    "must_change_password": false
-  }
-}
-EOF
-
-    # Create test API keys
-    log_info "Creating test API keys..."
-    cat > "$TEST_DATA_DIR/config/api_keys.json" <<EOF
-{
-  "test_key_active": {
-    "active": true,
-    "last_used": null
-  },
-  "test_key_inactive": {
-    "active": false,
-    "last_used": null
-  }
-}
-EOF
-
     log_info "Test environment setup complete!"
 }
 
@@ -156,87 +124,9 @@ start_test_container() {
 init_test_databases() {
     log_info "Initializing test databases..."
 
-    # Initialize databases inside container
-    docker exec modemcheck-cloud-test python3 <<'PYTHON'
-import sys
-sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
-
-import sqlite3
-from pathlib import Path
-
-# Initialize main database
-db_path = '/modemcheck-cloud/data/modemcheck.db'
-conn = sqlite3.connect(db_path)
-cursor = conn.cursor()
-
-# Clear any existing data from previous test runs
-cursor.execute('DROP TABLE IF EXISTS modem_checks')
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS modem_checks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        modem_id TEXT NOT NULL,
-        filename TEXT UNIQUE NOT NULL,
-        check_time TEXT NOT NULL,
-        modem_type TEXT,
-        modem_mac TEXT,
-        upstream_power_avg REAL,
-        downstream_power_avg REAL,
-        upstream_snr_avg REAL,
-        downstream_snr_avg REAL,
-        codeword_errors_total INTEGER,
-        upload_speed REAL,
-        download_speed REAL,
-        ping_avg REAL,
-        raw_data TEXT
-    )
-''')
-
-cursor.execute('CREATE INDEX IF NOT EXISTS idx_modem_id ON modem_checks(modem_id)')
-cursor.execute('CREATE INDEX IF NOT EXISTS idx_check_time ON modem_checks(check_time)')
-
-conn.commit()
-conn.close()
-
-# Initialize audit database
-audit_path = '/modemcheck-cloud/data/audit.db'
-conn = sqlite3.connect(audit_path)
-cursor = conn.cursor()
-
-# Clear any existing audit data from previous test runs
-cursor.execute('DROP TABLE IF EXISTS user_activity_log')
-cursor.execute('DROP TABLE IF EXISTS client_submission_log')
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS user_activity_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT NOT NULL,
-        username TEXT NOT NULL,
-        action TEXT NOT NULL,
-        ip_address TEXT,
-        user_agent TEXT,
-        details TEXT
-    )
-''')
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS client_submission_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT NOT NULL,
-        modem_id TEXT NOT NULL,
-        filename TEXT NOT NULL,
-        ip_address TEXT,
-        success INTEGER NOT NULL,
-        error_message TEXT,
-        api_key_preview TEXT
-    )
-''')
-
-conn.commit()
-conn.close()
-
-print("Databases initialized successfully!")
-PYTHON
+    # Copy init script to container and run it
+    docker cp "$SCRIPT_DIR/init_test_data.py" modemcheck-cloud-test:/tmp/init_test_data.py
+    docker exec modemcheck-cloud-test python3 /tmp/init_test_data.py
 
     log_info "Databases initialized!"
 }
