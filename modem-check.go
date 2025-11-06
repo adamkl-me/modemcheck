@@ -296,7 +296,7 @@ func parseIperfResult(result string) float64 {
 	// Parse number and unit
 	re := regexp.MustCompile(`([\d.]+)\s*([GMK]?)bits?/sec`)
 	matches := re.FindStringSubmatch(result)
-	if matches == nil || len(matches) < 3 {
+	if len(matches) < 3 {
 		return -1
 	}
 
@@ -890,7 +890,7 @@ func (m *ModemCheck) XfinityLogin() error {
 	bodyStr := string(body)
 
 	if !strings.Contains(bodyStr, "CM MAC:") {
-		return fmt.Errorf("Rogers Xfinity modem login failed. Check credentials")
+		return fmt.Errorf("rogers Xfinity modem login failed. Check credentials")
 	}
 
 	m.Log("Rogers Xfinity modem login successful.")
@@ -936,6 +936,9 @@ func (m *ModemCheck) XfinityGetMAC() error {
 		`CM MAC:[^>]*>([0-9A-Fa-f:]+)<`,
 	}
 
+	// Compile MAC validation regex once outside the loop
+	macValidationRe := regexp.MustCompile(`^[0-9A-F]{12}$`)
+
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
 		matches := re.FindStringSubmatch(bodyStr)
@@ -945,7 +948,7 @@ func (m *ModemCheck) XfinityGetMAC() error {
 			mac = strings.ReplaceAll(mac, " ", "")
 			mac = strings.ToUpper(mac)
 
-			if matched, _ := regexp.MatchString(`^[0-9A-F]{12}$`, mac); matched {
+			if macValidationRe.MatchString(mac) {
 				m.modemMAC = mac
 				m.Log(fmt.Sprintf("Successfully retrieved modem CM MAC address: %s", m.modemMAC))
 				return nil
@@ -1410,20 +1413,20 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 
 	// Create HTTP request with multipart form data
 	body := &strings.Builder{}
-	body.WriteString(fmt.Sprintf("--boundary123\r\n"))
-	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"api_key\"\r\n\r\n"))
+	body.WriteString("--boundary123\r\n")
+	body.WriteString("Content-Disposition: form-data; name=\"api_key\"\r\n\r\n")
 	body.WriteString(fmt.Sprintf("%s\r\n", m.config.CloudAPIKey))
-	body.WriteString(fmt.Sprintf("--boundary123\r\n"))
-	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"modem_id\"\r\n\r\n"))
+	body.WriteString("--boundary123\r\n")
+	body.WriteString("Content-Disposition: form-data; name=\"modem_id\"\r\n\r\n")
 	body.WriteString(fmt.Sprintf("%s\r\n", remoteDirName))
-	body.WriteString(fmt.Sprintf("--boundary123\r\n"))
-	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"filename\"\r\n\r\n"))
+	body.WriteString("--boundary123\r\n")
+	body.WriteString("Content-Disposition: form-data; name=\"filename\"\r\n\r\n")
 	body.WriteString(fmt.Sprintf("%s\r\n", remoteFileName))
-	body.WriteString(fmt.Sprintf("--boundary123\r\n"))
+	body.WriteString("--boundary123\r\n")
 	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n", remoteFileName))
-	body.WriteString(fmt.Sprintf("Content-Type: application/json\r\n\r\n"))
+	body.WriteString("Content-Type: application/json\r\n\r\n")
 	body.Write(fileContents)
-	body.WriteString(fmt.Sprintf("\r\n--boundary123--\r\n"))
+	body.WriteString("\r\n--boundary123--\r\n")
 
 	// Create HTTP client with timeout
 	client := &http.Client{
