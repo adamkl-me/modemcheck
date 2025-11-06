@@ -1678,7 +1678,7 @@ func (m *ModemCheck) Run() error {
 		defer m.logFile.Close()
 	}
 
-	m.Log(fmt.Sprintf("Modem check script (v4.4.1) started at %s", m.checkTimeString))
+	m.Log(fmt.Sprintf("Modem check script (v4.5.0) started at %s", m.checkTimeString))
 
 	// Clean up old log entries (30 days)
 	if !m.config.NoLogs {
