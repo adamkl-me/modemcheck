@@ -14,6 +14,14 @@ def get_connection():
     """Get database connection. Works with SQLite by default."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # Return rows as dicts
+    
+    # Enable WAL mode for better concurrent access and performance
+    conn.execute('PRAGMA journal_mode=WAL')
+    # NORMAL synchronous mode is safe with WAL and much faster
+    conn.execute('PRAGMA synchronous=NORMAL')
+    # Cache size in KB (negative = KB, positive = pages)
+    conn.execute('PRAGMA cache_size=-8000')  # 8MB cache
+    
     return conn
 
 def init_database():
