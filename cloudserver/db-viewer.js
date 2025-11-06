@@ -1,4 +1,36 @@
 console.log("DEBUG: db-viewer.js file loaded - DATABASE MODE");
+
+// Utility functions for timestamp formatting
+function formatEpochTime(epoch) {
+    if (!epoch || epoch === 0) return '-';
+    const date = new Date(epoch * 1000);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatUptime(seconds) {
+    if (!seconds || seconds === 0) return '-';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (days > 0) {
+        return `${days} days ${hours}h: ${minutes}m: ${secs}s`;
+    } else if (hours > 0) {
+        return `${hours}h: ${minutes}m: ${secs}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m: ${secs}s`;
+    } else {
+        return `${secs}s`;
+    }
+}
+
 // Global state
 let allChecks = [];
 let currentCheckIndex = 0;
@@ -363,11 +395,11 @@ async function loadData() {
             return;
         }
         
-        // Sort by check time
+        // Sort by check time (numeric comparison for int64 timestamps)
         allChecks.sort((a, b) => {
-            const timeA = a.sysinfo?.checktime || '';
-            const timeB = b.sysinfo?.checktime || '';
-            return timeA.localeCompare(timeB);
+            const timeA = a.sysinfo?.checktime || 0;
+            const timeB = b.sysinfo?.checktime || 0;
+            return timeA - timeB;
         });
         
         currentCheckIndex = allChecks.length - 1; // Start with most recent
@@ -462,15 +494,15 @@ function displayCurrentCheck() {
     
     const data = allChecks[currentCheckIndex];
     
-    document.getElementById('checktime').textContent = data.sysinfo?.checktime || '-';
+    document.getElementById('checktime').textContent = formatEpochTime(data.sysinfo?.checktime);
     document.getElementById('modemtype').textContent = data.sysinfo?.modemtype || '-';
     document.getElementById('modemmac').textContent = data.sysinfo?.modemmac || '-';
     document.getElementById('firmware').textContent = data.sysinfo?.firmware || '-';
-    document.getElementById('uptime').textContent = data.sysinfo?.uptime || '-';
-    document.getElementById('systime').textContent = data.sysinfo?.systime || '-';
+    document.getElementById('uptime').textContent = formatUptime(data.sysinfo?.uptime);
+    document.getElementById('systime').textContent = formatEpochTime(data.sysinfo?.systime);
     
-    document.getElementById('iperf3_ul').textContent = data.iperf3test_ul || '-';
-    document.getElementById('iperf3_dl').textContent = data.iperf3test_dl || '-';
+    document.getElementById('iperf3_ul').textContent = formatSpeed(data.iperf3test_ul);
+    document.getElementById('iperf3_dl').textContent = formatSpeed(data.iperf3test_dl);
     
     document.getElementById('iperf3_ul_limit').textContent = data.iperf3uploadlimit ? `(Test limited to ${data.iperf3uploadlimit} Mbps)` : '';
     document.getElementById('iperf3_dl_limit').textContent = data.iperf3downloadlimit ? `(Test limited to ${data.iperf3downloadlimit} Mbps)` : '';
@@ -512,16 +544,29 @@ function populateTable(tableId, data, keys) {
         const row = document.createElement('tr');
         keys.forEach(key => {
             const cell = document.createElement('td');
-            cell.textContent = item[key] !== undefined && item[key] !== null ? item[key] : 'n/a';
+            let value = item[key];
+            
+            // Format timestamps in event logs
+            if (key === 'time' && tableId === 'eventlogTable' && typeof value === 'number') {
+                value = formatEpochTime(value);
+            }
+            
+            cell.textContent = value !== undefined && value !== null ? value : 'n/a';
             row.appendChild(cell);
         });
         tableBody.appendChild(row);
     });
 }
 
-function parseSpeed(speedString) {
-    if (!speedString || speedString === '-' || speedString === 'Failed' || speedString === 'Disabled') return null;
-    const match = speedString.match(/(\d+\.?\d*)\s*(\w+)/);
+function parseSpeed(speed) {
+    // Handle numeric values (new format) - already in Mbps
+    if (typeof speed === 'number') {
+        return speed <= 0 ? null : speed;
+    }
+    
+    // Handle string values (old format) - parse and convert to Mbps
+    if (!speed || speed === '-' || speed === 'Failed' || speed === 'Disabled') return null;
+    const match = speed.match(/(\d+\.?\d*)\s*(\w+)/);
     if (!match) return null;
     const value = parseFloat(match[1]);
     const unit = match[2].toLowerCase();
@@ -530,11 +575,28 @@ function parseSpeed(speedString) {
     if (unit.includes('kbits') || unit.includes('kb')) return value / 1000;
     return value;
 }
+
+function formatSpeed(mbps) {
+    if (mbps === null || mbps === undefined || mbps <= 0) return '-';
+    // Show decimals only for values < 1 Mbps
+    if (mbps < 1) {
+        return mbps.toFixed(2) + ' Mbps';
+    }
+    return Math.round(mbps) + ' Mbps';
+}
 function renderTrendChartsFromChecks() {
     if (allChecks.length < 2) return;
     
-    // Extract data for charts
-    const labels = allChecks.map(c => c.sysinfo?.checktime || '');
+    // Destroy all existing charts to prevent canvas reuse errors
+    Object.keys(charts).forEach(key => {
+        if (charts[key]) {
+            charts[key].destroy();
+            charts[key] = null;
+        }
+    });
+    
+    // Extract timestamps for time-based x-axis
+    const timestamps = allChecks.map(c => c.sysinfo?.checktime || 0);
     
     // Speed data with limits
     const uploadSpeeds = allChecks.map(c => parseSpeed(c.iperf3test_ul));
@@ -608,14 +670,17 @@ function renderTrendChartsFromChecks() {
         };
     });
     
-    // BER data (Bit Error Rate = uncorrectables / octets * 100)
+    // BER data (Bit Error Rate = uncorrectables / total codewords * 100)
+    // Note: octets = unerrored codewords, so total = octets + correcteds + uncorrectds
     const rxScqamBerData = allChecks.map(c => {
         if (!c.rx || c.rx.length === 0) return { avg: null, max: null };
         const bers = c.rx.map(ch => {
-            const octets = parseInt(ch.octets) || 0;
+            const unerrored = parseInt(ch.octets) || 0;
+            const correcteds = parseInt(ch.correcteds) || 0;
             const uncorrectds = parseInt(ch.uncorrectds) || 0;
-            if (octets === 0) return 0;
-            return (uncorrectds / octets) * 100;
+            const total = unerrored + correcteds + uncorrectds;
+            if (total === 0) return 0;
+            return (uncorrectds / total) * 100;
         }).filter(b => !isNaN(b) && isFinite(b));
         if (bers.length === 0) return { avg: null, max: null };
         return {
@@ -627,10 +692,12 @@ function renderTrendChartsFromChecks() {
     const rxOfdmBerData = allChecks.map(c => {
         if (!c.rxofdm || c.rxofdm.length === 0) return { avg: null, max: null };
         const bers = c.rxofdm.map(ch => {
-            const octets = parseInt(ch.octets) || 0;
+            const unerrored = parseInt(ch.octets) || 0;
+            const correcteds = parseInt(ch.correcteds) || 0;
             const uncorrectds = parseInt(ch.uncorrectds) || 0;
-            if (octets === 0) return 0;
-            return (uncorrectds / octets) * 100;
+            const total = unerrored + correcteds + uncorrectds;
+            if (total === 0) return 0;
+            return (uncorrectds / total) * 100;
         }).filter(b => !isNaN(b) && isFinite(b));
         if (bers.length === 0) return { avg: null, max: null };
         return {
@@ -639,14 +706,16 @@ function renderTrendChartsFromChecks() {
         };
     });
     
-    // Correctable codeword error rate data (correcteds / octets * 100)
+    // Correctable codeword error rate data (correcteds / total codewords * 100)
     const rxScqamCorrectedData = allChecks.map(c => {
         if (!c.rx || c.rx.length === 0) return { avg: null, max: null };
         const rates = c.rx.map(ch => {
-            const octets = parseInt(ch.octets) || 0;
+            const unerrored = parseInt(ch.octets) || 0;
             const correcteds = parseInt(ch.correcteds) || 0;
-            if (octets === 0) return 0;
-            return (correcteds / octets) * 100;
+            const uncorrectds = parseInt(ch.uncorrectds) || 0;
+            const total = unerrored + correcteds + uncorrectds;
+            if (total === 0) return 0;
+            return (correcteds / total) * 100;
         }).filter(r => !isNaN(r) && isFinite(r));
         if (rates.length === 0) return { avg: null, max: null };
         return {
@@ -658,10 +727,12 @@ function renderTrendChartsFromChecks() {
     const rxOfdmCorrectedData = allChecks.map(c => {
         if (!c.rxofdm || c.rxofdm.length === 0) return { avg: null, max: null };
         const rates = c.rxofdm.map(ch => {
-            const octets = parseInt(ch.octets) || 0;
+            const unerrored = parseInt(ch.octets) || 0;
             const correcteds = parseInt(ch.correcteds) || 0;
-            if (octets === 0) return 0;
-            return (correcteds / octets) * 100;
+            const uncorrectds = parseInt(ch.uncorrectds) || 0;
+            const total = unerrored + correcteds + uncorrectds;
+            if (total === 0) return 0;
+            return (correcteds / total) * 100;
         }).filter(r => !isNaN(r) && isFinite(r));
         if (rates.length === 0) return { avg: null, max: null };
         return {
@@ -714,13 +785,21 @@ function renderTrendChartsFromChecks() {
         };
     });
     
-    // Render all charts
-    renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-    renderPingChart(labels, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss);
-    renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
-    renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
-    renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
-    renderTxPowerChart(labels, txScqamData, txOfdmaData);
+    // Uptime data (convert seconds to days)
+    const uptimeData = allChecks.map(c => {
+        const uptime = c.sysinfo?.uptime;
+        if (!uptime || isNaN(uptime)) return null;
+        return uptime / 86400; // Convert seconds to days
+    });
+    
+    // Render all charts with time-based x-axis
+    renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss);
+    renderUptimeChart(timestamps, uptimeData);
+    renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
+    renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
+    renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
+    renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
             }
 
             // Old API function - can be removed if no longer needed
@@ -729,8 +808,8 @@ function renderTrendChartsFromChecks() {
                 console.log('Speed data sample:', speedData[0]);
                 console.log('Signal data sample:', signalData[0]);
                 
-                // Extract labels from speed data (all checks should have same timestamps)
-                const labels = speedData.map(d => d.check_time);
+                // Extract timestamps from speed data (all checks should have same timestamps)
+                const timestamps = speedData.map(d => d.check_time);
                 
                 // Extract speed test data
                 const uploadSpeeds = speedData.map(d => parseSpeed(d.iperf3_upload));
@@ -798,53 +877,31 @@ function renderTrendChartsFromChecks() {
                 console.log('  TX OFDMA:', txOfdmaData.slice(0, 3));
                 
                 // Render all charts (Note: API function doesn't calculate corrected data, so passing empty arrays)
-                renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-                renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
-                renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
-                renderBerChart(labels, rxScqamBerData, rxOfdmBerData, [], []);
-                renderTxPowerChart(labels, txScqamData, txOfdmaData);
+                renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+                renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
+                renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
+                renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, [], []);
+                renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
             }
 
-            function parseSpeed(speedString) {
-                if (!speedString || speedString === '-' || speedString === 'Failed' || speedString === 'Disabled') {
-                    return null;
-                }
-                
-                const match = speedString.match(/(\d+\.?\d*)\s*(\w+)/);
-                if (!match) return null;
-                
-                const value = parseFloat(match[1]);
-                const unit = match[2].toLowerCase();
-                
-                // Convert to Mbps
-                if (unit.includes('gbits') || unit.includes('gb')) {
-                    return value * 1000;
-                } else if (unit.includes('mbits') || unit.includes('mb')) {
-                    return value;
-                } else if (unit.includes('kbits') || unit.includes('kb')) {
-                    return value / 1000;
-                }
-                
-                return value;
-            }
-
-            function renderSpeedChart(labels, uploadData, downloadData, uploadLimits, downloadLimits) {
+            function renderSpeedChart(timestamps, uploadData, downloadData, uploadLimits, downloadLimits) {
                 const ctx = document.getElementById('speedChart');
                 
                 if (charts.speed) {
                     charts.speed.destroy();
                 }
                 
+                // Convert to {x, y} format for time scale
                 const datasets = [{
                     label: 'Download Speed',
-                    data: downloadData,
+                    data: timestamps.map((t, i) => ({ x: t * 1000, y: downloadData[i] })),
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     tension: 0.4,
                     fill: true
                 }, {
                     label: 'Upload Speed',
-                    data: uploadData,
+                    data: timestamps.map((t, i) => ({ x: t * 1000, y: uploadData[i] })),
                     borderColor: '#764ba2',
                     backgroundColor: 'rgba(118, 75, 162, 0.1)',
                     tension: 0.4,
@@ -855,7 +912,7 @@ function renderTrendChartsFromChecks() {
                 if (downloadLimits && downloadLimits.some(l => l !== null)) {
                     datasets.push({
                         label: 'Download Limit',
-                        data: downloadLimits,
+                        data: timestamps.map((t, i) => ({ x: t * 1000, y: downloadLimits[i] })),
                         borderColor: 'rgba(102, 126, 234, 0.5)',
                         borderDash: [5, 5],
                         borderWidth: 2,
@@ -869,7 +926,7 @@ function renderTrendChartsFromChecks() {
                 if (uploadLimits && uploadLimits.some(l => l !== null)) {
                     datasets.push({
                         label: 'Upload Limit',
-                        data: uploadLimits,
+                        data: timestamps.map((t, i) => ({ x: t * 1000, y: uploadLimits[i] })),
                         borderColor: 'rgba(118, 75, 162, 0.5)',
                         borderDash: [5, 5],
                         borderWidth: 2,
@@ -882,7 +939,6 @@ function renderTrendChartsFromChecks() {
                 charts.speed = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: datasets
                     },
                     options: {
@@ -898,6 +954,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 beginAtZero: true,
                                 title: {
@@ -915,7 +990,7 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderPingChart(labels, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss) {
+            function renderPingChart(timestamps, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss) {
                 const ctx = document.getElementById('pingChart');
                 
                 if (charts.ping) {
@@ -925,10 +1000,9 @@ function renderTrendChartsFromChecks() {
                 charts.ping = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Google Ping (ms)',
-                            data: googleAvg,
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: googleAvg[i] })),
                             borderColor: '#4285f4',
                             backgroundColor: 'rgba(66, 133, 244, 0.1)',
                             tension: 0.4,
@@ -937,7 +1011,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'Cloudflare Ping (ms)',
-                            data: cloudflareAvg,
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareAvg[i] })),
                             borderColor: '#f6821f',
                             backgroundColor: 'rgba(246, 130, 31, 0.1)',
                             tension: 0.4,
@@ -946,7 +1020,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'Google Packet Loss (%)',
-                            data: googleLoss,
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: googleLoss[i] })),
                             borderColor: 'rgba(234, 67, 53, 0.7)',
                             backgroundColor: 'rgba(234, 67, 53, 0.1)',
                             borderDash: [5, 5],
@@ -956,7 +1030,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y1'
                         }, {
                             label: 'Cloudflare Packet Loss (%)',
-                            data: cloudflareLoss,
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareLoss[i] })),
                             borderColor: 'rgba(251, 188, 5, 0.7)',
                             backgroundColor: 'rgba(251, 188, 5, 0.1)',
                             borderDash: [5, 5],
@@ -995,6 +1069,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 type: 'linear',
                                 display: true,
@@ -1029,7 +1122,96 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderRxPowerChart(labels, rxScqamData, rxOfdmData) {
+            function renderUptimeChart(timestamps, uptimeData) {
+                const ctx = document.getElementById('uptimeChart');
+                
+                if (charts.uptime) {
+                    charts.uptime.destroy();
+                }
+                
+                charts.uptime = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Uptime (days)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: uptimeData[i] })),
+                            borderColor: '#38b2ac',
+                            backgroundColor: 'rgba(56, 178, 172, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 3,
+                            fill: true,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            const days = Math.floor(context.parsed.y);
+                                            const hours = Math.floor((context.parsed.y - days) * 24);
+                                            label += days + 'd ' + hours + 'h';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Uptime (days)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toFixed(1) + 'd';
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderRxPowerChart(timestamps, rxScqamData, rxOfdmData) {
                 const ctx = document.getElementById('rxPowerChart');
                 
                 if (charts.rxPower) {
@@ -1039,10 +1221,9 @@ function renderTrendChartsFromChecks() {
                 charts.rxPower = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Min RX SC-QAM Power',
-                            data: rxScqamData.map(d => d.min),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].min })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1051,7 +1232,7 @@ function renderTrendChartsFromChecks() {
                             spanGaps: true
                         }, {
                             label: 'Avg RX SC-QAM Power',
-                            data: rxScqamData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].avg })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.2)',
                             tension: 0.4,
@@ -1059,7 +1240,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX SC-QAM Power',
-                            data: rxScqamData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].max })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1067,7 +1248,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Min RX OFDM Power',
-                            data: rxOfdmData.map(d => d.min),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].min })),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.1)',
                             borderDash: [5, 5],
@@ -1075,7 +1256,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX OFDM Power',
-                            data: rxOfdmData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].avg })),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.2)',
                             tension: 0.4,
@@ -1083,7 +1264,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX OFDM Power',
-                            data: rxOfdmData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].max })),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.1)',
                             borderDash: [5, 5],
@@ -1104,6 +1285,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 title: {
                                     display: true,
@@ -1120,7 +1320,7 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderRxSnrChart(labels, rxScqamData, rxOfdmData) {
+            function renderRxSnrChart(timestamps, rxScqamData, rxOfdmData) {
                 const ctx = document.getElementById('rxSnrChart');
                 
                 if (charts.rxSnr) {
@@ -1130,10 +1330,9 @@ function renderTrendChartsFromChecks() {
                 charts.rxSnr = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Min RX SC-QAM SNR',
-                            data: rxScqamData.map(d => d.min),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].min })),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.1)',
                             borderDash: [5, 5],
@@ -1141,7 +1340,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX SC-QAM SNR',
-                            data: rxScqamData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].avg })),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.2)',
                             tension: 0.4,
@@ -1149,7 +1348,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX SC-QAM SNR',
-                            data: rxScqamData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamData[i].max })),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.1)',
                             borderDash: [5, 5],
@@ -1157,7 +1356,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Min RX OFDM SNR',
-                            data: rxOfdmData.map(d => d.min),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].min })),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1165,7 +1364,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX OFDM SNR',
-                            data: rxOfdmData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].avg })),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.2)',
                             tension: 0.4,
@@ -1173,7 +1372,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX OFDM SNR',
-                            data: rxOfdmData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmData[i].max })),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1194,6 +1393,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 title: {
                                     display: true,
@@ -1210,7 +1428,7 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData) {
+            function renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData) {
                 const ctx = document.getElementById('berChart');
                 
                 if (charts.ber) {
@@ -1220,10 +1438,9 @@ function renderTrendChartsFromChecks() {
                 charts.ber = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Avg RX SC-QAM BER (Uncorrectable)',
-                            data: rxScqamBerData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamBerData[i].avg })),
                             borderColor: '#f56565',
                             backgroundColor: 'rgba(245, 101, 101, 0.2)',
                             tension: 0.4,
@@ -1231,7 +1448,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX SC-QAM BER (Uncorrectable)',
-                            data: rxScqamBerData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamBerData[i].max })),
                             borderColor: '#c53030',
                             backgroundColor: 'rgba(197, 48, 48, 0.1)',
                             borderDash: [5, 5],
@@ -1239,7 +1456,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX OFDM BER (Uncorrectable)',
-                            data: rxOfdmBerData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmBerData[i].avg })),
                             borderColor: '#ed8936',
                             backgroundColor: 'rgba(237, 137, 54, 0.2)',
                             tension: 0.4,
@@ -1247,7 +1464,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX OFDM BER (Uncorrectable)',
-                            data: rxOfdmBerData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmBerData[i].max })),
                             borderColor: '#c05621',
                             backgroundColor: 'rgba(192, 86, 33, 0.1)',
                             borderDash: [5, 5],
@@ -1255,7 +1472,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX SC-QAM Corrected',
-                            data: rxScqamCorrectedData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamCorrectedData[i].avg })),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.2)',
                             tension: 0.4,
@@ -1263,7 +1480,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX SC-QAM Corrected',
-                            data: rxScqamCorrectedData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxScqamCorrectedData[i].max })),
                             borderColor: '#38a169',
                             backgroundColor: 'rgba(56, 161, 105, 0.1)',
                             borderDash: [5, 5],
@@ -1271,7 +1488,7 @@ function renderTrendChartsFromChecks() {
                             pointRadius: 2
                         }, {
                             label: 'Avg RX OFDM Corrected',
-                            data: rxOfdmCorrectedData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmCorrectedData[i].avg })),
                             borderColor: '#4299e1',
                             backgroundColor: 'rgba(66, 153, 225, 0.2)',
                             tension: 0.4,
@@ -1279,7 +1496,7 @@ function renderTrendChartsFromChecks() {
                             fill: true
                         }, {
                             label: 'Max RX OFDM Corrected',
-                            data: rxOfdmCorrectedData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmCorrectedData[i].max })),
                             borderColor: '#3182ce',
                             backgroundColor: 'rgba(49, 130, 206, 0.1)',
                             borderDash: [5, 5],
@@ -1304,7 +1521,15 @@ function renderTrendChartsFromChecks() {
                                             label += ': ';
                                         }
                                         if (context.parsed.y !== null) {
-                                            label += context.parsed.y.toExponential(2) + '%';
+                                            // Use fixed decimal notation for values
+                                            const value = context.parsed.y;
+                                            if (value >= 0.01) {
+                                                label += value.toFixed(4) + '%';
+                                            } else if (value >= 0.0001) {
+                                                label += value.toFixed(6) + '%';
+                                            } else {
+                                                label += value.toFixed(8) + '%';
+                                            }
                                         }
                                         return label;
                                     }
@@ -1312,6 +1537,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 type: 'logarithmic',
                                 title: {
@@ -1320,7 +1564,14 @@ function renderTrendChartsFromChecks() {
                                 },
                                 ticks: {
                                     callback: function(value) {
-                                        return value.toExponential(0);
+                                        // Use fixed decimal notation instead of scientific
+                                        if (value >= 0.01) {
+                                            return value.toFixed(4) + '%';
+                                        } else if (value >= 0.0001) {
+                                            return value.toFixed(6) + '%';
+                                        } else {
+                                            return value.toFixed(8) + '%';
+                                        }
                                     }
                                 }
                             }
@@ -1334,7 +1585,7 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderTxPowerChart(labels, txScqamData, txOfdmaData) {
+            function renderTxPowerChart(timestamps, txScqamData, txOfdmaData) {
                 const ctx = document.getElementById('txPowerChart');
                 
                 if (charts.txPower) {
@@ -1344,10 +1595,9 @@ function renderTrendChartsFromChecks() {
                 charts.txPower = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Min TX SC-QAM Power',
-                            data: txScqamData.map(d => d.min),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].min })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1356,7 +1606,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'Avg TX SC-QAM Power',
-                            data: txScqamData.map(d => d.avg),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].avg })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.2)',
                             tension: 0.4,
@@ -1365,7 +1615,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'Max TX SC-QAM Power',
-                            data: txScqamData.map(d => d.max),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].max })),
                             borderColor: '#667eea',
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
@@ -1374,7 +1624,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'Avg TX OFDMA Power',
-                            data: txOfdmaData.map(d => d.avgPower),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].avgPower })),
                             borderColor: '#48bb78',
                             backgroundColor: 'rgba(72, 187, 120, 0.2)',
                             tension: 0.4,
@@ -1383,7 +1633,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y'
                         }, {
                             label: 'TX SC-QAM Bonded Channels',
-                            data: txScqamData.map(d => d.bonded),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].bonded })),
                             borderColor: '#9f7aea',
                             backgroundColor: 'rgba(159, 122, 234, 0.2)',
                             tension: 0.4,
@@ -1391,7 +1641,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y1'
                         }, {
                             label: 'TX OFDMA Bonded Channels',
-                            data: txOfdmaData.map(d => d.bonded),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].bonded })),
                             borderColor: '#38b2ac',
                             backgroundColor: 'rgba(56, 178, 172, 0.2)',
                             tension: 0.4,
@@ -1399,7 +1649,7 @@ function renderTrendChartsFromChecks() {
                             yAxisID: 'y1'
                         }, {
                             label: 'TX OFDMA Impaired Channels',
-                            data: txOfdmaData.map(d => d.impaired),
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].impaired })),
                             borderColor: '#f56565',
                             backgroundColor: 'rgba(245, 101, 101, 0.2)',
                             tension: 0.4,
@@ -1420,6 +1670,25 @@ function renderTrendChartsFromChecks() {
                             }
                         },
                         scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
                             y: {
                                 type: 'linear',
                                 display: true,
