@@ -3,6 +3,7 @@ name: modemcheck
 services:
   modemcheck-cloud:
     container_name: modemcheck-cloud
+    image: modemcheck-cloud:latest
     build: .
     ports:
       - "22557:22557"  # Upload API

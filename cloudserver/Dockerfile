@@ -41,6 +41,7 @@ COPY login.html /modemcheck-cloud/
 COPY cgi-bin/db-api.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/db_schema.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/audit_schema.py /modemcheck-cloud/cgi-bin/
+COPY cgi-bin/file_lock_util.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/upload.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/admin-api.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/auth.py /modemcheck-cloud/cgi-bin/

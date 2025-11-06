@@ -1260,16 +1260,16 @@
                     const timestamp = new Date(log.timestamp).toLocaleString();
                     const statusClass = log.success ? 'success' : 'error';
                     const statusText = log.success ? '✓ Success' : '✗ Failed';
-                    const failureReason = log.failure_reason ? ` (${log.failure_reason})` : '';
+                    const failureReason = log.failure_reason ? ` (${escapeHtml(log.failure_reason)})` : '';
                     
                     html += '<tr>';
-                    html += `<td>${timestamp}</td>`;
-                    html += `<td><strong>${log.username}</strong></td>`;
-                    html += `<td>${log.user_role || '-'}</td>`;
-                    html += `<td>${log.action_type}</td>`;
-                    html += `<td><code>${log.ip_address}</code></td>`;
+                    html += `<td>${escapeHtml(timestamp)}</td>`;
+                    html += `<td><strong>${escapeHtml(log.username)}</strong></td>`;
+                    html += `<td>${escapeHtml(log.user_role || '-')}</td>`;
+                    html += `<td>${escapeHtml(log.action_type)}</td>`;
+                    html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
                     html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}</span></td>`;
-                    html += `<td style="font-size: 0.9em;">${log.action_details || '-'}${failureReason}</td>`;
+                    html += `<td style="font-size: 0.9em;">${escapeHtml(log.action_details || '-')}${failureReason}</td>`;
                     html += '</tr>';
                 });
 
@@ -1350,14 +1350,14 @@
                     const statusText = log.success ? '✓ Success' : '✗ Failed';
                     const fileSize = log.file_size ? (log.file_size / 1024).toFixed(1) + ' KB' : '-';
                     const procTime = log.processing_time_ms ? log.processing_time_ms + ' ms' : '-';
-                    const failureReason = log.failure_reason ? `<br><small>(${log.failure_reason})</small>` : '';
+                    const failureReason = log.failure_reason ? `<br><small>(${escapeHtml(log.failure_reason)})</small>` : '';
                     
                     html += '<tr>';
-                    html += `<td>${timestamp}</td>`;
-                    html += `<td><strong>${log.modem_id}</strong></td>`;
-                    html += `<td>${log.modem_type || '-'}</td>`;
-                    html += `<td><small>${log.api_key_name || 'Unknown'}</small><br><code style="font-size: 0.75em;">${log.api_key_hash}</code></td>`;
-                    html += `<td><code>${log.ip_address}</code></td>`;
+                    html += `<td>${escapeHtml(timestamp)}</td>`;
+                    html += `<td><strong>${escapeHtml(log.modem_id)}</strong></td>`;
+                    html += `<td>${escapeHtml(log.modem_type || '-')}</td>`;
+                    html += `<td><small>${escapeHtml(log.api_key_name || 'Unknown')}</small><br><code style="font-size: 0.75em;">${escapeHtml(log.api_key_hash)}</code></td>`;
+                    html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
                     html += `<td>${fileSize}</td>`;
                     html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}${failureReason}</span></td>`;
                     html += `<td>${procTime}</td>`;
