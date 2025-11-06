@@ -80,25 +80,26 @@ type UploadQueue struct {
 
 // ModemCheck represents the main application state
 type ModemCheck struct {
-	config       Configuration
-	client       *http.Client
-	modemType    string
-	modemAddress string
-	modemMAC     string
-	checkTime    string
-	checkDir     string
-	checkFile    string
-	logFile      *os.File
+	config          Configuration
+	client          *http.Client
+	modemType       string
+	modemAddress    string
+	modemMAC        string
+	checkTime       int64  // Unix epoch timestamp
+	checkTimeString string // Formatted string for filenames
+	checkDir        string
+	checkFile       string
+	logFile         *os.File
 }
 
 // SysInfo represents system information from the modem
 type SysInfo struct {
-	SysTime   string `json:"systime"`
+	SysTime   int64  `json:"systime"` // Unix epoch timestamp
 	Firmware  string `json:"firmware"`
-	Uptime    string `json:"uptime"`
+	Uptime    int64  `json:"uptime"` // Uptime in seconds
 	ModemType string `json:"modemtype"`
 	ModemMAC  string `json:"modemmac"`
-	CheckTime string `json:"checktime"`
+	CheckTime int64  `json:"checktime"` // Unix epoch timestamp of when check was performed
 }
 
 // ChannelData represents various channel data structures
@@ -144,7 +145,7 @@ type TXOFDMAChannel struct {
 }
 
 type EventLog struct {
-	Time  string `json:"time"`
+	Time  int64  `json:"time"` // Unix epoch timestamp
 	ID    string `json:"id"`
 	Event string `json:"event"`
 }
@@ -156,14 +157,165 @@ type ModemData struct {
 	TX                  []TXChannel      `json:"tx"`
 	TXOFDM              []TXOFDMAChannel `json:"txofdm"`
 	EventLog            []EventLog       `json:"eventlog"`
-	Iperf3TestUL        string           `json:"iperf3test_ul,omitempty"`
-	Iperf3TestDL        string           `json:"iperf3test_dl,omitempty"`
-	Iperf3UploadLimit   string           `json:"iperf3uploadlimit,omitempty"`
-	Iperf3DownloadLimit string           `json:"iperf3downloadlimit,omitempty"`
+	Iperf3TestUL        float64          `json:"iperf3test_ul,omitempty"`
+	Iperf3TestDL        float64          `json:"iperf3test_dl,omitempty"`
+	Iperf3UploadLimit   int              `json:"iperf3uploadlimit,omitempty"`
+	Iperf3DownloadLimit int              `json:"iperf3downloadlimit,omitempty"`
 	PingGoogleAvg       string           `json:"ping_google_avg,omitempty"`
 	PingGoogleLoss      string           `json:"ping_google_loss,omitempty"`
 	PingCloudflareAvg   string           `json:"ping_cloudflare_avg,omitempty"`
 	PingCloudflareLoss  string           `json:"ping_cloudflare_loss,omitempty"`
+}
+
+// parseModemTime converts various timestamp formats to Unix epoch
+func parseModemTime(format, timeStr string) int64 {
+	timeStr = strings.TrimSpace(timeStr)
+	if timeStr == "" {
+		return 0
+	}
+
+	var t time.Time
+	var err error
+
+	switch format {
+	case "coda56-system":
+		// Format: "Mon Nov 03, 2025, 18:45:28"
+		t, err = time.Parse("Mon Jan 02, 2006, 15:04:05", timeStr)
+	case "coda56-event":
+		// Format: "11/03/25 18:41:57"
+		t, err = time.Parse("01/02/06 15:04:05", timeStr)
+	case "xb8-system":
+		// Format: "2025-11-05 13:21:21"
+		t, err = time.Parse("2006-01-02 15:04:05", timeStr)
+	case "dm1000-system":
+		// Format: Various HTML extracted formats, try multiple
+		formats := []string{
+			"Mon 2006-01-02 15:04:05", // Thu 2025-11-06 06:07:42
+			"2006-01-02_15:04:05",     // 2025-11-04_17:09:46
+			"2006-01-02 15:04:05",
+			"Mon Jan 02 15:04:05 2006",
+			"01/02/2006 15:04:05",
+		}
+		for _, layout := range formats {
+			t, err = time.Parse(layout, timeStr)
+			if err == nil {
+				break
+			}
+		}
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to parse time '%s' with format '%s': %v\n", timeStr, format, err)
+		return 0
+	}
+
+	return t.Unix()
+}
+
+// parseUptimeToSeconds converts various uptime formats to total seconds
+func parseUptimeToSeconds(uptimeStr string) int64 {
+	uptimeStr = strings.TrimSpace(uptimeStr)
+	if uptimeStr == "" {
+		return 0
+	}
+
+	var totalSeconds int64
+
+	// CODA56 format: "00h:04m:41s"
+	codaRe := regexp.MustCompile(`(\d+)h:(\d+)m:(\d+)s`)
+	if matches := codaRe.FindStringSubmatch(uptimeStr); matches != nil {
+		hours, _ := strconv.ParseInt(matches[1], 10, 64)
+		minutes, _ := strconv.ParseInt(matches[2], 10, 64)
+		seconds, _ := strconv.ParseInt(matches[3], 10, 64)
+		return hours*3600 + minutes*60 + seconds
+	}
+
+	// XB8 format: "6 days 13h: 18m: 59s"
+	xb8Re := regexp.MustCompile(`(?:(\d+)\s*days?\s*)?(?:(\d+)h:\s*)?(?:(\d+)m:\s*)?(?:(\d+)s)?`)
+	if matches := xb8Re.FindStringSubmatch(uptimeStr); matches != nil {
+		days := int64(0)
+		hours := int64(0)
+		minutes := int64(0)
+		seconds := int64(0)
+
+		if matches[1] != "" {
+			days, _ = strconv.ParseInt(matches[1], 10, 64)
+		}
+		if matches[2] != "" {
+			hours, _ = strconv.ParseInt(matches[2], 10, 64)
+		}
+		if matches[3] != "" {
+			minutes, _ = strconv.ParseInt(matches[3], 10, 64)
+		}
+		if matches[4] != "" {
+			seconds, _ = strconv.ParseInt(matches[4], 10, 64)
+		}
+
+		totalSeconds = days*86400 + hours*3600 + minutes*60 + seconds
+		if totalSeconds > 0 {
+			return totalSeconds
+		}
+	}
+
+	// DM1000 format: "2 d: 19 h: 2 m"
+	dm1000Re := regexp.MustCompile(`(?:(\d+)\s*d:\s*)?(?:(\d+)\s*h:\s*)?(?:(\d+)\s*m)?`)
+	if matches := dm1000Re.FindStringSubmatch(uptimeStr); matches != nil {
+		days := int64(0)
+		hours := int64(0)
+		minutes := int64(0)
+
+		if matches[1] != "" {
+			days, _ = strconv.ParseInt(matches[1], 10, 64)
+		}
+		if matches[2] != "" {
+			hours, _ = strconv.ParseInt(matches[2], 10, 64)
+		}
+		if matches[3] != "" {
+			minutes, _ = strconv.ParseInt(matches[3], 10, 64)
+		}
+
+		totalSeconds = days*86400 + hours*3600 + minutes*60
+		if totalSeconds > 0 {
+			return totalSeconds
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Warning: Failed to parse uptime '%s'\n", uptimeStr)
+	return 0
+}
+
+// parseIperfResult converts iperf3 output string to Mbps float64
+// Input examples: "1.90 Gbits/sec", "151 Mbits/sec", "500 Kbits/sec"
+// Returns -1 for invalid/failed results
+func parseIperfResult(result string) float64 {
+	result = strings.TrimSpace(result)
+	if result == "" || result == "Failed" || result == "Disabled" {
+		return -1
+	}
+
+	// Parse number and unit
+	re := regexp.MustCompile(`([\d.]+)\s*([GMK]?)bits?/sec`)
+	matches := re.FindStringSubmatch(result)
+	if matches == nil || len(matches) < 3 {
+		return -1
+	}
+
+	value, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return -1
+	}
+
+	unit := matches[2]
+	switch unit {
+	case "G":
+		return value * 1000 // Convert Gbits to Mbits
+	case "M":
+		return value // Already in Mbits
+	case "K":
+		return value / 1000 // Convert Kbits to Mbits
+	default:
+		return value // Assume Mbits if no unit
+	}
 }
 
 // NewModemCheck creates a new ModemCheck instance
@@ -179,10 +331,12 @@ func NewModemCheck(config Configuration) *ModemCheck {
 		Timeout:   defaultHTTPTimeout,
 	}
 
+	now := time.Now()
 	return &ModemCheck{
-		config:    config,
-		client:    client,
-		checkTime: time.Now().Format("2006-01-02_15-04-05"),
+		config:          config,
+		client:          client,
+		checkTime:       now.Unix(),
+		checkTimeString: now.Format("2006-01-02_15-04-05"),
 	}
 }
 
@@ -360,9 +514,9 @@ func (m *ModemCheck) CODAGetData() (*ModemData, error) {
 
 	if len(sysInfoArray) > 0 {
 		data.SysInfo = SysInfo{
-			SysTime:   getString(sysInfoArray[0], "systemTime"),
+			SysTime:   parseModemTime("coda56-system", getString(sysInfoArray[0], "systemTime")),
 			Firmware:  getString(sysInfoArray[0], "swVersion"),
-			Uptime:    getString(sysInfoArray[0], "systemUptime"),
+			Uptime:    parseUptimeToSeconds(getString(sysInfoArray[0], "systemUptime")),
 			ModemType: m.modemType,
 			ModemMAC:  m.modemMAC,
 			CheckTime: m.checkTime,
@@ -445,7 +599,7 @@ func (m *ModemCheck) CODAGetData() (*ModemData, error) {
 
 	for _, event := range eventLogRaw {
 		data.EventLog = append(data.EventLog, EventLog{
-			Time:  getString(event, "time"),
+			Time:  parseModemTime("coda56-event", getString(event, "time")),
 			ID:    getString(event, "type"),
 			Event: getString(event, "event"),
 		})
@@ -525,14 +679,14 @@ func (m *ModemCheck) DM1000GetData() (*ModemData, error) {
 	// Extract system time
 	timeRe := regexp.MustCompile(`<td  align="left" id ="time_date">([^<]+)`)
 	if matches := timeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
-		data.SysInfo.SysTime = strings.TrimSpace(matches[1])
+		data.SysInfo.SysTime = parseModemTime("dm1000-system", strings.TrimSpace(matches[1]))
 	}
 
 	// Extract uptime - matches pattern: dw(str_status16) followed by <td> with uptime value
 	// Example: <th>...str_status16...</th><td align="left">2 d: 19 h: 2 m</td>
 	uptimeRe := regexp.MustCompile(`(?s)str_status16.*?<td.*?align="left">([^<]+)</td>`)
 	if matches := uptimeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
-		data.SysInfo.Uptime = strings.TrimSpace(matches[1])
+		data.SysInfo.Uptime = parseUptimeToSeconds(strings.TrimSpace(matches[1]))
 	}
 
 	// Get firmware version
@@ -649,7 +803,7 @@ func (m *ModemCheck) DM1000GetData() (*ModemData, error) {
 		for _, node := range nodes {
 			if event, ok := node.(map[string]interface{}); ok {
 				data.EventLog = append(data.EventLog, EventLog{
-					Time:  getString(event, "d"),
+					Time:  parseModemTime("dm1000-system", getString(event, "d")),
 					ID:    getString(event, "id"),
 					Event: getString(event, "text"),
 				})
@@ -847,8 +1001,8 @@ func (m *ModemCheck) XfinityGetData() (*ModemData, error) {
 	data := &ModemData{}
 
 	// Get system info
-	data.SysInfo.SysTime = m.extractValue(pageStr, "Local time:")
-	data.SysInfo.Uptime = m.extractValue(pageStr, "System Uptime:")
+	data.SysInfo.SysTime = parseModemTime("xb8-system", m.extractValue(pageStr, "Local time:"))
+	data.SysInfo.Uptime = parseUptimeToSeconds(m.extractValue(pageStr, "System Uptime:"))
 	data.SysInfo.ModemType = m.modemType
 	data.SysInfo.ModemMAC = m.modemMAC
 	data.SysInfo.CheckTime = m.checkTime
@@ -1033,8 +1187,8 @@ func (m *ModemCheck) extractTableRow(table, rowLabel string) []string {
 func (m *ModemCheck) RunSpeedTests(data *ModemData) {
 	if !m.config.Iperf3Enabled {
 		m.Log("iPerf3 tests are disabled")
-		data.Iperf3TestUL = "Disabled"
-		data.Iperf3TestDL = "Disabled"
+		data.Iperf3TestUL = -1
+		data.Iperf3TestDL = -1
 		return
 	}
 
@@ -1050,10 +1204,10 @@ func (m *ModemCheck) RunSpeedTests(data *ModemData) {
 
 	if uploadResult != "" {
 		m.Log(fmt.Sprintf("Upload test result: %s", uploadResult))
-		data.Iperf3TestUL = uploadResult
+		data.Iperf3TestUL = parseIperfResult(uploadResult)
 	} else {
 		m.Log("Upload test failed to return a valid result")
-		data.Iperf3TestUL = "Failed"
+		data.Iperf3TestUL = -1
 	}
 
 	time.Sleep(1 * time.Second)
@@ -1067,14 +1221,14 @@ func (m *ModemCheck) RunSpeedTests(data *ModemData) {
 
 	if downloadResult != "" {
 		m.Log(fmt.Sprintf("Download test result: %s", downloadResult))
-		data.Iperf3TestDL = downloadResult
+		data.Iperf3TestDL = parseIperfResult(downloadResult)
 	} else {
 		m.Log("Download test failed to return a valid result")
-		data.Iperf3TestDL = "Failed"
+		data.Iperf3TestDL = -1
 	}
 
-	data.Iperf3UploadLimit = strconv.Itoa(m.config.Iperf3UploadLimit)
-	data.Iperf3DownloadLimit = strconv.Itoa(m.config.Iperf3DownloadLimit)
+	data.Iperf3UploadLimit = m.config.Iperf3UploadLimit
+	data.Iperf3DownloadLimit = m.config.Iperf3DownloadLimit
 }
 
 func (m *ModemCheck) runIperf3(args ...string) string {
@@ -1521,7 +1675,7 @@ func (m *ModemCheck) Run() error {
 		defer m.logFile.Close()
 	}
 
-	m.Log(fmt.Sprintf("Modem check script (v4.1.2) started at %s", m.checkTime))
+	m.Log(fmt.Sprintf("Modem check script (v4.4.0) started at %s", m.checkTimeString))
 
 	// Clean up old log entries (30 days)
 	if !m.config.NoLogs {
@@ -1598,7 +1752,7 @@ func (m *ModemCheck) Run() error {
 	baseDir := filepath.Join(filepath.Dir(os.Args[0]), "ModemCheck-Results")
 	m.checkDir = filepath.Join(baseDir, fmt.Sprintf("%s-%s", m.modemType, m.modemMAC))
 	os.MkdirAll(m.checkDir, 0755)
-	m.checkFile = filepath.Join(m.checkDir, m.checkTime+".json") // Collect data
+	m.checkFile = filepath.Join(m.checkDir, m.checkTimeString+".json") // Collect data
 	m.Log("Collecting modem diagnostic data")
 	var data *ModemData
 	switch m.modemType {
@@ -1652,7 +1806,7 @@ func (m *ModemCheck) Run() error {
 			entry := UploadQueueEntry{
 				FilePath:  m.checkFile,
 				ModemID:   modemID,
-				Timestamp: m.checkTime,
+				Timestamp: m.checkTimeString,
 				LastError: err.Error(),
 			}
 			addToUploadQueue(queue, entry)

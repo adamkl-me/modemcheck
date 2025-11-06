@@ -660,6 +660,37 @@
         </div>
 
         <script>
+            // Utility functions for timestamp formatting
+            function formatEpochTime(epoch) {
+                if (!epoch || epoch === 0) return '-';
+                const date = new Date(epoch * 1000);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
+
+            function formatUptime(seconds) {
+                if (!seconds || seconds === 0) return '-';
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                
+                if (days > 0) {
+                    return `${days} days ${hours}h: ${minutes}m: ${secs}s`;
+                } else if (hours > 0) {
+                    return `${hours}h: ${minutes}m: ${secs}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m: ${secs}s`;
+                } else {
+                    return `${secs}s`;
+                }
+            }
+
             // Global state
             let allChecks = [];
             let currentCheckIndex = 0;
@@ -797,16 +828,16 @@
                 const data = allChecks[currentCheckIndex];
                 
                 // Display system info
-                document.getElementById('checktime').textContent = data.sysinfo?.checktime || '-';
+                document.getElementById('checktime').textContent = formatEpochTime(data.sysinfo?.checktime);
                 document.getElementById('modemtype').textContent = data.sysinfo?.modemtype || '-';
                 document.getElementById('modemmac').textContent = data.sysinfo?.modemmac || '-';
                 document.getElementById('firmware').textContent = data.sysinfo?.firmware || '-';
-                document.getElementById('uptime').textContent = data.sysinfo?.uptime || '-';
-                document.getElementById('systime').textContent = data.sysinfo?.systime || '-';
+                document.getElementById('uptime').textContent = formatUptime(data.sysinfo?.uptime);
+                document.getElementById('systime').textContent = formatEpochTime(data.sysinfo?.systime);
                 
                 // Display speed test results
-                document.getElementById('iperf3_ul').textContent = data.iperf3test_ul || '-';
-                document.getElementById('iperf3_dl').textContent = data.iperf3test_dl || '-';
+                document.getElementById('iperf3_ul').textContent = formatSpeed(data.iperf3test_ul);
+                document.getElementById('iperf3_dl').textContent = formatSpeed(data.iperf3test_dl);
                 
                 const ulLimit = document.getElementById('iperf3_ul_limit');
                 const dlLimit = document.getElementById('iperf3_dl_limit');
@@ -852,7 +883,14 @@
                     const row = document.createElement('tr');
                     keys.forEach(key => {
                         const cell = document.createElement('td');
-                        cell.textContent = item[key] !== undefined && item[key] !== null ? item[key] : 'n/a';
+                        let value = item[key];
+                        
+                        // Format timestamps in event logs
+                        if (key === 'time' && tableId === 'eventlogTable' && typeof value === 'number') {
+                            value = formatEpochTime(value);
+                        }
+                        
+                        cell.textContent = value !== undefined && value !== null ? value : 'n/a';
                         row.appendChild(cell);
                     });
                     tableBody.appendChild(row);
@@ -1123,27 +1161,31 @@
                 renderTxPowerChart(labels, txScqamData, txOfdmaData);
             }
 
-            function parseSpeed(speedString) {
-                if (!speedString || speedString === '-' || speedString === 'Failed' || speedString === 'Disabled') {
-                    return null;
+            function parseSpeed(speed) {
+                // Handle numeric values (new format) - already in Mbps
+                if (typeof speed === 'number') {
+                    return speed <= 0 ? null : speed;
                 }
                 
-                const match = speedString.match(/(\d+\.?\d*)\s*(\w+)/);
+                // Handle string values (old format) - parse and convert to Mbps
+                if (!speed || speed === '-' || speed === 'Failed' || speed === 'Disabled') return null;
+                const match = speed.match(/(\d+\.?\d*)\s*(\w+)/);
                 if (!match) return null;
-                
                 const value = parseFloat(match[1]);
                 const unit = match[2].toLowerCase();
-                
-                // Convert to Mbps
-                if (unit.includes('gbits') || unit.includes('gb')) {
-                    return value * 1000;
-                } else if (unit.includes('mbits') || unit.includes('mb')) {
-                    return value;
-                } else if (unit.includes('kbits') || unit.includes('kb')) {
-                    return value / 1000;
-                }
-                
+                if (unit.includes('gbits') || unit.includes('gb')) return value * 1000;
+                if (unit.includes('mbits') || unit.includes('mb')) return value;
+                if (unit.includes('kbits') || unit.includes('kb')) return value / 1000;
                 return value;
+            }
+
+            function formatSpeed(mbps) {
+                if (mbps === null || mbps === undefined || mbps <= 0) return '-';
+                // Show decimals only for values < 1 Mbps
+                if (mbps < 1) {
+                    return mbps.toFixed(2) + ' Mbps';
+                }
+                return Math.round(mbps) + ' Mbps';
             }
 
             function renderSpeedChart(labels, uploadData, downloadData, uploadLimits, downloadLimits) {
