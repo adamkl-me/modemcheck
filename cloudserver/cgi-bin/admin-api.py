@@ -6,13 +6,49 @@ import secrets
 from datetime import datetime
 from pathlib import Path
 
-# Import audit logging
+# Import audit logging and file locking utilities
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
     from audit_schema import log_user_activity
 except ImportError:
     def log_user_activity(*args, **kwargs):
         pass
+
+try:
+    from file_lock_util import load_json_safe, save_json_safe, update_json_safe
+except ImportError:
+    # Fallback implementations
+    def load_json_safe(filepath, default=None):
+        if default is None:
+            default = {}
+        if not filepath.exists():
+            return default
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError):
+            return default
+    
+    def save_json_safe(filepath, data):
+        try:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2)
+            return True
+        except IOError:
+            return False
+    
+    def update_json_safe(filepath, update_func):
+        try:
+            with open(filepath, 'r+') as f:
+                data = json.load(f)
+                update_func(data)
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=2)
+            return True
+        except (IOError, json.JSONDecodeError):
+            return False
 
 # API keys storage file
 API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
@@ -48,26 +84,12 @@ def get_cookie(name):
     return cookies.get(name)
 
 def load_api_keys():
-    """Load API keys from storage"""
-    if not API_KEYS_FILE.exists():
-        return {}
-
-    try:
-        with open(API_KEYS_FILE, 'r') as f:
-            return json.load(f)
-    except (IOError, json.JSONDecodeError) as e:
-        print(f"Error loading API keys: {e}", file=sys.stderr)
-        return {}
+    """Load API keys from storage (with file locking)"""
+    return load_json_safe(API_KEYS_FILE, default={})
 
 def save_api_keys(api_keys):
-    """Save API keys to storage"""
-    try:
-        API_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(API_KEYS_FILE, 'w') as f:
-            json.dump(api_keys, f, indent=2)
-        return True
-    except Exception as e:
-        return False
+    """Save API keys to storage (with file locking)"""
+    return save_json_safe(API_KEYS_FILE, api_keys)
 
 def generate_api_key():
     """Generate a secure random API key"""

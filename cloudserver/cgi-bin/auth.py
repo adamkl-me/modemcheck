@@ -8,10 +8,11 @@ import secrets
 import hashlib
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 cgitb.enable()
 
-# Import audit logging
+# Import audit logging and file locking utilities
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
     from audit_schema import log_user_activity
@@ -20,7 +21,46 @@ except ImportError:
     def log_user_activity(*args, **kwargs):
         pass
 
-USER_DB_PATH = '/modemcheck-cloud/config/users.json'
+try:
+    from file_lock_util import load_json_safe, save_json_safe, update_json_safe
+except ImportError:
+    # Fallback implementations
+    def load_json_safe(filepath, default=None):
+        if default is None:
+            default = {}
+        filepath = Path(filepath)
+        if not filepath.exists():
+            return default
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError):
+            return default
+    
+    def save_json_safe(filepath, data):
+        try:
+            filepath = Path(filepath)
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2)
+            return True
+        except IOError:
+            return False
+    
+    def update_json_safe(filepath, update_func):
+        try:
+            filepath = Path(filepath)
+            with open(filepath, 'r+') as f:
+                data = json.load(f)
+                update_func(data)
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=2)
+            return True
+        except (IOError, json.JSONDecodeError):
+            return False
+
+USER_DB_PATH = Path('/modemcheck-cloud/config/users.json')
 SESSION_DIR = '/modemcheck-cloud/config/sessions'
 
 def hash_password(password, salt=None):
@@ -40,9 +80,11 @@ def verify_password(password, stored_hash):
         return False
 
 def load_users():
-    """Load user database"""
-    if not os.path.exists(USER_DB_PATH):
-        # Create default admin user if no users exist
+    """Load user database (with file locking)"""
+    users = load_json_safe(USER_DB_PATH, default={})
+    
+    # Create default admin user if no users exist
+    if not users:
         default_users = {
             'admin': {
                 'password': hash_password('changeme'),
@@ -53,14 +95,12 @@ def load_users():
         }
         save_users(default_users)
         return default_users
-    with open(USER_DB_PATH, 'r') as f:
-        return json.load(f)
+    
+    return users
 
 def save_users(users):
-    """Save user database"""
-    os.makedirs(os.path.dirname(USER_DB_PATH), exist_ok=True)
-    with open(USER_DB_PATH, 'w') as f:
-        json.dump(users, f, indent=2)
+    """Save user database (with file locking)"""
+    save_json_safe(USER_DB_PATH, users)
 
 def create_session(username, role):
     """Create a new session"""

@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-# Import audit logging
+# Import audit logging and file locking utilities
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
     from audit_schema import log_client_submission
@@ -16,45 +16,69 @@ except ImportError:
     def log_client_submission(*args, **kwargs):
         pass
 
+try:
+    from file_lock_util import load_json_safe, update_json_safe
+except ImportError:
+    # Fallback to non-locking implementation if module not available
+    def load_json_safe(filepath, default=None):
+        if default is None:
+            default = {}
+        if not filepath.exists():
+            return default
+        try:
+            with open(filepath, 'r') as f:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError):
+            return default
+    
+    def update_json_safe(filepath, update_func):
+        try:
+            with open(filepath, 'r+') as f:
+                data = json.load(f)
+                update_func(data)
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=2)
+            return True
+        except (IOError, json.JSONDecodeError):
+            return False
+
 # API keys storage file
 API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
 
 def load_api_keys():
-    """Load API keys from storage"""
-    if not API_KEYS_FILE.exists():
-        return {}
-
-    try:
-        with open(API_KEYS_FILE, 'r') as f:
-            return json.load(f)
-    except (IOError, json.JSONDecodeError) as e:
-        print(f"Error loading API keys: {e}", file=sys.stderr)
-        return {}
+    """Load API keys from storage (with file locking)"""
+    return load_json_safe(API_KEYS_FILE, default={})
 
 def validate_api_key(api_key):
-    """Validate if the API key is valid and active"""
+    """Validate if the API key is valid and active (timing-safe comparison)"""
+    import secrets
+    
     api_keys = load_api_keys()
 
-    if api_key not in api_keys:
+    # Timing-safe comparison: check all keys even after finding a match
+    found_key = None
+    for stored_key in api_keys:
+        if secrets.compare_digest(api_key, stored_key):
+            found_key = stored_key
+            break
+    
+    if found_key is None:
         return False, "Invalid API key"
 
-    key_data = api_keys[api_key]
+    key_data = api_keys[found_key]
 
     if not key_data.get('active', True):
         return False, "API key is inactive"
 
-    # Update last used timestamp
-    key_data['last_used'] = datetime.now().isoformat()
-    api_keys[api_key] = key_data
-
-    # Save updated API keys
-    try:
-        API_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(API_KEYS_FILE, 'w') as f:
-            json.dump(api_keys, f, indent=2)
-    except IOError as e:
+    # Update last used timestamp with file locking
+    def update_last_used(data):
+        if found_key in data:
+            data[found_key]['last_used'] = datetime.now().isoformat()
+    
+    if not update_json_safe(API_KEYS_FILE, update_last_used):
         # Non-critical if we can't update last_used timestamp
-        print(f"Warning: Failed to update API key last_used timestamp: {e}", file=sys.stderr)
+        print(f"Warning: Failed to update API key last_used timestamp", file=sys.stderr)
 
     return True, key_data.get('name', 'Unknown')
 
