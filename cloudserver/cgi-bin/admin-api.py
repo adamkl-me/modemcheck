@@ -3,55 +3,19 @@ import json
 import os
 import sys
 import secrets
+import sqlite3
 from datetime import datetime
-from pathlib import Path
 
-# Import audit logging and file locking utilities
+# Import audit logging and database access
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
-    from audit_schema import log_user_activity
+    from audit_schema import log_user_activity, get_audit_connection
 except ImportError:
     def log_user_activity(*args, **kwargs):
         pass
+    def get_audit_connection():
+        raise ImportError("audit_schema not available")
 
-try:
-    from file_lock_util import load_json_safe, save_json_safe, update_json_safe
-except ImportError:
-    # Fallback implementations
-    def load_json_safe(filepath, default=None):
-        if default is None:
-            default = {}
-        if not filepath.exists():
-            return default
-        try:
-            with open(filepath, 'r') as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError):
-            return default
-    
-    def save_json_safe(filepath, data):
-        try:
-            filepath.parent.mkdir(parents=True, exist_ok=True)
-            with open(filepath, 'w') as f:
-                json.dump(data, f, indent=2)
-            return True
-        except IOError:
-            return False
-    
-    def update_json_safe(filepath, update_func):
-        try:
-            with open(filepath, 'r+') as f:
-                data = json.load(f)
-                update_func(data)
-                f.seek(0)
-                f.truncate()
-                json.dump(data, f, indent=2)
-            return True
-        except (IOError, json.JSONDecodeError):
-            return False
-
-# API keys storage file
-API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
 SESSION_DIR = '/modemcheck-cloud/config/sessions'
 
 def verify_session(session_id):
@@ -83,86 +47,114 @@ def get_cookie(name):
             cookies[key] = value
     return cookies.get(name)
 
-def load_api_keys():
-    """Load API keys from storage (with file locking)"""
-    return load_json_safe(API_KEYS_FILE, default={})
-
-def save_api_keys(api_keys):
-    """Save API keys to storage (with file locking)"""
-    return save_json_safe(API_KEYS_FILE, api_keys)
-
 def generate_api_key():
     """Generate a secure random API key"""
     return secrets.token_urlsafe(32)
 
 def list_keys():
-    """List all API keys (without exposing the full key)"""
-    api_keys = load_api_keys()
-    result = []
-
-    for key, data in api_keys.items():
-        result.append({
-            'key_preview': key[:8] + '...' + key[-4:],  # Show first 8 and last 4 chars
-            'full_key': key,  # Include full key for copying
-            'name': data.get('name', ''),
-            'created': data.get('created', ''),
-            'last_used': data.get('last_used', 'Never'),
-            'active': data.get('active', True)
-        })
-
-    return sorted(result, key=lambda x: x['created'], reverse=True)
+    """List all API keys from database"""
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT api_key, name, created_at, last_used, is_active 
+            FROM api_keys 
+            ORDER BY created_at DESC
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        result = []
+        for row in rows:
+            result.append({
+                'key_preview': row['api_key'][:8] + '...' + row['api_key'][-4:],
+                'full_key': row['api_key'],
+                'name': row['name'],
+                'created': row['created_at'],
+                'last_used': row['last_used'] or 'Never',
+                'active': bool(row['is_active'])
+            })
+        
+        return result
+    except Exception as e:
+        print(f"Error listing API keys: {e}", file=sys.stderr)
+        return []
 
 def create_key(name):
-    """Create a new API key"""
+    """Create a new API key in database"""
     if not name or len(name.strip()) == 0:
         return None, "Name is required"
 
-    api_keys = load_api_keys()
-    new_key = generate_api_key()
-
-    api_keys[new_key] = {
-        'name': name.strip(),
-        'created': datetime.now().isoformat(),
-        'last_used': None,
-        'active': True
-    }
-
-    if save_api_keys(api_keys):
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        new_key = generate_api_key()
+        
+        cursor.execute("""
+            INSERT INTO api_keys (api_key, name, created_at, is_active)
+            VALUES (?, ?, ?, 1)
+        """, (new_key, name.strip(), datetime.now().isoformat()))
+        
+        conn.commit()
+        conn.close()
         return new_key, None
-    else:
-        return None, "Failed to save API key"
+    except Exception as e:
+        print(f"Error creating API key: {e}", file=sys.stderr)
+        if 'conn' in locals():
+            conn.close()
+        return None, f"Failed to create API key: {str(e)}"
 
 def update_key(key, name, active):
-    """Update an existing API key"""
-    api_keys = load_api_keys()
-
-    if key not in api_keys:
-        return False, "API key not found"
-
-    if name is not None:
-        api_keys[key]['name'] = name.strip()
-
-    if active is not None:
-        api_keys[key]['active'] = active
-
-    if save_api_keys(api_keys):
+    """Update an existing API key in database"""
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE api_keys 
+            SET name = ?, is_active = ? 
+            WHERE api_key = ?
+        """, (name.strip(), 1 if active else 0, key))
+        
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return False, "API key not found"
+        
+        conn.close()
         return True, None
-    else:
-        return False, "Failed to update API key"
+    except Exception as e:
+        print(f"Error updating API key: {e}", file=sys.stderr)
+        if 'conn' in locals():
+            conn.close()
+        return False, f"Failed to update API key: {str(e)}"
 
 def delete_key(key):
-    """Delete an API key"""
-    api_keys = load_api_keys()
-
-    if key not in api_keys:
-        return False, "API key not found"
-
-    del api_keys[key]
-
-    if save_api_keys(api_keys):
-        return True, None
-    else:
-        return False, "Failed to delete API key"
+    """Delete an API key from database"""
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        
+        # Get key name for logging before deletion
+        cursor.execute("SELECT name FROM api_keys WHERE api_key = ?", (key,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return False, "API key not found", "unknown"
+        
+        key_name = row['name']
+        
+        cursor.execute("DELETE FROM api_keys WHERE api_key = ?", (key,))
+        conn.commit()
+        conn.close()
+        
+        return True, None, key_name
+    except Exception as e:
+        print(f"Error deleting API key: {e}", file=sys.stderr)
+        if 'conn' in locals():
+            conn.close()
+        return False, f"Failed to delete API key: {str(e)}", "unknown"
 
 # AUTHENTICATION CHECK - Admin role required
 session_id = get_cookie('modemcheck_session')
@@ -245,11 +237,7 @@ try:
     elif action == 'delete':
         key = post_data.get('key', params.get('key', ''))
         
-        # Get key name before deleting
-        api_keys = load_api_keys()
-        key_name = api_keys.get(key, {}).get('name', 'unknown')
-        
-        success, error = delete_key(key)
+        success, error, key_name = delete_key(key)
         if error:
             result = {'success': False, 'error': error}
         else:

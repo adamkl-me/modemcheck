@@ -114,6 +114,46 @@ def init_audit_database():
         ON client_submission_log(ip_address, timestamp DESC)
     ''')
     
+    # Users table - migrated from users.json
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'basic' CHECK(role IN ('admin', 'basic')),
+            created_at TEXT NOT NULL,
+            last_login TEXT,
+            last_login_ip TEXT,
+            must_change_password BOOLEAN NOT NULL DEFAULT 0
+        )
+    ''')
+    
+    # API keys table - migrated from api_keys.json
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS api_keys (
+            api_key TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            last_used TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT 1
+        )
+    ''')
+    
+    # Create indexes for users and api_keys
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_users_role 
+        ON users(role)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_api_keys_name 
+        ON api_keys(name)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_api_keys_active 
+        ON api_keys(is_active)
+    ''')
+    
     conn.commit()
     conn.close()
 
