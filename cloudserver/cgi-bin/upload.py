@@ -5,58 +5,38 @@ import os
 import sys
 import hashlib
 import time
+import secrets
 from pathlib import Path
 from datetime import datetime
 
-# Import audit logging and file locking utilities
+# Import audit logging and database access
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
-    from audit_schema import log_client_submission
+    from audit_schema import log_client_submission, get_audit_connection
 except ImportError:
     def log_client_submission(*args, **kwargs):
         pass
-
-try:
-    from file_lock_util import load_json_safe, update_json_safe
-except ImportError:
-    # Fallback to non-locking implementation if module not available
-    def load_json_safe(filepath, default=None):
-        if default is None:
-            default = {}
-        if not filepath.exists():
-            return default
-        try:
-            with open(filepath, 'r') as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError):
-            return default
-    
-    def update_json_safe(filepath, update_func):
-        try:
-            with open(filepath, 'r+') as f:
-                data = json.load(f)
-                update_func(data)
-                f.seek(0)
-                f.truncate()
-                json.dump(data, f, indent=2)
-            return True
-        except (IOError, json.JSONDecodeError):
-            return False
-
-# API keys storage file
-API_KEYS_FILE = Path("/modemcheck-cloud/config/api_keys.json")
-
-def load_api_keys():
-    """Load API keys from storage (with file locking)"""
-    return load_json_safe(API_KEYS_FILE, default={})
+    def get_audit_connection():
+        raise ImportError("audit_schema not available")
 
 def validate_api_key(api_key):
     """Validate if the API key is valid and active (timing-safe comparison)"""
-    import secrets
+    # Load API keys from database
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT api_key, is_active, name 
+            FROM api_keys 
+            WHERE is_active = 1
+        """)
+        api_keys = {row['api_key']: row['name'] for row in cursor.fetchall()}
+        conn.close()
+    except Exception as e:
+        print(f"Error loading API keys: {e}", file=sys.stderr)
+        return False, "Database error"
     
-    api_keys = load_api_keys()
-
-    # Timing-safe comparison: check all keys even after finding a match
+    # Timing-safe comparison: check all keys
     found_key = None
     for stored_key in api_keys:
         if secrets.compare_digest(api_key, stored_key):
@@ -65,22 +45,22 @@ def validate_api_key(api_key):
     
     if found_key is None:
         return False, "Invalid API key"
-
-    key_data = api_keys[found_key]
-
-    if not key_data.get('active', True):
-        return False, "API key is inactive"
-
-    # Update last used timestamp with file locking
-    def update_last_used(data):
-        if found_key in data:
-            data[found_key]['last_used'] = datetime.now().isoformat()
     
-    if not update_json_safe(API_KEYS_FILE, update_last_used):
-        # Non-critical if we can't update last_used timestamp
-        print(f"Warning: Failed to update API key last_used timestamp", file=sys.stderr)
-
-    return True, key_data.get('name', 'Unknown')
+    # Update last_used timestamp in database
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE api_keys 
+            SET last_used = ? 
+            WHERE api_key = ?
+        """, (datetime.now().isoformat(), found_key))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Warning: Failed to update last_used: {e}", file=sys.stderr)
+    
+    return True, api_keys[found_key]
 
 def handle_upload():
     """Handle file upload with multipart form data"""

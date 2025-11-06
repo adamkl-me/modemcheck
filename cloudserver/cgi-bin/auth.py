@@ -7,60 +7,21 @@ import sys
 import secrets
 import hashlib
 import time
+import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 
 cgitb.enable()
 
-# Import audit logging and file locking utilities
+# Import audit logging and database access
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 try:
-    from audit_schema import log_user_activity
+    from audit_schema import log_user_activity, get_audit_connection
 except ImportError:
-    # Fallback if audit module not available
     def log_user_activity(*args, **kwargs):
         pass
+    def get_audit_connection():
+        raise ImportError("audit_schema not available")
 
-try:
-    from file_lock_util import load_json_safe, save_json_safe, update_json_safe
-except ImportError:
-    # Fallback implementations
-    def load_json_safe(filepath, default=None):
-        if default is None:
-            default = {}
-        filepath = Path(filepath)
-        if not filepath.exists():
-            return default
-        try:
-            with open(filepath, 'r') as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError):
-            return default
-    
-    def save_json_safe(filepath, data):
-        try:
-            filepath = Path(filepath)
-            filepath.parent.mkdir(parents=True, exist_ok=True)
-            with open(filepath, 'w') as f:
-                json.dump(data, f, indent=2)
-            return True
-        except IOError:
-            return False
-    
-    def update_json_safe(filepath, update_func):
-        try:
-            filepath = Path(filepath)
-            with open(filepath, 'r+') as f:
-                data = json.load(f)
-                update_func(data)
-                f.seek(0)
-                f.truncate()
-                json.dump(data, f, indent=2)
-            return True
-        except (IOError, json.JSONDecodeError):
-            return False
-
-USER_DB_PATH = Path('/modemcheck-cloud/config/users.json')
 SESSION_DIR = '/modemcheck-cloud/config/sessions'
 
 def hash_password(password, salt=None):
@@ -79,28 +40,25 @@ def verify_password(password, stored_hash):
     except:
         return False
 
-def load_users():
-    """Load user database (with file locking)"""
-    users = load_json_safe(USER_DB_PATH, default={})
-    
-    # Create default admin user if no users exist
-    if not users:
-        default_users = {
-            'admin': {
-                'password': hash_password('changeme'),
-                'role': 'admin',
-                'created': datetime.now().isoformat(),
-                'must_change_password': True
-            }
-        }
-        save_users(default_users)
-        return default_users
-    
-    return users
-
-def save_users(users):
-    """Save user database (with file locking)"""
-    save_json_safe(USER_DB_PATH, users)
+def ensure_default_admin():
+    """Ensure default admin user exists in database"""
+    try:
+        conn = get_audit_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as count FROM users")
+        user_count = cursor.fetchone()['count']
+        
+        if user_count == 0:
+            # Create default admin user
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, role, created_at, must_change_password)
+                VALUES (?, ?, 'admin', ?, 1)
+            """, ('admin', hash_password('changeme'), datetime.now().isoformat()))
+            conn.commit()
+        
+        conn.close()
+    except Exception as e:
+        print(f"Error ensuring default admin: {e}", file=sys.stderr)
 
 def create_session(username, role):
     """Create a new session"""
@@ -198,8 +156,21 @@ def main():
                        os.environ.get('REMOTE_ADDR', 'unknown')
             user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
             
-            users = load_users()
-            if username not in users:
+            # Ensure default admin exists
+            ensure_default_admin()
+            
+            # Lookup user in database
+            conn = get_audit_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT password_hash, role, must_change_password 
+                FROM users 
+                WHERE username = ?
+            """, (username,))
+            user_row = cursor.fetchone()
+            
+            if user_row is None:
+                conn.close()
                 # Log failed login attempt
                 log_user_activity(
                     username=username,
@@ -213,8 +184,9 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
                 return
             
-            user = users[username]
-            if not verify_password(password, user['password']):
+            user = dict(user_row)
+            if not verify_password(password, user['password_hash']):
+                conn.close()
                 # Log failed login attempt
                 log_user_activity(
                     username=username,
@@ -229,10 +201,14 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
                 return
             
-            # Update last login info
-            user['last_login'] = datetime.now().isoformat()
-            user['last_login_ip'] = client_ip
-            save_users(users)
+            # Update last login info in database
+            cursor.execute("""
+                UPDATE users 
+                SET last_login = ?, last_login_ip = ? 
+                WHERE username = ?
+            """, (datetime.now().isoformat(), client_ip, username))
+            conn.commit()
+            conn.close()
             
             # Create session
             session_id = create_session(username, user['role'])
@@ -255,7 +231,7 @@ def main():
                 'success': True,
                 'username': username,
                 'role': user['role'],
-                'must_change_password': user.get('must_change_password', False)
+                'must_change_password': bool(user.get('must_change_password', False))
             }))
         
         elif action == 'change_own_password':
@@ -280,11 +256,16 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Password must be at least 6 characters'}))
                 return
             
-            users = load_users()
-            if session['username'] in users:
-                users[session['username']]['password'] = hash_password(new_password)
-                users[session['username']]['must_change_password'] = False
-                save_users(users)
+            try:
+                conn = get_audit_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE users 
+                    SET password_hash = ?, must_change_password = 0 
+                    WHERE username = ?
+                """, (hash_password(new_password), session['username']))
+                conn.commit()
+                conn.close()
                 
                 # Log password change
                 log_user_activity(
@@ -299,9 +280,9 @@ def main():
                 
                 print()
                 print(json.dumps({'success': True, 'message': 'Password changed successfully'}))
-            else:
+            except Exception as e:
                 print()
-                print(json.dumps({'success': False, 'error': 'User not found'}))
+                print(json.dumps({'success': False, 'error': 'Database error'}))
         
         elif action == 'logout':
             session_id = get_cookie('modemcheck_session')
@@ -338,16 +319,33 @@ def main():
         
         print()
         if session:
-            # Get user's must_change_password flag
-            users = load_users()
-            user = users.get(session['username'], {})
-            
-            print(json.dumps({
-                'authenticated': True,
-                'username': session['username'],
-                'role': session['role'],
-                'must_change_password': user.get('must_change_password', False)
-            }))
+            # Get user data from database to check must_change_password flag
+            try:
+                conn = get_audit_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT must_change_password 
+                    FROM users 
+                    WHERE username = ?
+                """, (session['username'],))
+                user_row = cursor.fetchone()
+                conn.close()
+                
+                must_change = bool(user_row['must_change_password']) if user_row else False
+                
+                print(json.dumps({
+                    'authenticated': True,
+                    'username': session['username'],
+                    'role': session.get('role'),
+                    'must_change_password': must_change
+                }))
+            except Exception as e:
+                print(json.dumps({
+                    'authenticated': True,
+                    'username': session['username'],
+                    'role': session.get('role'),
+                    'must_change_password': False
+                }))
         else:
             print(json.dumps({'authenticated': False}))
 
