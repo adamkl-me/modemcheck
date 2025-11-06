@@ -468,7 +468,9 @@ function updateTimelineNav() {
     slider.value = currentCheckIndex;
     
     const current = allChecks[currentCheckIndex];
-    const checkTime = current.sysinfo?.checktime || 'Unknown';
+    const checkTime = current.sysinfo?.checktime 
+        ? formatEpochTime(current.sysinfo.checktime) 
+        : 'Unknown';
     info.textContent = `Check ${currentCheckIndex + 1} of ${allChecks.length}: ${checkTime}`;
     
     document.getElementById('firstBtn').disabled = currentCheckIndex === 0;

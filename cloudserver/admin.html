@@ -218,6 +218,36 @@
             color: #6b7280;
         }
 
+        .role-select {
+            padding: 6px 10px;
+            border: 2px solid #cbd5e0;
+            border-radius: 5px;
+            background-color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .role-select:hover {
+            border-color: #667eea;
+        }
+
+        .role-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .role-select option[value="admin"] {
+            font-weight: bold;
+            color: #c53030;
+        }
+
+        .role-select option[value="user"] {
+            color: #2d3748;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -1007,7 +1037,7 @@
         // User Management Functions
         async function loadUsers() {
             try {
-                const response = await fetch(`${USER_API_BASE}`);
+                const response = await fetch(`${API_BASE}?action=list_users`);
                 const data = await response.json();
 
                 if (!data.success) {
@@ -1043,8 +1073,7 @@
                             <th>Username</th>
                             <th>Role</th>
                             <th>Created</th>
-                            <th>Last Login</th>
-                            <th>Last IP</th>
+                            <th>Must Change Password</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1052,10 +1081,14 @@
                         ${users.map(user => `
                             <tr>
                                 <td><strong>${escapeHtml(user.username)}</strong></td>
-                                <td><span class="badge ${user.role === 'admin' ? 'badge-success' : 'badge-info'}">${user.role.toUpperCase()}</span></td>
-                                <td>${user.created !== 'Unknown' ? new Date(user.created).toLocaleString() : 'Unknown'}</td>
-                                <td>${user.last_login !== 'Never' ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
-                                <td>${escapeHtml(user.last_login_ip)}</td>
+                                <td>
+                                    <select class="role-select" data-username="${escapeHtml(user.username)}" data-current-role="${user.role}" onchange="handleRoleChange(event)">
+                                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                    </select>
+                                </td>
+                                <td>${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</td>
+                                <td>${user.must_change_password ? 'Yes' : 'No'}</td>
                                 <td>
                                     <button class="btn btn-secondary btn-small" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
                                     <button class="btn btn-warning btn-small" onclick="logoutUser('${escapeHtml(user.username)}')">Logout User</button>
@@ -1068,6 +1101,52 @@
             `;
 
             container.innerHTML = userTable;
+        }
+
+        async function handleRoleChange(event) {
+            const select = event.target;
+            const username = select.dataset.username;
+            const oldRole = select.dataset.currentRole;
+            const newRole = select.value;
+            
+            // Revert selection temporarily
+            select.value = oldRole;
+            
+            if (!confirm(`Change ${username}'s role from ${oldRole} to ${newRole}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'change_role',
+                        username: username,
+                        role: newRole
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`Successfully changed ${username}'s role to ${newRole}`, 'success');
+                    select.dataset.currentRole = newRole;
+                    select.value = newRole;
+                    
+                    // Reload user activity log if visible
+                    const userActivitySection = document.getElementById('userActivitySection');
+                    if (userActivitySection.style.display !== 'none') {
+                        loadUserActivity();
+                    }
+                } else {
+                    showMessage('Failed to change role: ' + escapeHtml(data.error), 'error');
+                    select.value = oldRole;
+                }
+            } catch (error) {
+                showMessage('Error changing role: ' + escapeHtml(error.message), 'error');
+                select.value = oldRole;
+            }
         }
 
         async function createUser() {
