@@ -297,6 +297,84 @@ try:
             'stats': stats,
             'count': len(logs)
         }
+    
+    elif action == 'list_users':
+        # Get list of users
+        try:
+            conn = get_audit_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT username, role, created_at, must_change_password 
+                FROM users 
+                ORDER BY username
+            """)
+            users = []
+            for row in cursor.fetchall():
+                users.append({
+                    'username': row['username'],
+                    'role': row['role'],
+                    'created_at': row['created_at'],
+                    'must_change_password': bool(row['must_change_password'])
+                })
+            conn.close()
+            result = {'success': True, 'users': users}
+        except Exception as e:
+            print(f"Error listing users: {e}", file=sys.stderr)
+            if 'conn' in locals():
+                conn.close()
+            result = {'success': False, 'error': f'Failed to list users: {str(e)}'}
+    
+    elif action == 'change_role':
+        username = post_data.get('username', '')
+        new_role = post_data.get('role', '')
+        
+        if not username or not new_role:
+            result = {'success': False, 'error': 'Missing username or role'}
+        elif new_role not in ['user', 'admin']:
+            result = {'success': False, 'error': 'Invalid role. Must be "admin" or "user"'}
+        elif username == session['username']:
+            result = {'success': False, 'error': 'Cannot change your own role'}
+        else:
+            try:
+                conn = get_audit_connection()
+                cursor = conn.cursor()
+                
+                # Check if user exists and get old role
+                cursor.execute("SELECT role FROM users WHERE username = ?", (username,))
+                user_row = cursor.fetchone()
+                
+                if not user_row:
+                    conn.close()
+                    result = {'success': False, 'error': 'User not found'}
+                else:
+                    old_role = user_row['role']
+                    
+                    # Update role
+                    cursor.execute(
+                        "UPDATE users SET role = ? WHERE username = ?",
+                        (new_role, username)
+                    )
+                    conn.commit()
+                    conn.close()
+                    
+                    # Log the action
+                    log_user_activity(
+                        username=session['username'],
+                        action_type='user_role_changed',
+                        ip_address=client_ip,
+                        success=True,
+                        user_role=session.get('role'),
+                        action_details=f"Changed {username}'s role from {old_role} to {new_role}",
+                        user_agent=user_agent,
+                        session_id=session_id
+                    )
+                    
+                    result = {'success': True, 'message': f'Role changed from {old_role} to {new_role}'}
+            except Exception as e:
+                print(f"Error changing role: {e}", file=sys.stderr)
+                if 'conn' in locals():
+                    conn.close()
+                result = {'success': False, 'error': f'Failed to change role: {str(e)}'}
 
     else:
         result = {'success': False, 'error': 'Unknown action'}
