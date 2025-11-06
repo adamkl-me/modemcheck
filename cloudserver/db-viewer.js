@@ -1,9 +1,9 @@
-console.log("DEBUG: viewer.js file loaded");
+console.log("DEBUG: db-viewer.js file loaded - DATABASE MODE");
 // Global state
 let allChecks = [];
 let currentCheckIndex = 0;
 let charts = {};
-const API_BASE = '/cgi-bin/api.py';
+const API_BASE = '/cgi-bin/db-api.py';
 
 // Check authentication before initializing
 async function checkAuth() {
@@ -20,7 +20,7 @@ async function checkAuth() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("DEBUG: Auth check failed with status", response.status, errorText);
-            window.location.href = '/login.html';
+            window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
             return false;
         }
 
@@ -29,7 +29,7 @@ async function checkAuth() {
 
         if (!data.authenticated) {
             console.log("DEBUG: User not authenticated, redirecting to login");
-            window.location.href = '/login.html';
+            window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
             return false;
         }
 
@@ -48,7 +48,7 @@ async function checkAuth() {
     } catch (error) {
         console.error('DEBUG: Auth check exception:', error);
         console.error('DEBUG: Error details:', error.message, error.stack);
-        window.location.href = '/login.html';
+        window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
         return false;
     }
 }
@@ -128,13 +128,14 @@ async function logout() {
         
         await fetch('/cgi-bin/auth.py', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         });
         
-        window.location.href = '/login.html';
+        window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
     } catch (error) {
         console.error('Logout failed:', error);
-        window.location.href = '/login.html';
+        window.location.href = '/login.html?return=' + encodeURIComponent(window.location.pathname);
     }
 }
 
@@ -149,9 +150,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Setup logout button
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
-    // Set default date range to last 14 days
-    setDefaultDateRange();
-
+    // Don't set default dates - let user choose or load all data
+    
     loadModemList();
 });
 
@@ -202,24 +202,108 @@ async function loadModemList() {
             return;
         }
 
-        const select = document.getElementById('modemSelect');
-        console.log("DEBUG: Select element found:", select);
-        select.innerHTML = '<option value="">-- Select a modem --</option>';
-        console.log("DEBUG: Default option set");
+        const dropdown = document.getElementById('modemDropdown');
+        const searchInput = document.getElementById('modemSearchInput');
+        const hiddenSelect = document.getElementById('modemSelect');
+        
+        console.log("DEBUG: Dropdown element found:", dropdown);
+        dropdown.innerHTML = '';
+        console.log("DEBUG: Dropdown cleared");
+
+        // Store modems for filtering
+        window.allModems = data.modems;
 
         data.modems.forEach(modem => {
-            const option = document.createElement('option');
-            option.value = modem.id;
+            const option = document.createElement('div');
+            option.className = 'searchable-option';
+            option.dataset.value = modem.id;
             option.textContent = `${modem.type} - ${modem.mac}`;
-            select.appendChild(option);
+            option.addEventListener('click', () => selectModem(modem.id, `${modem.type} - ${modem.mac}`));
+            dropdown.appendChild(option);
         });
 
         console.log("DEBUG: Successfully loaded", data.modems.length, "modems");
+        
+        // Setup searchable dropdown event listeners
+        setupSearchableDropdown();
     } catch (error) {
         console.error('DEBUG: Error loading modems:', error);
         console.error('DEBUG: Error details:', error.message, error.stack);
         showStatus(`Error loading modem list: ${error.message}`, 'error');
     }
+}
+
+// Setup searchable dropdown functionality
+function setupSearchableDropdown() {
+    const searchInput = document.getElementById('modemSearchInput');
+    const dropdown = document.getElementById('modemDropdown');
+    
+    // Show dropdown when clicking on input
+    searchInput.addEventListener('click', () => {
+        dropdown.classList.add('show');
+        searchInput.removeAttribute('readonly');
+        searchInput.focus();
+        searchInput.select();
+    });
+    
+    // Filter options as user types
+    searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        const options = dropdown.querySelectorAll('.searchable-option');
+        
+        options.forEach(option => {
+            const text = option.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                option.classList.remove('hidden');
+            } else {
+                option.classList.add('hidden');
+            }
+        });
+        
+        dropdown.classList.add('show');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+            // Reset to selected value if user clicked away
+            const hiddenSelect = document.getElementById('modemSelect');
+            if (hiddenSelect.value) {
+                const selectedOption = dropdown.querySelector(`[data-value="${hiddenSelect.value}"]`);
+                if (selectedOption) {
+                    searchInput.value = selectedOption.textContent;
+                }
+            } else {
+                searchInput.value = '';
+                searchInput.placeholder = '-- Select a modem --';
+            }
+            searchInput.setAttribute('readonly', 'readonly');
+        }
+    });
+}
+
+// Select a modem from the dropdown
+function selectModem(modemId, modemText) {
+    const searchInput = document.getElementById('modemSearchInput');
+    const dropdown = document.getElementById('modemDropdown');
+    const hiddenSelect = document.getElementById('modemSelect');
+    
+    searchInput.value = modemText;
+    hiddenSelect.value = modemId;
+    dropdown.classList.remove('show');
+    searchInput.setAttribute('readonly', 'readonly');
+    
+    // Update selected styling
+    dropdown.querySelectorAll('.searchable-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    const selectedOption = dropdown.querySelector(`[data-value="${modemId}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+    }
+    
+    onModemChanged();
 }
 
 function onModemChanged() {
@@ -248,40 +332,30 @@ async function loadData() {
     document.getElementById('loadBtn').disabled = true;
     
     try {
-        // Get list of files
-        let url = `${API_BASE}?action=list_files&modem_id=${encodeURIComponent(modemId)}`;
+        // Use new get_all_checks endpoint for single request with all data
+        let url = `${API_BASE}?action=get_all_checks&modem_id=${encodeURIComponent(modemId)}`;
         if (startDate) url += `&start_date=${startDate}`;
         if (endDate) url += `&end_date=${endDate}`;
+        
+        showStatus('Loading data...', 'info');
         
         const response = await fetch(url, {
             credentials: 'same-origin'
         });
         console.log("DEBUG: Fetch completed, status:", response.status);
         const data = await response.json();
-        console.log("DEBUG: JSON parsed, modems:", data.modems);
+        console.log("DEBUG: JSON parsed, success:", data.success, "checks:", data.checks?.length);
         
-        if (data.files.length === 0) {
+        if (!data.success || !data.checks || data.checks.length === 0) {
             showStatus('No data found for the selected criteria', 'error');
             document.getElementById('loadBtn').disabled = false;
             return;
         }
         
-        showStatus(`Loading ${data.files.length} check(s)...`, 'info');
+        showStatus(`Loaded ${data.checks.length} check(s)`, 'success');
         
-        // Load all files
-        allChecks = [];
-        for (const file of data.files) {
-            const fileResponse = await fetch(
-                `${API_BASE}?action=get_file&modem_id=${encodeURIComponent(modemId)}&filename=${encodeURIComponent(file.filename)}`,
-                {
-                    credentials: 'same-origin'
-                }
-            );
-            const fileData = await fileResponse.json();
-            if (fileData.success) {
-                allChecks.push(fileData.data);
-            }
-        }
+        // All data retrieved in single request
+        allChecks = data.checks;
         
         if (allChecks.length === 0) {
             showStatus('Failed to load data', 'error');

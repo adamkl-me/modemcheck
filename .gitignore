@@ -1,3 +1,12 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+
 # Test data and logs
 ModemCheck-DataFiles/
 Modem-DataFiles/
@@ -11,6 +20,8 @@ modem-check
 modem-check-*
 *.exe
 dist/
+*.out
+coverage.out
 
 # Configuration files (may contain passwords/API keys)
 config.json

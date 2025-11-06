@@ -1,0 +1,41 @@
+services:
+  modemcheck-cloud-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: modemcheck-cloud-test
+    ports:
+      - "22558:22557"  # Upload API (different port to avoid conflict)
+      - "23892:23890"  # Viewer (different port)
+      - "23893:23891"  # Admin (different port)
+    volumes:
+      # Use test-specific volumes
+      - ./test-data/datafiles:/modemcheck-cloud/datafiles
+      - ./test-data/data:/modemcheck-cloud/data
+      - ./test-data/config:/modemcheck-cloud/config
+      # Mount CGI scripts for testing
+      - ./cgi-bin:/modemcheck-cloud/cgi-bin:ro
+      # Mount test scripts
+      - ../tests:/modemcheck-cloud/tests:ro
+      # Use test-specific nginx config with relaxed rate limits
+      - ./nginx.test.conf:/etc/nginx/http.d/modemcheck.conf:ro
+    environment:
+      - TEST_MODE=true
+      - PYTHONPATH=/modemcheck-cloud/cgi-bin
+    networks:
+      - modemcheck-test
+    restart: "no"  # Don't restart automatically in test mode
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:22557/"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  modemcheck-test:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.26.0.0/16

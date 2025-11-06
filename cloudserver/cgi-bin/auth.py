@@ -11,6 +11,15 @@ from datetime import datetime, timedelta
 
 cgitb.enable()
 
+# Import audit logging
+sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+try:
+    from audit_schema import log_user_activity
+except ImportError:
+    # Fallback if audit module not available
+    def log_user_activity(*args, **kwargs):
+        pass
+
 USER_DB_PATH = '/modemcheck-cloud/config/users.json'
 SESSION_DIR = '/modemcheck-cloud/config/sessions'
 
@@ -61,7 +70,7 @@ def create_session(username, role):
         'username': username,
         'role': role,
         'created': datetime.now().isoformat(),
-        'expires': (datetime.now() + timedelta(days=7)).isoformat()
+        'expires': (datetime.now() + timedelta(hours=12)).isoformat()
     }
     session_file = os.path.join(SESSION_DIR, session_id + '.json')
     with open(session_file, 'w') as f:
@@ -95,6 +104,25 @@ def delete_session(session_id):
     if os.path.exists(session_file):
         os.remove(session_file)
 
+def delete_user_sessions(username):
+    """Delete all sessions for a specific user"""
+    if not os.path.exists(SESSION_DIR):
+        return 0
+    
+    deleted_count = 0
+    for filename in os.listdir(SESSION_DIR):
+        if filename.endswith('.json'):
+            session_file = os.path.join(SESSION_DIR, filename)
+            try:
+                with open(session_file, 'r') as f:
+                    session_data = json.load(f)
+                if session_data.get('username') == username:
+                    os.remove(session_file)
+                    deleted_count += 1
+            except (IOError, json.JSONDecodeError, OSError):
+                pass  # Skip files that can't be read or deleted
+    return deleted_count
+
 def get_cookie(name):
     """Get cookie value from environment"""
     cookie_string = os.environ.get('HTTP_COOKIE', '')
@@ -124,32 +152,64 @@ def main():
                 print(json.dumps({'success': False, 'error': 'Username and password required'}))
                 return
             
+            # Get client info for logging
+            client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
+                       os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
+                       os.environ.get('REMOTE_ADDR', 'unknown')
+            user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
+            
             users = load_users()
             if username not in users:
+                # Log failed login attempt
+                log_user_activity(
+                    username=username,
+                    action_type='login',
+                    ip_address=client_ip,
+                    success=False,
+                    failure_reason='User not found',
+                    user_agent=user_agent
+                )
                 print()
                 print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
                 return
             
             user = users[username]
             if not verify_password(password, user['password']):
+                # Log failed login attempt
+                log_user_activity(
+                    username=username,
+                    action_type='login',
+                    ip_address=client_ip,
+                    success=False,
+                    failure_reason='Invalid password',
+                    user_role=user.get('role'),
+                    user_agent=user_agent
+                )
                 print()
                 print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
                 return
             
             # Update last login info
             user['last_login'] = datetime.now().isoformat()
-            # Get real IP from proxy headers (Cloudflare, nginx proxy)
-            client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
-                       os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
-                       os.environ.get('REMOTE_ADDR', 'unknown')
             user['last_login_ip'] = client_ip
             save_users(users)
             
             # Create session
             session_id = create_session(username, user['role'])
             
-            # Set cookie (7 days)
-            print(f"Set-Cookie: modemcheck_session={session_id}; Path=/; Max-Age=604800; HttpOnly; SameSite=Strict")
+            # Log successful login
+            log_user_activity(
+                username=username,
+                action_type='login',
+                ip_address=client_ip,
+                success=True,
+                user_role=user.get('role'),
+                user_agent=user_agent,
+                session_id=session_id
+            )
+            
+            # Set cookie (12 hours)
+            print(f"Set-Cookie: modemcheck_session={session_id}; Path=/; Max-Age=43200; HttpOnly; SameSite=Strict")
             print()
             print(json.dumps({
                 'success': True,
@@ -162,6 +222,11 @@ def main():
             # Allow user to change their own password
             session_id = get_cookie('modemcheck_session')
             session = verify_session(session_id)
+            
+            client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
+                       os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
+                       os.environ.get('REMOTE_ADDR', 'unknown')
+            user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
             
             if not session:
                 print()
@@ -181,6 +246,17 @@ def main():
                 users[session['username']]['must_change_password'] = False
                 save_users(users)
                 
+                # Log password change
+                log_user_activity(
+                    username=session['username'],
+                    action_type='change_password',
+                    ip_address=client_ip,
+                    success=True,
+                    user_role=session.get('role'),
+                    user_agent=user_agent,
+                    session_id=session_id
+                )
+                
                 print()
                 print(json.dumps({'success': True, 'message': 'Password changed successfully'}))
             else:
@@ -189,6 +265,25 @@ def main():
         
         elif action == 'logout':
             session_id = get_cookie('modemcheck_session')
+            session = verify_session(session_id)
+            
+            client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
+                       os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
+                       os.environ.get('REMOTE_ADDR', 'unknown')
+            user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
+            
+            # Log logout if we have a valid session
+            if session:
+                log_user_activity(
+                    username=session['username'],
+                    action_type='logout',
+                    ip_address=client_ip,
+                    success=True,
+                    user_role=session.get('role'),
+                    user_agent=user_agent,
+                    session_id=session_id
+                )
+            
             delete_session(session_id)
             
             # Clear cookie
