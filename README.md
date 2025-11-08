@@ -1,4 +1,4 @@
-# Modem-Check v4.1.2
+# Modem-Check v4.5.0
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with zero external dependencies, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,51 +27,36 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * Configurable bandwidth-limited iPerf3 speed tests
 
-## What's New in v4.1.2 (Cross-Platform Improvements)
-
-### Cross-Platform Enhancements
-* **Windows Ping Support**: Fixed ping tests to work correctly on Windows (uses `-n` flag instead of `-c`)
-* **Real IP Tracking**: Admin dashboard now shows actual client IP addresses through Cloudflare tunnels
-* **Enhanced IP Detection**: Extracts real IPs from `CF-Connecting-IP` and `X-Forwarded-For` headers
-
-### Previous v4.1.1 Updates (Security Hardening)
-
-#### 🔒 Critical Security Fixes
-* **Path Traversal Protection**: Strict input validation prevents malicious file path attacks
-* **File Size Limits**: 10MB upload limit prevents denial-of-service attacks
-* **Input Validation**: All user-supplied parameters validated with regex patterns
-* **Path Resolution Checks**: Ensures file operations stay within allowed directories
-
-#### Authentication Enhancements
-* **Forced Password Changes**: All new users must change password on first login
-* **Admin Password Resets**: Trigger forced password change for security
-* **Separate Login Pages**: Distinct login flows for viewer and admin dashboards
-* **Enhanced Access Control**: Role-based validation on all endpoints
-
-
-
-## What's New in v4.1
+## What's New in v4.5.0
 
 ### Core Improvements
+* **Auto-detect config.json**: Automatically loads `config.json` from executable directory if present
+* **Role Management**: Enhanced admin dashboard with role assignment (admin/basic)
+* **Protected Admin Account**: Admin account cannot be deleted or downgraded
+* **Database Migration**: User and API key storage migrated from JSON files to SQLite
+* **BER Calculation Fixes**: Improved Bit Error Rate calculations for accuracy
+* **Time-Based Charts**: Enhanced visualization with time-series data
+
+### Previous Updates
+
+#### v4.4.x - Performance & Quality
+* **Code Quality**: Linter warnings fixed, improved performance optimizations
+* **Timestamp Standardization**: Consistent timestamp handling across all components
+* **Test Infrastructure**: Updated E2E tests for SQLite migration
+
+#### v4.2.x - Security & Storage
+* **SQLite Migration**: All storage moved to SQLite for better performance and reliability
+* **XSS Protection**: Enhanced security headers and input sanitization
+* **Timing-Safe Comparisons**: API key validation uses constant-time comparison
+* **File Locking**: Prevents race conditions in concurrent operations
+
+#### v4.1.x - Cross-Platform & Security
+* **Windows Ping Support**: Fixed ping tests on Windows (uses `-n` flag)
+* **Real IP Tracking**: Admin dashboard shows actual client IPs through Cloudflare tunnels
+* **Path Traversal Protection**: Strict validation prevents malicious file path attacks
+* **Forced Password Changes**: New users must change password on first login
 * **Zero External Dependencies**: Uses only Go standard library
-* **HTTPS API Architecture**: Cloud uploads use simple HTTPS POST instead of SFTP
-* **API Key Authentication**: Secure token-based authentication (32-byte random tokens)
-* **Admin Dashboard**: Web interface for API key and user management
-* **Cleaner Naming**: Xfinity modems display as "XB8" instead of "Xfinity-XB8"
-* **Simplified Directories**: `DM1000-AABBCC112233` instead of `ModemCheck-DM1000-AABBCC112233`
-
-### Cloud Features
 * **Upload Queue**: Failed uploads automatically retry on next run
-* **Smart Protocol Detection**: HTTP for localhost, HTTPS for external domains
-* **Queue Cleanup**: Automatic removal of old entries (14 days, 100 max)
-* **Session-Based Authentication**: Secure viewer access with 7-day session expiry
-* **User Management**: Admin can create basic and admin users
-* **14-Day Default Date Range**: Viewer pre-populates last 14 days automatically
-
-### Monitoring Enhancements
-* **Concurrent Ping Tests**: Tests google.ca and one.one.one.one (25 pings each)
-* **Enhanced Logging**: Better error messages and debugging information
-* **Log Cleanup**: Automatic purge of entries older than 30 days
 
 
 
@@ -82,7 +67,7 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 * (Optional) `iperf3` if you want to run speed tests
 
 ### Build Time (only if compiling from source)
-* Go 1.19 or later (download from https://go.dev)
+* Go 1.24 or later (download from https://go.dev)
 
 ## Installation
 
@@ -440,13 +425,13 @@ crontab -e
 
 ```
 modemcheck/
-├── modem-check.go              # Main application (1710 lines)
+├── modem-check.go              # Main application (1945 lines)
 ├── go.mod                      # Go module definition
 ├── Makefile                    # Build automation
 ├── README.md                   # This file
-├── SECURITY_REVIEW.md          # Security audit documentation
+├── CLAUDE.md                   # Developer documentation
 ├── config.json.example         # Example configuration
-├── checkviewer.html            # Local web viewer (1777 lines)
+├── checkviewer.html            # Local web viewer (1818 lines)
 ├── dist/                       # Pre-compiled binaries (7 platforms)
 ├── ModemCheck-Results/         # Local data storage
 │   └── [MODEL]-[MAC]/          # Per-modem directories
@@ -456,17 +441,19 @@ modemcheck/
     ├── Dockerfile
     ├── docker-compose.yml
     ├── nginx.conf
-    ├── index.html              # Viewer dashboard
-    ├── admin.html              # Admin dashboard
+    ├── admin.html              # Admin dashboard (1716 lines)
     ├── admin-login.html        # Admin login page
     ├── login.html              # Viewer login page
-    ├── viewer.js               # Frontend JavaScript (1187 lines)
+    ├── db-viewer.html          # Database explorer (dev tool)
+    ├── db-viewer.js            # DB explorer frontend (1726 lines)
     └── cgi-bin/                # Python CGI backend
-        ├── api.py              # Viewer data API
         ├── upload.py           # File upload handler
-        ├── auth.py             # Authentication
-        ├── admin-api.py        # API key management
-        └── user-management.py  # User CRUD operations
+        ├── db-api.py           # Database API (session auth)
+        ├── auth.py             # Authentication library
+        ├── admin-api.py        # Admin operations
+        ├── user-management.py  # User CRUD operations
+        ├── db_schema.py        # Main database schema
+        └── audit_schema.py     # Audit logging schema
 ```
 
 ## Contributing
@@ -483,6 +470,6 @@ This project is provided as-is for personal and educational use.
 ## Support
 
 For issues, questions, or feature requests:
-- Check `SECURITY_REVIEW.md` for security details
+- Check `CLAUDE.md` for comprehensive developer documentation
 - See `cloudserver/README.md` for deployment guidance
 - Review example configs in `ModemCheck-ConfigFiles/`
