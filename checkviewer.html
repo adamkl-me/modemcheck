@@ -426,7 +426,7 @@
 
             <div class="view-switcher">
                 <button class="view-btn active" onclick="showSingleView()">📊 Single View</button>
-                <button class="view-btn" onclick="showTrendsView()">📈 Trends</button>
+                <button class="view-btn" onclick="showTrendsView()">📈 Trend View</button>
             </div>
 
             <div class="timeline-nav" id="timelineNav">
@@ -726,13 +726,10 @@
                                 
                                 currentCheckIndex = allChecks.length - 1; // Start with most recent
                                 updateTimelineNav();
-                                
-                                if (allChecks.length > 1) {
-                                    showTrendsView();
-                                } else {
-                                    showSingleView();
-                                }
-                                
+
+                                // Always show Single View after loading data
+                                showSingleView();
+
                                 displayCurrentCheck();
                             }
                         } catch (e) {
@@ -1363,7 +1360,8 @@
                                     display: true,
                                     text: 'Latency (ms)'
                                 },
-                                beginAtZero: true
+                                beginAtZero: true,
+                                suggestedMax: 50  // Auto-adjust but ensure reasonable minimum scale
                             },
                             y1: {
                                 type: 'linear',
@@ -1468,7 +1466,9 @@
                                 title: {
                                     display: true,
                                     text: 'Power (dBmV)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             }
                         },
                         interaction: {
@@ -1558,7 +1558,9 @@
                                 title: {
                                     display: true,
                                     text: 'SNR (dB)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             }
                         },
                         interaction: {
@@ -1787,7 +1789,9 @@
                                 title: {
                                     display: true,
                                     text: 'Power (dBmV)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             },
                             y1: {
                                 type: 'linear',
@@ -1797,6 +1801,7 @@
                                     display: true,
                                     text: 'Channel Count'
                                 },
+                                beginAtZero: true,
                                 grid: {
                                     drawOnChartArea: false,
                                 },

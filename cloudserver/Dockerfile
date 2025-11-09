@@ -15,8 +15,7 @@ RUN cp /usr/share/zoneinfo/America/Toronto /etc/localtime && \
     echo "America/Toronto" > /etc/timezone
 
 # Create directory structure
-RUN mkdir -p /modemcheck-cloud/datafiles && \
-    mkdir -p /modemcheck-cloud/cgi-bin && \
+RUN mkdir -p /modemcheck-cloud/cgi-bin && \
     mkdir -p /modemcheck-cloud/config && \
     mkdir -p /modemcheck-cloud/data && \
     mkdir -p /run/fcgiwrap && \
@@ -24,12 +23,10 @@ RUN mkdir -p /modemcheck-cloud/datafiles && \
 
 # Set up permissions - make config and data writable by nginx user
 RUN chmod 755 /modemcheck-cloud && \
-    chmod 777 /modemcheck-cloud/datafiles && \
     chmod 777 /modemcheck-cloud/config && \
     chmod 777 /modemcheck-cloud/data && \
     chmod 755 /modemcheck-cloud/cgi-bin && \
     chown -R nginx:nginx /modemcheck-cloud/config && \
-    chown -R nginx:nginx /modemcheck-cloud/datafiles && \
     chown -R nginx:nginx /modemcheck-cloud/data
 
 # Copy application files
@@ -45,19 +42,17 @@ COPY cgi-bin/upload.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/admin-api.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/auth.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/user-management.py /modemcheck-cloud/cgi-bin/
-COPY import-daemon.py /modemcheck-cloud/
 COPY nginx.conf /etc/nginx/http.d/modemcheck.conf
 
 # Remove default nginx config that listens on port 80
 RUN rm -f /etc/nginx/http.d/default.conf
 
-# Make CGI scripts and daemons executable
+# Make CGI scripts executable
 RUN chmod +x /modemcheck-cloud/cgi-bin/db-api.py && \
     chmod +x /modemcheck-cloud/cgi-bin/upload.py && \
     chmod +x /modemcheck-cloud/cgi-bin/admin-api.py && \
     chmod +x /modemcheck-cloud/cgi-bin/auth.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/user-management.py && \
-    chmod +x /modemcheck-cloud/import-daemon.py
+    chmod +x /modemcheck-cloud/cgi-bin/user-management.py
 
 # Create startup script
 COPY start.sh /start.sh

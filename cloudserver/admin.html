@@ -68,20 +68,35 @@
 
         input[type="text"],
         input[type="number"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="date"],
+        select {
             width: 100%;
             padding: 10px;
             border: 2px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
             transition: border-color 0.3s;
+            background-color: white;
         }
 
         input[type="text"]:focus,
         input[type="number"]:focus,
-        input[type="password"]:focus {
+        input[type="password"]:focus,
+        input[type="date"]:focus,
+        select:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        input[type="text"]:disabled,
+        input[type="number"]:disabled,
+        input[type="password"]:disabled,
+        input[type="date"]:disabled,
+        select:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
         }
 
         .btn {
@@ -397,15 +412,15 @@
 
         <!-- Tab Navigation -->
         <div class="tab-navigation">
-            <button id="apiKeysTab" class="tab-btn active" onclick="showTab('apiKeys')">API Keys</button>
+            <button id="configGenTab" class="tab-btn active" onclick="showTab('configGen')">Config Generator</button>
+            <button id="apiKeysTab" class="tab-btn" onclick="showTab('apiKeys')">API Keys</button>
+            <button id="clientLogsTab" class="tab-btn" onclick="showTab('clientLogs')">Client Submissions</button>
             <button id="usersTab" class="tab-btn" onclick="showTab('users')">User Management</button>
             <button id="userActivityTab" class="tab-btn" onclick="showTab('userActivity')">User Activity</button>
-            <button id="clientLogsTab" class="tab-btn" onclick="showTab('clientLogs')">Client Submissions</button>
-            <button id="configGenTab" class="tab-btn" onclick="showTab('configGen')">Config Generator</button>
         </div>
 
         <!-- API Keys Section -->
-        <div id="apiKeysSection" class="tab-content">
+        <div id="apiKeysSection" class="tab-content" style="display: none;">
             <div class="action-section">
                 <h2>Create New API Key</h2>
             <div class="form-group">
@@ -464,11 +479,11 @@
                         <div style="font-size: 0.9em; opacity: 0.9;">Total Actions</div>
                         <div id="totalActions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Failed Actions</div>
                         <div id="failedActions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique Users</div>
                         <div id="uniqueUsers" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
@@ -522,19 +537,19 @@
                 <p class="subtitle">Monitor all check data submissions from client devices</p>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Total Submissions</div>
                         <div id="totalSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Failed Submissions</div>
                         <div id="failedSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique Modems</div>
                         <div id="uniqueModems" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; padding: 20px; border-radius: 10px;">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique API Keys</div>
                         <div id="uniqueApiKeys" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
@@ -571,7 +586,7 @@
         </div>
 
         <!-- Config Generator Section -->
-        <div id="configGenSection" class="tab-content" style="display: none;">
+        <div id="configGenSection" class="tab-content">
             <div class="action-section">
                 <h2>🔧 ModemCheck Configuration Generator</h2>
                 <p class="subtitle">Create a config.json file for the ModemCheck program</p>
@@ -604,40 +619,18 @@
                             <label>
                                 <input type="checkbox" id="cfgNoLogs"> Disable Logs
                             </label>
-                            <small style="color: #6b7280; display: block; margin-left: 25px;">Don't create log files</small>
+                            <small style="color: #6b7280; display: block; margin-left: 25px;">Prevent local log file creation</small>
                         </div>
 
-                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">iPerf3 Speed Test Settings</h3>
-                        
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Speed Test Settings</h3>
+
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="cfgIperf3Enabled"> Enable iPerf3 Speed Tests
+                                <input type="checkbox" id="cfgSpeedTestEnabled" checked> Enable Speed Tests
                             </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cfgIperf3Server">iPerf3 Server</label>
-                            <input type="text" id="cfgIperf3Server" value="speedtest.mtl2.ca.leaseweb.net" placeholder="Server address">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cfgIperf3Port">iPerf3 Port (or Port Range)</label>
-                            <input type="text" id="cfgIperf3Port" value="5201-5210" placeholder="5201 or 5201-5210">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cfgIperf3Streams">Parallel Streams</label>
-                            <input type="number" id="cfgIperf3Streams" value="4" min="1" max="32">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cfgIperf3UploadLimit">Upload Limit (Mbps)</label>
-                            <input type="number" id="cfgIperf3UploadLimit" value="150" min="1">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cfgIperf3DownloadLimit">Download Limit (Mbps)</label>
-                            <input type="number" id="cfgIperf3DownloadLimit" value="1500" min="1">
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Uses public Ookla speed test servers. Enabled by default.
+                            </small>
                         </div>
                     </div>
 
@@ -647,28 +640,33 @@
                         
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="cfgEnableCloud"> Enable Cloud Upload
+                                <input type="checkbox" id="cfgEnableCloud" onchange="toggleCloudFields()"> Enable Cloud Upload
                             </label>
                             <small style="color: #6b7280; display: block; margin-left: 25px;">Upload check results to cloud server</small>
                         </div>
 
                         <div class="form-group">
                             <label for="cfgCloudHost">Cloud Host</label>
-                            <input type="text" id="cfgCloudHost" placeholder="e.g., modemcheck.example.com">
+                            <input type="text" id="cfgCloudHost" placeholder="e.g., modemcheck.example.com" disabled>
                         </div>
 
                         <div class="form-group">
                             <label for="cfgCloudPort">Cloud Port</label>
-                            <input type="text" id="cfgCloudPort" value="443" placeholder="443">
+                            <input type="text" id="cfgCloudPort" value="443" placeholder="443" disabled>
                         </div>
 
                         <div class="form-group">
-                            <label for="cfgCloudAPIKey">Cloud API Key</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="cfgCloudAPIKey" placeholder="Paste API key or generate new" style="flex: 1;">
-                                <button class="btn btn-secondary" onclick="selectExistingAPIKey()" style="white-space: nowrap;">Select Existing</button>
+                            <label>Cloud API Key</label>
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <button class="btn btn-primary" id="generateKeyBtn" onclick="generateNewAPIKey()" style="flex: 1;" disabled>Generate Key</button>
+                                <button class="btn btn-secondary" id="selectKeyBtn" onclick="selectExistingAPIKey()" style="flex: 1;" disabled>Select Existing</button>
                             </div>
-                            <small style="color: #6b7280;">API key for authentication with cloud server</small>
+                            <div id="selectedKeyDisplay" style="display: none; background: #f3f4f6; padding: 10px; border-radius: 5px; border: 2px solid #e0e0e0;">
+                                <small style="color: #6b7280;">Selected Key:</small>
+                                <div id="selectedKeyName" style="font-weight: 500; color: #333; margin-top: 5px;"></div>
+                            </div>
+                            <input type="hidden" id="cfgCloudAPIKey">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">Generate a new API key or select an existing one</small>
                         </div>
 
                         <h3 style="margin: 25px 0 15px 0; color: #667eea;">Preview & Download</h3>
@@ -910,10 +908,13 @@
             // Check authentication first
             const isAuthenticated = await checkAuth();
             if (!isAuthenticated) return;
-            
+
             // Setup logout button
             document.getElementById('logoutBtn').addEventListener('click', logout);
-            
+
+            // Show Config Generator tab by default
+            showTab('configGen');
+
             loadKeys();
         });
 
@@ -1601,17 +1602,105 @@
             document.getElementById('clientEndDate').value = '';
             loadClientLogs();
         }
+
         // Config Generator Functions
+        function toggleCloudFields() {
+            const enabled = document.getElementById('cfgEnableCloud').checked;
+            document.getElementById('cfgCloudHost').disabled = !enabled;
+            document.getElementById('cfgCloudPort').disabled = !enabled;
+            document.getElementById('generateKeyBtn').disabled = !enabled;
+            document.getElementById('selectKeyBtn').disabled = !enabled;
+            updateConfigPreview();
+        }
+
+        function generateNewAPIKey() {
+            // Create modal for generating new API key
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Generate New API Key</h2>
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 15px;">Enter a descriptive name for this API key:</p>
+                        <div class="form-group">
+                            <label for="newKeyName">Key Name</label>
+                            <input type="text" id="newKeyName" placeholder="e.g., Home Router, Office Modem" autofocus>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeGenerateKeyModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="createAPIKeyForConfig()">Create API Key</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            window.currentGenerateKeyModal = modal;
+
+            // Focus the input field
+            setTimeout(() => {
+                document.getElementById('newKeyName')?.focus();
+            }, 100);
+        }
+
+        function closeGenerateKeyModal() {
+            if (window.currentGenerateKeyModal) {
+                document.body.removeChild(window.currentGenerateKeyModal);
+                window.currentGenerateKeyModal = null;
+            }
+        }
+
+        async function createAPIKeyForConfig() {
+            const nameInput = document.getElementById('newKeyName');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create', name: name })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Set the API key in the hidden field
+                    document.getElementById('cfgCloudAPIKey').value = data.key;
+
+                    // Show the key name in the display field
+                    document.getElementById('selectedKeyName').textContent = name;
+                    document.getElementById('selectedKeyDisplay').style.display = 'block';
+
+                    // Update preview
+                    updateConfigPreview();
+
+                    // Close modal
+                    closeGenerateKeyModal();
+
+                    showMessage('API key generated successfully!', 'success');
+
+                    // Reload API keys list in the API Keys tab
+                    loadKeys();
+                } else {
+                    showMessage('Error: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error creating API key: ' + error.message, 'error');
+            }
+        }
+
+        //
         function updateConfigPreview() {
             const config = {
                 ModemAddress: document.getElementById('cfgModemAddress').value || "autodetect",
                 IgnitePassword: document.getElementById('cfgIgnitePassword').value || "password",
-                Iperf3Enabled: document.getElementById('cfgIperf3Enabled').checked,
-                Iperf3Server: document.getElementById('cfgIperf3Server').value || "speedtest.mtl2.ca.leaseweb.net",
-                Iperf3Port: document.getElementById('cfgIperf3Port').value || "5201-5210",
-                Iperf3Streams: parseInt(document.getElementById('cfgIperf3Streams').value) || 4,
-                Iperf3UploadLimit: parseInt(document.getElementById('cfgIperf3UploadLimit').value) || 150,
-                Iperf3DownloadLimit: parseInt(document.getElementById('cfgIperf3DownloadLimit').value) || 1500,
+                SpeedTestEnabled: document.getElementById('cfgSpeedTestEnabled').checked,
                 Silent: document.getElementById('cfgSilent').checked,
                 NoLogs: document.getElementById('cfgNoLogs').checked,
                 EnableCloud: document.getElementById('cfgEnableCloud').checked,
@@ -1651,6 +1740,9 @@
                     return;
                 }
 
+                // Store key data for later use
+                window.availableAPIKeys = data.keys;
+
                 // Create a modal to select API key
                 const modal = document.createElement('div');
                 modal.className = 'modal show';
@@ -1662,7 +1754,7 @@
                         <div>
                             <p style="margin-bottom: 15px;">Choose an API key to use for cloud upload:</p>
                             <select id="apiKeySelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; margin-bottom: 15px;">
-                                ${data.keys.map(key => `<option value="${key.full_key}">${escapeHtml(key.name)} (${key.key_preview})</option>`).join('')}
+                                ${data.keys.map((key, idx) => `<option value="${idx}">${escapeHtml(key.name)} (${key.key_preview})</option>`).join('')}
                             </select>
                         </div>
                         <div class="modal-footer">
@@ -1687,10 +1779,21 @@
 
         function applySelectedAPIKey() {
             const select = document.getElementById('apiKeySelect');
-            if (select) {
-                document.getElementById('cfgCloudAPIKey').value = select.value;
-                showMessage('API key selected successfully!', 'success');
-                updateConfigPreview();
+            if (select && window.availableAPIKeys) {
+                const selectedIndex = parseInt(select.value);
+                const selectedKey = window.availableAPIKeys[selectedIndex];
+
+                if (selectedKey) {
+                    // Set the API key in the hidden field
+                    document.getElementById('cfgCloudAPIKey').value = selectedKey.full_key;
+
+                    // Show the key name in the display field
+                    document.getElementById('selectedKeyName').textContent = selectedKey.name;
+                    document.getElementById('selectedKeyDisplay').style.display = 'block';
+
+                    showMessage('API key selected successfully!', 'success');
+                    updateConfigPreview();
+                }
             }
             closeAPIKeySelectModal();
         }
@@ -1698,8 +1801,7 @@
         // Auto-update preview when any field changes
         document.addEventListener('DOMContentLoaded', function() {
             const configInputs = [
-                'cfgModemAddress', 'cfgIgnitePassword', 'cfgIperf3Enabled', 'cfgIperf3Server',
-                'cfgIperf3Port', 'cfgIperf3Streams', 'cfgIperf3UploadLimit', 'cfgIperf3DownloadLimit',
+                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled',
                 'cfgSilent', 'cfgNoLogs', 'cfgEnableCloud', 'cfgCloudHost', 'cfgCloudPort', 'cfgCloudAPIKey'
             ];
 

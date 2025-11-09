@@ -6,7 +6,6 @@ import sys
 import hashlib
 import time
 import secrets
-from pathlib import Path
 from datetime import datetime
 
 # Import audit logging and database access
@@ -18,6 +17,14 @@ except ImportError:
         pass
     def get_audit_connection():
         raise ImportError("audit_schema not available")
+
+try:
+    from db_schema import insert_check, init_database
+except ImportError:
+    def insert_check(*args, **kwargs):
+        raise ImportError("db_schema not available")
+    def init_database():
+        raise ImportError("db_schema not available")
 
 def validate_api_key(api_key):
     """Validate if the API key is valid and active (timing-safe comparison)"""
@@ -63,15 +70,15 @@ def validate_api_key(api_key):
     return True, api_keys[found_key]
 
 def handle_upload():
-    """Handle file upload with multipart form data"""
+    """Handle data upload and insert directly into database"""
     start_time = time.time()
-    
+
     # Get client info for logging
     client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
                os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
                os.environ.get('REMOTE_ADDR', 'unknown')
     user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
-    
+
     # Parse multipart form data
     form = cgi.FieldStorage()
 
@@ -120,8 +127,7 @@ def handle_upload():
         print(json.dumps({'success': False, 'error': 'Missing modem_id or filename'}))
         return
 
-    # SECURITY: Validate modem_id and filename to prevent path traversal
-    # Only allow alphanumeric, hyphens, underscores, and dots
+    # SECURITY: Validate modem_id and filename format
     import re
     if not re.match(r'^[a-zA-Z0-9_-]+$', modem_id):
         print("Status: 400 Bad Request")
@@ -154,19 +160,6 @@ def handle_upload():
         print(json.dumps({'success': False, 'error': 'Invalid file data'}))
         return
 
-    # Create directory structure
-    datafiles_dir = Path("/modemcheck-cloud/datafiles")
-    modem_dir = datafiles_dir / modem_id
-
-    try:
-        modem_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        print("Status: 500 Internal Server Error")
-        print("Content-Type: application/json")
-        print()
-        print(json.dumps({'success': False, 'error': f'Failed to create directory: {str(e)}'}))
-        return
-
     # SECURITY: Limit file size to 10MB to prevent DoS
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     file_data = file_item.file.read(MAX_FILE_SIZE + 1)
@@ -178,11 +171,19 @@ def handle_upload():
         print(json.dumps({'success': False, 'error': 'File size exceeds 10MB limit'}))
         return
 
-    # Save file
-    file_path = modem_dir / filename
+    # Parse JSON data (in memory, no disk I/O)
+    modem_type = None
+    modem_mac = None
+    check_time = None
+    json_data = None
 
-    # Check if file already exists
-    if file_path.exists():
+    try:
+        json_data = json.loads(file_data.decode('utf-8'))
+        if 'sysinfo' in json_data:
+            modem_type = json_data['sysinfo'].get('modemtype', 'unknown')
+            modem_mac = json_data['sysinfo'].get('modemmac', 'unknown')
+            check_time = json_data['sysinfo'].get('checktime')
+    except Exception as parse_error:
         log_client_submission(
             ip_address=client_ip,
             api_key_hash=api_key_hash,
@@ -190,38 +191,45 @@ def handle_upload():
             modem_id=modem_id,
             filename=filename,
             success=False,
-            failure_reason='File already exists',
+            failure_reason=f'Invalid JSON: {str(parse_error)}',
             user_agent=user_agent
         )
-        print("Status: 409 Conflict")
+        print("Status: 400 Bad Request")
         print("Content-Type: application/json")
         print()
-        print(json.dumps({'success': False, 'error': 'File already exists'}))
+        print(json.dumps({'success': False, 'error': f'Invalid JSON data: {str(parse_error)}'}))
         return
 
+    # Insert directly into database (single source of truth)
+    db_row_id = None
     try:
-        with open(file_path, 'wb') as f:
-            f.write(file_data)
+        # Use the modem_id/filename format for database record
+        db_filename = f"{modem_id}/{filename}"
+        db_row_id = insert_check(json_data, db_filename)
 
-        # Calculate processing time
-        processing_time_ms = int((time.time() - start_time) * 1000)
-        
-        # Extract info for audit log (parse JSON for metadata only)
-        modem_type = None
-        modem_mac = None
-        check_time = None
-        
-        try:
-            json_data = json.loads(file_data.decode('utf-8'))
-            if 'sysinfo' in json_data:
-                modem_type = json_data['sysinfo'].get('modemtype', 'unknown')
-                modem_mac = json_data['sysinfo'].get('modemmac', 'unknown')
-                check_time = json_data['sysinfo'].get('checktime')
-        except Exception as parse_error:
-            # JSON parsing failed - log with unknown metadata
-            print(f"[WARN] Failed to parse JSON for audit log: {parse_error}", file=sys.stderr)
-        
-        # Log successful submission
+        if db_row_id is None:
+            # insert_check returns None for duplicates
+            log_client_submission(
+                ip_address=client_ip,
+                api_key_hash=api_key_hash,
+                api_key_name=key_name,
+                modem_id=modem_id,
+                modem_type=modem_type,
+                modem_mac=modem_mac,
+                filename=filename,
+                file_size=len(file_data),
+                check_time=check_time,
+                user_agent=user_agent,
+                success=False,
+                failure_reason='Duplicate entry (already in database)'
+            )
+            print("Status: 409 Conflict")
+            print("Content-Type: application/json")
+            print()
+            print(json.dumps({'success': False, 'error': 'Duplicate entry (already in database)'}))
+            return
+
+    except Exception as db_err:
         log_client_submission(
             ip_address=client_ip,
             api_key_hash=api_key_hash,
@@ -233,24 +241,49 @@ def handle_upload():
             file_size=len(file_data),
             check_time=check_time,
             user_agent=user_agent,
-            success=True,
-            processing_time_ms=processing_time_ms
+            success=False,
+            failure_reason=f'Database error: {str(db_err)}'
         )
-
-        # Success response
-        print("Content-Type: application/json")
-        print()
-        print(json.dumps({
-            'success': True,
-            'message': 'File uploaded successfully',
-            'path': f'/datafiles/{modem_id}/{filename}',
-            'size': file_path.stat().st_size
-        }))
-    except Exception as e:
+        print(f"[ERROR] Database insertion failed: {db_err}", file=sys.stderr)
         print("Status: 500 Internal Server Error")
         print("Content-Type: application/json")
         print()
-        print(json.dumps({'success': False, 'error': f'Failed to save file: {str(e)}'}))
+        print(json.dumps({'success': False, 'error': f'Database error: {str(db_err)}'}))
+        return
+
+    # Calculate processing time
+    processing_time_ms = int((time.time() - start_time) * 1000)
+
+    # Log successful submission
+    log_client_submission(
+        ip_address=client_ip,
+        api_key_hash=api_key_hash,
+        api_key_name=key_name,
+        modem_id=modem_id,
+        modem_type=modem_type,
+        modem_mac=modem_mac,
+        filename=filename,
+        file_size=len(file_data),
+        check_time=check_time,
+        user_agent=user_agent,
+        success=True,
+        processing_time_ms=processing_time_ms
+    )
+
+    # Success response
+    response = {
+        'success': True,
+        'message': 'Data uploaded and stored successfully',
+        'database_id': db_row_id,
+        'modem_id': modem_id,
+        'filename': filename,
+        'size': len(file_data),
+        'processing_time_ms': processing_time_ms
+    }
+
+    print("Content-Type: application/json")
+    print()
+    print(json.dumps(response))
 
 # Main execution
 try:

@@ -1,6 +1,6 @@
 # Modem-Check v4.5.0
 
-Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with zero external dependencies, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
+Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
 ## Features
 
@@ -16,8 +16,8 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * TX/Upstream power levels (SC-QAM & OFDMA)
     * Codeword error counts (Corrected/Uncorrected)
     * Event logs (not available on Xfinity modems)
-    * Ping test results (google.ca and one.one.one.one)
-    * iPerf3 speed test results (optional)
+    * Ping test results (google.ca and one.one.one.one) - native Go implementation
+    * Speed test results using public Ookla servers - native Go implementation (enabled by default)
 * **Additional Functionality**:
     * Automatic modem detection across common IP addresses
     * Upload queue with automatic retry for failed cloud uploads
@@ -25,11 +25,14 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Silent mode for automated/scripted execution
     * Clears modem FEC counters after data collection (where supported)
     * Saves timestamped JSON output files for historical tracking
-    * Configurable bandwidth-limited iPerf3 speed tests
+    * No external dependencies - all diagnostics use native Go libraries
 
 ## What's New in v4.5.0
 
 ### Core Improvements
+* **Modular Architecture**: Refactored from monolithic 1,946-line file to clean package structure
+* **Native Speed Tests**: Replaced iperf3 with native Go speedtest library (no external dependencies)
+* **Native Ping**: Uses go-ping library instead of exec.Command("ping")
 * **Auto-detect config.json**: Automatically loads `config.json` from executable directory if present
 * **Role Management**: Enhanced admin dashboard with role assignment (admin/basic)
 * **Protected Admin Account**: Admin account cannot be deleted or downgraded
@@ -63,8 +66,8 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 ## Requirements
 
 ### Runtime
-* **None** - The compiled Go binary is completely self-contained
-* (Optional) `iperf3` if you want to run speed tests
+* **None** - The compiled Go binary is completely self-contained with no external dependencies
+* All diagnostics (ping, speed test) use native Go implementations
 
 ### Build Time (only if compiling from source)
 * Go 1.24 or later (download from https://go.dev)
@@ -99,52 +102,46 @@ go build -ldflags="-s -w" -o modem-check modem-check.go
 ### Command-Line Flags
 
 ```bash
-# Basic usage with autodetect
+# Basic usage with autodetect (speed tests enabled by default)
 ./modem-check
 
 # Specify modem address
 ./modem-check -address 192.168.100.1
 
 # For Xfinity modems with password
-./modem-check -password your_password
+./modem-check -xfinitypassword your_password
 
-# Enable speed tests
-./modem-check -iperf3 -iperf3-server your.server.ip
+# Disable speed tests
+./modem-check -speedtest=false
 
 # Silent mode (no terminal output)
-./modem-check --silent
+./modem-check -silent
 
 # Disable log file creation
-./modem-check --nologs
+./modem-check -nologs
+
+# With cloud upload
+./modem-check -config config.json -enablecloud
 
 # All options
 ./modem-check \
   -address autodetect \
-  -password password \
-  -iperf3 \
-  -iperf3-server your.server.ip \
-  -iperf3-port 5201 \
-  -iperf3-streams 4 \
-  -iperf3-upload-limit 150 \
-  -iperf3-download-limit 1500 \
-  --silent \
-  --nologs
+  -xfinitypassword password \
+  -speedtest=true \
+  -silent \
+  -nologs \
+  -enablecloud
 ```
 
 ### Configuration File
 
-Create a `config.json` file (see `config.json.example` or `ModemCheck-ConfigFiles/` for examples):
+Create a `config.json` file (see `config.json.example` for an example, or use the Admin Dashboard Config Generator):
 
 ```json
 {
   "ModemAddress": "autodetect",
   "IgnitePassword": "password",
-  "Iperf3Enabled": false,
-  "Iperf3Server": "your.iperf3.server",
-  "Iperf3Port": "5201",
-  "Iperf3Streams": 4,
-  "Iperf3UploadLimit": 50,
-  "Iperf3DownloadLimit": 1000,
+  "SpeedTestEnabled": true,
   "Silent": false,
   "NoLogs": false,
   "EnableCloud": true,
@@ -153,6 +150,17 @@ Create a `config.json` file (see `config.json.example` or `ModemCheck-ConfigFile
   "CloudAPIKey": "your-api-key-here"
 }
 ```
+
+**Configuration Options:**
+- `ModemAddress`: IP address or "autodetect" to scan common addresses
+- `IgnitePassword`: Password for Rogers Xfinity/Ignite modems
+- `SpeedTestEnabled`: Enable/disable speed tests using public Ookla servers (default: true)
+- `Silent`: Suppress terminal output (default: false)
+- `NoLogs`: Disable log file creation (default: false)
+- `EnableCloud`: Upload results to cloud server (default: false)
+- `CloudHost`: Cloud server hostname/IP
+- `CloudPort`: Cloud server port (default: 443)
+- `CloudAPIKey`: API key for cloud authentication
 
 Then run:
 ```bash

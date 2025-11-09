@@ -1,0 +1,411 @@
+package scraper
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+	"strings"
+)
+
+// XfinityScraper handles Rogers Xfinity/XB7/XB8 modems
+type XfinityScraper struct {
+	client       *http.Client
+	modemAddress string
+	modemType    string
+	password     string
+	logger       Logger
+}
+
+// NewXfinityScraper creates a new Xfinity scraper
+func NewXfinityScraper(client *http.Client, modemAddress string, password string, logger Logger) *XfinityScraper {
+	return &XfinityScraper{
+		client:       client,
+		modemAddress: modemAddress,
+		modemType:    "Xfinity",
+		password:     password,
+		logger:       logger,
+	}
+}
+
+// Login authenticates with the modem
+func (s *XfinityScraper) Login() error {
+	s.logger.Log("Attempting login to Rogers Xfinity Modem...")
+
+	username := "admin"
+	postData := fmt.Sprintf("username=%s&password=%s&locale=false", username, s.password)
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/check.jst", s.modemAddress),
+		strings.NewReader(postData))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("Referer", fmt.Sprintf("http://%s/", s.modemAddress))
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Login POST request failed: %v", err))
+		return err
+	}
+	resp.Body.Close()
+
+	// Verify login
+	s.logger.Log("Verifying login and detecting model...")
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Verification GET request failed: %v", err))
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	bodyStr := string(body)
+
+	if !strings.Contains(bodyStr, "CM MAC:") {
+		return fmt.Errorf("rogers Xfinity modem login failed. Check credentials")
+	}
+
+	s.logger.Log("Rogers Xfinity modem login successful.")
+
+	// Detect XB7 vs XB8
+	if strings.Contains(bodyStr, "XB8") {
+		s.modemType = "XB8"
+		s.logger.Log(fmt.Sprintf("Detected specific model: %s", s.modemType))
+	} else if strings.Contains(bodyStr, "XB7") {
+		s.modemType = "XB7"
+		s.logger.Log(fmt.Sprintf("Detected specific model: %s", s.modemType))
+	}
+
+	return nil
+}
+
+// GetMAC retrieves the modem's MAC address
+func (s *XfinityScraper) GetMAC() (string, error) {
+	s.logger.Log("Fetching MAC address from network_setup.jst...")
+	resp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	bodyStr := string(body)
+
+	if !strings.Contains(bodyStr, "CM MAC:") {
+		return "", fmt.Errorf("authentication failed or page structure unexpected")
+	}
+
+	// Try multiple regex patterns to extract MAC address
+	patterns := []string{
+		`<span class="readonlyLabel">CM MAC:</span>.*?class="value">([^<]+)`,
+		`<span class="readonlyLabel">CM MAC:</span>.*?<span class="value">([^<]+)`,
+		`CM MAC:.*?class="value">([^<]+)`,
+		`CM MAC:.*?<span[^>]*>([0-9A-Fa-f:]+)</span>`,
+		`CM MAC:[^>]*>([0-9A-Fa-f:]+)<`,
+	}
+
+	// Compile MAC validation regex once outside the loop
+	macValidationRe := regexp.MustCompile(`^[0-9A-F]{12}$`)
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(bodyStr)
+
+		if len(matches) > 1 {
+			mac := strings.ReplaceAll(strings.TrimSpace(matches[1]), ":", "")
+			mac = strings.ReplaceAll(mac, " ", "")
+			mac = strings.ToUpper(mac)
+
+			if macValidationRe.MatchString(mac) {
+				s.logger.Log(fmt.Sprintf("Successfully retrieved modem CM MAC address: %s", mac))
+				return mac, nil
+			}
+		}
+	}
+
+	// If we still haven't found it, try a more general approach
+	macPattern := regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}`)
+
+	// Find the position of "CM MAC:" in the body
+	cmMacIndex := strings.Index(bodyStr, "CM MAC:")
+	if cmMacIndex != -1 {
+		// Look in the next 500 characters after "CM MAC:"
+		endIndex := cmMacIndex + 500
+		if endIndex > len(bodyStr) {
+			endIndex = len(bodyStr)
+		}
+		searchWindow := bodyStr[cmMacIndex:endIndex]
+		if macMatch := macPattern.FindString(searchWindow); macMatch != "" {
+			mac := strings.ReplaceAll(macMatch, ":", "")
+			mac = strings.ReplaceAll(mac, "-", "")
+			mac = strings.ToUpper(mac)
+
+			if len(mac) == 12 {
+				s.logger.Log(fmt.Sprintf("Successfully retrieved modem CM MAC address: %s", mac))
+				return mac, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unable to parse valid modem CM MAC")
+}
+
+// GetData collects all diagnostic data from the modem
+func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
+	s.logger.Log("Fetching data from network_setup.jst...")
+	resp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	pageContent, _ := io.ReadAll(resp.Body)
+	pageStr := string(pageContent)
+
+	if !strings.Contains(pageStr, "CM MAC:") {
+		s.logger.Log("Failed to fetch data page. Re-logging in...")
+		s.Login()
+		resp, _ = s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
+		pageContent, _ = io.ReadAll(resp.Body)
+		pageStr = string(pageContent)
+		resp.Body.Close()
+	}
+
+	data := &ModemData{}
+
+	// Get system info
+	modemMAC, _ := s.GetMAC()
+	data.SysInfo.SysTime = parseModemTime("xb8-system", s.extractValue(pageStr, "Local time:"))
+	data.SysInfo.Uptime = parseUptimeToSeconds(s.extractValue(pageStr, "System Uptime:"))
+	data.SysInfo.ModemType = s.modemType
+	data.SysInfo.ModemMAC = modemMAC
+	data.SysInfo.CheckTime = checkTime
+
+	// Get firmware from software.jst
+	resp, _ = s.client.Get(fmt.Sprintf("http://%s/software.jst", s.modemAddress))
+	softwareBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
+	if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
+		data.SysInfo.Firmware = strings.TrimSpace(matches[1])
+	}
+
+	// Parse downstream channels
+	data.RX, data.RXOFDM = s.parseXfinityDownstream(pageStr)
+
+	// Parse upstream channels
+	data.TX, data.TXOFDM = s.parseXfinityUpstream(pageStr)
+
+	// Event log not available on Xfinity
+	data.EventLog = []EventLog{}
+
+	return data, nil
+}
+
+// extractValue extracts a value from an HTML page given a label
+func (s *XfinityScraper) extractValue(page, label string) string {
+	// Try pattern 1: <span class="readonlyLabel">Label:</span><span class="value">Value</span>
+	re := regexp.MustCompile(regexp.QuoteMeta(label) + `[^<]*</span>\s*<span class="value">\s*([^<]+)`)
+	if matches := re.FindStringSubmatch(page); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	// Try pattern 2: Label: <span ...>Value</span>
+	re = regexp.MustCompile(regexp.QuoteMeta(label) + `.*?<[^>]+>([^<]+)`)
+	if matches := re.FindStringSubmatch(page); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+	return ""
+}
+
+// parseXfinityDownstream parses downstream channel data from HTML
+func (s *XfinityScraper) parseXfinityDownstream(page string) ([]RXChannel, []RXOFDMChannel) {
+	rxChannels := []RXChannel{}
+	rxofdmChannels := []RXOFDMChannel{}
+
+	// Extract downstream table (use (?s) for multiline matching)
+	dsTableRe := regexp.MustCompile(`(?s)<div class="netWidth">Downstream</div>.*?</table>`)
+	dsTable := dsTableRe.FindString(page)
+
+	// Extract codeword table
+	cwTableRe := regexp.MustCompile(`(?s)CM Error Codewords.*?</table>`)
+	cwTable := cwTableRe.FindString(page)
+
+	// Parse channel IDs, frequencies, SNR, power, modulation
+	channelIDs := s.extractTableRow(dsTable, "Channel ID")
+	frequencies := s.extractTableRow(dsTable, "Frequency")
+	snrs := s.extractTableRow(dsTable, "SNR")
+	powers := s.extractTableRow(dsTable, "Power Level")
+	modulations := s.extractTableRow(dsTable, "Modulation")
+
+	// Parse codeword data
+	cwIDs := s.extractTableRow(cwTable, "Channel ID")
+	unerrored := s.extractTableRow(cwTable, "Unerrored Codewords")
+	correctable := s.extractTableRow(cwTable, "Correctable Codewords")
+	uncorrectable := s.extractTableRow(cwTable, "Uncorrectable Codewords")
+
+	// Create codeword map
+	cwMap := make(map[string]map[string]string)
+	for i, id := range cwIDs {
+		cwMap[id] = map[string]string{
+			"unerrored":     getAtIndex(unerrored, i),
+			"correctable":   getAtIndex(correctable, i),
+			"uncorrectable": getAtIndex(uncorrectable, i),
+		}
+	}
+
+	// Build channel structs
+	for i, id := range channelIDs {
+		mod := getAtIndex(modulations, i)
+		freq := cleanNumeric(getAtIndex(frequencies, i))
+		snr := cleanNumeric(getAtIndex(snrs, i))
+		power := cleanNumeric(getAtIndex(powers, i))
+
+		cw := cwMap[id]
+		octets := cw["unerrored"]
+		correcteds := cw["correctable"]
+		uncorrectds := cw["uncorrectable"]
+
+		if mod == "OFDM" {
+			rxofdmChannels = append(rxofdmChannels, RXOFDMChannel{
+				PortID:       id,
+				Subcarr0Freq: freq,
+				PLCLock:      "n/a",
+				NCPLock:      "n/a",
+				MDC1Lock:     "n/a",
+				PLCPower:     power,
+				PLCSNR:       snr,
+				Octets:       octets,
+				Correcteds:   correcteds,
+				Uncorrectds:  uncorrectds,
+			})
+		} else {
+			rxChannels = append(rxChannels, RXChannel{
+				PortID:      id,
+				Frequency:   freq,
+				Power:       power,
+				SNR:         snr,
+				Octets:      octets,
+				Correcteds:  correcteds,
+				Uncorrectds: uncorrectds,
+			})
+		}
+	}
+
+	return rxChannels, rxofdmChannels
+}
+
+// parseXfinityUpstream parses upstream channel data from HTML
+func (s *XfinityScraper) parseXfinityUpstream(page string) ([]TXChannel, []TXOFDMAChannel) {
+	txChannels := []TXChannel{}
+	txofdmaChannels := []TXOFDMAChannel{}
+
+	// Extract upstream table (use (?s) for multiline matching)
+	usTableRe := regexp.MustCompile(`(?s)<div class="netWidth">Upstream</div>.*?</table>`)
+	usTable := usTableRe.FindString(page)
+
+	channelIDs := s.extractTableRow(usTable, "Channel ID")
+	lockStatus := s.extractTableRow(usTable, "Lock Status")
+	frequencies := s.extractTableRow(usTable, "Frequency")
+	powers := s.extractTableRow(usTable, "Power Level")
+	modulations := s.extractTableRow(usTable, "Modulation")
+
+	for i, id := range channelIDs {
+		mod := getAtIndex(modulations, i)
+		freq := cleanNumeric(getAtIndex(frequencies, i))
+		power := cleanNumeric(getAtIndex(powers, i))
+		state := getAtIndex(lockStatus, i)
+
+		if mod == "OFDMA" {
+			txofdmaChannels = append(txofdmaChannels, TXOFDMAChannel{
+				PortID:       id,
+				State:        state,
+				Subcarr0Freq: freq,
+				Power:        power,
+			})
+		} else {
+			txChannels = append(txChannels, TXChannel{
+				PortID:    id,
+				Frequency: freq,
+				Power:     power,
+			})
+		}
+	}
+
+	return txChannels, txofdmaChannels
+}
+
+// extractTableRow extracts a row of data from an HTML table
+func (s *XfinityScraper) extractTableRow(table, rowLabel string) []string {
+	results := []string{}
+
+	// Match the row more flexibly - handle both <th> and <td> tags
+	re := regexp.MustCompile(`(?s)<t[hd][^>]*>\s*` + regexp.QuoteMeta(rowLabel) + `\s*</t[hd]>(.*?)</tr>`)
+	rowMatch := re.FindStringSubmatch(table)
+
+	if len(rowMatch) < 2 {
+		return results
+	}
+
+	// Extract cell values from <div class="netWidth">
+	cellRe := regexp.MustCompile(`<div class="netWidth">([^<]+)</div>`)
+	cells := cellRe.FindAllStringSubmatch(rowMatch[1], -1)
+
+	for _, cell := range cells {
+		if len(cell) > 1 {
+			results = append(results, strings.TrimSpace(cell[1]))
+		}
+	}
+
+	return results
+}
+
+// ClearFEC clears the FEC counters (not implemented for Xfinity)
+func (s *XfinityScraper) ClearFEC() error {
+	s.logger.Log("FEC clear function not yet implemented for Rogers Xfinity modem.")
+	return nil
+}
+
+// GetModemType returns the modem type string
+func (s *XfinityScraper) GetModemType() string {
+	return s.modemType
+}
+
+// DetectXfinity attempts to detect Xfinity modem
+func DetectXfinity(address string, client *http.Client) bool {
+	resp, err := client.Get(fmt.Sprintf("http://%s/login.html", address))
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	bodyStr := string(body)
+
+	if strings.Contains(bodyStr, "<title>403 Forbidden</title>") {
+		// Check root page for Rogers/Xfinity
+		rootResp, err := client.Get(fmt.Sprintf("http://%s", address))
+		if err == nil {
+			defer rootResp.Body.Close()
+			rootBody, _ := io.ReadAll(rootResp.Body)
+			if strings.Contains(string(rootBody), "<title>Rogers</title>") {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// Helper functions
+func getAtIndex(slice []string, index int) string {
+	if index < len(slice) {
+		return slice[index]
+	}
+	return ""
+}
+
+func cleanNumeric(s string) string {
+	re := regexp.MustCompile(`[^0-9.-]`)
+	return re.ReplaceAllString(s, "")
+}
