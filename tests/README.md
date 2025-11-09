@@ -20,8 +20,8 @@ tests/
 ├── requirements.txt             # Python test dependencies
 │
 ├── test_env_setup.sh           # Test environment setup and orchestration
-├── test_e2e.sh                 # End-to-end test suite
 ├── test_cloud_api.py           # Python integration tests
+├── init_test_data.py           # Test data initialization
 │
 └── [Generated at runtime]
     ├── test-data/              # Isolated test data (auto-cleaned)
@@ -116,18 +116,13 @@ With coverage:
 pytest test_cloud_api.py -v --cov --cov-report=html
 ```
 
-#### End-to-End Tests Only
+#### Functional Tests Only
+
+The test_env_setup.sh script includes functional tests when run with 'all' or 'test' options:
 
 ```bash
-# First, set up test environment
 cd tests
-./test_env_setup.sh setup
-
-# Run E2E tests
-./test_e2e.sh
-
-# Clean up when done
-./test_env_setup.sh cleanup
+./test_env_setup.sh all
 ```
 
 ## Test Environment Management
@@ -260,9 +255,9 @@ tests/test_cloud_api.py::TestDatabaseOperations::test_insert_check PASSED
 ==================== 25 passed in 2.34s ====================
 ```
 
-### 3. End-to-End Tests (test_e2e.sh)
+### 3. Integrated Test Suite (test_env_setup.sh)
 
-Tests complete workflows using the test Docker container.
+The test_env_setup.sh script orchestrates the complete test workflow including environment setup, running tests, and cleanup.
 
 **Test Coverage:**
 - Upload with valid/invalid/inactive API keys
@@ -274,37 +269,29 @@ Tests complete workflows using the test Docker container.
 - Database API authentication
 - Data integrity after upload
 - Audit logging verification
-- Concurrent upload handling
+- Security validation
 
 **Run:**
 ```bash
 cd tests
-./test_env_setup.sh setup
-./test_e2e.sh
-./test_env_setup.sh cleanup
+./test_env_setup.sh all
 ```
+
+**Available Commands:**
+- `./test_env_setup.sh setup` - Setup test environment only
+- `./test_env_setup.sh test` - Run tests (requires setup first)
+- `./test_env_setup.sh cleanup` - Clean up test environment
+- `./test_env_setup.sh all` - Complete workflow (setup, test, cleanup)
 
 **Example Output:**
 ```
-=========================================
-  Modemcheck End-to-End Test Suite
-=========================================
-
-[TEST] Test 1: Upload with valid API key
-[PASS] Upload succeeded with valid API key
-
-[TEST] Test 2: Upload with invalid API key
-[PASS] Upload correctly rejected invalid API key
-
-...
-
-=========================================
-  Test Summary
-=========================================
-Passed: 13
-Failed: 0
-
+Setting up test environment...
+Creating test volumes...
+Starting test container...
+Initializing test databases...
+Running Python integration tests...
 All tests passed!
+Cleaning up test environment...
 ```
 
 ## Test Data and Isolation
@@ -526,31 +513,9 @@ def test_your_new_feature(test_env):
     # Cleanup happens automatically via test_env fixture
 ```
 
-### Adding E2E Tests
+### Adding Integration Tests
 
-Edit `tests/test_e2e.sh`:
-
-```bash
-test_your_new_feature() {
-    log_test "Test: Your new feature"
-
-    # Test code
-    response=$(curl -s http://localhost:22558/your-endpoint)
-
-    # Validate
-    if echo "$response" | grep -q "expected"; then
-        log_pass "Test passed"
-    else
-        log_fail "Test failed: $response"
-    fi
-}
-
-# Add to main() function
-main() {
-    # ... existing tests ...
-    test_your_new_feature
-}
-```
+You can extend the test framework by adding new test functions to `test_cloud_api.py` or by creating additional test scripts that follow the same pattern as `test_env_setup.sh`.
 
 ## Test Coverage Goals
 

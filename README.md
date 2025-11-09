@@ -1,4 +1,4 @@
-# Modem-Check v4.5.0
+# Modem-Check v5.0.0
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,39 +27,78 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * No external dependencies - all diagnostics use native Go libraries
 
-## What's New in v4.5.0
+## What's New in v5.0.0 🎉
 
-### Core Improvements
-* **Modular Architecture**: Refactored from monolithic 1,946-line file to clean package structure
-* **Native Speed Tests**: Replaced iperf3 with native Go speedtest library (no external dependencies)
-* **Native Ping**: Uses go-ping library instead of exec.Command("ping")
-* **Auto-detect config.json**: Automatically loads `config.json` from executable directory if present
-* **Role Management**: Enhanced admin dashboard with role assignment (admin/basic)
-* **Protected Admin Account**: Admin account cannot be deleted or downgraded
-* **Database Migration**: User and API key storage migrated from JSON files to SQLite
-* **BER Calculation Fixes**: Improved Bit Error Rate calculations for accuracy
-* **Time-Based Charts**: Enhanced visualization with time-series data
+### Major Features
+
+**🎨 Config Generator GUI**
+* New tab in admin dashboard for creating `config.json` files
+* Live JSON preview with auto-updates as you type
+* Download config.json directly from browser
+* Select existing API keys from dropdown
+* No more manual JSON editing - point-and-click configuration!
+
+**👥 Role Management**
+* Promote/demote users between basic and admin roles
+* Admin account protected from modification/deletion
+* Full audit logging of all role changes
+* Easy user management through admin dashboard
+
+**🔍 Auto-Detect Config**
+* modem-check now automatically looks for `config.json` in its directory
+* No need to specify `-config` flag if file is in same folder
+* Simplifies deployment and automation
+
+**🏗️ Cloud Architecture Improvements**
+* Direct database insertion (removed import-daemon)
+* Enhanced audit logging with detailed user activity tracking
+* Improved API response format with `database_id` field
+* Better error handling and reporting
+
+### Bug Fixes
+* Fixed viewer displaying epoch timestamps instead of formatted dates
+* Fixed role constraint errors (changed 'user' to 'basic')
+* Fixed input field styling inconsistencies
+* Admin account now properly protected from modification
+
+### Testing Improvements
+* Renamed e2e_test.sh to cloud_api_test.sh (more accurate name)
+* Fixed test accuracy issues
+* All 19 tests passing (10 functional + 9 security)
+* Improved test coverage and reliability
+
+### Breaking Changes ⚠️
+* Database schema changes for direct insertion model
+* API response format now includes `database_id` field
+* Removed import-daemon.py architecture
+* Refactored client code to modemcheck-client/ structure
 
 ### Previous Updates
 
+#### v4.5.0 - Modular Architecture
+* Refactored from monolithic 1,946-line file to clean package structure
+* Native Speed Tests with Go speedtest library (no iperf3 dependency)
+* Native Ping using go-ping library
+* Database Migration to SQLite for users and API keys
+
 #### v4.4.x - Performance & Quality
-* **Code Quality**: Linter warnings fixed, improved performance optimizations
-* **Timestamp Standardization**: Consistent timestamp handling across all components
-* **Test Infrastructure**: Updated E2E tests for SQLite migration
+* Code Quality: Linter warnings fixed, improved performance optimizations
+* Timestamp Standardization: Consistent timestamp handling across all components
+* BER Calculation Fixes: Improved Bit Error Rate calculations for accuracy
+* Time-Based Charts: Enhanced visualization with time-series data
 
 #### v4.2.x - Security & Storage
-* **SQLite Migration**: All storage moved to SQLite for better performance and reliability
-* **XSS Protection**: Enhanced security headers and input sanitization
-* **Timing-Safe Comparisons**: API key validation uses constant-time comparison
-* **File Locking**: Prevents race conditions in concurrent operations
+* SQLite Migration: All storage moved to SQLite for better performance
+* XSS Protection: Enhanced security headers and input sanitization
+* Timing-Safe Comparisons: API key validation uses constant-time comparison
+* File Locking: Prevents race conditions in concurrent operations
 
 #### v4.1.x - Cross-Platform & Security
-* **Windows Ping Support**: Fixed ping tests on Windows (uses `-n` flag)
-* **Real IP Tracking**: Admin dashboard shows actual client IPs through Cloudflare tunnels
-* **Path Traversal Protection**: Strict validation prevents malicious file path attacks
-* **Forced Password Changes**: New users must change password on first login
-* **Zero External Dependencies**: Uses only Go standard library
-* **Upload Queue**: Failed uploads automatically retry on next run
+* Windows Ping Support: Fixed ping tests on Windows (uses `-n` flag)
+* Real IP Tracking: Admin dashboard shows actual client IPs through Cloudflare tunnels
+* Path Traversal Protection: Strict validation prevents malicious file path attacks
+* Forced Password Changes: New users must change password on first login
+* Upload Queue: Failed uploads automatically retry on next run
 
 
 
@@ -88,13 +127,14 @@ chmod +x modem-check
 
 ```bash
 # Build for your current platform
-make
+make build
 
 # Cross-compile for all platforms
 make cross-compile
 
-# Build with optimizations for smaller size
-go build -ldflags="-s -w" -o modem-check modem-check.go
+# Or build manually
+cd modemcheck-client
+go build -o ../modem-check .
 ```
 
 ## Configuration
@@ -172,16 +212,12 @@ Then run:
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `-address` | string | autodetect | Modem IP address or 'autodetect' |
-| `-password` | string | password | Password for Rogers Xfinity modems |
-| `-iperf3` | bool | false | Enable iPerf3 speed tests |
-| `-iperf3-server` | string | fillme | iPerf3 server address |
-| `-iperf3-port` | int | 5201 | iPerf3 server port |
-| `-iperf3-streams` | int | 4 | Number of parallel iPerf3 streams |
-| `-iperf3-upload-limit` | int | 150 | Upload bandwidth limit (Mbps) |
-| `-iperf3-download-limit` | int | 1500 | Download bandwidth limit (Mbps) |
-| `--silent` | bool | false | Suppress output to terminal |
-| `--nologs` | bool | false | Disable log file creation |
+| `-xfinitypassword` | string | password | Password for Rogers Xfinity modems |
+| `-speedtest` | bool | true | Enable native Go speed tests using Ookla servers |
+| `-silent` | bool | false | Suppress output to terminal |
+| `-nologs` | bool | false | Disable log file creation |
 | `-config` | string | | Path to JSON configuration file |
+| `-enablecloud` | bool | false | Enable cloud upload (requires config file) |
 
 ## Usage
 
@@ -195,13 +231,13 @@ Then run:
 ./modem-check -address 192.168.100.1
 
 # Xfinity modem with password
-./modem-check -address 10.0.0.1 -password mypassword
+./modem-check -address 10.0.0.1 -xfinitypassword mypassword
 
-# Run with speed tests enabled
-./modem-check -iperf3 -iperf3-server your.iperf3.server
+# Run without speed tests
+./modem-check -speedtest=false
 
 # Silent execution (for cron jobs)
-./modem-check --silent --nologs
+./modem-check -silent -nologs
 
 # Use configuration file
 ./modem-check -config ~/modem-configs/xb8.json
@@ -235,7 +271,7 @@ See the `cloudserver/` directory for Docker-based cloud server setup:
 ```bash
 cd cloudserver
 # Create required volumes
-docker volume create modemcheck-cloud_data
+docker volume create modemcheck-cloud_db
 docker volume create modemcheck-cloud_config
 # Start the server
 docker compose up -d
@@ -253,12 +289,21 @@ For detailed setup instructions, see `cloudserver/README.md`.
 
 ### Generate an API Key
 
+**Option 1: Using Admin Dashboard**
 1. Open the admin dashboard in your browser: `http://localhost:23891`
 2. Login with default credentials: `admin` / `changeme` (change on first login)
 3. Navigate to "API Keys" tab
 4. Enter a descriptive name (e.g., "Home Router", "Office Modem")
 5. Click "Create API Key"
 6. **Copy the key immediately** - you won't be able to see it again!
+
+**Option 2: Using Config Generator (Recommended)**
+1. Open the admin dashboard and navigate to "Config Generator" tab
+2. Fill in your modem details and settings
+3. Click "Select Existing API Key" to choose from your existing keys
+4. Or create a new one directly from the API Keys tab
+5. Download the generated `config.json` file
+6. Place it in the same directory as your modem-check executable
 
 ### Enable Cloud Mode
 
@@ -280,9 +325,12 @@ Add cloud settings to your `config.json`:
 
 ### Cloud Server Features
 
+- **Config Generator**: Point-and-click interface to create config.json files with live preview
+- **Role Management**: Promote/demote users between basic and admin roles
 - **API Key Management**: Create, view, edit, and delete API keys through web dashboard
 - **User Management**: Create viewer and admin users with forced password changes
 - **Usage Tracking**: See when each API key was last used
+- **Audit Logging**: Complete tracking of all user actions and role changes
 - **Automatic modem detection**: Server recognizes different modem models by MAC
 - **Date range filtering**: Select specific time periods to analyze (default: last 14 days)
 - **Trend analysis**: View signal quality, speed tests, and error rates over time
@@ -326,18 +374,9 @@ See `cloudserver/README.md` for detailed deployment instructions including rever
 
 ### Speed Test Issues
 
-* **iperf3: command not found**: Install iperf3 for your platform:
-  ```bash
-  # Ubuntu/Debian
-  sudo apt install iperf3
-
-  # macOS
-  brew install iperf3
-
-  # Windows - download from https://iperf.fr/iperf-download.php
-  ```
-
-* **Speed tests timeout**: Check that your iperf3 server is accessible and adjust limits
+* **Speed tests are slow**: Native Go speed tests use public Ookla servers and may take 30-60 seconds
+* **Speed tests fail**: Check your internet connection and firewall settings
+* **Disable speed tests**: Use `-speedtest=false` flag or set `"SpeedTestEnabled": false` in config.json
 
 ### Platform-Specific
 
@@ -355,8 +394,8 @@ The generated JSON includes:
 - `eventlog`: Modem event history (not available on Xfinity modems)
 - `ping_google_avg`/`ping_google_loss`: Ping test results to google.ca
 - `ping_cloudflare_avg`/`ping_cloudflare_loss`: Ping test results to one.one.one.one
-- `iperf3test_ul`/`iperf3test_dl`: Speed test results
-- `iperf3uploadlimit`/`iperf3downloadlimit`: Test configuration
+- `speedtest_download`/`speedtest_upload`: Native Go speed test results (Mbps)
+- `speedtest_latency`: Network latency from speed test (ms)
 
 Example filename: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
@@ -372,10 +411,13 @@ The included `checkviewer.html` provides:
 * **Responsive Design**: Works on desktop and mobile browsers
 
 The cloud viewer additionally includes:
+* **Config Generator**: Create config.json files using a GUI with live preview
+* **Role Management**: Admin users can promote/demote other users
 * **14-Day Default Date Range**: Automatically pre-populated for quick access
 * **Multi-Modem Support**: View data from multiple modems in one dashboard
 * **Secure Authentication**: Session-based login with forced password changes
 * **Real-Time Loading**: Direct access to all stored data
+* **User Activity Tracking**: Comprehensive audit logs of all actions
 
 ## Security
 
@@ -433,32 +475,47 @@ crontab -e
 
 ```
 modemcheck/
-├── modem-check.go              # Main application (1945 lines)
-├── go.mod                      # Go module definition
+├── modem-check.go              # Legacy monolithic version (kept for reference)
+├── go.mod & go.sum             # Go module dependencies
 ├── Makefile                    # Build automation
 ├── README.md                   # This file
-├── CLAUDE.md                   # Developer documentation
 ├── config.json.example         # Example configuration
-├── checkviewer.html            # Local web viewer (1818 lines)
-├── dist/                       # Pre-compiled binaries (7 platforms)
+├── checkviewer.html            # Local web viewer for JSON files
+├── dist/                       # Pre-compiled binaries (multiple platforms)
+├── modemcheck-client/          # Modular client (current implementation)
+│   ├── README.md               # Client architecture documentation
+│   ├── main.go                 # Main entry point and orchestration
+│   ├── config.go               # Configuration loading
+│   ├── diagnostics.go          # Ping and speed test logic
+│   ├── cloud_client.go         # Cloud upload with retry queue
+│   ├── go.mod & go.sum         # Client dependencies
+│   └── scraper/                # Modem-specific scrapers
+│       ├── scraper.go          # Common interface and utilities
+│       ├── coda.go             # Hitron CODA45/56 implementation
+│       ├── dm1000.go           # Sercomm DM1000 implementation
+│       └── xfinity.go          # Rogers Xfinity XB7/XB8 implementation
 ├── ModemCheck-Results/         # Local data storage
 │   └── [MODEL]-[MAC]/          # Per-modem directories
 │       └── *.json              # Timestamped check results
-├── ModemCheck-ConfigFiles/     # Example configs for different modems
+├── tests/                      # Test suite
+│   ├── README.md               # Testing documentation
+│   ├── test_env_setup.sh       # Test environment orchestration
+│   ├── test_cloud_api.py       # Python integration tests
+│   └── init_test_data.py       # Test data initialization
 └── cloudserver/                # Docker-based cloud server
-    ├── Dockerfile
-    ├── docker-compose.yml
-    ├── nginx.conf
-    ├── admin.html              # Admin dashboard (1716 lines)
+    ├── Dockerfile              # Alpine-based container
+    ├── docker-compose.yml      # Service definition
+    ├── nginx.conf              # Web server configuration
+    ├── admin.html              # Admin dashboard with Config Generator
     ├── admin-login.html        # Admin login page
     ├── login.html              # Viewer login page
-    ├── db-viewer.html          # Database explorer (dev tool)
-    ├── db-viewer.js            # DB explorer frontend (1726 lines)
+    ├── db-viewer.html          # Cloud data viewer interface
+    ├── db-viewer.js            # Data viewer JavaScript
     └── cgi-bin/                # Python CGI backend
-        ├── upload.py           # File upload handler
-        ├── db-api.py           # Database API (session auth)
-        ├── auth.py             # Authentication library
-        ├── admin-api.py        # Admin operations
+        ├── upload.py           # Upload handler with direct DB insertion
+        ├── db-api.py           # Database query API
+        ├── auth.py             # Authentication and session management
+        ├── admin-api.py        # Admin operations and role management
         ├── user-management.py  # User CRUD operations
         ├── db_schema.py        # Main database schema
         └── audit_schema.py     # Audit logging schema
