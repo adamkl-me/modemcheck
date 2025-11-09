@@ -1,6 +1,6 @@
-# Modem Check Client - Refactored
+# Modem Check Client v5.0.0
 
-This is a refactored version of the monolithic `modem-check.go` file, organized into a modular package structure for better maintainability and extensibility.
+This is the modular implementation of modem-check, refactored from the original monolithic `modem-check.go` file into a clean package structure for better maintainability and extensibility.
 
 ## Structure
 
@@ -49,14 +49,26 @@ This is a refactored version of the monolithic `modem-check.go` file, organized 
 
 ## Building
 
+From the project root directory:
+
 ```bash
+# Using Makefile (recommended)
+make build                    # Build for current platform
+make cross-compile           # Build for all platforms
+
+# Or build manually
 cd modemcheck-client
-go build -o modem-check
+go build -o ../modem-check .
+
+# Build with version info
+go build -ldflags="-s -w -X main.Version=5.0.0" -o ../modem-check .
 ```
+
+The resulting binary will be placed in the parent directory as `modem-check` (or `modem-check.exe` on Windows).
 
 ## Usage
 
-The refactored client maintains 100% compatibility with the original `modem-check.go`:
+The modular client is the current implementation and maintains backward compatibility:
 
 ```bash
 # Auto-detect modem (speed tests enabled by default)
@@ -65,17 +77,23 @@ The refactored client maintains 100% compatibility with the original `modem-chec
 # Specify modem address
 ./modem-check -address 192.168.100.1
 
+# For Xfinity modems with password
+./modem-check -xfinitypassword your_password
+
 # Disable speed tests
 ./modem-check -speedtest=false
 
-# With configuration file
+# With configuration file (auto-detected if in same directory)
 ./modem-check -config config.json
+
+# Enable cloud upload
+./modem-check -config config.json -enablecloud
 
 # Silent mode (no terminal output)
 ./modem-check -silent
 
 # See all available flags
-./modem-check --help
+./modem-check -help
 ```
 
 ## Adding a New Modem Type
@@ -92,10 +110,11 @@ To add support for a new modem:
 3. Add detection logic to `scraper.DetectModem()`
 4. Add case to `createScraper()` in `main.go`
 
-## Migration from Original
+## Relationship to Legacy Code
 
-The original `modem-check.go` file remains unchanged in the parent directory. This refactored version is a drop-in replacement with the same behavior and command-line interface.
+The original monolithic `modem-check.go` file is kept in the parent directory for reference. This modular version is the current active implementation used by the build system.
 
-## Version
+## Version History
 
-v4.5.0 - Refactored modular architecture
+- **v5.0.0** - Cloud architecture improvements, config generator, role management
+- **v4.5.0** - Initial refactored modular architecture with native speed tests

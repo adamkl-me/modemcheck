@@ -202,13 +202,13 @@ Open in browser:
 
 ```bash
 # List all modems
-curl http://localhost:23890/cgi-bin/api.py?action=list_modems
+curl http://localhost:23890/cgi-bin/db-api.py?action=list_modems
 
 # List files for a modem
-curl "http://localhost:23890/cgi-bin/api.py?action=list_files&modem_id=CODA56-xxx"
+curl "http://localhost:23890/cgi-bin/db-api.py?action=list_files&modem_id=CODA56-xxx"
 
 # Get a specific file
-curl "http://localhost:23890/cgi-bin/api.py?action=get_file&modem_id=CODA56-xxx&filename=2025-11-05_12-00-00.json"
+curl "http://localhost:23890/cgi-bin/db-api.py?action=get_file&modem_id=CODA56-xxx&filename=2025-11-05_12-00-00.json"
 ```
 
 ## Migrating Existing Data
@@ -410,7 +410,7 @@ docker exec modemcheck-cloud cat /var/log/nginx/error.log
 
 Test the API directly:
 ```bash
-docker exec modemcheck-cloud /modemcheck-cloud/cgi-bin/api.py
+docker exec modemcheck-cloud python3 /modemcheck-cloud/cgi-bin/db-api.py
 ```
 
 Check CGI script permissions:
