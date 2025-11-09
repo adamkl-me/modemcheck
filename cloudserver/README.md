@@ -10,8 +10,8 @@ This directory contains everything needed to run the Modem Check Cloud Server in
 ### 1. Create Docker Volumes
 
 ```bash
-# Create volumes for data and configuration
-docker volume create modemcheck-cloud_data
+# Create volumes for database and configuration
+docker volume create modemcheck-cloud_db
 docker volume create modemcheck-cloud_config
 ```
 
@@ -24,8 +24,8 @@ docker compose up -d
 
 This will:
 - Build the Alpine Linux container with nginx, Python, and fcgiwrap
-- Create persistent volumes for data and configuration storage
-- Expose port 22557 for file uploads
+- Create persistent volumes for SQLite database and configuration storage
+- Expose port 22557 for data uploads (direct to database)
 - Expose port 23890 for web viewer
 - Expose port 23891 for admin dashboard
 
@@ -79,7 +79,7 @@ http://localhost:23890
 
 ### Port Layout
 - **Port 22557**:
-  - File upload API (`/cgi-bin/upload.py`)
+  - Data upload API (`/cgi-bin/upload.py`) - inserts directly to database
 - **Port 23890**:
   - Data viewer web interface
   - Database API (`/cgi-bin/db-api.py`)
@@ -90,19 +90,20 @@ http://localhost:23890
 ### File Structure
 ```
 /modemcheck-cloud/
-├── datafiles/              # Modem data (persistent volume)
-│   ├── CODA56-xxx/
-│   ├── DM1000-xxx/
-│   └── Xfinity-XB8-xxx/
-├── config/                 # API key storage (persistent volume)
-│   └── api_keys.json
+├── data/                   # SQLite database (persistent volume)
+│   ├── modemcheck.db      # Main database with all modem data
+│   └── audit.db           # Audit log database
+├── config/                 # Configuration (persistent volume)
+│   └── users.db           # User accounts database
 ├── cgi-bin/
-│   ├── api.py              # Data viewer API
-│   ├── upload.py           # File upload handler
-│   └── admin-api.py        # API key management
-├── index.html              # Data viewer interface
-├── viewer.js               # Data viewer JavaScript
-└── admin.html              # Admin dashboard
+│   ├── db-api.py          # Data viewer API
+│   ├── upload.py          # Data upload handler (inserts to database)
+│   ├── db_schema.py       # Database schema and utilities
+│   ├── admin-api.py       # API key management
+│   └── auth.py            # Authentication handler
+├── db-viewer.html         # Data viewer interface
+├── db-viewer.js           # Data viewer JavaScript
+└── admin.html             # Admin dashboard
 ```
 
 ## Container Management
@@ -212,31 +213,57 @@ curl "http://localhost:23890/cgi-bin/api.py?action=get_file&modem_id=CODA56-xxx&
 
 ## Migrating Existing Data
 
-### From Local ModemCheck-Results/
+### Architecture Change (v5.0+)
+
+**Important:** Starting with v5.0, the cloud server stores all data directly in an SQLite database instead of JSON files. This provides:
+- Immediate data availability (no daemon delay)
+- Faster queries and filtering
+- Reduced disk usage
+- Simpler architecture
+
+### Migrating from Old File-Based System
+
+If you have historical JSON files from the old system, you can import them using the database schema utilities:
 
 ```bash
-# Copy data preserving structure
-docker cp ModemCheck-Results/CODA56-AABBCC112233 \
-  modemcheck-cloud:/modemcheck-cloud/datafiles/CODA56-AABBCC112233
+# Option 1: Use Python directly in the container
+docker exec -it modemcheck-cloud python3 << 'EOF'
+from pathlib import Path
+import json
+import sys
+sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+from db_schema import insert_check
 
-docker cp ModemCheck-Results/DM1000-112233445566 \
-  modemcheck-cloud:/modemcheck-cloud/datafiles/DM1000-112233445566
+# Import JSON files
+for json_file in Path('/path/to/old/files').rglob('*.json'):
+    with open(json_file) as f:
+        data = json.load(f)
+    modem_id = json_file.parent.name  # e.g., "XB8-400FC1F7904C"
+    filename = f"{modem_id}/{json_file.name}"
+    insert_check(data, filename)
+    print(f"Imported: {filename}")
+EOF
 
-# Note: Ensure modem ID format is correct (Type-MAC)
+# Option 2: Copy files and use manual import script
+# (Contact for migration assistance if needed)
 ```
 
-### From Previous Installations
+### From Previous Database
 
-If you have data from a previous installation:
+If upgrading from an older version with a database:
 
 ```bash
-# Extract data from old volume
-docker run --rm -v old_modemcheck_volume:/data alpine \
-  tar czf - -C /data . > /tmp/old-data.tar.gz
+# Backup old database
+docker run --rm \
+  -v old_modemcheck_db:/data \
+  -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/old-db.tar.gz -C /data .
 
-# Import into new volume
-docker run --rm -v modemcheck-cloud_data:/data alpine \
-  tar xzf - -C /data < /tmp/old-data.tar.gz
+# Restore to new volume
+docker run --rm \
+  -v modemcheck-cloud_db:/data \
+  -v $(pwd)/backups:/backup \
+  alpine tar xzf /backup/old-db.tar.gz -C /data
 ```
 
 ## Backup and Restore
@@ -244,33 +271,33 @@ docker run --rm -v modemcheck-cloud_data:/data alpine \
 ### Backup Data
 
 ```bash
-# Backup modem data
+# Backup SQLite database (contains all modem data)
 docker run --rm \
-  -v modemcheck-cloud_data:/data \
+  -v modemcheck-cloud_db:/data \
   -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/modem-data-$(date +%Y%m%d).tar.gz -C /data .
+  alpine tar czf /backup/database-$(date +%Y%m%d).tar.gz -C /data .
 
-# Backup API keys
+# Backup configuration (users and API keys)
 docker run --rm \
   -v modemcheck-cloud_config:/config \
   -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/api-keys-$(date +%Y%m%d).tar.gz -C /config .
+  alpine tar czf /backup/config-$(date +%Y%m%d).tar.gz -C /config .
 ```
 
 ### Restore Data
 
 ```bash
-# Restore modem data
+# Restore database
 docker run --rm \
-  -v modemcheck-cloud_data:/data \
+  -v modemcheck-cloud_db:/data \
   -v $(pwd)/backups:/backup \
-  alpine tar xzf /backup/modem-data-20251105.tar.gz -C /data
+  alpine tar xzf /backup/database-20251105.tar.gz -C /data
 
-# Restore API keys
+# Restore configuration
 docker run --rm \
   -v modemcheck-cloud_config:/config \
   -v $(pwd)/backups:/backup \
-  alpine tar xzf /backup/api-keys-20251105.tar.gz -C /config
+  alpine tar xzf /backup/config-20251105.tar.gz -C /config
 ```
 
 ## Production Deployment

@@ -271,7 +271,6 @@ Tests complete workflows using the test Docker container.
 - Large file rejection (>10MB)
 - Duplicate filename prevention
 - Missing required fields
-- Import daemon processing
 - Database API authentication
 - Data integrity after upload
 - Audit logging verification

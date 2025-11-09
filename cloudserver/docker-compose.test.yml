@@ -9,8 +9,7 @@ services:
       - "23892:23890"  # Viewer (different port)
       - "23893:23891"  # Admin (different port)
     volumes:
-      # Use test-specific volumes
-      - ./test-data/datafiles:/modemcheck-cloud/datafiles
+      # Use test-specific volumes (no datafiles - direct DB insertion)
       - ./test-data/data:/modemcheck-cloud/data
       - ./test-data/config:/modemcheck-cloud/config
       # Mount CGI scripts for testing

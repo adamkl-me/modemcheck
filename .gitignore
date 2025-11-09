@@ -7,11 +7,12 @@ __pycache__/
 .Python
 .pytest_cache/
 
-# Test data and logs
+# Test data, logs, and personal notes
 ModemCheck-DataFiles/
 Modem-DataFiles/
 ModemCheck-Results/
 ModemCheck-ConfigFiles/
+markdown/
 modem-check_logs.txt
 .upload_queue.json
 
@@ -22,6 +23,7 @@ modem-check-*
 dist/
 *.out
 coverage.out
+coverage*.html
 
 # Configuration files (may contain passwords/API keys)
 config.json
@@ -31,7 +33,7 @@ config.json
 cloudserver/config/
 cloudserver/datafiles/
 
-# Claude AI assistant context
+# Claude AI
 CLAUDE.md
 SUGGESTIONS.md
 .claude/

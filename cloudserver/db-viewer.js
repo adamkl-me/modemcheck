@@ -1098,7 +1098,8 @@ function renderTrendChartsFromChecks() {
                                     display: true,
                                     text: 'Latency (ms)'
                                 },
-                                beginAtZero: true
+                                beginAtZero: true,
+                                suggestedMax: 50  // Auto-adjust but ensure reasonable minimum scale
                             },
                             y1: {
                                 type: 'linear',
@@ -1310,7 +1311,9 @@ function renderTrendChartsFromChecks() {
                                 title: {
                                     display: true,
                                     text: 'Power (dBmV)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             }
                         },
                         interaction: {
@@ -1418,7 +1421,9 @@ function renderTrendChartsFromChecks() {
                                 title: {
                                     display: true,
                                     text: 'SNR (dB)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             }
                         },
                         interaction: {
@@ -1698,7 +1703,9 @@ function renderTrendChartsFromChecks() {
                                 title: {
                                     display: true,
                                     text: 'Power (dBmV)'
-                                }
+                                },
+                                // Auto-scale to data range for better visibility
+                                grace: '5%'  // Add 5% padding above/below data range
                             },
                             y1: {
                                 type: 'linear',
@@ -1708,6 +1715,7 @@ function renderTrendChartsFromChecks() {
                                     display: true,
                                     text: 'Channel Count'
                                 },
+                                beginAtZero: true,
                                 grid: {
                                     drawOnChartArea: false,
                                 },

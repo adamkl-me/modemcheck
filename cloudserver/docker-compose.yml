@@ -10,7 +10,6 @@ services:
       - "23890:23890"  # Web UI (Viewer)
       - "23891:23891"  # Admin Dashboard
     volumes:
-      - modemcheck-cloud_data:/modemcheck-cloud/datafiles
       - modemcheck-cloud_config:/modemcheck-cloud/config
       - modemcheck-cloud_db:/modemcheck-cloud/data
     restart: unless-stopped
@@ -26,9 +25,6 @@ networks:
           gateway: 172.25.0.1
 
 volumes:
-  modemcheck-cloud_data:
-    external: true
-    name: modemcheck-cloud_data
   modemcheck-cloud_config:
     external: true
     name: modemcheck-cloud_config

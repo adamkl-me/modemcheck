@@ -35,13 +35,11 @@ class TestEnvironment:
     def __init__(self):
         self.temp_dir = tempfile.mkdtemp(prefix='modemcheck-test-')
         self.data_dir = Path(self.temp_dir) / 'data'
-        self.datafiles_dir = Path(self.temp_dir) / 'datafiles'
         self.config_dir = Path(self.temp_dir) / 'config'
         self.sessions_dir = self.config_dir / 'sessions'
 
-        # Create directories
+        # Create directories (no datafiles - direct DB insertion)
         self.data_dir.mkdir(parents=True)
-        self.datafiles_dir.mkdir(parents=True)
         self.config_dir.mkdir(parents=True)
         self.sessions_dir.mkdir(parents=True)
 
