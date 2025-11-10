@@ -6,7 +6,7 @@ Comprehensive automated testing suite for the Modemcheck project that tests all 
 
 This testing framework provides:
 
-- **Go Unit Tests** - Test individual functions and components in modem-check.go
+- **Go Unit Tests** - Test individual functions and components in the modemcheck-client
 - **Python Integration Tests** - Test cloud API endpoints and database operations
 - **Docker Test Environment** - Isolated test environment with separate databases
 - **End-to-End Tests** - Test complete workflows from upload to database to viewer
@@ -188,9 +188,9 @@ curl -X POST \
 
 ## Test Suites
 
-### 1. Go Unit Tests (modem-check_test.go)
+### 1. Go Unit Tests
 
-Tests core Go functionality without requiring external services.
+Tests core Go functionality in the modemcheck-client without requiring external services.
 
 **Test Coverage:**
 - Configuration loading and validation
@@ -475,15 +475,15 @@ docker rm -f modemcheck-cloud-test
 
 ### Adding Go Unit Tests
 
-Edit `modem-check_test.go`:
+Add tests to the modemcheck-client package:
 
 ```go
 func TestYourNewFeature(t *testing.T) {
     // Setup
-    mc := NewModemCheck()
+    // ... initialize test data
 
     // Test
-    result := mc.YourFunction()
+    result := yourFunction()
 
     // Assert
     if result != expected {

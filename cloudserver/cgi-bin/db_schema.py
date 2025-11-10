@@ -51,13 +51,33 @@ def init_database():
             total_uncorrected_errors INTEGER,
             
             -- Speed test results
-            ping_google_avg REAL,
-            ping_google_loss REAL,
-            ping_cloudflare_avg REAL,
-            ping_cloudflare_loss REAL,
+            speedtest_enabled INTEGER,
             iperf3_upload TEXT,
             iperf3_download TEXT,
-            
+            speedtest_server_name TEXT,
+            speedtest_server_id TEXT,
+            speedtest_latency REAL,
+            speedtest_max_latency REAL,
+            speedtest_jitter REAL,
+            speedtest_packet_loss REAL,
+            speedtest_dl_latency REAL,
+            speedtest_ul_jitter REAL,
+
+            -- Ping test results
+            ping_google_avg REAL,
+            ping_google_loss REAL,
+            ping_google_jitter REAL,
+            ping_google_max_latency REAL,
+            ping_cloudflare_avg REAL,
+            ping_cloudflare_loss REAL,
+            ping_cloudflare_jitter REAL,
+            ping_cloudflare_max_latency REAL,
+
+            -- Client information
+            client_version TEXT,
+            client_os TEXT,
+            client_arch TEXT,
+
             -- Full JSON data
             full_data TEXT NOT NULL,
             
@@ -107,11 +127,11 @@ def insert_check(data_dict, filename):
     try:
         # Extract system info
         sysinfo = data_dict.get('sysinfo', {})
-        modem_mac = sysinfo.get('modemmac', sysinfo.get('mac', 'unknown'))
+        modem_mac = sysinfo.get('modemmac', 'unknown')
         modem_type = sysinfo.get('modemtype', 'unknown')
         # Construct modem_id in format TYPE-MAC (matches directory structure)
         modem_id = f"{modem_type}-{modem_mac}"
-        check_time = sysinfo.get('checktime', sysinfo.get('timestamp', ''))
+        check_time = sysinfo.get('checktime', '')
         firmware = sysinfo.get('firmware', '')
         
         # Parse uptime (could be string like "6 days 18h: 5m: 44s" or integer)
@@ -121,7 +141,7 @@ def insert_check(data_dict, filename):
         else:
             uptime_seconds = 0  # Would need parsing logic for string format
         
-        system_time = sysinfo.get('systime', sysinfo.get('systemtime', ''))
+        system_time = sysinfo.get('systime', '')
         
         # Calculate average downstream power and SNR
         rx_channels = data_dict.get('rx', [])
@@ -186,10 +206,64 @@ def insert_check(data_dict, filename):
         else:
             ping_cloudflare_loss = None
         
-        # Speed test results (stored as text)
+        # Speed test results (stored as text for backward compatibility)
+        speedtest_enabled = 1 if data_dict.get('speedtest_enabled', False) else 0
         iperf3_upload = data_dict.get('iperf3test_ul', '')
         iperf3_download = data_dict.get('iperf3test_dl', '')
-        
+
+        # Speed test detailed metrics
+        speedtest_server_name = data_dict.get('speedtest_server_name', '')
+        speedtest_server_id = data_dict.get('speedtest_server_id', '')
+        speedtest_latency = data_dict.get('speedtest_latency') if data_dict.get('speedtest_latency') else None
+        speedtest_max_latency = data_dict.get('speedtest_max_latency') if data_dict.get('speedtest_max_latency') else None
+        speedtest_jitter = data_dict.get('speedtest_jitter') if data_dict.get('speedtest_jitter') else None
+        speedtest_packet_loss = data_dict.get('speedtest_packet_loss') if data_dict.get('speedtest_packet_loss') else None
+        speedtest_dl_latency = data_dict.get('speedtest_dl_latency') if data_dict.get('speedtest_dl_latency') else None
+        speedtest_ul_jitter = data_dict.get('speedtest_ul_jitter') if data_dict.get('speedtest_ul_jitter') else None
+
+        # Ping Google jitter and max latency
+        ping_google_jitter = data_dict.get('ping_google_jitter')
+        if ping_google_jitter and ping_google_jitter not in ['Failed', 'N/A', '']:
+            try:
+                ping_google_jitter = float(ping_google_jitter)
+            except:
+                ping_google_jitter = None
+        else:
+            ping_google_jitter = None
+
+        ping_google_max_latency = data_dict.get('ping_google_max_latency')
+        if ping_google_max_latency and ping_google_max_latency not in ['Failed', 'N/A', '']:
+            try:
+                ping_google_max_latency = float(ping_google_max_latency)
+            except:
+                ping_google_max_latency = None
+        else:
+            ping_google_max_latency = None
+
+        # Ping Cloudflare jitter and max latency
+        ping_cloudflare_jitter = data_dict.get('ping_cloudflare_jitter')
+        if ping_cloudflare_jitter and ping_cloudflare_jitter not in ['Failed', 'N/A', '']:
+            try:
+                ping_cloudflare_jitter = float(ping_cloudflare_jitter)
+            except:
+                ping_cloudflare_jitter = None
+        else:
+            ping_cloudflare_jitter = None
+
+        ping_cloudflare_max_latency = data_dict.get('ping_cloudflare_max_latency')
+        if ping_cloudflare_max_latency and ping_cloudflare_max_latency not in ['Failed', 'N/A', '']:
+            try:
+                ping_cloudflare_max_latency = float(ping_cloudflare_max_latency)
+            except:
+                ping_cloudflare_max_latency = None
+        else:
+            ping_cloudflare_max_latency = None
+
+        # Client information
+        client_version = data_dict.get('client_version', '')
+        client_os = data_dict.get('client_os', '')
+        client_arch = data_dict.get('client_arch', '')
+
         # Store full JSON as text
         full_data = json.dumps(data_dict)
         
@@ -203,19 +277,27 @@ def insert_check(data_dict, filename):
                 firmware, uptime_seconds, system_time,
                 avg_downstream_power, avg_downstream_snr, avg_upstream_power,
                 total_corrected_errors, total_uncorrected_errors,
-                ping_google_avg, ping_google_loss,
-                ping_cloudflare_avg, ping_cloudflare_loss,
-                iperf3_upload, iperf3_download,
+                speedtest_enabled, iperf3_upload, iperf3_download,
+                speedtest_server_name, speedtest_server_id,
+                speedtest_latency, speedtest_max_latency, speedtest_jitter,
+                speedtest_packet_loss, speedtest_dl_latency, speedtest_ul_jitter,
+                ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency,
+                ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency,
+                client_version, client_os, client_arch,
                 full_data, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             modem_id, modem_type, check_time, filename,
             firmware, uptime_seconds, system_time,
             avg_downstream_power, avg_downstream_snr, avg_upstream_power,
             total_corrected, total_uncorrected,
-            ping_google_avg, ping_google_loss,
-            ping_cloudflare_avg, ping_cloudflare_loss,
-            iperf3_upload, iperf3_download,
+            speedtest_enabled, iperf3_upload, iperf3_download,
+            speedtest_server_name, speedtest_server_id,
+            speedtest_latency, speedtest_max_latency, speedtest_jitter,
+            speedtest_packet_loss, speedtest_dl_latency, speedtest_ul_jitter,
+            ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency,
+            ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency,
+            client_version, client_os, client_arch,
             full_data, created_at
         ))
         
@@ -256,7 +338,17 @@ def get_checks(modem_id=None, start_date=None, end_date=None, limit=1000):
     """
     Get modem checks with optional filtering.
     Returns list of dicts with full JSON data.
+    
+    Date filtering behavior:
+    - start_date: Includes all checks from the beginning of that day (00:00:00)
+    - end_date: Includes all checks up to the end of that day (23:59:59)
+    
+    Note: check_time can be stored as either epoch timestamp (integer) or 
+    text format (YYYY-MM-DD_HH-MM-SS). This function handles both formats.
     """
+    from datetime import datetime, timedelta
+    import time
+    
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -268,12 +360,29 @@ def get_checks(modem_id=None, start_date=None, end_date=None, limit=1000):
         params.append(modem_id)
     
     if start_date:
-        query += ' AND check_time >= ?'
+        # Convert date to epoch timestamp for start of day (00:00:00)
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        start_epoch = int(time.mktime(start_dt.timetuple()))
+        
+        # Handle both epoch (numeric) and text format timestamps
+        # For epoch: check_time >= start_epoch
+        # For text: check_time >= 'YYYY-MM-DD'
+        query += ' AND (check_time >= ? OR check_time >= ?)'
+        params.append(start_epoch)
         params.append(start_date)
     
     if end_date:
-        query += ' AND check_time <= ?'
-        params.append(end_date)
+        # Convert date to epoch timestamp for end of day (23:59:59)
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        next_day = end_dt + timedelta(days=1)
+        end_epoch = int(time.mktime(next_day.timetuple()))
+        
+        # Handle both epoch (numeric) and text format timestamps
+        # For epoch: check_time < end_epoch (start of next day)
+        # For text: check_time < 'YYYY-MM-DD' (next day)
+        query += ' AND (check_time < ? OR check_time < ?)'
+        params.append(end_epoch)
+        params.append(next_day.strftime('%Y-%m-%d'))
     
     query += ' ORDER BY check_time DESC LIMIT ?'
     params.append(limit)

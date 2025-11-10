@@ -10,10 +10,14 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"modemcheck-client/scraper"
 )
+
+// Version is set via ldflags at build time (see Makefile)
+var Version = "dev"
 
 // ModemCheck represents the main application state
 type ModemCheck struct {
@@ -130,7 +134,7 @@ func (m *ModemCheck) Run() error {
 		defer m.logFile.Close()
 	}
 
-	m.Log(fmt.Sprintf("Modem check script (v4.5.0) started at %s", m.checkTimeString))
+	m.Log(fmt.Sprintf("Modem check script (v%s) started at %s", Version, m.checkTimeString))
 
 	// Clean up old log entries (30 days)
 	if !m.config.NoLogs {
@@ -209,6 +213,11 @@ func (m *ModemCheck) Run() error {
 		return err
 	}
 
+	// Add client version and platform information
+	data.ClientVersion = Version
+	data.ClientOS = runtime.GOOS
+	data.ClientArch = runtime.GOARCH
+
 	// Save data
 	jsonData, _ := json.MarshalIndent(data, "", "  ")
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
@@ -271,6 +280,7 @@ func main() {
 	modemAddress := flag.String("address", "autodetect", "Modem IP address or 'autodetect'")
 	xfinityPassword := flag.String("xfinitypassword", "password", "Password for Rogers Xfinity modems")
 	speedTestEnabled := flag.Bool("speedtest", true, "Enable speed tests using public servers (default: true)")
+	noUpdate := flag.Bool("noupdate", false, "Disable automatic updates (default: false, updates enabled)")
 	silent := flag.Bool("silent", false, "Suppress output to terminal")
 	noLogs := flag.Bool("nologs", false, "Disable log file creation")
 	enableCloud := flag.Bool("enablecloud", false, "Enable cloud upload (always saves locally)")
@@ -279,11 +289,12 @@ func main() {
 	flag.Parse()
 
 	config := Configuration{
-		ModemAddress:     *modemAddress,
-		IgnitePassword:   *xfinityPassword,
-		SpeedTestEnabled: *speedTestEnabled,
-		Silent:           *silent,
-		NoLogs:           *noLogs,
+		ModemAddress:      *modemAddress,
+		IgnitePassword:    *xfinityPassword,
+		SpeedTestEnabled:  *speedTestEnabled,
+		AutoUpdateEnabled: !*noUpdate, // Auto-update enabled by default
+		Silent:            *silent,
+		NoLogs:            *noLogs,
 		// Cloud settings default to disabled, loaded from config file if provided
 		EnableCloud: *enableCloud,
 		CloudHost:   "",
@@ -319,6 +330,25 @@ func main() {
 
 	// Create and run modem check
 	modemCheck := NewModemCheck(config)
+
+	// Check for updates before running the modem check
+	if config.AutoUpdateEnabled {
+		if updateAvailable, newVersion, downloadURL := modemCheck.CheckForUpdates(); updateAvailable {
+			if err := modemCheck.DownloadAndApplyUpdate(downloadURL, newVersion); err != nil {
+				modemCheck.Log(fmt.Sprintf("Failed to apply update: %v", err))
+				modemCheck.Log("Continuing with current version...")
+			} else {
+				// Update successful, restart with new version
+				if err := RestartProcess(); err != nil {
+					modemCheck.Log(fmt.Sprintf("Failed to restart: %v", err))
+					modemCheck.Log("Please restart manually to use the new version")
+				}
+				// If restart succeeds, this line won't be reached
+				return
+			}
+		}
+	}
+
 	if err := modemCheck.Run(); err != nil {
 		log.Fatalf("Error: %v", err)
 	}

@@ -632,6 +632,15 @@
                                 Uses public Ookla speed test servers. Enabled by default.
                             </small>
                         </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgAutoUpdateEnabled" checked> Enable Automatic Updates
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Automatically checks GitHub for updates and installs them. Enabled by default.
+                            </small>
+                        </div>
                     </div>
 
                     <!-- Right Column -->
@@ -1701,6 +1710,7 @@
                 ModemAddress: document.getElementById('cfgModemAddress').value || "autodetect",
                 IgnitePassword: document.getElementById('cfgIgnitePassword').value || "password",
                 SpeedTestEnabled: document.getElementById('cfgSpeedTestEnabled').checked,
+                AutoUpdateEnabled: document.getElementById('cfgAutoUpdateEnabled').checked,
                 Silent: document.getElementById('cfgSilent').checked,
                 NoLogs: document.getElementById('cfgNoLogs').checked,
                 EnableCloud: document.getElementById('cfgEnableCloud').checked,
@@ -1801,7 +1811,7 @@
         // Auto-update preview when any field changes
         document.addEventListener('DOMContentLoaded', function() {
             const configInputs = [
-                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled',
+                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled', 'cfgAutoUpdateEnabled',
                 'cfgSilent', 'cfgNoLogs', 'cfgEnableCloud', 'cfgCloudHost', 'cfgCloudPort', 'cfgCloudAPIKey'
             ];
 

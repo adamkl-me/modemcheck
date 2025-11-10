@@ -74,18 +74,39 @@ type EventLog struct {
 
 // ModemData represents all data collected from a modem
 type ModemData struct {
-	SysInfo            SysInfo          `json:"sysinfo"`
-	RX                 []RXChannel      `json:"rx"`
-	RXOFDM             []RXOFDMChannel  `json:"rxofdm"`
-	TX                 []TXChannel      `json:"tx"`
-	TXOFDM             []TXOFDMAChannel `json:"txofdm"`
-	EventLog           []EventLog       `json:"eventlog"`
-	SpeedTestUpload    float64          `json:"iperf3test_ul,omitempty"`    // Upload speed in Mbps (kept as iperf3test_ul for viewer compatibility)
-	SpeedTestDownload  float64          `json:"iperf3test_dl,omitempty"`    // Download speed in Mbps (kept as iperf3test_dl for viewer compatibility)
-	PingGoogleAvg      string           `json:"ping_google_avg,omitempty"`
-	PingGoogleLoss     string           `json:"ping_google_loss,omitempty"`
-	PingCloudflareAvg  string           `json:"ping_cloudflare_avg,omitempty"`
-	PingCloudflareLoss string           `json:"ping_cloudflare_loss,omitempty"`
+	SysInfo  SysInfo          `json:"sysinfo"`
+	RX       []RXChannel      `json:"rx"`
+	RXOFDM   []RXOFDMChannel  `json:"rxofdm"`
+	TX       []TXChannel      `json:"tx"`
+	TXOFDM   []TXOFDMAChannel `json:"txofdm"`
+	EventLog []EventLog       `json:"eventlog"`
+
+	// Speed test results
+	SpeedTestEnabled    bool    `json:"speedtest_enabled"`               // Whether speed test was enabled
+	SpeedTestUpload     float64 `json:"iperf3test_ul,omitempty"`         // Upload speed in Mbps (kept as iperf3test_ul for viewer compatibility)
+	SpeedTestDownload   float64 `json:"iperf3test_dl,omitempty"`         // Download speed in Mbps (kept as iperf3test_dl for viewer compatibility)
+	SpeedTestServerName string  `json:"speedtest_server_name,omitempty"` // Server sponsor name
+	SpeedTestServerID   string  `json:"speedtest_server_id,omitempty"`   // Server ID
+	SpeedTestLatency    float64 `json:"speedtest_latency,omitempty"`     // Unloaded average latency in ms
+	SpeedTestMaxLatency float64 `json:"speedtest_max_latency,omitempty"` // Unloaded max latency in ms
+	SpeedTestJitter     float64 `json:"speedtest_jitter,omitempty"`      // Unloaded jitter in ms
+	SpeedTestDLLatency  float64 `json:"speedtest_dl_latency,omitempty"`  // Loaded latency during download in ms
+	SpeedTestULJitter   float64 `json:"speedtest_ul_jitter,omitempty"`   // Loaded jitter during upload in ms
+
+	// Ping test results
+	PingGoogleAvg            string `json:"ping_google_avg,omitempty"`
+	PingGoogleLoss           string `json:"ping_google_loss,omitempty"`
+	PingGoogleJitter         string `json:"ping_google_jitter,omitempty"`
+	PingGoogleMaxLatency     string `json:"ping_google_max_latency,omitempty"`
+	PingCloudflareAvg        string `json:"ping_cloudflare_avg,omitempty"`
+	PingCloudflareLoss       string `json:"ping_cloudflare_loss,omitempty"`
+	PingCloudflareJitter     string `json:"ping_cloudflare_jitter,omitempty"`
+	PingCloudflareMaxLatency string `json:"ping_cloudflare_max_latency,omitempty"`
+
+	// Client information
+	ClientVersion string `json:"client_version,omitempty"` // Version of modem-check client
+	ClientOS      string `json:"client_os,omitempty"`      // Operating system (e.g., "linux", "windows", "darwin")
+	ClientArch    string `json:"client_arch,omitempty"`    // Architecture (e.g., "amd64", "arm64")
 }
 
 // ModemScraper defines the interface that all modem scrapers must implement
