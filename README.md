@@ -1,4 +1,4 @@
-# Modem-Check v5.3.1
+# Modem-Check v5.4.0
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,9 +27,37 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * No external dependencies - all diagnostics use native Go libraries
 
-## What's New in v5.3.1
+## What's New in v5.4.0
 
-### � Bug Fixes & UI Improvements
+### 🌐 MIPS Architecture Support
+
+**Embedded Device & Router Support**
+* Added MIPS (little-endian) support for OpenWrt routers and embedded devices
+* Added MIPS (big-endian) support for legacy systems
+* Compiled with softfloat for compatibility with older MIPS processors (MIPS32 Release 2)
+* Perfect for routers with MediaTek MT7621, Atheros, and similar chipsets
+
+**Cleaner Binary Naming**
+* Removed version numbers from binary filenames for simpler auto-update
+* Consistent naming across releases (e.g., `modem-check-linux-x64`)
+* GitHub releases now use stable URLs for latest binaries
+
+**Viewer Improvements**
+* Cleaned up ping/latency chart by removing untracked metrics
+* Hidden max latency datasets by default (can be toggled in chart legend)
+* Removed display of Speed Test DL Latency and UL Jitter (not collected)
+* More accurate data visualization
+
+**Platform Coverage**
+* Now supports 9 platform targets:
+  - Linux x64, ARM, ARM64, MIPS LE, MIPS BE
+  - Windows x64
+  - FreeBSD x64
+  - macOS x64, ARM64 (source build only)
+
+## Previous Updates
+
+### v5.3.1 - Bug Fixes & UI Improvements
 
 **Date Filtering Fix**
 * Fixed date filtering on cloud viewer to support epoch timestamp format
@@ -631,6 +659,28 @@ Contributions are welcome! Please ensure:
 - Code follows existing style and patterns
 - Security best practices are maintained
 - Documentation is updated for user-facing changes
+
+## Third-Party Libraries & Credits
+
+Modem-Check uses the following open-source libraries:
+
+- **[speedtest-go](https://github.com/showwin/speedtest-go)** by ITO Shogo (MIT License)
+  - Provides native Go speed testing using Ookla speedtest.net servers
+  - Enables single-binary deployment without external iperf3 dependencies
+
+- **[go-ping](https://github.com/go-ping/ping)** by Cameron Sparr and contributors (MIT License)
+  - Provides ICMP ping functionality in pure Go
+  - Enables cross-platform network latency testing
+
+- **[google/uuid](https://github.com/google/uuid)** by Google Inc. (BSD-3-Clause License)
+  - UUID generation library
+
+- **golang.org/x packages** by The Go Authors (BSD-3-Clause License)
+  - Official Go supplementary libraries (net, sync, sys)
+
+Full license texts and detailed attribution information can be found in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
+Special thanks to **Ookla** for the speedtest.net infrastructure and to all the maintainers of these excellent open-source projects that make Modem-Check possible.
 
 ## License
 

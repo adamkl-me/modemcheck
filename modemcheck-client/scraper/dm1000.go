@@ -10,15 +10,15 @@ import (
 	"strings"
 )
 
-// DM1000Scraper handles Sercomm DM1000 modems
-type DM1000Scraper struct {
+// DM1000Scraper handles Sercomm DM1000 cable modems.
+type DM1000Scraper struct{
 	client       *http.Client
 	modemAddress string
 	modemType    string
 	logger       Logger
 }
 
-// NewDM1000Scraper creates a new DM1000 scraper
+// NewDM1000Scraper creates a new DM1000 scraper instance.
 func NewDM1000Scraper(client *http.Client, modemAddress string, logger Logger) *DM1000Scraper {
 	return &DM1000Scraper{
 		client:       client,
@@ -30,6 +30,7 @@ func NewDM1000Scraper(client *http.Client, modemAddress string, logger Logger) *
 
 // Login authenticates with the modem
 func (s *DM1000Scraper) Login() error {
+	s.logger.Log("Attempting login to Sercomm DM1000 modem...")
 	user := "technician"
 	pass := "sercommdocsis"
 	passB64 := base64.StdEncoding.EncodeToString([]byte(pass))
@@ -40,19 +41,22 @@ func (s *DM1000Scraper) Login() error {
 	_, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
 		"application/x-www-form-urlencoded", strings.NewReader(data))
 	if err != nil {
+		s.logger.Log(fmt.Sprintf("Login POST request failed: %v", err))
 		return err
 	}
 
 	// Verify login
+	s.logger.Log("Verifying login...")
 	resp, err := s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Cm_Status", s.modemAddress))
 	if err != nil {
+		s.logger.Log(fmt.Sprintf("Verification GET request failed: %v", err))
 		return err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
 	if len(body) > 0 {
-		s.logger.Log("Login successful")
+		s.logger.Log("Sercomm DM1000 modem login successful")
 		return nil
 	}
 
@@ -61,6 +65,7 @@ func (s *DM1000Scraper) Login() error {
 
 // GetMAC retrieves the modem's MAC address
 func (s *DM1000Scraper) GetMAC() (string, error) {
+	s.logger.Log("Fetching MAC address from interface parameters...")
 	resp, err := s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Interface_param", s.modemAddress))
 	if err != nil {
 		return "", err
@@ -82,8 +87,10 @@ func (s *DM1000Scraper) GetMAC() (string, error) {
 	return "", fmt.Errorf("unable to get valid modem MAC")
 }
 
-// GetData collects all diagnostic data from the modem
+// GetData collects all diagnostic data from the modem including system info,
+// downstream/upstream channels (both SC-QAM and OFDM), and event logs.
 func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
+	s.logger.Log("Fetching system information...")
 	data := &ModemData{}
 
 	// Get status page for uptime and system time
@@ -126,6 +133,7 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	data.SysInfo.CheckTime = checkTime
 
 	// Get RX data
+	s.logger.Log("Fetching downstream channel data...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_DS_param", s.modemAddress))
 	var rxData map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&rxData)
@@ -173,6 +181,7 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get TX data
+	s.logger.Log("Fetching upstream channel data...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_US_param", s.modemAddress))
 	var txData map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&txData)
@@ -209,6 +218,7 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get event log
+	s.logger.Log("Fetching event log...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Event_Log", s.modemAddress))
 	var eventData map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&eventData)
@@ -229,9 +239,12 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	return data, nil
 }
 
-// extractDM1000OFDMA extracts OFDMA channel data from DM1000 JSON structure
+// extractDM1000OFDMA extracts OFDMA channel data from DM1000 JSON structure.
+// The nodes array contains field values indexed by position, with indexKey specifying
+// which OFDMA channel (index1 or index2) to extract.
 func (s *DM1000Scraper) extractDM1000OFDMA(nodes []interface{}, indexKey string) TXOFDMAChannel {
 	channel := TXOFDMAChannel{}
+	// Field map defines the position-to-field mapping from the DM1000 API response
 	fieldMap := map[int]string{
 		0:  "portid",
 		2:  "state",
@@ -273,7 +286,7 @@ func (s *DM1000Scraper) extractDM1000OFDMA(nodes []interface{}, indexKey string)
 	return channel
 }
 
-// ClearFEC clears the FEC counters
+// ClearFEC clears the FEC (Forward Error Correction) counters.
 func (s *DM1000Scraper) ClearFEC() error {
 	data := "todo=reset_FEC_Counters&this_file=status.html&next_file=status.html"
 	_, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
@@ -281,12 +294,12 @@ func (s *DM1000Scraper) ClearFEC() error {
 	return err
 }
 
-// GetModemType returns the modem type string
+// GetModemType returns the modem type string (DM1000).
 func (s *DM1000Scraper) GetModemType() string {
 	return s.modemType
 }
 
-// DetectDM1000 attempts to detect DM1000 modem
+// DetectDM1000 attempts to detect DM1000 modem by checking for the DM1000-specific title tag.
 func DetectDM1000(address string, client *http.Client) bool {
 	resp, err := client.Get(fmt.Sprintf("http://%s/login.html", address))
 	if err != nil {

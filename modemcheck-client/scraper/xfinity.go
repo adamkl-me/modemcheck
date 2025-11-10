@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// XfinityScraper handles Rogers Xfinity/XB7/XB8 modems
+// XfinityScraper handles Rogers Xfinity/XB7/XB8 cable modems.
 type XfinityScraper struct {
 	client       *http.Client
 	modemAddress string
@@ -17,7 +17,7 @@ type XfinityScraper struct {
 	logger       Logger
 }
 
-// NewXfinityScraper creates a new Xfinity scraper
+// NewXfinityScraper creates a new Xfinity scraper instance.
 func NewXfinityScraper(client *http.Client, modemAddress string, password string, logger Logger) *XfinityScraper {
 	return &XfinityScraper{
 		client:       client,
@@ -28,7 +28,7 @@ func NewXfinityScraper(client *http.Client, modemAddress string, password string
 	}
 }
 
-// Login authenticates with the modem
+// Login authenticates with the modem and detects the specific model (XB7 or XB8).
 func (s *XfinityScraper) Login() error {
 	s.logger.Log("Attempting login to Rogers Xfinity Modem...")
 
@@ -78,7 +78,7 @@ func (s *XfinityScraper) Login() error {
 	return nil
 }
 
-// GetMAC retrieves the modem's MAC address
+// GetMAC retrieves the modem's CM MAC address using multiple regex patterns to ensure compatibility.
 func (s *XfinityScraper) GetMAC() (string, error) {
 	s.logger.Log("Fetching MAC address from network_setup.jst...")
 	resp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
@@ -149,7 +149,8 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 	return "", fmt.Errorf("unable to parse valid modem CM MAC")
 }
 
-// GetData collects all diagnostic data from the modem
+// GetData collects all diagnostic data from the modem including system info and
+// downstream/upstream channels. Event logs are not available on Xfinity modems.
 func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	s.logger.Log("Fetching data from network_setup.jst...")
 	resp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
@@ -202,7 +203,8 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	return data, nil
 }
 
-// extractValue extracts a value from an HTML page given a label
+// extractValue extracts a value from an HTML page given a label using multiple regex patterns
+// to handle different HTML structure variations.
 func (s *XfinityScraper) extractValue(page, label string) string {
 	// Try pattern 1: <span class="readonlyLabel">Label:</span><span class="value">Value</span>
 	re := regexp.MustCompile(regexp.QuoteMeta(label) + `[^<]*</span>\s*<span class="value">\s*([^<]+)`)
@@ -218,7 +220,8 @@ func (s *XfinityScraper) extractValue(page, label string) string {
 	return ""
 }
 
-// parseXfinityDownstream parses downstream channel data from HTML
+// parseXfinityDownstream parses downstream channel data from HTML tables,
+// separating SC-QAM and OFDM channels based on modulation type.
 func (s *XfinityScraper) parseXfinityDownstream(page string) ([]RXChannel, []RXOFDMChannel) {
 	rxChannels := []RXChannel{}
 	rxofdmChannels := []RXOFDMChannel{}
@@ -295,7 +298,8 @@ func (s *XfinityScraper) parseXfinityDownstream(page string) ([]RXChannel, []RXO
 	return rxChannels, rxofdmChannels
 }
 
-// parseXfinityUpstream parses upstream channel data from HTML
+// parseXfinityUpstream parses upstream channel data from HTML tables,
+// separating SC-QAM and OFDMA channels based on modulation type.
 func (s *XfinityScraper) parseXfinityUpstream(page string) ([]TXChannel, []TXOFDMAChannel) {
 	txChannels := []TXChannel{}
 	txofdmaChannels := []TXOFDMAChannel{}
@@ -335,7 +339,8 @@ func (s *XfinityScraper) parseXfinityUpstream(page string) ([]TXChannel, []TXOFD
 	return txChannels, txofdmaChannels
 }
 
-// extractTableRow extracts a row of data from an HTML table
+// extractTableRow extracts a row of data from an HTML table by finding the row with
+// the specified label and parsing all cell values.
 func (s *XfinityScraper) extractTableRow(table, rowLabel string) []string {
 	results := []string{}
 
@@ -360,18 +365,18 @@ func (s *XfinityScraper) extractTableRow(table, rowLabel string) []string {
 	return results
 }
 
-// ClearFEC clears the FEC counters (not implemented for Xfinity)
+// ClearFEC clears the FEC counters. This is not yet implemented for Xfinity modems.
 func (s *XfinityScraper) ClearFEC() error {
 	s.logger.Log("FEC clear function not yet implemented for Rogers Xfinity modem.")
 	return nil
 }
 
-// GetModemType returns the modem type string
+// GetModemType returns the modem type string (Xfinity, XB7, or XB8).
 func (s *XfinityScraper) GetModemType() string {
 	return s.modemType
 }
 
-// DetectXfinity attempts to detect Xfinity modem
+// DetectXfinity attempts to detect Xfinity modem by checking for Rogers-specific pages.
 func DetectXfinity(address string, client *http.Client) bool {
 	resp, err := client.Get(fmt.Sprintf("http://%s/login.html", address))
 	if err != nil {
@@ -397,7 +402,8 @@ func DetectXfinity(address string, client *http.Client) bool {
 	return false
 }
 
-// Helper functions
+// getAtIndex safely retrieves a string from a slice at the given index,
+// returning an empty string if the index is out of bounds.
 func getAtIndex(slice []string, index int) string {
 	if index < len(slice) {
 		return slice[index]
@@ -405,6 +411,7 @@ func getAtIndex(slice []string, index int) string {
 	return ""
 }
 
+// cleanNumeric removes all non-numeric characters except decimal points and minus signs.
 func cleanNumeric(s string) string {
 	re := regexp.MustCompile(`[^0-9.-]`)
 	return re.ReplaceAllString(s, "")

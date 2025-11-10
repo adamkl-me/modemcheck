@@ -4,7 +4,7 @@ BINARY_NAME=modem-check
 SOURCE_DIR=modemcheck-client
 
 # Version info
-VERSION?=5.3.1
+VERSION?=5.4.0
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
@@ -36,53 +36,65 @@ cross-compile:
 	@mkdir -p dist
 
 	@echo "Building for Linux x64..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-x64 .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-x64 .
 
 	@echo "Building for Linux ARM (32-bit)..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-arm .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-arm .
 
 	@echo "Building for Linux ARM64..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-arm64 .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-arm64 .
+
+	@echo "Building for Linux MIPS (little-endian)..."
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-mipsle .
+
+	@echo "Building for Linux MIPS (big-endian)..."
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=mips GOMIPS=softfloat go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-mips .
 
 	@echo "Building for Windows x64..."
-	-cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-windows-x64.exe .
+	-cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-windows-x64.exe .
 
 	@echo "Building for macOS x64 (Intel)..."
-	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-darwin-x64 . || echo "  Warning: macOS x64 build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-darwin-x64 . || echo "  Warning: macOS x64 build failed (cross-compile limitation)"
 
 	@echo "Building for macOS ARM64 (Apple Silicon)..."
-	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-darwin-arm64 . || echo "  Warning: macOS ARM64 build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-darwin-arm64 . || echo "  Warning: macOS ARM64 build failed (cross-compile limitation)"
 
 	@echo "Building for FreeBSD x64..."
-	-cd $(SOURCE_DIR) && GOOS=freebsd GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-freebsd-x64 . || echo "  Warning: FreeBSD build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=freebsd GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-freebsd-x64 . || echo "  Warning: FreeBSD build failed (cross-compile limitation)"
 
 	@echo ""
 	@echo "Cross-compilation complete! Built binaries:"
 	@ls -lh dist/ 2>/dev/null || echo "No binaries built"
 
-# Individual platform targets (with version in filename)
+# Individual platform targets (without version in filename)
 linux:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-x64 .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-x64 .
 
 linux-arm:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-arm .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-arm .
 
 linux-arm64:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-arm64 .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-arm64 .
+
+linux-mipsle:
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-mipsle .
+
+linux-mips:
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=mips GOMIPS=softfloat go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-mips .
 
 windows:
-	cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-windows-x64.exe .
+	cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-windows-x64.exe .
 
 macos:
-	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-darwin-x64 .
-	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-darwin-arm64 .
+	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-darwin-x64 .
+	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-darwin-arm64 .
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -f $(BINARY_NAME)
 	@rm -f $(BINARY_NAME)-*
-	@rm -f dist/$(BINARY_NAME)-*
+	@rm -rf dist/
 	@echo "Clean complete"
 
 # Run the program
@@ -118,6 +130,8 @@ help:
 	@echo "  linux            Build for Linux x64"
 	@echo "  linux-arm        Build for Linux ARM (32-bit)"
 	@echo "  linux-arm64      Build for Linux ARM64"
+	@echo "  linux-mipsle     Build for Linux MIPS (little-endian, most routers)"
+	@echo "  linux-mips       Build for Linux MIPS (big-endian)"
 	@echo "  windows          Build for Windows x64"
 	@echo "  macos            Build for macOS (Intel + Apple Silicon)"
 	@echo "  run              Build and run the program"

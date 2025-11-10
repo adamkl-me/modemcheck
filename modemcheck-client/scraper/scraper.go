@@ -3,24 +3,23 @@ package scraper
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// SysInfo represents system information from the modem
+// SysInfo represents system information from the modem.
 type SysInfo struct {
-	SysTime   int64  `json:"systime"` // Unix epoch timestamp
-	Firmware  string `json:"firmware"`
-	Uptime    int64  `json:"uptime"` // Uptime in seconds
-	ModemType string `json:"modemtype"`
-	ModemMAC  string `json:"modemmac"`
+	SysTime   int64  `json:"systime"`   // Unix epoch timestamp
+	Firmware  string `json:"firmware"`  // Firmware version string
+	Uptime    int64  `json:"uptime"`    // Uptime in seconds
+	ModemType string `json:"modemtype"` // Modem model type
+	ModemMAC  string `json:"modemmac"`  // Modem MAC address (uppercase hex, no separators)
 	CheckTime int64  `json:"checktime"` // Unix epoch timestamp of when check was performed
 }
 
-// RXChannel represents downstream channel data
+// RXChannel represents downstream SC-QAM channel data.
 type RXChannel struct {
 	PortID      string `json:"portid"`
 	Frequency   string `json:"frequency"`
@@ -31,7 +30,7 @@ type RXChannel struct {
 	Uncorrectds string `json:"uncorrectds"`
 }
 
-// RXOFDMChannel represents downstream OFDM channel data
+// RXOFDMChannel represents downstream OFDM channel data.
 type RXOFDMChannel struct {
 	PortID       string `json:"portid"`
 	Subcarr0Freq string `json:"subcarr0freq"`
@@ -45,14 +44,14 @@ type RXOFDMChannel struct {
 	Uncorrectds  string `json:"uncorrectds"`
 }
 
-// TXChannel represents upstream channel data
+// TXChannel represents upstream SC-QAM channel data.
 type TXChannel struct {
 	PortID    string `json:"portid"`
 	Frequency string `json:"frequency"`
 	Power     string `json:"power"`
 }
 
-// TXOFDMAChannel represents upstream OFDMA channel data
+// TXOFDMAChannel represents upstream OFDMA channel data.
 type TXOFDMAChannel struct {
 	PortID         string `json:"portid"`
 	State          string `json:"state"`
@@ -65,14 +64,15 @@ type TXOFDMAChannel struct {
 	InterfaceSpeed string `json:"interfacespeed,omitempty"`
 }
 
-// EventLog represents modem event log entries
+// EventLog represents modem event log entries.
 type EventLog struct {
 	Time  int64  `json:"time"` // Unix epoch timestamp
 	ID    string `json:"id"`
 	Event string `json:"event"`
 }
 
-// ModemData represents all data collected from a modem
+// ModemData represents all data collected from a modem including channel statistics,
+// event logs, and diagnostic test results.
 type ModemData struct {
 	SysInfo  SysInfo          `json:"sysinfo"`
 	RX       []RXChannel      `json:"rx"`
@@ -109,30 +109,32 @@ type ModemData struct {
 	ClientArch    string `json:"client_arch,omitempty"`    // Architecture (e.g., "amd64", "arm64")
 }
 
-// ModemScraper defines the interface that all modem scrapers must implement
+// ModemScraper defines the interface that all modem scrapers must implement.
 type ModemScraper interface {
-	// Login authenticates with the modem
+	// Login authenticates with the modem.
 	Login() error
 
-	// GetMAC retrieves the modem's MAC address
+	// GetMAC retrieves the modem's MAC address.
 	GetMAC() (string, error)
 
-	// GetData collects all diagnostic data from the modem
+	// GetData collects all diagnostic data from the modem.
 	GetData(checkTime int64) (*ModemData, error)
 
-	// ClearFEC clears the FEC (Forward Error Correction) counters
+	// ClearFEC clears the FEC (Forward Error Correction) counters.
 	ClearFEC() error
 
-	// GetModemType returns the modem type string
+	// GetModemType returns the modem type string.
 	GetModemType() string
 }
 
-// Logger defines the interface for logging
+// Logger defines the interface for logging.
 type Logger interface {
+	// Log writes a message to the log output.
 	Log(message string)
 }
 
-// parseModemTime converts various timestamp formats to Unix epoch
+// parseModemTime converts various modem-specific timestamp formats to Unix epoch.
+// Supported formats: coda56-system, coda56-event, xb8-system, dm1000-system.
 func parseModemTime(format, timeStr string) int64 {
 	timeStr = strings.TrimSpace(timeStr)
 	if timeStr == "" {
@@ -170,14 +172,15 @@ func parseModemTime(format, timeStr string) int64 {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to parse time '%s' with format '%s': %v\n", timeStr, format, err)
+		// Parse error - return 0 to indicate invalid/missing time
 		return 0
 	}
 
 	return t.Unix()
 }
 
-// parseUptimeToSeconds converts various uptime formats to total seconds
+// parseUptimeToSeconds converts various modem-specific uptime formats to total seconds.
+// Supports CODA (00h:04m:41s), XB8 (6 days 13h: 18m: 59s), and DM1000 (2 d: 19 h: 2 m) formats.
 func parseUptimeToSeconds(uptimeStr string) int64 {
 	uptimeStr = strings.TrimSpace(uptimeStr)
 	if uptimeStr == "" {
@@ -245,11 +248,11 @@ func parseUptimeToSeconds(uptimeStr string) int64 {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Warning: Failed to parse uptime '%s'\n", uptimeStr)
+	// Parse error - return 0 to indicate invalid/missing uptime
 	return 0
 }
 
-// getString extracts a string value from a map
+// getString extracts a string value from a map, converting interface{} to string.
 func getString(m map[string]interface{}, key string) string {
 	if val, ok := m[key]; ok {
 		return fmt.Sprintf("%v", val)
@@ -257,7 +260,8 @@ func getString(m map[string]interface{}, key string) string {
 	return ""
 }
 
-// DetectModem attempts to detect the modem type at a given address
+// DetectModem attempts to detect the modem type at a given address by trying
+// detection methods for each supported modem type in sequence.
 func DetectModem(address string, client *http.Client) string {
 	// Try CODA detection first
 	if modemType := DetectCODA(address, client); modemType != "" {
