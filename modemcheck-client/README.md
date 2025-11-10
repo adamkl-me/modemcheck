@@ -1,4 +1,4 @@
-# Modem Check Client v5.3.1
+# Modem Check Client v5.4.0
 
 This is the main application source code for modem-check, organized into a clean modular package structure for better maintainability and extensibility.
 
@@ -63,7 +63,7 @@ cd modemcheck-client
 go build -o ../modem-check .
 
 # Build with version info
-go build -ldflags="-s -w -X main.Version=5.3.1" -o ../modem-check .
+go build -ldflags="-s -w -X main.Version=5.4.0" -o ../modem-check .
 ```
 
 The resulting binary will be placed in the parent directory as `modem-check` (or `modem-check.exe` on Windows).
@@ -114,6 +114,7 @@ To add support for a new modem:
 
 ## Version History
 
+- **v5.4.0** - MIPS architecture support (routers/embedded devices), cleaner binary naming, viewer improvements
 - **v5.3.1** - Bug fixes (date filtering, speedtest_enabled display), UI improvements (speed test reorganization), removed non-functional packet loss
 - **v5.3.0** - Auto-update system with GitHub integration, automatic binary updates
 - **v5.2.0** - Enhanced metrics (speed test server info, unloaded/loaded latency, ping jitter/max), database schema expansion, client tracking

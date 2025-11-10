@@ -14,13 +14,14 @@ import (
 	"time"
 )
 
+// Update-related constants.
 const (
 	GitHubAPIURL    = "https://api.github.com/repos/adamkl-me/modemcheck/releases/latest"
 	UpdateTimeout   = 30 * time.Second
 	UpdateUserAgent = "ModemCheck-AutoUpdater"
 )
 
-// GitHubRelease represents a GitHub release response
+// GitHubRelease represents a GitHub release API response.
 type GitHubRelease struct {
 	TagName string `json:"tag_name"`
 	Assets  []struct {
@@ -29,7 +30,8 @@ type GitHubRelease struct {
 	} `json:"assets"`
 }
 
-// CheckForUpdates checks GitHub releases for a newer version
+// CheckForUpdates checks GitHub releases for a newer version and returns update availability,
+// the latest version string, and download URL for the current platform's binary.
 func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion string, downloadURL string) {
 	if !m.config.AutoUpdateEnabled {
 		return false, "", ""
@@ -69,7 +71,8 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 	latestVersion = strings.TrimPrefix(release.TagName, "v")
 	currentVersion := strings.TrimPrefix(Version, "v")
 
-	// Simple version comparison (works for semver)
+	// Simple string comparison for version checking (works for basic semver)
+	// Note: This uses lexicographic comparison which may not work for all version formats
 	if latestVersion <= currentVersion {
 		m.Log(fmt.Sprintf("Already running latest version: v%s", currentVersion))
 		return false, "", ""
@@ -88,7 +91,8 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 	return false, "", ""
 }
 
-// DownloadAndApplyUpdate downloads and applies the update
+// DownloadAndApplyUpdate downloads the update binary, validates it, creates a backup
+// of the current binary, and atomically replaces it with the new version.
 func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) error {
 	m.Log(fmt.Sprintf("Downloading update from: %s", downloadURL))
 
@@ -148,7 +152,8 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 	return nil
 }
 
-// downloadFile downloads a file from url to filepath
+// downloadFile downloads a file from the given URL and saves it to the specified filepath.
+// It uses an HTTP client with a 5-minute timeout and validates the response status code.
 func downloadFile(filepath string, url string) error {
 	client := &http.Client{Timeout: 5 * time.Minute}
 
@@ -178,7 +183,8 @@ func downloadFile(filepath string, url string) error {
 	return err
 }
 
-// getPlatformBinaryName returns the platform-specific binary name pattern
+// getPlatformBinaryName returns the platform-specific binary name pattern used in GitHub releases.
+// It maps Go's GOOS/GOARCH values to the naming convention used for release binaries.
 func getPlatformBinaryName() string {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
@@ -210,7 +216,8 @@ func getPlatformBinaryName() string {
 	}
 }
 
-// RestartProcess restarts the current process with the same arguments
+// RestartProcess restarts the current process with the same arguments.
+// On Windows, it spawns a new process and exits. On Unix systems, it uses execve to replace the current process.
 func RestartProcess() error {
 	executable, err := os.Executable()
 	if err != nil {

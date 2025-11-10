@@ -12,11 +12,14 @@ import (
 
 	"modemcheck-client/scraper"
 
-	"github.com/go-ping/ping"
-	"github.com/showwin/speedtest-go/speedtest"
+	// Third-party libraries for network diagnostics
+	// See THIRD-PARTY-LICENSES.md for full license information
+	"github.com/go-ping/ping"              // MIT License - Copyright (c) 2016 Cameron Sparr and contributors
+	"github.com/showwin/speedtest-go/speedtest" // MIT License - Copyright (c) 2015 ITO Shogo
 )
 
-// RunSpeedTests runs speed tests against public servers using speedtest-go
+// RunSpeedTests runs speed tests against public servers using speedtest-go and records
+// download/upload speeds, latency, and jitter metrics.
 func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
 	data.SpeedTestEnabled = m.config.SpeedTestEnabled
 
@@ -101,7 +104,8 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
 		data.SpeedTestDownload, data.SpeedTestUpload))
 }
 
-// RunPingTests runs ping tests to Google and Cloudflare concurrently
+// RunPingTests runs ping tests to Google and Cloudflare concurrently and records
+// average latency, packet loss, jitter, and maximum latency for each target.
 func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 	m.Log("Running ping tests to google.ca and one.one.one.one...")
 
@@ -159,6 +163,8 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 	}
 }
 
+// runPing executes a ping test to the specified host using either the go-ping library
+// or falling back to the system ping command if the library fails.
 func (m *ModemCheck) runPing(host string, count int) (avg string, loss string, jitter string, maxLatency string) {
 	// Try go-ping library first
 	avg, loss, jitter, maxLatency = m.runGoPing(host, count)
@@ -170,7 +176,8 @@ func (m *ModemCheck) runPing(host string, count int) (avg string, loss string, j
 	return m.runSystemPing(host, count)
 }
 
-// runGoPing uses the go-ping library for ping tests
+// runGoPing uses the go-ping library for ping tests. It automatically handles privileged
+// vs unprivileged mode based on the operating system and available permissions.
 func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string, jitter string, maxLatency string) {
 	// Create a new pinger
 	pinger, err := ping.NewPinger(host)
@@ -253,7 +260,8 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 	return avg, loss, jitter, maxLatency
 }
 
-// runSystemPing uses the system ping command as a fallback
+// runSystemPing uses the system ping command as a fallback when go-ping fails.
+// It parses the output to extract statistics and handles platform-specific output formats.
 func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss string, jitter string, maxLatency string) {
 	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
 	defer cancel()

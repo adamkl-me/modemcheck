@@ -1194,14 +1194,11 @@
                     const val = c.ping_cloudflare_max_latency;
                     return (val && val !== 'N/A' && val !== 'Failed') ? parseFloat(val) : null;
                 });
-                const speedtestDLLatency = allChecks.map(c => c.speedtest_dl_latency || null);
-                const speedtestULJitter = allChecks.map(c => c.speedtest_ul_jitter || null);
 
                 // Render all charts
                 renderSpeedChart(labels, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
                 renderPingChart(labels, pingGoogleAvg, pingGoogleLoss, pingCloudflareAvg, pingCloudflareLoss,
-                                speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
-                                speedtestDLLatency, speedtestULJitter);
+                                speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
                 renderRxPowerChart(labels, rxScqamPowerData, rxOfdmPowerData);
                 renderRxSnrChart(labels, rxScqamSnrData, rxOfdmSnrData);
                 renderBerChart(labels, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
@@ -1405,8 +1402,7 @@
             }
 
             function renderPingChart(labels, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss,
-                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
-                                      speedtestDLLatency, speedtestULJitter) {
+                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency) {
                 const ctx = document.getElementById('pingChart');
 
                 if (charts.ping) {
@@ -1452,7 +1448,8 @@
                             tension: 0.4,
                             borderWidth: 2,
                             fill: true,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            hidden: true
                         }, {
                             label: 'Google Max Latency (ms)',
                             data: googleMaxLatency,
@@ -1462,7 +1459,8 @@
                             borderWidth: 2,
                             borderDash: [2, 2],
                             fill: false,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            hidden: true
                         }, {
                             label: 'Cloudflare Max Latency (ms)',
                             data: cloudflareMaxLatency,
@@ -1471,25 +1469,6 @@
                             tension: 0.4,
                             borderWidth: 2,
                             borderDash: [2, 2],
-                            fill: false,
-                            yAxisID: 'y'
-                        }, {
-                            label: 'Speed Test DL Latency (loaded, ms)',
-                            data: speedtestDLLatency,
-                            borderColor: '#00bcd4',
-                            backgroundColor: 'rgba(0, 188, 212, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            fill: false,
-                            yAxisID: 'y',
-                            hidden: true
-                        }, {
-                            label: 'Speed Test UL Jitter (loaded, ms)',
-                            data: speedtestULJitter,
-                            borderColor: '#ff9800',
-                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
                             fill: false,
                             yAxisID: 'y',
                             hidden: true

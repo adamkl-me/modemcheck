@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// CODAScraper handles Hitron CODA45/CODA56 modems
+// CODAScraper handles Hitron CODA45/CODA56 cable modems.
 type CODAScraper struct {
 	client       *http.Client
 	modemAddress string
@@ -17,7 +17,7 @@ type CODAScraper struct {
 	logger       Logger
 }
 
-// NewCODAScraper creates a new CODA scraper
+// NewCODAScraper creates a new CODA scraper instance.
 func NewCODAScraper(client *http.Client, modemAddress string, modemType string, logger Logger) *CODAScraper {
 	return &CODAScraper{
 		client:       client,
@@ -27,13 +27,13 @@ func NewCODAScraper(client *http.Client, modemAddress string, modemType string, 
 	}
 }
 
-// Login authenticates with the modem (not required for CODA)
+// Login authenticates with the modem. CODA modems do not require authentication.
 func (s *CODAScraper) Login() error {
 	s.logger.Log("Login not required for Hitron CODA modem")
 	return nil
 }
 
-// GetMAC retrieves the modem's MAC address
+// GetMAC retrieves the modem's MAC address from the system information endpoint.
 func (s *CODAScraper) GetMAC() (string, error) {
 	resp, err := s.client.Get(fmt.Sprintf("http://%s/data/getSysInfo.asp?", s.modemAddress))
 	if err != nil {
@@ -59,8 +59,10 @@ func (s *CODAScraper) GetMAC() (string, error) {
 	return "", fmt.Errorf("unable to get valid modem MAC")
 }
 
-// GetData collects all diagnostic data from the modem
+// GetData collects all diagnostic data from the modem including system info,
+// downstream/upstream channels (both SC-QAM and OFDM), and event logs.
 func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
+	s.logger.Log("Fetching system information...")
 	data := &ModemData{}
 
 	// Get system info
@@ -85,6 +87,7 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get RX data
+	s.logger.Log("Fetching downstream channel data...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/dsinfo.asp", s.modemAddress))
 	var rxRaw []map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&rxRaw)
@@ -124,6 +127,7 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get TX data
+	s.logger.Log("Fetching upstream channel data...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/usinfo.asp", s.modemAddress))
 	var txRaw []map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&txRaw)
@@ -153,6 +157,7 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get event log
+	s.logger.Log("Fetching event log...")
 	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/status_log.asp", s.modemAddress))
 	var eventLogRaw []map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&eventLogRaw)
@@ -169,19 +174,20 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	return data, nil
 }
 
-// ClearFEC clears the FEC counters
+// ClearFEC clears the FEC (Forward Error Correction) counters.
 func (s *CODAScraper) ClearFEC() error {
 	data := `model=%7B%22portId%22%3A%221%22%2C%22frequency%22%3A%22591000000%22%2C%22modulation%22%3A%222%22%2C%22signalStrength%22%3A%225.700%22%2C%22snr%22%3A%2237.356%22%2C%22dsoctets%22%3A%221113110%22%2C%22correcteds%22%3A%220%22%2C%22uncorrect%22%3A%220%22%2C%22channelId%22%3A%224%22%2C%22resetval%22%3A%221%22%7D`
 	_, err := s.client.Post(fmt.Sprintf("http://%s/goform/ResetFECCnt", s.modemAddress), "application/x-www-form-urlencoded", strings.NewReader(data))
 	return err
 }
 
-// GetModemType returns the modem type string
+// GetModemType returns the modem type string (CODA45 or CODA56).
 func (s *CODAScraper) GetModemType() string {
 	return s.modemType
 }
 
-// DetectCODA attempts to detect CODA modem type
+// DetectCODA attempts to detect CODA modem type by checking for CODA-specific
+// endpoints and distinguishing between CODA45 (2 ports) and CODA56 (1 port).
 func DetectCODA(address string, client *http.Client) string {
 	// Try CODA-specific endpoint (CODA45/CODA56 have no login page)
 	codaResp, err := client.Get(fmt.Sprintf("http://%s/data/getSysInfo.asp", address))

@@ -19,7 +19,7 @@ import (
 // Version is set via ldflags at build time (see Makefile)
 var Version = "dev"
 
-// ModemCheck represents the main application state
+// ModemCheck represents the main application state.
 type ModemCheck struct {
 	config          Configuration
 	client          *http.Client
@@ -34,7 +34,7 @@ type ModemCheck struct {
 	logFile         *os.File
 }
 
-// NewModemCheck creates a new ModemCheck instance
+// NewModemCheck creates a new ModemCheck instance.
 func NewModemCheck(config Configuration) *ModemCheck {
 	// Create HTTP client with custom transport (ignore SSL errors)
 	jar, _ := cookiejar.New(nil)
@@ -56,7 +56,7 @@ func NewModemCheck(config Configuration) *ModemCheck {
 	}
 }
 
-// Log writes to both stdout and log file
+// Log writes to both stdout and log file.
 func (m *ModemCheck) Log(message string) {
 	timestamp := time.Now().Format("Mon Jan 2 03:04:05 PM MST 2006")
 	logMessage := fmt.Sprintf("%s: %s\n", timestamp, message)
@@ -72,7 +72,7 @@ func (m *ModemCheck) Log(message string) {
 	}
 }
 
-// InitLogFile initializes the log file
+// InitLogFile initializes the log file.
 func (m *ModemCheck) InitLogFile() error {
 	// Skip log file creation if NoLogs is enabled
 	if m.config.NoLogs {
@@ -88,7 +88,7 @@ func (m *ModemCheck) InitLogFile() error {
 	return nil
 }
 
-// AutoDetectModem scans common addresses for modems
+// AutoDetectModem scans common modem addresses and detects the first supported modem found.
 func (m *ModemCheck) AutoDetectModem() error {
 	m.Log("Autodetect enabled. Scanning common modem addresses...")
 
@@ -109,7 +109,7 @@ func (m *ModemCheck) AutoDetectModem() error {
 	return fmt.Errorf("no supported modem found at any common address. Tried: %v", commonAddresses)
 }
 
-// createScraper creates the appropriate scraper based on modem type
+// createScraper creates the appropriate scraper instance based on the detected modem type.
 func (m *ModemCheck) createScraper() error {
 	switch m.modemType {
 	case "CODA45", "CODA56":
@@ -124,7 +124,8 @@ func (m *ModemCheck) createScraper() error {
 	return nil
 }
 
-// Run executes the main modem check workflow
+// Run executes the main modem check workflow including detection, login, data collection,
+// diagnostics, and optional cloud upload.
 func (m *ModemCheck) Run() error {
 	// Initialize log file
 	if err := m.InitLogFile(); err != nil {

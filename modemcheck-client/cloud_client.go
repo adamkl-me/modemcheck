@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// UploadQueueEntry represents a failed upload that needs to be retried
+// UploadQueueEntry represents a failed upload that needs to be retried.
 type UploadQueueEntry struct {
 	FilePath     string    `json:"file_path"`
 	ModemID      string    `json:"modem_id"`
@@ -22,14 +22,15 @@ type UploadQueueEntry struct {
 	FirstFailure time.Time `json:"first_failure"`
 }
 
-// UploadQueue manages failed uploads
+// UploadQueue manages failed uploads.
 type UploadQueue struct {
 	FailedUploads []UploadQueueEntry `json:"failed_uploads"`
 }
 
 const queueFilePath = "ModemCheck-Results/.upload_queue.json"
 
-// loadUploadQueue loads the upload queue from disk
+// loadUploadQueue loads the upload queue from disk.
+// Returns an empty queue if the file doesn't exist.
 func loadUploadQueue() (*UploadQueue, error) {
 	queue := &UploadQueue{FailedUploads: []UploadQueueEntry{}}
 
@@ -48,7 +49,7 @@ func loadUploadQueue() (*UploadQueue, error) {
 	return queue, nil
 }
 
-// saveUploadQueue saves the upload queue to disk
+// saveUploadQueue saves the upload queue to disk.
 func saveUploadQueue(queue *UploadQueue) error {
 	// Ensure directory exists
 	dir := filepath.Dir(queueFilePath)
@@ -64,7 +65,8 @@ func saveUploadQueue(queue *UploadQueue) error {
 	return os.WriteFile(queueFilePath, data, 0644)
 }
 
-// addToUploadQueue adds a failed upload to the queue
+// addToUploadQueue adds a failed upload to the queue or updates an existing entry.
+// Enforces the maximum queue size by removing oldest entries when exceeded.
 func addToUploadQueue(queue *UploadQueue, entry UploadQueueEntry) {
 	// Check if entry already exists
 	for i, existing := range queue.FailedUploads {
@@ -89,7 +91,7 @@ func addToUploadQueue(queue *UploadQueue, entry UploadQueueEntry) {
 	}
 }
 
-// removeFromUploadQueue removes an entry from the queue
+// removeFromUploadQueue removes an entry from the queue by file path.
 func removeFromUploadQueue(queue *UploadQueue, filePath string) {
 	for i, entry := range queue.FailedUploads {
 		if entry.FilePath == filePath {
@@ -99,7 +101,8 @@ func removeFromUploadQueue(queue *UploadQueue, filePath string) {
 	}
 }
 
-// cleanupUploadQueue removes old and missing files from queue
+// cleanupUploadQueue removes entries older than QueueMaxAgeDays and entries
+// for files that no longer exist on disk.
 func cleanupUploadQueue(queue *UploadQueue) {
 	cutoffDate := time.Now().AddDate(0, 0, -QueueMaxAgeDays)
 	cleaned := []UploadQueueEntry{}
@@ -121,7 +124,8 @@ func cleanupUploadQueue(queue *UploadQueue) {
 	queue.FailedUploads = cleaned
 }
 
-// uploadToCloudWithModemID uploads a file to the cloud server with a specific modem ID
+// uploadToCloudWithModemID uploads a file to the cloud server with a specific modem ID.
+// It uses multipart form data and automatically selects HTTP or HTTPS based on the host.
 func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) error {
 	m.Log(fmt.Sprintf("Uploading to cloud server: %s:%s", m.config.CloudHost, m.config.CloudPort))
 
@@ -205,7 +209,7 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	return nil
 }
 
-// UploadToCloud uploads the JSON file to the cloud server using current modem info
+// UploadToCloud uploads the JSON file to the cloud server using current modem info.
 func (m *ModemCheck) UploadToCloud(localFile string, modemType string, modemMAC string) error {
 	if !m.config.EnableCloud {
 		return nil // Silently skip if cloud is disabled
@@ -216,7 +220,7 @@ func (m *ModemCheck) UploadToCloud(localFile string, modemType string, modemMAC 
 	return m.uploadToCloudWithModemID(localFile, modemID)
 }
 
-// retryFailedUploads attempts to upload all files in the queue
+// retryFailedUploads attempts to upload all files in the queue and reports success/failure counts.
 func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 	if len(queue.FailedUploads) == 0 {
 		return
@@ -272,7 +276,8 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 	}
 }
 
-// cleanupLogFile purges log entries older than 30 days
+// cleanupLogFile purges log entries older than LogMaxAgeDays (30 days) to prevent
+// unbounded log file growth.
 func (m *ModemCheck) cleanupLogFile() error {
 	logFileName := "modem-check_logs.txt"
 

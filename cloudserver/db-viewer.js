@@ -738,8 +738,6 @@ function renderTrendChartsFromChecks() {
         const val = c.ping_cloudflare_max_latency;
         return (val && val !== 'N/A' && val !== 'Failed') ? parseFloat(val) : null;
     });
-    const speedtestDLLatency = allChecks.map(c => c.speedtest_dl_latency || null);
-    const speedtestULJitter = allChecks.map(c => c.speedtest_ul_jitter || null);
 
     // RX SC-QAM Power data
     const rxScqamPowerData = allChecks.map(c => {
@@ -914,8 +912,7 @@ function renderTrendChartsFromChecks() {
     // Render all charts with time-based x-axis
     renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
     renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss,
-                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
-                    speedtestDLLatency, speedtestULJitter);
+                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
     renderUptimeChart(timestamps, uptimeData);
     renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
     renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
@@ -1112,8 +1109,7 @@ function renderTrendChartsFromChecks() {
             }
 
             function renderPingChart(timestamps, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss,
-                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
-                                      speedtestDLLatency, speedtestULJitter) {
+                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency) {
                 const ctx = document.getElementById('pingChart');
 
                 if (charts.ping) {
@@ -1158,7 +1154,8 @@ function renderTrendChartsFromChecks() {
                             tension: 0.4,
                             borderWidth: 2,
                             fill: true,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            hidden: true
                         }, {
                             label: 'Google Max Latency (ms)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: googleMaxLatency[i] })),
@@ -1168,7 +1165,8 @@ function renderTrendChartsFromChecks() {
                             borderWidth: 2,
                             borderDash: [2, 2],
                             fill: false,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            hidden: true
                         }, {
                             label: 'Cloudflare Max Latency (ms)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareMaxLatency[i] })),
@@ -1177,25 +1175,6 @@ function renderTrendChartsFromChecks() {
                             tension: 0.4,
                             borderWidth: 2,
                             borderDash: [2, 2],
-                            fill: false,
-                            yAxisID: 'y'
-                        }, {
-                            label: 'Speed Test DL Latency (loaded, ms)',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestDLLatency[i] })),
-                            borderColor: '#00bcd4',
-                            backgroundColor: 'rgba(0, 188, 212, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            fill: false,
-                            yAxisID: 'y',
-                            hidden: true
-                        }, {
-                            label: 'Speed Test UL Jitter (loaded, ms)',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestULJitter[i] })),
-                            borderColor: '#ff9800',
-                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                            tension: 0.4,
-                            borderWidth: 2,
                             fill: false,
                             yAxisID: 'y',
                             hidden: true
