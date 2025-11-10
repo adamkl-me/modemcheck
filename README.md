@@ -1,4 +1,4 @@
-# Modem-Check v5.0.0
+# Modem-Check v5.3.1
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,9 +27,99 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * No external dependencies - all diagnostics use native Go libraries
 
-## What's New in v5.0.0 🎉
+## What's New in v5.3.1
 
-### Major Features
+### � Bug Fixes & UI Improvements
+
+**Date Filtering Fix**
+* Fixed date filtering on cloud viewer to support epoch timestamp format
+* Handles both epoch (integer) and text format timestamps transparently
+* Date filters now work correctly regardless of timestamp storage format
+
+**Speed Test UI Reorganization**
+* Moved "Speed Test Server" information to info cards section
+* Created new "Speed Test Ping" card showing unloaded latency prominently
+* Added "Speed Test Enabled?" status card (Yes/Failed/Disabled)
+* Improved status messaging for disabled/failed speed tests
+* Better visual hierarchy for speed test metrics
+
+**Speed Test Packet Loss Removal**
+* Removed non-functional speed test packet loss tracking
+* Packet loss now only reported for Google/Cloudflare ping tests (where it works correctly)
+* Cleaner, more accurate speed test reporting
+
+**Database Updates**
+* Added `speedtest_enabled` column to track test configuration
+* Enhanced query logic for mixed timestamp format support
+* Migration scripts executed successfully in production
+
+## Previous Updates
+
+### v5.3.0 - Automatic Updates
+
+**🔄 Self-Updating Binary**
+
+**Self-Updating Binary**
+* Automatically checks GitHub for new releases on startup
+* Downloads and applies updates with zero user interaction
+* Creates backup of current version before updating
+* Restarts automatically after successful update
+* Enabled by default, can be disabled with `-noupdate` flag or `AutoUpdateEnabled: false` in config
+* Platform-aware: Downloads correct binary for your OS/architecture
+* Graceful fallback: Continues with current version if update fails
+
+### 📊 Enhanced Network Diagnostics (v5.2.0)
+
+**Speed Test Enhancements**
+* Server information display (sponsor name and server ID)
+* Unloaded latency metrics (average, maximum, jitter, packet loss)
+* Loaded latency metrics (download latency, upload jitter)
+* More comprehensive network quality assessment
+
+**Ping Test Improvements**
+* Jitter measurements for both Google and Cloudflare targets
+* Maximum latency tracking alongside averages
+* System ping fallback for better Linux compatibility
+* Works "out of the box" on all platforms without configuration
+* Graceful fallback chain: go-ping library → system ping → marked as failed
+
+**Client Tracking**
+* Version number automatically recorded in each check
+* Operating system and architecture logged for troubleshooting
+* Better support diagnostics and compatibility tracking
+
+### 🗄️ Database & Viewer Updates (v5.2.0)
+
+**Database Enhancements**
+* 15+ new columns for enhanced metrics
+* Speed test server information
+* Unloaded and loaded latency data
+* Ping jitter and max latency values
+* Client version/OS/architecture tracking
+
+**Viewer Improvements**
+* New client information card showing version/OS/arch
+* Speed test server card with unloaded metrics
+* Enhanced ping displays with jitter and max latency
+* Loaded latency metrics displayed with upload/download speeds
+* 6 new chart datasets for comprehensive latency visualization
+* Consistent numeric formatting (1 decimal place)
+
+## Previous Updates
+
+### v5.1.0 - Version Injection & Ping Fallback
+
+**🔧 Automatic Version Injection**
+* Version number now automatically updates from Makefile during build
+* No more manual version string updates in code
+* Build time also injected for better tracking
+
+**🏓 Enhanced Ping Reliability**
+* System ping command fallback when go-ping library fails
+* Automatic OS detection for proper ping command flags
+* No root access or system modifications required
+
+### v5.0.0 - Major Features
 
 **🎨 Config Generator GUI**
 * New tab in admin dashboard for creating `config.json` files
@@ -126,7 +216,7 @@ chmod +x modem-check
 ### Option 2: Build from Source
 
 ```bash
-# Build for your current platform
+# Build for your current platform (with version injection)
 make build
 
 # Cross-compile for all platforms
@@ -134,7 +224,7 @@ make cross-compile
 
 # Or build manually
 cd modemcheck-client
-go build -o ../modem-check .
+go build -ldflags "-X main.Version=5.3.0" -o ../modem-check .
 ```
 
 ## Configuration
@@ -142,7 +232,7 @@ go build -o ../modem-check .
 ### Command-Line Flags
 
 ```bash
-# Basic usage with autodetect (speed tests enabled by default)
+# Basic usage with autodetect (speed tests and auto-update enabled by default)
 ./modem-check
 
 # Specify modem address
@@ -150,6 +240,9 @@ go build -o ../modem-check .
 
 # For Xfinity modems with password
 ./modem-check -xfinitypassword your_password
+
+# Disable auto-updates
+./modem-check -noupdate
 
 # Disable speed tests
 ./modem-check -speedtest=false
@@ -168,6 +261,7 @@ go build -o ../modem-check .
   -address autodetect \
   -xfinitypassword password \
   -speedtest=true \
+  -noupdate \
   -silent \
   -nologs \
   -enablecloud
@@ -182,6 +276,7 @@ Create a `config.json` file (see `config.json.example` for an example, or use th
   "ModemAddress": "autodetect",
   "IgnitePassword": "password",
   "SpeedTestEnabled": true,
+  "AutoUpdateEnabled": true,
   "Silent": false,
   "NoLogs": false,
   "EnableCloud": true,
@@ -195,6 +290,7 @@ Create a `config.json` file (see `config.json.example` for an example, or use th
 - `ModemAddress`: IP address or "autodetect" to scan common addresses
 - `IgnitePassword`: Password for Rogers Xfinity/Ignite modems
 - `SpeedTestEnabled`: Enable/disable speed tests using public Ookla servers (default: true)
+- `AutoUpdateEnabled`: Enable/disable automatic updates from GitHub (default: true)
 - `Silent`: Suppress terminal output (default: false)
 - `NoLogs`: Disable log file creation (default: false)
 - `EnableCloud`: Upload results to cloud server (default: false)
@@ -214,6 +310,7 @@ Then run:
 | `-address` | string | autodetect | Modem IP address or 'autodetect' |
 | `-xfinitypassword` | string | password | Password for Rogers Xfinity modems |
 | `-speedtest` | bool | true | Enable native Go speed tests using Ookla servers |
+| `-noupdate` | bool | false | Disable automatic updates (default: false, updates enabled) |
 | `-silent` | bool | false | Suppress output to terminal |
 | `-nologs` | bool | false | Disable log file creation |
 | `-config` | string | | Path to JSON configuration file |
@@ -224,8 +321,11 @@ Then run:
 ### Basic Examples
 
 ```bash
-# Automatic detection with default settings
+# Automatic detection with default settings (auto-update & speed tests enabled)
 ./modem-check
+
+# Disable automatic updates
+./modem-check -noupdate
 
 # Specify modem IP manually
 ./modem-check -address 192.168.100.1
@@ -236,8 +336,8 @@ Then run:
 # Run without speed tests
 ./modem-check -speedtest=false
 
-# Silent execution (for cron jobs)
-./modem-check -silent -nologs
+# Silent execution (for cron jobs, disable updates to avoid mid-run changes)
+./modem-check -silent -nologs -noupdate
 
 # Use configuration file
 ./modem-check -config ~/modem-configs/xb8.json
@@ -393,9 +493,15 @@ The generated JSON includes:
 - `txofdm`: Upstream OFDMA channel data
 - `eventlog`: Modem event history (not available on Xfinity modems)
 - `ping_google_avg`/`ping_google_loss`: Ping test results to google.ca
+- `ping_google_jitter`/`ping_google_max_latency`: Additional ping metrics
 - `ping_cloudflare_avg`/`ping_cloudflare_loss`: Ping test results to one.one.one.one
+- `ping_cloudflare_jitter`/`ping_cloudflare_max_latency`: Additional ping metrics
 - `speedtest_download`/`speedtest_upload`: Native Go speed test results (Mbps)
 - `speedtest_latency`: Network latency from speed test (ms)
+- `speedtest_server_name`/`speedtest_server_id`: Speed test server information
+- `speedtest_max_latency`/`speedtest_jitter`/`speedtest_packet_loss`: Unloaded metrics
+- `speedtest_dl_latency`/`speedtest_ul_jitter`: Loaded latency metrics
+- `client_version`/`client_os`/`client_arch`: Client information
 
 Example filename: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
@@ -453,13 +559,13 @@ The cloud viewer additionally includes:
 crontab -e
 
 # Run every hour
-0 * * * * /path/to/modem-check --silent --nologs
+0 * * * * /path/to/modem-check --silent --nologs --noupdate
 
 # Run every 15 minutes
-*/15 * * * * /path/to/modem-check --silent --nologs
+*/15 * * * * /path/to/modem-check --silent --nologs --noupdate
 
 # Run with config file
-0 * * * * /path/to/modem-check -config /path/to/config.json --silent
+0 * * * * /path/to/modem-check -config /path/to/config.json --silent --noupdate
 ```
 
 ### Windows Task Scheduler
@@ -469,26 +575,24 @@ crontab -e
 3. Set trigger (e.g., hourly)
 4. Action: Start a program
 5. Program: `C:\path\to\modem-check.exe`
-6. Arguments: `--silent --nologs` or `-config C:\path\to\config.json --silent`
+6. Arguments: `--silent --nologs --noupdate` or `-config C:\path\to\config.json --silent --noupdate`
 
 ## Project Structure
 
 ```
 modemcheck/
-├── modem-check.go              # Legacy monolithic version (kept for reference)
-├── go.mod & go.sum             # Go module dependencies
 ├── Makefile                    # Build automation
 ├── README.md                   # This file
 ├── config.json.example         # Example configuration
 ├── checkviewer.html            # Local web viewer for JSON files
 ├── dist/                       # Pre-compiled binaries (multiple platforms)
-├── modemcheck-client/          # Modular client (current implementation)
+├── modemcheck-client/          # Main application source code
 │   ├── README.md               # Client architecture documentation
 │   ├── main.go                 # Main entry point and orchestration
 │   ├── config.go               # Configuration loading
 │   ├── diagnostics.go          # Ping and speed test logic
 │   ├── cloud_client.go         # Cloud upload with retry queue
-│   ├── go.mod & go.sum         # Client dependencies
+│   ├── go.mod & go.sum         # Go module dependencies
 │   └── scraper/                # Modem-specific scrapers
 │       ├── scraper.go          # Common interface and utilities
 │       ├── coda.go             # Hitron CODA45/56 implementation

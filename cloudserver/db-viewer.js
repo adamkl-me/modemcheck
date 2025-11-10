@@ -502,23 +502,126 @@ function displayCurrentCheck() {
     document.getElementById('firmware').textContent = data.sysinfo?.firmware || '-';
     document.getElementById('uptime').textContent = formatUptime(data.sysinfo?.uptime);
     document.getElementById('systime').textContent = formatEpochTime(data.sysinfo?.systime);
+
+    // Format client version info
+    const clientVersion = data.client_version || '-';
+    const clientOS = data.client_os || '';
+    const clientArch = data.client_arch || '';
+    let clientInfo = clientVersion;
+    if (clientOS && clientArch) {
+        clientInfo += ` (${clientOS}/${clientArch})`;
+    } else if (clientOS) {
+        clientInfo += ` (${clientOS})`;
+    }
+    document.getElementById('clientinfo').textContent = clientInfo;
+
+    // Display speed test enabled status
+    const speedTestEnabled = data.speedtest_enabled;
+    const hasSpeedTestData = data.iperf3test_dl && data.iperf3test_dl > 0;
     
-    document.getElementById('iperf3_ul').textContent = formatSpeed(data.iperf3test_ul);
+    if (speedTestEnabled === true || speedTestEnabled === 1) {
+        if (hasSpeedTestData) {
+            document.getElementById('speedtest_enabled').textContent = 'Yes';
+        } else {
+            document.getElementById('speedtest_enabled').textContent = 'Failed';
+        }
+    } else if (speedTestEnabled === false || speedTestEnabled === 0) {
+        document.getElementById('speedtest_enabled').textContent = 'Disabled';
+    } else {
+        document.getElementById('speedtest_enabled').textContent = '-';
+    }
+
+    // Display speed test server information
+    const serverName = data.speedtest_server_name || '';
+    const serverID = data.speedtest_server_id || '';
+    if (serverName && serverID) {
+        document.getElementById('speedtest_server').textContent = `${serverName} (ID: ${serverID})`;
+    } else if (serverName) {
+        document.getElementById('speedtest_server').textContent = serverName;
+    } else {
+        document.getElementById('speedtest_server').textContent = '-';
+    }
+
+    // Display Speed Test Ping (average latency prominently)
+    if (data.speedtest_latency) {
+        document.getElementById('speedtest_ping').textContent = `${data.speedtest_latency.toFixed(1)} ms`;
+    } else {
+        document.getElementById('speedtest_ping').textContent = '-';
+    }
+
+    // Display speed test ping details (Max | Jitter)
+    const speedTestPingParts = [];
+    if (data.speedtest_max_latency) {
+        speedTestPingParts.push(`Max: ${data.speedtest_max_latency.toFixed(1)} ms`);
+    }
+    if (data.speedtest_jitter) {
+        speedTestPingParts.push(`Jitter: ${data.speedtest_jitter.toFixed(1)} ms`);
+    }
+    document.getElementById('speedtest_ping_details').textContent = speedTestPingParts.join(' | ');
+
+    // Display download speed and loaded latency
     document.getElementById('iperf3_dl').textContent = formatSpeed(data.iperf3test_dl);
-    
-    document.getElementById('iperf3_ul_limit').textContent = data.iperf3uploadlimit ? `(Test limited to ${data.iperf3uploadlimit} Mbps)` : '';
-    document.getElementById('iperf3_dl_limit').textContent = data.iperf3downloadlimit ? `(Test limited to ${data.iperf3downloadlimit} Mbps)` : '';
-    
-    // Display ping test results
+    const dlLoadedParts = [];
+    if (data.speedtest_dl_latency) {
+        dlLoadedParts.push(`Loaded latency: ${data.speedtest_dl_latency.toFixed(1)} ms`);
+    }
+    document.getElementById('iperf3_dl_loaded').textContent = dlLoadedParts.join(' | ');
+
+    // Display upload speed and loaded jitter
+    document.getElementById('iperf3_ul').textContent = formatSpeed(data.iperf3test_ul);
+    const ulLoadedParts = [];
+    if (data.speedtest_ul_jitter) {
+        ulLoadedParts.push(`Loaded jitter: ${data.speedtest_ul_jitter.toFixed(1)} ms`);
+    }
+    document.getElementById('iperf3_ul_loaded').textContent = ulLoadedParts.join(' | ');
+
+    // Display ping Google results with jitter and max latency
     const pingGoogleAvg = data.ping_google_avg || '-';
     const pingGoogleLoss = data.ping_google_loss || '';
-    document.getElementById('ping_google').textContent = pingGoogleAvg !== '-' && pingGoogleAvg !== 'Failed' ? `${pingGoogleAvg} ms` : pingGoogleAvg;
-    document.getElementById('ping_google_loss').textContent = pingGoogleLoss ? `Packet loss: ${pingGoogleLoss}` : '';
-    
+    const pingGoogleJitter = data.ping_google_jitter || '';
+    const pingGoogleMax = data.ping_google_max_latency || '';
+
+    if (pingGoogleAvg !== '-' && pingGoogleAvg !== 'Failed') {
+        document.getElementById('ping_google').textContent = `${parseFloat(pingGoogleAvg).toFixed(1)} ms`;
+    } else {
+        document.getElementById('ping_google').textContent = pingGoogleAvg;
+    }
+
+    const googleParts = [];
+    if (pingGoogleMax && pingGoogleMax !== 'N/A') {
+        googleParts.push(`Max: ${parseFloat(pingGoogleMax).toFixed(1)} ms`);
+    }
+    if (pingGoogleJitter && pingGoogleJitter !== 'N/A') {
+        googleParts.push(`Jitter: ${parseFloat(pingGoogleJitter).toFixed(1)} ms`);
+    }
+    if (pingGoogleLoss && pingGoogleLoss !== 'N/A') {
+        googleParts.push(`Loss: ${pingGoogleLoss}`);
+    }
+    document.getElementById('ping_google_details').textContent = googleParts.join(' | ');
+
+    // Display ping Cloudflare results with jitter and max latency
     const pingCloudflareAvg = data.ping_cloudflare_avg || '-';
     const pingCloudflareLoss = data.ping_cloudflare_loss || '';
-    document.getElementById('ping_cloudflare').textContent = pingCloudflareAvg !== '-' && pingCloudflareAvg !== 'Failed' ? `${pingCloudflareAvg} ms` : pingCloudflareAvg;
-    document.getElementById('ping_cloudflare_loss').textContent = pingCloudflareLoss ? `Packet loss: ${pingCloudflareLoss}` : '';
+    const pingCloudflareJitter = data.ping_cloudflare_jitter || '';
+    const pingCloudflareMax = data.ping_cloudflare_max_latency || '';
+
+    if (pingCloudflareAvg !== '-' && pingCloudflareAvg !== 'Failed') {
+        document.getElementById('ping_cloudflare').textContent = `${parseFloat(pingCloudflareAvg).toFixed(1)} ms`;
+    } else {
+        document.getElementById('ping_cloudflare').textContent = pingCloudflareAvg;
+    }
+
+    const cloudflareParts = [];
+    if (pingCloudflareMax && pingCloudflareMax !== 'N/A') {
+        cloudflareParts.push(`Max: ${parseFloat(pingCloudflareMax).toFixed(1)} ms`);
+    }
+    if (pingCloudflareJitter && pingCloudflareJitter !== 'N/A') {
+        cloudflareParts.push(`Jitter: ${parseFloat(pingCloudflareJitter).toFixed(1)} ms`);
+    }
+    if (pingCloudflareLoss && pingCloudflareLoss !== 'N/A') {
+        cloudflareParts.push(`Loss: ${pingCloudflareLoss}`);
+    }
+    document.getElementById('ping_cloudflare_details').textContent = cloudflareParts.join(' | ');
     
     populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
     populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
@@ -623,7 +726,21 @@ function renderTrendChartsFromChecks() {
         const val = parseFloat(c.ping_cloudflare_loss);
         return isNaN(val) ? null : val;
     });
-    
+
+    // New latency metrics for speed test and ping tests
+    const speedtestLatency = allChecks.map(c => c.speedtest_latency || null);
+    const speedtestMaxLatency = allChecks.map(c => c.speedtest_max_latency || null);
+    const googleMaxLatency = allChecks.map(c => {
+        const val = c.ping_google_max_latency;
+        return (val && val !== 'N/A' && val !== 'Failed') ? parseFloat(val) : null;
+    });
+    const cloudflareMaxLatency = allChecks.map(c => {
+        const val = c.ping_cloudflare_max_latency;
+        return (val && val !== 'N/A' && val !== 'Failed') ? parseFloat(val) : null;
+    });
+    const speedtestDLLatency = allChecks.map(c => c.speedtest_dl_latency || null);
+    const speedtestULJitter = allChecks.map(c => c.speedtest_ul_jitter || null);
+
     // RX SC-QAM Power data
     const rxScqamPowerData = allChecks.map(c => {
         if (!c.rx || c.rx.length === 0) return { min: null, avg: null, max: null };
@@ -796,7 +913,9 @@ function renderTrendChartsFromChecks() {
     
     // Render all charts with time-based x-axis
     renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss);
+    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss,
+                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
+                    speedtestDLLatency, speedtestULJitter);
     renderUptimeChart(timestamps, uptimeData);
     renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
     renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
@@ -992,13 +1111,15 @@ function renderTrendChartsFromChecks() {
                 });
             }
 
-            function renderPingChart(timestamps, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss) {
+            function renderPingChart(timestamps, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss,
+                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency,
+                                      speedtestDLLatency, speedtestULJitter) {
                 const ctx = document.getElementById('pingChart');
-                
+
                 if (charts.ping) {
                     charts.ping.destroy();
                 }
-                
+
                 charts.ping = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1020,6 +1141,64 @@ function renderTrendChartsFromChecks() {
                             borderWidth: 2,
                             fill: true,
                             yAxisID: 'y'
+                        }, {
+                            label: 'Speed Test Avg Latency (ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestLatency[i] })),
+                            borderColor: '#34a853',
+                            backgroundColor: 'rgba(52, 168, 83, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Speed Test Max Latency (ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestMaxLatency[i] })),
+                            borderColor: '#9c27b0',
+                            backgroundColor: 'rgba(156, 39, 176, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Google Max Latency (ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: googleMaxLatency[i] })),
+                            borderColor: '#7baaf7',
+                            backgroundColor: 'rgba(123, 170, 247, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            borderDash: [2, 2],
+                            fill: false,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Cloudflare Max Latency (ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareMaxLatency[i] })),
+                            borderColor: '#fab57f',
+                            backgroundColor: 'rgba(250, 181, 127, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            borderDash: [2, 2],
+                            fill: false,
+                            yAxisID: 'y'
+                        }, {
+                            label: 'Speed Test DL Latency (loaded, ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestDLLatency[i] })),
+                            borderColor: '#00bcd4',
+                            backgroundColor: 'rgba(0, 188, 212, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: false,
+                            yAxisID: 'y',
+                            hidden: true
+                        }, {
+                            label: 'Speed Test UL Jitter (loaded, ms)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestULJitter[i] })),
+                            borderColor: '#ff9800',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: false,
+                            yAxisID: 'y',
+                            hidden: true
                         }, {
                             label: 'Google Packet Loss (%)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: googleLoss[i] })),
@@ -1500,7 +1679,8 @@ function renderTrendChartsFromChecks() {
                             backgroundColor: 'rgba(66, 153, 225, 0.2)',
                             tension: 0.4,
                             borderWidth: 2,
-                            fill: true
+                            fill: true,
+                            hidden: true
                         }, {
                             label: 'Max RX OFDM Corrected',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: rxOfdmCorrectedData[i].max })),
@@ -1508,7 +1688,8 @@ function renderTrendChartsFromChecks() {
                             backgroundColor: 'rgba(49, 130, 206, 0.1)',
                             borderDash: [5, 5],
                             tension: 0.4,
-                            pointRadius: 2
+                            pointRadius: 2,
+                            hidden: true
                         }]
                     },
                     options: {

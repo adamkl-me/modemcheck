@@ -1,6 +1,6 @@
-# Modem Check Client v5.0.0
+# Modem Check Client v5.3.1
 
-This is the modular implementation of modem-check, refactored from the original monolithic `modem-check.go` file into a clean package structure for better maintainability and extensibility.
+This is the main application source code for modem-check, organized into a clean modular package structure for better maintainability and extensibility.
 
 ## Structure
 
@@ -10,6 +10,7 @@ This is the modular implementation of modem-check, refactored from the original 
 ├── config.go            # Configuration structs and loading logic
 ├── diagnostics.go       # Ping and Speedtest logic
 ├── cloud_client.go      # Upload logic and queue management
+├── updater.go           # Auto-update system with GitHub integration
 └── /scraper
     ├── scraper.go       # ModemScraper interface and common utilities
     ├── coda.go          # CODA45/CODA56 implementation
@@ -33,12 +34,13 @@ This is the modular implementation of modem-check, refactored from the original 
 - **Clear Dependencies**: Import structure shows relationships clearly
 - **Interface-Based**: Enables testing and mocking
 
-### 4. Native Go Implementations
-- **Native Ping**: Uses `github.com/go-ping/ping` library instead of `exec.Command("ping")`
-  - Cross-platform compatible without OS-specific command flags
-  - More reliable and consistent results
+### 4. Native Go Implementations with Fallback
+- **Native Ping with System Fallback**: Primary implementation uses `github.com/go-ping/ping` library with system ping fallback
+  - Tries go-ping library first (fastest, cross-platform)
+  - Falls back to system ping command if permissions don't allow go-ping
+  - Automatic OS detection for proper command flags (Windows: `-n`, Unix: `-c`)
+  - Works "out of the box" on all platforms without configuration
   - Better error handling and timeout control
-  - No dependency on system ping command
 
 - **Native Speed Tests**: Uses `github.com/showwin/speedtest-go` library instead of external iperf3
   - Tests against public Ookla speed test servers
@@ -61,7 +63,7 @@ cd modemcheck-client
 go build -o ../modem-check .
 
 # Build with version info
-go build -ldflags="-s -w -X main.Version=5.0.0" -o ../modem-check .
+go build -ldflags="-s -w -X main.Version=5.3.1" -o ../modem-check .
 ```
 
 The resulting binary will be placed in the parent directory as `modem-check` (or `modem-check.exe` on Windows).
@@ -110,11 +112,11 @@ To add support for a new modem:
 3. Add detection logic to `scraper.DetectModem()`
 4. Add case to `createScraper()` in `main.go`
 
-## Relationship to Legacy Code
-
-The original monolithic `modem-check.go` file is kept in the parent directory for reference. This modular version is the current active implementation used by the build system.
-
 ## Version History
 
+- **v5.3.1** - Bug fixes (date filtering, speedtest_enabled display), UI improvements (speed test reorganization), removed non-functional packet loss
+- **v5.3.0** - Auto-update system with GitHub integration, automatic binary updates
+- **v5.2.0** - Enhanced metrics (speed test server info, unloaded/loaded latency, ping jitter/max), database schema expansion, client tracking
+- **v5.1.0** - Automatic version injection from Makefile, system ping fallback for Linux compatibility
 - **v5.0.0** - Cloud architecture improvements, config generator, role management
 - **v4.5.0** - Initial refactored modular architecture with native speed tests

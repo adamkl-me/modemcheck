@@ -4,7 +4,7 @@ BINARY_NAME=modem-check
 SOURCE_DIR=modemcheck-client
 
 # Version info
-VERSION?=5.0.0
+VERSION?=5.3.1
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
@@ -32,50 +32,50 @@ build-small:
 
 # Cross-compile for all platforms
 cross-compile:
-	@echo "Cross-compiling for multiple platforms..."
+	@echo "Cross-compiling for multiple platforms (v$(VERSION))..."
 	@mkdir -p dist
 
 	@echo "Building for Linux x64..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-x64 .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-x64 .
 
 	@echo "Building for Linux ARM (32-bit)..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-arm .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-arm .
 
 	@echo "Building for Linux ARM64..."
-	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-arm64 .
+	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-linux-arm64 .
 
 	@echo "Building for Windows x64..."
-	-cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-windows-x64.exe .
+	-cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-windows-x64.exe .
 
 	@echo "Building for macOS x64 (Intel)..."
-	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-darwin-x64 . || echo "  Warning: macOS x64 build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-darwin-x64 . || echo "  Warning: macOS x64 build failed (cross-compile limitation)"
 
 	@echo "Building for macOS ARM64 (Apple Silicon)..."
-	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-darwin-arm64 . || echo "  Warning: macOS ARM64 build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-darwin-arm64 . || echo "  Warning: macOS ARM64 build failed (cross-compile limitation)"
 
 	@echo "Building for FreeBSD x64..."
-	-cd $(SOURCE_DIR) && GOOS=freebsd GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-freebsd-x64 . || echo "  Warning: FreeBSD build failed (cross-compile limitation)"
+	-cd $(SOURCE_DIR) && GOOS=freebsd GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-$(VERSION)-freebsd-x64 . || echo "  Warning: FreeBSD build failed (cross-compile limitation)"
 
 	@echo ""
 	@echo "Cross-compilation complete! Built binaries:"
 	@ls -lh dist/ 2>/dev/null || echo "No binaries built"
 
-# Individual platform targets
+# Individual platform targets (with version in filename)
 linux:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-x64 .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-x64 .
 
 linux-arm:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-arm .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-arm .
 
 linux-arm64:
-	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-linux-arm64 .
+	cd $(SOURCE_DIR) && GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-linux-arm64 .
 
 windows:
-	cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME).exe .
+	cd $(SOURCE_DIR) && GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-windows-x64.exe .
 
 macos:
-	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-mac-intel .
-	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-mac-arm .
+	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-darwin-x64 .
+	cd $(SOURCE_DIR) && GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o ../$(BINARY_NAME)-$(VERSION)-darwin-arm64 .
 
 # Clean build artifacts
 clean:

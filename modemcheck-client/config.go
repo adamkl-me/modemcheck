@@ -30,11 +30,12 @@ const (
 
 // Configuration holds all user-configurable settings
 type Configuration struct {
-	ModemAddress    string
-	IgnitePassword  string
+	ModemAddress     string
+	IgnitePassword   string
 	SpeedTestEnabled bool // Enable speed tests (default: true)
-	Silent          bool
-	NoLogs          bool
+	AutoUpdateEnabled bool // Enable automatic updates (default: true)
+	Silent           bool
+	NoLogs           bool
 	// Cloud mode settings
 	EnableCloud bool // Enable cloud upload (always saves locally)
 	CloudHost   string

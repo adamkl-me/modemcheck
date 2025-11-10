@@ -8,12 +8,8 @@ __pycache__/
 .pytest_cache/
 
 # Test data, logs, and personal notes
-ModemCheck-DataFiles/
-Modem-DataFiles/
-ModemCheck-Results/
-ModemCheck-ConfigFiles/
-markdown/
-modem-check_logs.txt
+ModemExampleDatafiles/
+Playground/
 .upload_queue.json
 
 # Go build artifacts
