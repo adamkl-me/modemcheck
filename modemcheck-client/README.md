@@ -1,4 +1,4 @@
-# Modem Check Client v5.4.0
+# Modem Check Client v5.5.0
 
 This is the main application source code for modem-check, organized into a clean modular package structure for better maintainability and extensibility.
 

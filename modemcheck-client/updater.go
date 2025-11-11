@@ -19,6 +19,8 @@ const (
 	GitHubAPIURL    = "https://api.github.com/repos/adamkl-me/modemcheck/releases/latest"
 	UpdateTimeout   = 30 * time.Second
 	UpdateUserAgent = "ModemCheck-AutoUpdater"
+	UpdateLockFile  = ".update_lock"
+	UpdateCooldown  = 5 * time.Minute
 )
 
 // GitHubRelease represents a GitHub release API response.
@@ -28,6 +30,83 @@ type GitHubRelease struct {
 		Name               string `json:"name"`
 		BrowserDownloadURL string `json:"browser_download_url"`
 	} `json:"assets"`
+}
+
+// UpdateLock represents the update lock file structure.
+type UpdateLock struct {
+	Version   string    `json:"version"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// checkUpdateLock checks if an update was recently attempted and failed.
+// Returns true if the update should be blocked (cooldown period not expired).
+func checkUpdateLock(targetVersion string) bool {
+	exePath, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	exeDir := filepath.Dir(exePath)
+	lockPath := filepath.Join(exeDir, UpdateLockFile)
+
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		// No lock file, allow update
+		return false
+	}
+
+	var lock UpdateLock
+	if err := json.Unmarshal(data, &lock); err != nil {
+		// Invalid lock file, allow update
+		return false
+	}
+
+	// Check if the lock is for the same version
+	if lock.Version != targetVersion {
+		// Different version, allow update
+		return false
+	}
+
+	// Check if cooldown period has expired
+	if time.Since(lock.Timestamp) > UpdateCooldown {
+		// Cooldown expired, allow update
+		return false
+	}
+
+	// Update blocked due to recent failed attempt
+	return true
+}
+
+// createUpdateLock creates a lock file to prevent repeated update attempts.
+func createUpdateLock(version string) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exeDir := filepath.Dir(exePath)
+	lockPath := filepath.Join(exeDir, UpdateLockFile)
+
+	lock := UpdateLock{
+		Version:   version,
+		Timestamp: time.Now(),
+	}
+
+	data, err := json.MarshalIndent(lock, "", "  ")
+	if err != nil {
+		return
+	}
+
+	os.WriteFile(lockPath, data, 0644)
+}
+
+// clearUpdateLock removes the update lock file.
+func clearUpdateLock() {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exeDir := filepath.Dir(exePath)
+	lockPath := filepath.Join(exeDir, UpdateLockFile)
+	os.Remove(lockPath)
 }
 
 // CheckForUpdates checks GitHub releases for a newer version and returns update availability,
@@ -75,6 +154,12 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 	// Note: This uses lexicographic comparison which may not work for all version formats
 	if latestVersion <= currentVersion {
 		m.Log(fmt.Sprintf("Already running latest version: v%s", currentVersion))
+		return false, "", ""
+	}
+
+	// Check if an update to this version was recently attempted and failed
+	if checkUpdateLock(latestVersion) {
+		m.Log(fmt.Sprintf("Update to v%s was recently attempted and may have failed. Waiting for cooldown period.", latestVersion))
 		return false, "", ""
 	}
 
@@ -140,6 +225,11 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 
 	m.Log(fmt.Sprintf("Successfully updated to v%s", newVersion))
 	m.Log("Backup saved as: " + backupFile)
+
+	// Create update lock to track this update attempt
+	// This will be checked on next startup to verify the update succeeded
+	createUpdateLock(newVersion)
+
 	m.Log("Restarting with new version...")
 
 	// Clean up backup after successful update

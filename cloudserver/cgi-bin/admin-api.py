@@ -156,7 +156,7 @@ def delete_key(key):
             conn.close()
         return False, f"Failed to delete API key: {str(e)}", "unknown"
 
-# AUTHENTICATION CHECK - Admin role required
+# AUTHENTICATION CHECK - Admin or elevated role required
 session_id = get_cookie('modemcheck_session')
 session = verify_session(session_id)
 
@@ -164,8 +164,8 @@ session = verify_session(session_id)
 print("Content-Type: application/json")
 print()
 
-# Require authentication and admin role
-if not session or session.get('role') != 'admin':
+# Require authentication and admin or elevated role
+if not session or session.get('role') not in ['admin', 'elevated']:
     print(json.dumps({'success': False, 'error': 'Unauthorized - Admin access required'}))
     sys.exit(1)
 
@@ -234,47 +234,107 @@ try:
         else:
             result = {'success': True, 'message': 'API key updated successfully'}
 
-    elif action == 'delete':
-        key = post_data.get('key', params.get('key', ''))
-        
-        success, error, key_name = delete_key(key)
-        if error:
-            result = {'success': False, 'error': error}
+    elif action == 'toggle_active':
+        # Both admin and elevated can toggle active status
+        key = post_data.get('key', '')
+        is_active = post_data.get('active', False)
+
+        if not key:
+            result = {'success': False, 'error': 'Missing API key'}
         else:
-            # Log API key deletion
-            log_user_activity(
-                username=session['username'],
-                action_type='delete_api_key',
-                ip_address=client_ip,
-                success=True,
-                user_role=session.get('role'),
-                action_details=f"Deleted API key '{key_name}'",
-                user_agent=user_agent,
-                session_id=session_id
-            )
-            result = {'success': True, 'message': 'API key deleted successfully'}
+            try:
+                conn = get_audit_connection()
+                cursor = conn.cursor()
+
+                # Get key name for logging
+                cursor.execute("SELECT name, is_active FROM api_keys WHERE api_key = ?", (key,))
+                row = cursor.fetchone()
+                if not row:
+                    conn.close()
+                    result = {'success': False, 'error': 'API key not found'}
+                else:
+                    key_name = row['name']
+                    old_status = bool(row['is_active'])
+
+                    # Update active status
+                    cursor.execute("""
+                        UPDATE api_keys
+                        SET is_active = ?
+                        WHERE api_key = ?
+                    """, (1 if is_active else 0, key))
+
+                    conn.commit()
+                    conn.close()
+
+                    # Log the action
+                    status_text = 'enabled' if is_active else 'disabled'
+                    log_user_activity(
+                        username=session['username'],
+                        action_type='toggle_api_key',
+                        ip_address=client_ip,
+                        success=True,
+                        user_role=session.get('role'),
+                        action_details=f"{status_text.capitalize()} API key '{key_name}'",
+                        user_agent=user_agent,
+                        session_id=session_id
+                    )
+
+                    result = {'success': True, 'message': f'API key {status_text} successfully'}
+            except Exception as e:
+                print(f"Error toggling API key: {e}", file=sys.stderr)
+                if 'conn' in locals():
+                    conn.close()
+                result = {'success': False, 'error': f'Failed to toggle API key: {str(e)}'}
+
+    elif action == 'delete':
+        # Only admin can delete API keys
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Only admin can delete API keys'}
+        else:
+            key = post_data.get('key', params.get('key', ''))
+
+            success, error, key_name = delete_key(key)
+            if error:
+                result = {'success': False, 'error': error}
+            else:
+                # Log API key deletion
+                log_user_activity(
+                    username=session['username'],
+                    action_type='delete_api_key',
+                    ip_address=client_ip,
+                    success=True,
+                    user_role=session.get('role'),
+                    action_details=f"Deleted API key '{key_name}'",
+                    user_agent=user_agent,
+                    session_id=session_id
+                )
+                result = {'success': True, 'message': 'API key deleted successfully'}
     
     elif action == 'get_user_activity_logs':
-        # Import audit schema
-        sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
-        from audit_schema import get_user_activity_logs, get_user_activity_stats
-        
-        limit = int(params.get('limit', post_data.get('limit', 100)))
-        username = params.get('username', post_data.get('username'))
-        action_type = params.get('action_type', post_data.get('action_type'))
-        start_date = params.get('start_date', post_data.get('start_date'))
-        end_date = params.get('end_date', post_data.get('end_date'))
-        ip_address = params.get('ip_address', post_data.get('ip_address'))
-        
-        logs = get_user_activity_logs(limit, username, action_type, start_date, end_date, ip_address)
-        stats = get_user_activity_stats()
-        
-        result = {
-            'success': True, 
-            'logs': logs,
-            'stats': stats,
-            'count': len(logs)
-        }
+        # Only admin can view user activity logs
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Admin access required for user activity logs'}
+        else:
+            # Import audit schema
+            sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
+            from audit_schema import get_user_activity_logs, get_user_activity_stats
+
+            limit = int(params.get('limit', post_data.get('limit', 100)))
+            username = params.get('username', post_data.get('username'))
+            action_type = params.get('action_type', post_data.get('action_type'))
+            start_date = params.get('start_date', post_data.get('start_date'))
+            end_date = params.get('end_date', post_data.get('end_date'))
+            ip_address = params.get('ip_address', post_data.get('ip_address'))
+
+            logs = get_user_activity_logs(limit, username, action_type, start_date, end_date, ip_address)
+            stats = get_user_activity_stats()
+
+            result = {
+                'success': True,
+                'logs': logs,
+                'stats': stats,
+                'count': len(logs)
+            }
     
     elif action == 'get_client_submission_logs':
         # Import audit schema
@@ -299,84 +359,160 @@ try:
         }
     
     elif action == 'list_users':
-        # Get list of users
-        try:
-            conn = get_audit_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT username, role, created_at, must_change_password 
-                FROM users 
-                ORDER BY username
-            """)
-            users = []
-            for row in cursor.fetchall():
-                users.append({
-                    'username': row['username'],
-                    'role': row['role'],
-                    'created_at': row['created_at'],
-                    'must_change_password': bool(row['must_change_password'])
-                })
-            conn.close()
-            result = {'success': True, 'users': users}
-        except Exception as e:
-            print(f"Error listing users: {e}", file=sys.stderr)
-            if 'conn' in locals():
-                conn.close()
-            result = {'success': False, 'error': f'Failed to list users: {str(e)}'}
-    
-    elif action == 'change_role':
-        username = post_data.get('username', '')
-        new_role = post_data.get('role', '')
-        
-        if not username or not new_role:
-            result = {'success': False, 'error': 'Missing username or role'}
-        elif new_role not in ['basic', 'admin']:
-            result = {'success': False, 'error': 'Invalid role. Must be "admin" or "basic"'}
-        elif username == 'admin':
-            result = {'success': False, 'error': 'Cannot change the admin account'}
-        elif username == session['username']:
-            result = {'success': False, 'error': 'Cannot change your own role'}
+        # Only admin can list users
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Admin access required for user management'}
         else:
+            # Get list of users
             try:
                 conn = get_audit_connection()
                 cursor = conn.cursor()
-                
-                # Check if user exists and get old role
-                cursor.execute("SELECT role FROM users WHERE username = ?", (username,))
-                user_row = cursor.fetchone()
-                
-                if not user_row:
-                    conn.close()
-                    result = {'success': False, 'error': 'User not found'}
-                else:
-                    old_role = user_row['role']
-                    
-                    # Update role
-                    cursor.execute(
-                        "UPDATE users SET role = ? WHERE username = ?",
-                        (new_role, username)
-                    )
-                    conn.commit()
-                    conn.close()
-                    
-                    # Log the action
-                    log_user_activity(
-                        username=session['username'],
-                        action_type='user_role_changed',
-                        ip_address=client_ip,
-                        success=True,
-                        user_role=session.get('role'),
-                        action_details=f"Changed {username}'s role from {old_role} to {new_role}",
-                        user_agent=user_agent,
-                        session_id=session_id
-                    )
-                    
-                    result = {'success': True, 'message': f'Role changed from {old_role} to {new_role}'}
+                cursor.execute("""
+                    SELECT username, role, created_at, must_change_password
+                    FROM users
+                    ORDER BY username
+                """)
+                users = []
+                for row in cursor.fetchall():
+                    users.append({
+                        'username': row['username'],
+                        'role': row['role'],
+                        'created_at': row['created_at'],
+                        'must_change_password': bool(row['must_change_password'])
+                    })
+                conn.close()
+                result = {'success': True, 'users': users}
             except Exception as e:
-                print(f"Error changing role: {e}", file=sys.stderr)
+                print(f"Error listing users: {e}", file=sys.stderr)
                 if 'conn' in locals():
                     conn.close()
-                result = {'success': False, 'error': f'Failed to change role: {str(e)}'}
+                result = {'success': False, 'error': f'Failed to list users: {str(e)}'}
+
+    elif action == 'change_role':
+        # Only admin can change roles
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Admin access required for user management'}
+        else:
+            username = post_data.get('username', '')
+            new_role = post_data.get('role', '')
+
+            if not username or not new_role:
+                result = {'success': False, 'error': 'Missing username or role'}
+            elif new_role not in ['basic', 'elevated', 'admin']:
+                result = {'success': False, 'error': 'Invalid role. Must be "basic", "elevated", or "admin"'}
+            elif new_role == 'admin' and session.get('role') != 'admin':
+                result = {'success': False, 'error': 'Only admin can assign admin role'}
+            elif username == 'admin':
+                result = {'success': False, 'error': 'Cannot change the default admin account'}
+            elif username == session['username']:
+                result = {'success': False, 'error': 'Cannot change your own role'}
+            else:
+                try:
+                    conn = get_audit_connection()
+                    cursor = conn.cursor()
+
+                    # Check if user exists and get old role
+                    cursor.execute("SELECT role FROM users WHERE username = ?", (username,))
+                    user_row = cursor.fetchone()
+
+                    if not user_row:
+                        conn.close()
+                        result = {'success': False, 'error': 'User not found'}
+                    else:
+                        old_role = user_row['role']
+
+                        # Update role
+                        cursor.execute(
+                            "UPDATE users SET role = ? WHERE username = ?",
+                            (new_role, username)
+                        )
+                        conn.commit()
+                        conn.close()
+
+                        # Log the action
+                        log_user_activity(
+                            username=session['username'],
+                            action_type='user_role_changed',
+                            ip_address=client_ip,
+                            success=True,
+                            user_role=session.get('role'),
+                            action_details=f"Changed {username}'s role from {old_role} to {new_role}",
+                            user_agent=user_agent,
+                            session_id=session_id
+                        )
+
+                        result = {'success': True, 'message': f'Role changed from {old_role} to {new_role}'}
+                except Exception as e:
+                    print(f"Error changing role: {e}", file=sys.stderr)
+                    if 'conn' in locals():
+                        conn.close()
+                    result = {'success': False, 'error': f'Failed to change role: {str(e)}'}
+
+    elif action == 'save_config_defaults':
+        # Only admin can save config defaults
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Admin access required for config defaults'}
+        else:
+            # Save config generator defaults
+            defaults = post_data.get('defaults', {})
+
+            try:
+                config_dir = '/modemcheck-cloud/config'
+                os.makedirs(config_dir, exist_ok=True)
+                defaults_file = os.path.join(config_dir, 'config_defaults.json')
+
+                with open(defaults_file, 'w') as f:
+                    json.dump(defaults, f, indent=2)
+
+                # Log the action
+                log_user_activity(
+                    username=session['username'],
+                    action_type='save_config_defaults',
+                    ip_address=client_ip,
+                    success=True,
+                    user_role=session.get('role'),
+                    action_details='Updated config generator defaults',
+                    user_agent=user_agent,
+                    session_id=session_id
+                )
+
+                result = {'success': True, 'message': 'Config defaults saved successfully'}
+            except Exception as e:
+                print(f"Error saving config defaults: {e}", file=sys.stderr)
+                result = {'success': False, 'error': f'Failed to save config defaults: {str(e)}'}
+
+    elif action == 'get_config_defaults':
+        # Only admin can get config defaults
+        if session.get('role') != 'admin':
+            result = {'success': False, 'error': 'Unauthorized - Admin access required for config defaults'}
+        else:
+            # Get config generator defaults
+            try:
+                defaults_file = '/modemcheck-cloud/config/config_defaults.json'
+
+                if os.path.exists(defaults_file):
+                    with open(defaults_file, 'r') as f:
+                        defaults = json.load(f)
+                    result = {'success': True, 'defaults': defaults}
+                else:
+                    # Return default values if file doesn't exist
+                    result = {
+                        'success': True,
+                        'defaults': {
+                            'ModemAddress': 'autodetect',
+                            'IgnitePassword': 'password',
+                            'SpeedTestEnabled': True,
+                            'AutoUpdateEnabled': True,
+                            'Silent': False,
+                            'NoLogs': False,
+                            'EnableCloud': False,
+                            'CloudHost': '',
+                            'CloudPort': '443'
+                        }
+                    }
+            except Exception as e:
+                print(f"Error loading config defaults: {e}", file=sys.stderr)
+                result = {'success': False, 'error': f'Failed to load config defaults: {str(e)}'}
 
     else:
         result = {'success': False, 'error': 'Unknown action'}

@@ -34,10 +34,11 @@ def main():
     # Check authentication
     session_id = get_cookie('modemcheck_session')
     session = verify_session(session_id)
-    
-    if not session or session['role'] != 'admin':
+
+    # Only admin can access user management
+    if not session or session.get('role') != 'admin':
         print()
-        print(json.dumps({'success': False, 'error': 'Unauthorized'}))
+        print(json.dumps({'success': False, 'error': 'Unauthorized - Admin access required'}))
         return
     
     request_method = os.environ.get('REQUEST_METHOD', 'GET')
@@ -74,13 +75,18 @@ def main():
             username = form.getvalue('username', '').strip()
             password = form.getvalue('password', '')
             role = form.getvalue('role', 'basic')
-            
+
             if not username or not password:
                 print(json.dumps({'success': False, 'error': 'Username and password required'}))
                 return
-            
-            if role not in ['basic', 'admin']:
+
+            if role not in ['basic', 'elevated', 'admin']:
                 print(json.dumps({'success': False, 'error': 'Invalid role'}))
+                return
+
+            # Only admin can create other admins
+            if role == 'admin' and session.get('role') != 'admin':
+                print(json.dumps({'success': False, 'error': 'Only admin can create admin users'}))
                 return
             
             try:

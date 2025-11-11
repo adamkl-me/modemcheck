@@ -35,22 +35,42 @@ This will:
 docker ps | grep modemcheck-cloud
 ```
 
-### 4. Create Your First API Key
+### 4. Create Your First API Key and Configuration
+
+**Option A: Manual Creation (Quick)**
 
 1. Open the admin dashboard in your browser:
    ```
    http://localhost:23891
    ```
 
-2. Enter a descriptive name (e.g., "Home Router", "Office Modem")
+2. Navigate to the API Keys tab
 
-3. Click "Create API Key"
+3. Enter a descriptive name (e.g., "Home Router", "Office Modem")
 
-4. **Copy the key immediately** - you won't be able to see it again!
+4. Click "Create API Key"
+
+5. **Copy the key immediately** - you won't be able to see it again!
+
+**Option B: Using Config Generator (Recommended)**
+
+1. Open the admin dashboard at `http://localhost:23891`
+
+2. Navigate to the "Config Generator" tab
+
+3. (Optional) Click the "Defaults" sub-tab to set default values for common settings
+
+4. Return to the "Generator" sub-tab (pre-filled with defaults)
+
+5. Fill in or adjust modem settings as needed
+
+6. Click "Generate Key" or "Select Existing" to choose an API key
+
+7. Download the complete `config.json` file
 
 ### 5. Update Your modem-check Configuration
 
-Create or update your `config.json`:
+If you created the API key manually, create or update your `config.json`:
 
 ```json
 {
@@ -90,20 +110,22 @@ http://localhost:23890
 ### File Structure
 ```
 /modemcheck-cloud/
-├── data/                   # SQLite database (persistent volume)
-│   ├── modemcheck.db      # Main database with all modem data
-│   └── audit.db           # Audit log database
-├── config/                 # Configuration (persistent volume)
-│   └── users.db           # User accounts database
+├── data/                     # SQLite database (persistent volume)
+│   ├── modemcheck.db        # Main database with all modem data
+│   └── audit.db             # Audit log database
+├── config/                   # Configuration (persistent volume)
+│   ├── users.db             # User accounts database
+│   ├── sessions/            # Session files
+│   └── config_defaults.json # Config Generator default values
 ├── cgi-bin/
-│   ├── db-api.py          # Data viewer API
-│   ├── upload.py          # Data upload handler (inserts to database)
-│   ├── db_schema.py       # Database schema and utilities
-│   ├── admin-api.py       # API key management
-│   └── auth.py            # Authentication handler
-├── db-viewer.html         # Data viewer interface
-├── db-viewer.js           # Data viewer JavaScript
-└── admin.html             # Admin dashboard
+│   ├── db-api.py            # Data viewer API
+│   ├── upload.py            # Data upload handler (inserts to database)
+│   ├── db_schema.py         # Database schema and utilities
+│   ├── admin-api.py         # API key management
+│   └── auth.py              # Authentication handler
+├── db-viewer.html           # Data viewer interface
+├── db-viewer.js             # Data viewer JavaScript
+└── admin.html               # Admin dashboard with Config Generator
 ```
 
 ## Container Management
@@ -152,6 +174,7 @@ docker exec -it modemcheck-cloud /bin/sh
    - Edit key names or disable keys
    - Delete keys
    - Copy keys to clipboard
+   - Use the Config Generator with Defaults sub-tab to create config.json files with pre-filled values
 
 ### Via API (Advanced)
 
@@ -211,6 +234,34 @@ curl "http://localhost:23890/cgi-bin/db-api.py?action=list_files&modem_id=CODA56
 curl "http://localhost:23890/cgi-bin/db-api.py?action=get_file&modem_id=CODA56-xxx&filename=2025-11-05_12-00-00.json"
 ```
 
+## Config Generator
+
+The admin dashboard includes a Config Generator feature with two sub-tabs:
+
+### Generator Sub-tab
+- Point-and-click interface for creating `config.json` files
+- Live JSON preview that updates as you type
+- Select existing API keys or generate new ones inline
+- Download button for instant `config.json` file
+- All configuration options available (modem settings, cloud upload, speed tests, etc.)
+
+### Defaults Sub-tab
+- Set default values for all configuration fields
+- Defaults automatically populate the Generator sub-tab
+- Saves time when creating multiple similar configurations
+- Changes persist across sessions
+- Stored in `/modemcheck-cloud/config/config_defaults.json`
+
+**Usage:**
+1. Navigate to the Config Generator tab in the admin dashboard
+2. (Optional) Click the "Defaults" sub-tab to set your preferred default values
+3. Click "Save Defaults" to persist your settings
+4. Return to the "Generator" sub-tab - fields will be pre-filled with your defaults
+5. Customize as needed for the specific device
+6. Download the generated `config.json` file
+
+This eliminates manual JSON editing and reduces configuration errors.
+
 ## Migrating Existing Data
 
 ### Architecture Change (v5.0+)
@@ -265,6 +316,78 @@ docker run --rm \
   -v $(pwd)/backups:/backup \
   alpine tar xzf /backup/old-db.tar.gz -C /data
 ```
+
+## User Role Management
+
+### Permission Levels
+
+The admin dashboard supports three user roles with different permission levels:
+
+| Role | Permissions |
+|------|------------|
+| **admin** | Full system access including User Management, User Activity audit logs, Config Defaults, API Keys, and all other features |
+| **elevated** | Limited admin access to API Keys, Config Generator (Generator sub-tab only), and Client Submissions |
+| **basic** | View-only access to check data |
+
+### First-Time Setup
+
+After building the container for the first time, you'll need to fix the database role constraint to support the new permission levels:
+
+```bash
+# Fix the database constraint to allow 'admin', 'elevated', and 'basic' roles
+docker exec -it modemcheck-cloud python3 /modemcheck-cloud/fix_role_constraint.py
+```
+
+**Note:** The default admin account is created with username `admin` and password `changeme`. You'll be prompted to change this on first login.
+
+### Migrating from Old Role Hierarchy
+
+If you're upgrading from a previous version that used different role names (superadmin/admin), run the migration script:
+
+```bash
+# Migrate old role names to new hierarchy
+docker exec -it modemcheck-cloud python3 /modemcheck-cloud/migrate_roles.py
+```
+
+This will:
+- Convert `superadmin` → `admin` (full access)
+- Convert old `admin` → `elevated` (limited admin)
+- Keep `basic` unchanged
+
+### Upgrading Users to Admin
+
+To give a user full admin access:
+
+```bash
+# Upgrade a user to admin role
+docker exec -it modemcheck-cloud python3 /modemcheck-cloud/upgrade_to_admin.py username
+```
+
+### Managing Users via Dashboard
+
+Users with **admin** role can:
+- Access the admin dashboard with full visibility
+- Create new users with any role (basic, elevated, or admin)
+- Change user roles via dropdown
+- Reset user passwords
+- Delete users
+- View user activity logs
+- Manage API keys
+- Use Config Generator (all tabs including Defaults)
+- View client submission logs
+
+Users with **elevated** role can:
+- Access the admin dashboard with reduced visibility
+- Manage API keys
+- Use Config Generator (Generator tab only - Defaults tab is hidden)
+- View client submission logs
+- **Cannot** access User Management tab
+- **Cannot** view User Activity audit logs
+- **Cannot** modify Config Defaults
+
+Users with **basic** role:
+- Cannot access the admin dashboard
+- View-only access to check data via the viewer
 
 ## Backup and Restore
 
@@ -474,6 +597,14 @@ docker compose up -d
 ```
 
 Your data and API keys are preserved in Docker volumes.
+
+**Important:** After updating to a version with new user role features, run the database fix script:
+
+```bash
+docker exec -it modemcheck-cloud python3 /modemcheck-cloud/fix_role_constraint.py
+```
+
+This updates the database schema to support the new permission levels (admin, elevated, basic).
 
 ## Support
 

@@ -1,4 +1,4 @@
-# Modem-Check v5.4.0
+# Modem-Check v5.5.0
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -27,9 +27,54 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * Saves timestamped JSON output files for historical tracking
     * No external dependencies - all diagnostics use native Go libraries
 
-## What's New in v5.4.0
+## What's New in v5.5.0
 
-### 🌐 MIPS Architecture Support
+### 🔐 Enhanced Role-Based Access Control
+
+**New "Elevated" Role**
+* Introduced middle-tier role between basic and admin for better permission granularity
+* Elevated users can:
+  - List and toggle (enable/disable) API keys
+  - View client submission logs
+  - Access configuration generator
+* Elevated users cannot:
+  - Delete API keys (admin only)
+  - View user activity logs (admin only)
+  - Manage users or change roles (admin only)
+* Perfect for trusted users who need operational access without full administrative privileges
+
+### ⚙️ Config Generator Enhancements
+
+**Defaults Management**
+* New "Defaults" sub-tab in Config Generator for setting default values
+* Pre-populate all configuration fields with your preferred defaults
+* Defaults automatically applied when creating new configurations
+* Saves time when deploying multiple modem-check clients
+* Admin-only feature with full audit logging
+
+### 🔄 Client Update Improvements
+
+**Update Lock Mechanism**
+* Added cooldown period (5 minutes) after failed update attempts
+* Prevents repeated failed update attempts that could cause issues
+* Automatically verifies update success on next startup
+* Clears lock file when update is confirmed successful
+* Better handling of update failures with graceful fallback
+
+### 🧪 Comprehensive Test Suite
+
+**Security & Functional Testing**
+* Added 50+ new test cases for cloud server APIs
+* Authentication tests (login, logout, session management)
+* Role-based access control tests for all three user roles
+* Security tests (XSS prevention, SQL injection protection, session security)
+* End-to-end workflow tests (upload → view → audit)
+* User lifecycle tests (create → use → delete)
+* Enhanced quality assurance and security validation
+
+## Previous Updates
+
+### v5.4.0 - MIPS Architecture Support
 
 **Embedded Device & Router Support**
 * Added MIPS (little-endian) support for OpenWrt routers and embedded devices
@@ -151,6 +196,8 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 
 **🎨 Config Generator GUI**
 * New tab in admin dashboard for creating `config.json` files
+* Sub-tabs for Generator and Defaults management
+* Defaults sub-tab allows setting default values for all config fields
 * Live JSON preview with auto-updates as you type
 * Download config.json directly from browser
 * Select existing API keys from dropdown
@@ -297,7 +344,7 @@ go build -ldflags "-X main.Version=5.3.0" -o ../modem-check .
 
 ### Configuration File
 
-Create a `config.json` file (see `config.json.example` for an example, or use the Admin Dashboard Config Generator):
+Create a `config.json` file (see `config.json.example` for an example, or use the Admin Dashboard Config Generator with the Defaults sub-tab to set default values):
 
 ```json
 {
@@ -427,11 +474,13 @@ For detailed setup instructions, see `cloudserver/README.md`.
 
 **Option 2: Using Config Generator (Recommended)**
 1. Open the admin dashboard and navigate to "Config Generator" tab
-2. Fill in your modem details and settings
-3. Click "Select Existing API Key" to choose from your existing keys
-4. Or create a new one directly from the API Keys tab
-5. Download the generated `config.json` file
-6. Place it in the same directory as your modem-check executable
+2. (Optional) Go to the "Defaults" sub-tab to set default values for all fields
+3. Return to the "Generator" sub-tab which will be pre-filled with your defaults
+4. Fill in your modem details and settings (or use the defaults)
+5. Click "Select Existing API Key" to choose from your existing keys
+6. Or create a new one directly from the API Keys tab
+7. Download the generated `config.json` file
+8. Place it in the same directory as your modem-check executable
 
 ### Enable Cloud Mode
 
@@ -454,6 +503,8 @@ Add cloud settings to your `config.json`:
 ### Cloud Server Features
 
 - **Config Generator**: Point-and-click interface to create config.json files with live preview
+  - Generator sub-tab for creating configurations
+  - Defaults sub-tab for setting default values that auto-populate the generator
 - **Role Management**: Promote/demote users between basic and admin roles
 - **API Key Management**: Create, view, edit, and delete API keys through web dashboard
 - **User Management**: Create viewer and admin users with forced password changes
@@ -546,6 +597,8 @@ The included `checkviewer.html` provides:
 
 The cloud viewer additionally includes:
 * **Config Generator**: Create config.json files using a GUI with live preview
+  - Generator sub-tab for creating configurations
+  - Defaults sub-tab for setting and managing default values
 * **Role Management**: Admin users can promote/demote other users
 * **14-Day Default Date Range**: Automatically pre-populated for quick access
 * **Multi-Modem Support**: View data from multiple modems in one dashboard

@@ -145,7 +145,7 @@
         <div class="logo">
             <h1>ModemCheck Cloud</h1>
             <p>Admin Dashboard Login</p>
-            <span class="admin-badge">🔒 ADMIN ACCESS ONLY</span>
+            <span class="admin-badge">🔒 AUTHORIZED ACCESS</span>
         </div>
 
         <div id="error" class="error-message"></div>
@@ -187,7 +187,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const errorParam = urlParams.get('error');
         if (errorParam === 'access_denied') {
-            showError('Access denied. You need admin privileges to access this page.');
+            showError('Access denied. You need admin or elevated privileges to access this page.');
         }
 
         form.addEventListener('submit', async (e) => {
@@ -226,9 +226,9 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Check if user has admin role
-                    if (data.role !== 'admin') {
-                        showError('Access denied. Admin credentials required.');
+                    // Check if user has admin or elevated role
+                    if (data.role !== 'admin' && data.role !== 'elevated') {
+                        showError('Access denied. Admin or elevated credentials required.');
                         loginBtn.disabled = false;
                         loginBtn.textContent = 'Login to Admin Dashboard';
                         return;

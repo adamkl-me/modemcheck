@@ -49,7 +49,7 @@ def ensure_default_admin():
         user_count = cursor.fetchone()['count']
         
         if user_count == 0:
-            # Create default admin user
+            # Create default admin user with full permissions
             cursor.execute("""
                 INSERT INTO users (username, password_hash, role, created_at, must_change_password)
                 VALUES (?, ?, 'admin', ?, 1)
