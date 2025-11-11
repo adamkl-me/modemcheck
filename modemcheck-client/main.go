@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"modemcheck-client/scraper"
@@ -54,6 +55,47 @@ func NewModemCheck(config Configuration) *ModemCheck {
 		checkTime:       now.Unix(),
 		checkTimeString: now.Format("2006-01-02_15-04-05"),
 	}
+}
+
+// VerifyUpdateSuccess checks if a previous update succeeded and clears the lock if so.
+func (m *ModemCheck) VerifyUpdateSuccess() {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exeDir := filepath.Dir(exePath)
+	lockPath := filepath.Join(exeDir, ".update_lock")
+
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		// No lock file exists
+		return
+	}
+
+	var lock struct {
+		Version   string    `json:"version"`
+		Timestamp time.Time `json:"timestamp"`
+	}
+
+	if err := json.Unmarshal(data, &lock); err != nil {
+		// Invalid lock file, remove it
+		os.Remove(lockPath)
+		return
+	}
+
+	// Remove 'v' prefix for comparison
+	lockVersion := strings.TrimPrefix(lock.Version, "v")
+	currentVersion := strings.TrimPrefix(Version, "v")
+
+	// If current version is >= lock version, the update succeeded
+	if currentVersion >= lockVersion {
+		// Update was successful, remove lock
+		os.Remove(lockPath)
+		if !m.config.Silent {
+			fmt.Printf("Successfully verified update to v%s\n", lock.Version)
+		}
+	}
+	// If current version < lock version, keep the lock (update failed)
 }
 
 // Log writes to both stdout and log file.
@@ -331,6 +373,11 @@ func main() {
 
 	// Create and run modem check
 	modemCheck := NewModemCheck(config)
+
+	// Check if a previous update was successful and clear the lock if needed
+	if config.AutoUpdateEnabled {
+		modemCheck.VerifyUpdateSuccess()
+	}
 
 	// Check for updates before running the modem check
 	if config.AutoUpdateEnabled {

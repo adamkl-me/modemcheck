@@ -127,7 +127,7 @@ def init_audit_database():
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY NOT NULL,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'basic' CHECK(role IN ('admin', 'basic')),
+            role TEXT NOT NULL DEFAULT 'basic' CHECK(role IN ('admin', 'elevated', 'basic')),
             created_at TEXT NOT NULL,
             last_login TEXT,
             last_login_ip TEXT,

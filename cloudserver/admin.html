@@ -30,29 +30,48 @@
         }
 
         .header {
-            background: white;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
             padding: 30px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: white;
         }
 
         h1 {
-            color: #667eea;
+            color: white;
             margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
         }
 
         .subtitle {
-            color: #666;
+            color: rgba(255, 255, 255, 0.9);
             font-size: 14px;
         }
 
         .action-section {
             background: white;
-            border-radius: 10px;
-            padding: 25px;
+            border-radius: 12px;
+            padding: 30px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-section h2,
+        .keys-section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+        }
+
+        .action-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
         }
 
         .form-group {
@@ -74,9 +93,9 @@
             width: 100%;
             padding: 10px;
             border: 2px solid #e0e0e0;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
             background-color: white;
         }
 
@@ -87,6 +106,7 @@
         select:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         input[type="text"]:disabled,
@@ -100,22 +120,24 @@
         }
 
         .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
+            padding: 10px 25px;
+            border: 2px solid transparent;
+            border-radius: 8px;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            border-color: transparent;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: linear-gradient(135deg, #5568d3 0%, #6a4191 100%);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         .btn-danger {
@@ -137,12 +159,13 @@
         }
 
         .btn-secondary {
-            background: #6b7280;
-            color: white;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
         }
 
         .btn-secondary:hover {
-            background: #4b5563;
+            background: #f0f2ff;
         }
 
         .btn:disabled {
@@ -164,24 +187,33 @@
 
         .keys-section {
             background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
 
         .keys-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .keys-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .keys-table th {
-            background: #f3f4f6;
-            padding: 12px;
+            background: transparent;
+            padding: 15px 12px;
             text-align: left;
             font-weight: 600;
-            color: #374151;
-            border-bottom: 2px solid #e5e7eb;
+            color: white;
+            border-bottom: none;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 0.5px;
         }
 
         .keys-table td {
@@ -189,53 +221,61 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
-        .keys-table tr:hover {
+        .keys-table tbody tr:hover {
             background: #f9fafb;
+        }
+
+        .keys-table thead tr:hover {
+            background: transparent;
         }
 
         .key-preview {
             font-family: 'Courier New', monospace;
-            background: #f3f4f6;
-            padding: 4px 8px;
-            border-radius: 4px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 6px 10px;
+            border-radius: 6px;
             font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 12px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .status-active {
-            background: #d1fae5;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             color: #065f46;
         }
 
         .status-inactive {
-            background: #fee2e2;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
             color: #991b1b;
         }
 
         .message {
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             display: none;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .message.success {
-            background: #d1fae5;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             color: #065f46;
-            border: 1px solid #10b981;
+            border: 2px solid #10b981;
         }
 
         .message.error {
-            background: #fee2e2;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
             color: #991b1b;
-            border: 1px solid #ef4444;
+            border: 2px solid #ef4444;
         }
 
         .message.show {
@@ -246,17 +286,18 @@
             text-align: center;
             padding: 40px;
             color: #6b7280;
+            font-style: italic;
         }
 
         .role-select {
-            padding: 6px 10px;
-            border: 2px solid #cbd5e0;
-            border-radius: 5px;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             background-color: white;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
 
         .role-select:hover:not(:disabled) {
@@ -303,12 +344,13 @@
 
         .modal-content {
             background: white;
-            border-radius: 10px;
+            border-radius: 16px;
             padding: 30px;
             max-width: 500px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
         .modal-header {
@@ -325,28 +367,33 @@
         }
 
         .key-display {
-            background: #f3f4f6;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin: 15px 0;
             word-break: break-all;
             font-family: 'Courier New', monospace;
             font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .copy-btn {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
+            padding: 10px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 600;
             margin-top: 10px;
+            transition: all 0.3s ease;
         }
 
         .copy-btn:hover {
-            background: #5568d3;
+            background: linear-gradient(135deg, #5568d3 0%, #6a4191 100%);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
         }
 
         .loading {
@@ -357,40 +404,108 @@
 
         .tab-navigation {
             display: flex;
-            gap: 0;
+            gap: 10px;
             background: white;
             border-bottom: 2px solid #e0e0e0;
-            padding: 0 30px;
+            padding: 20px 30px;
             margin-bottom: 0;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
         .tab-btn {
-            padding: 15px 30px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #6b7280;
+            padding: 10px 25px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            color: #667eea;
             font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             transition: all 0.3s ease;
-            position: relative;
         }
 
         .tab-btn:hover {
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
+            background: #f0f2ff;
         }
 
         .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: transparent;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
         }
 
         .tab-content {
             background: white;
-            border-radius: 0 0 10px 10px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            max-height: none;
+            overflow: visible;
+        }
+
+        .tabs-wrapper {
+            position: relative;
+        }
+
+        .sub-tab-navigation {
+            display: flex;
+            gap: 10px;
+            background: #f9fafb;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 15px 30px;
+            margin: 0;
+        }
+
+        .sub-tab-btn {
+            padding: 8px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            color: #6b7280;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .sub-tab-btn:hover {
+            color: #667eea;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .sub-tab-btn.active {
+            color: white;
+            border-color: #667eea;
+            background: #667eea;
+        }
+
+        .sub-tab-content {
+            display: none;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        #logoutBtn:hover {
+            background: rgba(255,255,255,0.25) !important;
+            transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {
@@ -416,7 +531,7 @@
         <div class="header">
             <h1>ModemCheck Admin Dashboard</h1>
             <p class="subtitle">Manage API keys and user accounts</p>
-            <button id="logoutBtn" style="position: absolute; top: 30px; right: 30px; padding: 10px 20px; background: rgba(255,255,255,0.2); border: 2px solid white; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Logout</button>
+            <button id="logoutBtn" style="position: absolute; top: 30px; right: 30px; padding: 10px 20px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.8); color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; backdrop-filter: blur(10px);">Logout</button>
         </div>
 
         <div id="message" class="message"></div>
@@ -430,8 +545,9 @@
             <button id="userActivityTab" class="tab-btn" onclick="showTab('userActivity')">User Activity</button>
         </div>
 
+        <div class="tabs-wrapper">
         <!-- API Keys Section -->
-        <div id="apiKeysSection" class="tab-content" style="display: none;">
+        <div id="apiKeysSection" class="tab-content">
             <div class="action-section">
                 <h2>Create New API Key</h2>
             <div class="form-group">
@@ -450,7 +566,7 @@
         </div>
 
         <!-- User Management Section -->
-        <div id="usersSection" class="tab-content" style="display: none;">
+        <div id="usersSection" class="tab-content">
             <div class="action-section">
                 <h2>Create New User</h2>
                 <div class="form-group">
@@ -465,7 +581,8 @@
                     <label for="newUserRole">Role</label>
                     <select id="newUserRole" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
                         <option value="basic">Basic (Viewer only)</option>
-                        <option value="admin">Admin (Full access)</option>
+                        <option value="elevated">Elevated (Limited admin access)</option>
+                        <option value="admin" id="adminRoleOption" style="display: none;">Admin (Full system access)</option>
                     </select>
                 </div>
                 <button class="btn btn-primary" onclick="createUser()">Create User</button>
@@ -480,21 +597,21 @@
         </div>
 
         <!-- User Activity Audit Log Section -->
-        <div id="userActivitySection" class="tab-content" style="display: none;">
+        <div id="userActivitySection" class="tab-content">
             <div class="action-section">
                 <h2>User Activity Audit Log</h2>
                 <p class="subtitle">Track all user actions including logins, logouts, and administrative activities</p>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Total Actions</div>
                         <div id="totalActions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Failed Actions</div>
                         <div id="failedActions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique Users</div>
                         <div id="uniqueUsers" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
@@ -542,25 +659,25 @@
         </div>
 
         <!-- Client Submission Audit Log Section -->
-        <div id="clientLogsSection" class="tab-content" style="display: none;">
+        <div id="clientLogsSection" class="tab-content">
             <div class="action-section">
                 <h2>Client Submission Audit Log</h2>
                 <p class="subtitle">Monitor all check data submissions from client devices</p>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Total Submissions</div>
                         <div id="totalSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Failed Submissions</div>
                         <div id="failedSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique Modems</div>
                         <div id="uniqueModems" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; padding: 20px; border-radius: 10px;">
+                    <div style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                         <div style="font-size: 0.9em; opacity: 0.9;">Unique API Keys</div>
                         <div id="uniqueApiKeys" style="font-size: 2em; font-weight: bold;">-</div>
                     </div>
@@ -597,14 +714,22 @@
         </div>
 
         <!-- Config Generator Section -->
-        <div id="configGenSection" class="tab-content">
-            <div class="action-section">
-                <h2>🔧 ModemCheck Configuration Generator</h2>
-                <p class="subtitle">Create a config.json file for the ModemCheck program</p>
+        <div id="configGenSection" class="tab-content active">
+            <!-- Sub-tab Navigation -->
+            <div class="sub-tab-navigation">
+                <button id="configGenGeneratorSubTab" class="sub-tab-btn active" onclick="showConfigSubTab('generator')">Generator</button>
+                <button id="configGenDefaultsSubTab" class="sub-tab-btn" onclick="showConfigSubTab('defaults')">Defaults</button>
+            </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-                    <!-- Left Column -->
-                    <div>
+            <!-- Generator Sub-tab -->
+            <div id="configGenGeneratorSection" class="sub-tab-content active">
+                <div class="action-section">
+                    <h2>🔧 ModemCheck Configuration Generator</h2>
+                    <p class="subtitle">Create a config.json file for the ModemCheck program</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <!-- Left Column -->
+                        <div>
                         <h3 style="margin-bottom: 15px; color: #667eea;">Basic Settings</h3>
                         
                         <div class="form-group">
@@ -705,8 +830,91 @@
                         </div>
                     </div>
                 </div>
+                </div>
+            </div>
+
+            <!-- Defaults Sub-tab -->
+            <div id="configGenDefaultsSection" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>⚙️ Configuration Defaults</h2>
+                    <p class="subtitle">Set default values for the configuration generator. These values will be pre-filled when creating new configurations.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <!-- Left Column -->
+                        <div>
+                            <h3 style="margin-bottom: 15px; color: #667eea;">Basic Settings Defaults</h3>
+
+                            <div class="form-group">
+                                <label for="defaultModemAddress">Default Modem Address</label>
+                                <input type="text" id="defaultModemAddress" value="autodetect" placeholder="autodetect or IP address">
+                                <small style="color: #6b7280;">Default value for modem address</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultIgnitePassword">Default Ignite/Xfinity Password</label>
+                                <input type="text" id="defaultIgnitePassword" value="password" placeholder="password">
+                                <small style="color: #6b7280;">Default password for Rogers Ignite or Xfinity modems</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultSilent"> Silent Mode (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultNoLogs"> Disable Logs (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultSpeedTestEnabled" checked> Enable Speed Tests (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultAutoUpdateEnabled" checked> Enable Automatic Updates (default)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div>
+                            <h3 style="margin-bottom: 15px; color: #667eea;">Cloud Upload Defaults</h3>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultEnableCloud"> Enable Cloud Upload (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultCloudHost">Default Cloud Host</label>
+                                <input type="text" id="defaultCloudHost" placeholder="e.g., modemcheck.example.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultCloudPort">Default Cloud Port</label>
+                                <input type="text" id="defaultCloudPort" value="443" placeholder="443">
+                            </div>
+
+                            <div style="margin-top: 30px;">
+                                <button class="btn btn-primary" onclick="saveConfigDefaults()" style="margin-right: 10px;">💾 Save Defaults</button>
+                                <button class="btn btn-secondary" onclick="loadConfigDefaults()">🔄 Reset to Saved</button>
+                            </div>
+
+                            <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                                <strong>ℹ️ Note:</strong> These defaults will automatically populate the Generator form when you switch to it or refresh the page.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+        </div> <!-- End tabs-wrapper -->
     </div>
 
     <!-- Modal for showing new key -->
@@ -755,6 +963,7 @@
         const USER_API_BASE = '/cgi-bin/user-management.py';
         let currentEditKey = null;
         let newKeyValue = null;
+        let currentUserRole = null;
 
         // Check authentication
         async function checkAuth() {
@@ -762,7 +971,7 @@
                 const response = await fetch('/cgi-bin/auth.py', {
                     credentials: 'same-origin'
                 });
-                
+
                 if (!response.ok) {
                     window.location.href = '/admin-login.html?return=' + encodeURIComponent(window.location.pathname);
                     return false;
@@ -776,13 +985,19 @@
                 }
 
                 // Enforce role-based access control
-                if (data.role !== 'admin') {
+                if (data.role !== 'admin' && data.role !== 'elevated') {
                     // Basic users cannot access admin dashboard
                     // Redirect to admin login with error indication
                     window.location.href = '/admin-login.html?error=access_denied&return=' + encodeURIComponent(window.location.pathname);
                     return false;
                 }
-                
+
+                // Store the user's role for later use
+                currentUserRole = data.role;
+
+                // Hide elements based on role
+                applyRoleBasedVisibility();
+
                 // Show the page content now that auth is verified
                 document.querySelector('.container').classList.add('authenticated');
 
@@ -797,6 +1012,29 @@
                 console.error('Auth check failed:', error);
                 window.location.href = '/admin-login.html?return=' + encodeURIComponent(window.location.pathname);
                 return false;
+            }
+        }
+
+        // Apply role-based visibility
+        function applyRoleBasedVisibility() {
+            if (currentUserRole === 'admin') {
+                // Show admin option in user creation dropdown
+                const adminOption = document.getElementById('adminRoleOption');
+                if (adminOption) adminOption.style.display = 'block';
+            } else {
+                // Hide User Management and User Activity tabs for non-admin users (elevated and basic)
+                const usersTab = document.getElementById('usersTab');
+                const userActivityTab = document.getElementById('userActivityTab');
+                if (usersTab) usersTab.style.display = 'none';
+                if (userActivityTab) userActivityTab.style.display = 'none';
+
+                // Hide Config Defaults sub-tab for non-admin users
+                const defaultsSubTab = document.getElementById('configGenDefaultsSubTab');
+                if (defaultsSubTab) defaultsSubTab.style.display = 'none';
+
+                // Hide the entire sub-tab navigation for elevated users (since there's only one tab)
+                const subTabNav = document.querySelector('.sub-tab-navigation');
+                if (subTabNav) subTabNav.style.display = 'none';
             }
         }
 
@@ -888,12 +1126,10 @@
 
         // Tab switching
         function showTab(tabName) {
-            // Hide all tab content sections
-            document.getElementById('apiKeysSection').style.display = 'none';
-            document.getElementById('usersSection').style.display = 'none';
-            document.getElementById('userActivitySection').style.display = 'none';
-            document.getElementById('clientLogsSection').style.display = 'none';
-            document.getElementById('configGenSection').style.display = 'none';
+            // Remove active class from all tab content sections
+            document.querySelectorAll('.tab-content').forEach(section => {
+                section.classList.remove('active');
+            });
 
             // Remove active class from all tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -902,24 +1138,48 @@
 
             // Show selected tab and activate its button
             if (tabName === 'apiKeys') {
-                document.getElementById('apiKeysSection').style.display = 'block';
+                document.getElementById('apiKeysSection').classList.add('active');
                 document.getElementById('apiKeysTab').classList.add('active');
             } else if (tabName === 'users') {
-                document.getElementById('usersSection').style.display = 'block';
+                document.getElementById('usersSection').classList.add('active');
                 document.getElementById('usersTab').classList.add('active');
                 loadUsers();
             } else if (tabName === 'userActivity') {
-                document.getElementById('userActivitySection').style.display = 'block';
+                document.getElementById('userActivitySection').classList.add('active');
                 document.getElementById('userActivityTab').classList.add('active');
                 loadUserActivity();
             } else if (tabName === 'clientLogs') {
-                document.getElementById('clientLogsSection').style.display = 'block';
+                document.getElementById('clientLogsSection').classList.add('active');
                 document.getElementById('clientLogsTab').classList.add('active');
                 loadClientLogs();
             } else if (tabName === 'configGen') {
-                document.getElementById('configGenSection').style.display = 'block';
+                document.getElementById('configGenSection').classList.add('active');
                 document.getElementById('configGenTab').classList.add('active');
+                // Show the generator sub-tab by default
+                showConfigSubTab('generator');
                 updateConfigPreview();
+            }
+        }
+
+        // Config Generator Sub-tab switching
+        function showConfigSubTab(subTabName) {
+            // Hide all sub-tab content sections
+            document.getElementById('configGenGeneratorSection').classList.remove('active');
+            document.getElementById('configGenDefaultsSection').classList.remove('active');
+
+            // Remove active class from all sub-tab buttons
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected sub-tab and activate its button
+            if (subTabName === 'generator') {
+                document.getElementById('configGenGeneratorSection').classList.add('active');
+                document.getElementById('configGenGeneratorSubTab').classList.add('active');
+                updateConfigPreview();
+            } else if (subTabName === 'defaults') {
+                document.getElementById('configGenDefaultsSection').classList.add('active');
+                document.getElementById('configGenDefaultsSubTab').classList.add('active');
             }
         }
 
@@ -1001,6 +1261,16 @@
                 const statusClass = key.active ? 'status-active' : 'status-inactive';
                 const statusText = key.active ? 'Active' : 'Inactive';
 
+                // Enable/disable button - available to both admin and elevated
+                const toggleButtonClass = key.active ? 'btn-warning' : 'btn-secondary';
+                const toggleButtonText = key.active ? 'Disable' : 'Enable';
+                const toggleButton = `<button class="btn ${toggleButtonClass} btn-small" onclick='toggleActive("${key.full_key}", "${escapeHtml(key.name)}", ${key.active})'>${toggleButtonText}</button>`;
+
+                // Delete button - only for admins
+                const deleteButton = currentUserRole === 'admin'
+                    ? `<button class="btn btn-danger btn-small" onclick='deleteKey("${key.full_key}", "${escapeHtml(key.name)}")'>Delete</button>`
+                    : '';
+
                 html += `
                     <tr>
                         <td><span class="key-preview">${key.key_preview}</span></td>
@@ -1011,7 +1281,8 @@
                         <td>
                             <button class="btn btn-secondary btn-small" onclick='editKey(${JSON.stringify(key)})'>Edit</button>
                             <button class="btn btn-secondary btn-small" onclick='copyKey("${key.full_key}")'>Copy Key</button>
-                            <button class="btn btn-danger btn-small" onclick='deleteKey("${key.full_key}", "${escapeHtml(key.name)}")'>Delete</button>
+                            ${toggleButton}
+                            ${deleteButton}
                         </td>
                     </tr>
                 `;
@@ -1119,6 +1390,40 @@
 
                 showMessage('API key updated successfully', 'success');
                 closeEditModal();
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function toggleActive(key, name, currentStatus) {
+            const newStatus = !currentStatus;
+            const action = newStatus ? 'enable' : 'disable';
+
+            if (!confirm(`Are you sure you want to ${action} the API key "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'toggle_active',
+                        key: key,
+                        active: newStatus
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || `Failed to ${action} key`);
+                }
+
+                showMessage(`API key ${action}d successfully`, 'success');
                 loadKeys();
             } catch (error) {
                 showMessage(`Error: ${error.message}`, 'error');
@@ -1238,17 +1543,23 @@
                         ${users.map(user => {
                             const isAdminAccount = user.username === 'admin';
                             const roleSelectDisabled = isAdminAccount ? 'disabled' : '';
-                            const deleteButtonHtml = isAdminAccount 
+                            const deleteButtonHtml = isAdminAccount
                                 ? '<button class="btn btn-secondary btn-small" disabled title="Cannot delete admin account">Delete</button>'
                                 : `<button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>`;
-                            
+
+                            // Only show admin option if current user is admin
+                            const adminRoleOption = currentUserRole === 'admin'
+                                ? `<option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>`
+                                : '';
+
                             return `
                             <tr>
                                 <td><strong>${escapeHtml(user.username)}</strong></td>
                                 <td>
                                     <select class="role-select" data-username="${escapeHtml(user.username)}" data-current-role="${user.role}" onchange="handleRoleChange(event)" ${roleSelectDisabled}>
                                         <option value="basic" ${user.role === 'basic' ? 'selected' : ''}>Basic</option>
-                                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                        <option value="elevated" ${user.role === 'elevated' ? 'selected' : ''}>Elevated</option>
+                                        ${adminRoleOption}
                                     </select>
                                 </td>
                                 <td>${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</td>
@@ -1819,6 +2130,89 @@
             closeAPIKeySelectModal();
         }
 
+        // Config Defaults Functions
+        async function saveConfigDefaults() {
+            const defaults = {
+                ModemAddress: document.getElementById('defaultModemAddress').value || 'autodetect',
+                IgnitePassword: document.getElementById('defaultIgnitePassword').value || 'password',
+                SpeedTestEnabled: document.getElementById('defaultSpeedTestEnabled').checked,
+                AutoUpdateEnabled: document.getElementById('defaultAutoUpdateEnabled').checked,
+                Silent: document.getElementById('defaultSilent').checked,
+                NoLogs: document.getElementById('defaultNoLogs').checked,
+                EnableCloud: document.getElementById('defaultEnableCloud').checked,
+                CloudHost: document.getElementById('defaultCloudHost').value || '',
+                CloudPort: document.getElementById('defaultCloudPort').value || '443'
+            };
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_config_defaults',
+                        defaults: defaults
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('Config defaults saved successfully!', 'success');
+                    // Apply the defaults to the generator form
+                    applyDefaultsToGenerator();
+                } else {
+                    showMessage('Error: ' + (data.error || 'Failed to save defaults'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving defaults: ' + error.message, 'error');
+            }
+        }
+
+        async function loadConfigDefaults() {
+            try {
+                const response = await fetch(`${API_BASE}?action=get_config_defaults`);
+                const data = await response.json();
+
+                if (data.success && data.defaults) {
+                    const defaults = data.defaults;
+
+                    // Update defaults form fields
+                    document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
+                    document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || 'password';
+                    document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                    document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
+                    document.getElementById('defaultSilent').checked = defaults.Silent || false;
+                    document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
+                    document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
+                    document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
+
+                    showMessage('Defaults loaded successfully!', 'success');
+                } else {
+                    showMessage('Error: ' + (data.error || 'Failed to load defaults'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error loading defaults: ' + error.message, 'error');
+            }
+        }
+
+        function applyDefaultsToGenerator() {
+            // Apply defaults from the defaults form to the generator form
+            document.getElementById('cfgModemAddress').value = document.getElementById('defaultModemAddress').value;
+            document.getElementById('cfgIgnitePassword').value = document.getElementById('defaultIgnitePassword').value;
+            document.getElementById('cfgSpeedTestEnabled').checked = document.getElementById('defaultSpeedTestEnabled').checked;
+            document.getElementById('cfgAutoUpdateEnabled').checked = document.getElementById('defaultAutoUpdateEnabled').checked;
+            document.getElementById('cfgSilent').checked = document.getElementById('defaultSilent').checked;
+            document.getElementById('cfgNoLogs').checked = document.getElementById('defaultNoLogs').checked;
+            document.getElementById('cfgEnableCloud').checked = document.getElementById('defaultEnableCloud').checked;
+            document.getElementById('cfgCloudHost').value = document.getElementById('defaultCloudHost').value;
+            document.getElementById('cfgCloudPort').value = document.getElementById('defaultCloudPort').value;
+
+            // Trigger cloud fields update
+            toggleCloudFields();
+            updateConfigPreview();
+        }
+
         // Auto-update preview when any field changes
         document.addEventListener('DOMContentLoaded', function() {
             const configInputs = [
@@ -1833,6 +2227,13 @@
                     element.addEventListener('change', updateConfigPreview);
                 }
             });
+
+            // Load defaults on page load and apply them to generator (admin only)
+            if (currentUserRole === 'admin') {
+                loadConfigDefaults().then(() => {
+                    applyDefaultsToGenerator();
+                });
+            }
         });
     </script>
 </body>

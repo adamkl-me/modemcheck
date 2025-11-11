@@ -34,16 +34,9 @@ cursor = conn.cursor()
 # Clear any existing test data from previous runs
 cursor.execute('DELETE FROM user_activity_log')
 cursor.execute('DELETE FROM client_submission_log')
-cursor.execute('DELETE FROM users')
+# Don't delete users - let ensure_default_admin() create the default admin
+# cursor.execute('DELETE FROM users')
 cursor.execute('DELETE FROM api_keys')
-
-# Insert test users
-cursor.execute('''
-    INSERT INTO users (username, password_hash, role, created_at, must_change_password)
-    VALUES 
-        ('testuser', 'pbkdf2:sha256:100000:test_salt:test_hash_basic', 'basic', ?, 0),
-        ('testadmin', 'pbkdf2:sha256:100000:test_salt:test_hash_admin', 'admin', ?, 0)
-''', (datetime.now().isoformat(), datetime.now().isoformat()))
 
 # Insert test API keys
 cursor.execute('''
