@@ -4,7 +4,7 @@ BINARY_NAME=modem-check
 SOURCE_DIR=modemcheck-client
 
 # Version info
-VERSION?=5.5.0
+VERSION?=5.6.0
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 

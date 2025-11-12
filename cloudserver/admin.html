@@ -469,6 +469,7 @@
             border-bottom: 2px solid #e0e0e0;
             padding: 15px 30px;
             margin: 0;
+            border-radius: 12px 12px 0 0;
         }
 
         .sub-tab-btn {
@@ -497,6 +498,7 @@
 
         .sub-tab-content {
             display: none;
+            border-radius: 0 0 12px 12px;
         }
 
         .sub-tab-content.active {
@@ -540,6 +542,7 @@
         <div class="tab-navigation">
             <button id="configGenTab" class="tab-btn active" onclick="showTab('configGen')">Config Generator</button>
             <button id="apiKeysTab" class="tab-btn" onclick="showTab('apiKeys')">API Keys</button>
+            <button id="dataManagementTab" class="tab-btn" onclick="showTab('dataManagement')">Data Management</button>
             <button id="clientLogsTab" class="tab-btn" onclick="showTab('clientLogs')">Client Submissions</button>
             <button id="usersTab" class="tab-btn" onclick="showTab('users')">User Management</button>
             <button id="userActivityTab" class="tab-btn" onclick="showTab('userActivity')">User Activity</button>
@@ -561,6 +564,111 @@
                 <h2>Existing API Keys</h2>
                 <div id="keysContainer">
                     <div class="loading">Loading API keys...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div id="dataManagementSection" class="tab-content">
+            <!-- Sub-tab Navigation -->
+            <div class="sub-tab-navigation">
+                <button id="bulkUploadSubTab" class="sub-tab-btn active" onclick="showDataManagementSubTab('bulkUpload')">Bulk Upload</button>
+                <button id="bulkDownloadSubTab" class="sub-tab-btn" onclick="showDataManagementSubTab('bulkDownload')">Bulk Download</button>
+                <button id="deleteChecksSubTab" class="sub-tab-btn" onclick="showDataManagementSubTab('deleteChecks')">Delete Checks</button>
+            </div>
+
+            <!-- Bulk Upload Sub-tab -->
+            <div id="bulkUploadContent" class="sub-tab-content active">
+                <div class="action-section">
+                    <h2>Bulk Upload Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Upload multiple JSON check files at once. Files will be parsed and inserted into the database.</p>
+
+                    <div class="form-group">
+                        <label for="bulkUploadFiles">Select JSON Files</label>
+                        <input type="file" id="bulkUploadFiles" multiple accept=".json" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
+                        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                            <strong>Tip:</strong> You can select multiple files at once. Each file should be a valid modem check JSON file.
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="bulkUploadChecks()">Upload Files</button>
+
+                    <div id="bulkUploadProgress" style="display: none; margin-top: 20px;">
+                        <div style="background: #f3f4f6; border-radius: 8px; padding: 15px;">
+                            <div style="font-weight: 500; margin-bottom: 10px;">Upload Progress:</div>
+                            <div id="bulkUploadStatus"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Download Sub-tab -->
+            <div id="bulkDownloadContent" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>Bulk Download Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Download multiple check files as a ZIP archive. Select filters to narrow down your download.</p>
+
+                    <div class="form-group">
+                        <label for="downloadModemId">Modem ID (optional - leave empty for all)</label>
+                        <select id="downloadModemId" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
+                            <option value="">All Modems</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label for="downloadStartDate">Start Date (optional)</label>
+                            <input type="date" id="downloadStartDate">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="downloadEndDate">End Date (optional)</label>
+                            <input type="date" id="downloadEndDate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="downloadLimit">Maximum Files (optional)</label>
+                        <input type="number" id="downloadLimit" placeholder="Leave empty for all files" min="1">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="bulkDownloadChecks()">Download as ZIP</button>
+                </div>
+            </div>
+
+            <!-- Delete Checks Sub-tab -->
+            <div id="deleteChecksContent" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>Delete Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">View and delete individual checks or bulk delete all checks for a specific modem.</p>
+
+                    <div class="form-group">
+                        <label for="deleteModemIdFilter">Filter by Modem ID</label>
+                        <select id="deleteModemIdFilter" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;" onchange="loadChecksForDeletion()">
+                            <option value="">Select a modem...</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label for="deleteStartDate">Start Date (optional)</label>
+                            <input type="date" id="deleteStartDate" onchange="loadChecksForDeletion()">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="deleteEndDate">End Date (optional)</label>
+                            <input type="date" id="deleteEndDate" onchange="loadChecksForDeletion()">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="loadChecksForDeletion()">Load Checks</button>
+                        <button class="btn" onclick="deleteAllChecksForModem()" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">Delete All for This Modem</button>
+                    </div>
+
+                    <div id="checksListContainer">
+                        <div class="empty-state">Select a modem and click "Load Checks" to view checks</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -770,12 +878,35 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="cfgSpeedTestInterval">Speed Test Interval</label>
+                            <input type="number" id="cfgSpeedTestInterval" value="1" min="1" placeholder="1">
+                            <small style="color: #6b7280;">Run speed test every N executions (1 = every time). If a test fails, it will retry on the next run.</small>
+                        </div>
+
+                        <div class="form-group">
                             <label>
                                 <input type="checkbox" id="cfgAutoUpdateEnabled" checked> Enable Automatic Updates
                             </label>
                             <small style="display: block; margin-top: 5px; color: #666;">
                                 Automatically checks GitHub for updates and installs them. Enabled by default.
                             </small>
+                        </div>
+
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Local File Management</h3>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgLocalCleanupEnabled" checked> Enable Local Cleanup
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Automatically delete old result files based on retention policy. Enabled by default.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgLocalRetentionDays">Local Retention Days</label>
+                            <input type="number" id="cfgLocalRetentionDays" value="90" min="1" placeholder="90">
+                            <small style="color: #6b7280;">Number of days to keep local result files (default: 90)</small>
                         </div>
                     </div>
 
@@ -875,9 +1006,27 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="defaultSpeedTestInterval">Default Speed Test Interval</label>
+                                <input type="number" id="defaultSpeedTestInterval" value="1" min="1" placeholder="1">
+                                <small style="color: #6b7280;">Run speed test every N executions</small>
+                            </div>
+
+                            <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="defaultAutoUpdateEnabled" checked> Enable Automatic Updates (default)
                                 </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultLocalCleanupEnabled" checked> Enable Local Cleanup (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultLocalRetentionDays">Default Local Retention Days</label>
+                                <input type="number" id="defaultLocalRetentionDays" value="90" min="1" placeholder="90">
+                                <small style="color: #6b7280;">Days to keep local files</small>
                             </div>
                         </div>
 
@@ -1158,6 +1307,11 @@
                 // Show the generator sub-tab by default
                 showConfigSubTab('generator');
                 updateConfigPreview();
+            } else if (tabName === 'dataManagement') {
+                document.getElementById('dataManagementSection').classList.add('active');
+                document.getElementById('dataManagementTab').classList.add('active');
+                // Initialize Data Management tab
+                initDataManagement();
             }
         }
 
@@ -1765,7 +1919,7 @@
             try {
                 const params = new URLSearchParams({
                     action: 'get_user_activity_logs',
-                    limit: 200
+                    limit: 10000
                 });
 
                 // Add filters if set
@@ -1800,39 +1954,70 @@
                     return;
                 }
 
-                // Create table
-                let html = '<table class="keys-table"><thead><tr>';
-                html += '<th>Timestamp</th>';
-                html += '<th>Username</th>';
-                html += '<th>Role</th>';
-                html += '<th>Action</th>';
-                html += '<th>IP Address</th>';
-                html += '<th>Status</th>';
-                html += '<th>Details</th>';
-                html += '</tr></thead><tbody>';
+                // Store logs for pagination
+                userActivityData.allLogs = data.logs;
+                userActivityData.currentPage = 1; // Reset to first page on new load
 
-                data.logs.forEach(log => {
-                    const timestamp = new Date(log.timestamp).toLocaleString();
-                    const statusClass = log.success ? 'success' : 'error';
-                    const statusText = log.success ? '✓ Success' : '✗ Failed';
-                    const failureReason = log.failure_reason ? ` (${escapeHtml(log.failure_reason)})` : '';
-                    
-                    html += '<tr>';
-                    html += `<td>${escapeHtml(timestamp)}</td>`;
-                    html += `<td><strong>${escapeHtml(log.username)}</strong></td>`;
-                    html += `<td>${escapeHtml(log.user_role || '-')}</td>`;
-                    html += `<td>${escapeHtml(log.action_type)}</td>`;
-                    html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
-                    html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}</span></td>`;
-                    html += `<td style="font-size: 0.9em;">${escapeHtml(log.action_details || '-')}${failureReason}</td>`;
-                    html += '</tr>';
-                });
-
-                html += '</tbody></table>';
-                container.innerHTML = html;
+                // Render paginated data
+                renderUserActivityPage();
             } catch (error) {
                 container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
+        }
+
+        function renderUserActivityPage(pageOrSize, isPageSizeChange) {
+            const container = document.getElementById('userActivityContainer');
+
+            // Handle page size change
+            if (isPageSizeChange) {
+                userActivityData.pageSize = parseInt(pageOrSize);
+                userActivityData.currentPage = 1; // Reset to first page
+            } else if (pageOrSize) {
+                // Handle page change
+                userActivityData.currentPage = parseInt(pageOrSize);
+            }
+
+            // Calculate pagination
+            const startIdx = (userActivityData.currentPage - 1) * userActivityData.pageSize;
+            const endIdx = startIdx + userActivityData.pageSize;
+            const pageData = userActivityData.allLogs.slice(startIdx, endIdx);
+
+            // Render pagination controls at top
+            let html = renderPaginationControls(userActivityData, 'userActivityContainer', 'renderUserActivityPage');
+
+            // Create table
+            html += '<table class="keys-table"><thead><tr>';
+            html += '<th>Timestamp</th>';
+            html += '<th>Username</th>';
+            html += '<th>Role</th>';
+            html += '<th>Action</th>';
+            html += '<th>IP Address</th>';
+            html += '<th>Status</th>';
+            html += '<th>Details</th>';
+            html += '</tr></thead><tbody>';
+
+            pageData.forEach(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const statusText = log.success ? '✓ Success' : '✗ Failed';
+                const failureReason = log.failure_reason ? ` (${escapeHtml(log.failure_reason)})` : '';
+
+                html += '<tr>';
+                html += `<td>${escapeHtml(timestamp)}</td>`;
+                html += `<td><strong>${escapeHtml(log.username)}</strong></td>`;
+                html += `<td>${escapeHtml(log.user_role || '-')}</td>`;
+                html += `<td>${escapeHtml(log.action_type)}</td>`;
+                html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
+                html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}</span></td>`;
+                html += `<td style="font-size: 0.9em;">${escapeHtml(log.action_details || '-')}${failureReason}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            // Render pagination controls at bottom
+            html += renderPaginationControls(userActivityData, 'userActivityContainer', 'renderUserActivityPage');
+
+            container.innerHTML = html;
         }
 
         function clearActivityFilters() {
@@ -1843,6 +2028,93 @@
             loadUserActivity();
         }
 
+        // Pagination state for User Activity
+        let userActivityData = {
+            allLogs: [],
+            currentPage: 1,
+            pageSize: 20
+        };
+
+        // Pagination state for Client Logs
+        let clientLogsData = {
+            allLogs: [],
+            currentPage: 1,
+            pageSize: 20
+        };
+
+        // Helper function to render pagination controls
+        function renderPaginationControls(data, containerId, renderFunction) {
+            const totalPages = Math.ceil(data.allLogs.length / data.pageSize);
+
+            let html = '<div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
+
+            // Page size selector
+            html += '<div style="display: flex; align-items: center; gap: 10px;">';
+            html += '<span style="font-weight: 500; color: #4b5563;">Show:</span>';
+            html += `<select onchange="${renderFunction}(this.value, true)" style="padding: 6px 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; cursor: pointer;">`;
+            html += `<option value="20" ${data.pageSize === 20 ? 'selected' : ''}>20</option>`;
+            html += `<option value="50" ${data.pageSize === 50 ? 'selected' : ''}>50</option>`;
+            html += `<option value="100" ${data.pageSize === 100 ? 'selected' : ''}>100</option>`;
+            html += `<option value="200" ${data.pageSize === 200 ? 'selected' : ''}>200</option>`;
+            html += '</select>';
+            html += '<span style="color: #6b7280;">entries per page</span>';
+            html += '</div>';
+
+            // Pagination info and controls
+            html += '<div style="display: flex; align-items: center; gap: 15px;">';
+
+            // Info text
+            const startEntry = (data.currentPage - 1) * data.pageSize + 1;
+            const endEntry = Math.min(data.currentPage * data.pageSize, data.allLogs.length);
+            html += `<span style="color: #6b7280;">Showing ${startEntry}-${endEntry} of ${data.allLogs.length} entries</span>`;
+
+            // Navigation buttons
+            html += '<div style="display: flex; gap: 5px;">';
+
+            // First page
+            html += `<button onclick="${renderFunction}(1)" ${data.currentPage === 1 ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>«</button>`;
+
+            // Previous page
+            html += `<button onclick="${renderFunction}(${data.currentPage - 1})" ${data.currentPage === 1 ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>‹</button>`;
+
+            // Page numbers
+            const maxPageButtons = 5;
+            let startPage = Math.max(1, data.currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+
+            if (endPage - startPage < maxPageButtons - 1) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === data.currentPage;
+                html += `<button onclick="${renderFunction}(${i})"
+                    style="padding: 6px 12px; border: 2px solid ${isActive ? '#667eea' : '#e0e0e0'}; border-radius: 6px;
+                    background: ${isActive ? '#667eea' : 'white'}; color: ${isActive ? 'white' : '#4b5563'};
+                    cursor: pointer; font-weight: ${isActive ? '600' : '500'}; transition: all 0.2s;">${i}</button>`;
+            }
+
+            // Next page
+            html += `<button onclick="${renderFunction}(${data.currentPage + 1})" ${data.currentPage === totalPages ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>›</button>`;
+
+            // Last page
+            html += `<button onclick="${renderFunction}(${totalPages})" ${data.currentPage === totalPages ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>»</button>`;
+
+            html += '</div>'; // Close navigation buttons
+            html += '</div>'; // Close pagination info and controls
+            html += '</div>'; // Close main container
+
+            return html;
+        }
+
         // Client Submission Audit Log Functions
         async function loadClientLogs() {
             const container = document.getElementById('clientLogsContainer');
@@ -1851,7 +2123,7 @@
             try {
                 const params = new URLSearchParams({
                     action: 'get_client_submission_logs',
-                    limit: 200
+                    limit: 10000
                 });
 
                 // Add filters if set
@@ -1887,43 +2159,74 @@
                     return;
                 }
 
-                // Create table
-                let html = '<table class="keys-table"><thead><tr>';
-                html += '<th>Timestamp</th>';
-                html += '<th>Modem ID</th>';
-                html += '<th>Type</th>';
-                html += '<th>API Key</th>';
-                html += '<th>IP Address</th>';
-                html += '<th>File Size</th>';
-                html += '<th>Status</th>';
-                html += '<th>Processing Time</th>';
-                html += '</tr></thead><tbody>';
+                // Store logs for pagination
+                clientLogsData.allLogs = data.logs;
+                clientLogsData.currentPage = 1; // Reset to first page on new load
 
-                data.logs.forEach(log => {
-                    const timestamp = new Date(log.timestamp).toLocaleString();
-                    const statusClass = log.success ? 'success' : 'error';
-                    const statusText = log.success ? '✓ Success' : '✗ Failed';
-                    const fileSize = log.file_size ? (log.file_size / 1024).toFixed(1) + ' KB' : '-';
-                    const procTime = log.processing_time_ms ? log.processing_time_ms + ' ms' : '-';
-                    const failureReason = log.failure_reason ? `<br><small>(${escapeHtml(log.failure_reason)})</small>` : '';
-                    
-                    html += '<tr>';
-                    html += `<td>${escapeHtml(timestamp)}</td>`;
-                    html += `<td><strong>${escapeHtml(log.modem_id)}</strong></td>`;
-                    html += `<td>${escapeHtml(log.modem_type || '-')}</td>`;
-                    html += `<td><small>${escapeHtml(log.api_key_name || 'Unknown')}</small><br><code style="font-size: 0.75em;">${escapeHtml(log.api_key_hash)}</code></td>`;
-                    html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
-                    html += `<td>${fileSize}</td>`;
-                    html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}${failureReason}</span></td>`;
-                    html += `<td>${procTime}</td>`;
-                    html += '</tr>';
-                });
-
-                html += '</tbody></table>';
-                container.innerHTML = html;
+                // Render paginated data
+                renderClientLogsPage();
             } catch (error) {
                 container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
+        }
+
+        function renderClientLogsPage(pageOrSize, isPageSizeChange) {
+            const container = document.getElementById('clientLogsContainer');
+
+            // Handle page size change
+            if (isPageSizeChange) {
+                clientLogsData.pageSize = parseInt(pageOrSize);
+                clientLogsData.currentPage = 1; // Reset to first page
+            } else if (pageOrSize) {
+                // Handle page change
+                clientLogsData.currentPage = parseInt(pageOrSize);
+            }
+
+            // Calculate pagination
+            const startIdx = (clientLogsData.currentPage - 1) * clientLogsData.pageSize;
+            const endIdx = startIdx + clientLogsData.pageSize;
+            const pageData = clientLogsData.allLogs.slice(startIdx, endIdx);
+
+            // Render pagination controls at top
+            let html = renderPaginationControls(clientLogsData, 'clientLogsContainer', 'renderClientLogsPage');
+
+            // Create table
+            html += '<table class="keys-table"><thead><tr>';
+            html += '<th>Timestamp</th>';
+            html += '<th>Modem ID</th>';
+            html += '<th>Type</th>';
+            html += '<th>API Key</th>';
+            html += '<th>IP Address</th>';
+            html += '<th>File Size</th>';
+            html += '<th>Status</th>';
+            html += '<th>Processing Time</th>';
+            html += '</tr></thead><tbody>';
+
+            pageData.forEach(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const statusText = log.success ? '✓ Success' : '✗ Failed';
+                const fileSize = log.file_size ? (log.file_size / 1024).toFixed(1) + ' KB' : '-';
+                const procTime = log.processing_time_ms ? log.processing_time_ms + ' ms' : '-';
+                const failureReason = log.failure_reason ? `<br><small>(${escapeHtml(log.failure_reason)})</small>` : '';
+
+                html += '<tr>';
+                html += `<td>${escapeHtml(timestamp)}</td>`;
+                html += `<td><strong>${escapeHtml(log.modem_id)}</strong></td>`;
+                html += `<td>${escapeHtml(log.modem_type || '-')}</td>`;
+                html += `<td><small>${escapeHtml(log.api_key_name || 'Unknown')}</small><br><code style="font-size: 0.75em;">${escapeHtml(log.api_key_hash)}</code></td>`;
+                html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
+                html += `<td>${fileSize}</td>`;
+                html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}${failureReason}</span></td>`;
+                html += `<td>${procTime}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            // Render pagination controls at bottom
+            html += renderPaginationControls(clientLogsData, 'clientLogsContainer', 'renderClientLogsPage');
+
+            container.innerHTML = html;
         }
 
         function clearClientFilters() {
@@ -2032,9 +2335,12 @@
                 ModemAddress: document.getElementById('cfgModemAddress').value || "autodetect",
                 IgnitePassword: document.getElementById('cfgIgnitePassword').value || "password",
                 SpeedTestEnabled: document.getElementById('cfgSpeedTestEnabled').checked,
+                SpeedTestInterval: parseInt(document.getElementById('cfgSpeedTestInterval').value) || 1,
                 AutoUpdateEnabled: document.getElementById('cfgAutoUpdateEnabled').checked,
                 Silent: document.getElementById('cfgSilent').checked,
                 NoLogs: document.getElementById('cfgNoLogs').checked,
+                LocalCleanupEnabled: document.getElementById('cfgLocalCleanupEnabled').checked,
+                LocalRetentionDays: parseInt(document.getElementById('cfgLocalRetentionDays').value) || 90,
                 EnableCloud: document.getElementById('cfgEnableCloud').checked,
                 CloudHost: document.getElementById('cfgCloudHost').value || "",
                 CloudPort: document.getElementById('cfgCloudPort').value || "443",
@@ -2136,9 +2442,12 @@
                 ModemAddress: document.getElementById('defaultModemAddress').value || 'autodetect',
                 IgnitePassword: document.getElementById('defaultIgnitePassword').value || 'password',
                 SpeedTestEnabled: document.getElementById('defaultSpeedTestEnabled').checked,
+                SpeedTestInterval: parseInt(document.getElementById('defaultSpeedTestInterval').value) || 1,
                 AutoUpdateEnabled: document.getElementById('defaultAutoUpdateEnabled').checked,
                 Silent: document.getElementById('defaultSilent').checked,
                 NoLogs: document.getElementById('defaultNoLogs').checked,
+                LocalCleanupEnabled: document.getElementById('defaultLocalCleanupEnabled').checked,
+                LocalRetentionDays: parseInt(document.getElementById('defaultLocalRetentionDays').value) || 90,
                 EnableCloud: document.getElementById('defaultEnableCloud').checked,
                 CloudHost: document.getElementById('defaultCloudHost').value || '',
                 CloudPort: document.getElementById('defaultCloudPort').value || '443'
@@ -2180,9 +2489,12 @@
                     document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
                     document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || 'password';
                     document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                    document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
                     document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
                     document.getElementById('defaultSilent').checked = defaults.Silent || false;
                     document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('defaultLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
+                    document.getElementById('defaultLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
                     document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
                     document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
                     document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
@@ -2201,9 +2513,12 @@
             document.getElementById('cfgModemAddress').value = document.getElementById('defaultModemAddress').value;
             document.getElementById('cfgIgnitePassword').value = document.getElementById('defaultIgnitePassword').value;
             document.getElementById('cfgSpeedTestEnabled').checked = document.getElementById('defaultSpeedTestEnabled').checked;
+            document.getElementById('cfgSpeedTestInterval').value = document.getElementById('defaultSpeedTestInterval').value;
             document.getElementById('cfgAutoUpdateEnabled').checked = document.getElementById('defaultAutoUpdateEnabled').checked;
             document.getElementById('cfgSilent').checked = document.getElementById('defaultSilent').checked;
             document.getElementById('cfgNoLogs').checked = document.getElementById('defaultNoLogs').checked;
+            document.getElementById('cfgLocalCleanupEnabled').checked = document.getElementById('defaultLocalCleanupEnabled').checked;
+            document.getElementById('cfgLocalRetentionDays').value = document.getElementById('defaultLocalRetentionDays').value;
             document.getElementById('cfgEnableCloud').checked = document.getElementById('defaultEnableCloud').checked;
             document.getElementById('cfgCloudHost').value = document.getElementById('defaultCloudHost').value;
             document.getElementById('cfgCloudPort').value = document.getElementById('defaultCloudPort').value;
@@ -2213,11 +2528,61 @@
             updateConfigPreview();
         }
 
+        async function loadPersistedDefaultsToGenerator() {
+            // Load persisted defaults from backend and apply to generator form (for all users)
+            try {
+                const response = await fetch(`${API_BASE}?action=get_config_defaults`);
+                const data = await response.json();
+
+                if (data.success && data.defaults) {
+                    const defaults = data.defaults;
+
+                    // Apply defaults directly to generator form
+                    document.getElementById('cfgModemAddress').value = defaults.ModemAddress || 'autodetect';
+                    document.getElementById('cfgIgnitePassword').value = defaults.IgnitePassword || 'password';
+                    document.getElementById('cfgSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                    document.getElementById('cfgSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                    document.getElementById('cfgAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
+                    document.getElementById('cfgSilent').checked = defaults.Silent || false;
+                    document.getElementById('cfgNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('cfgLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
+                    document.getElementById('cfgLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                    document.getElementById('cfgEnableCloud').checked = defaults.EnableCloud || false;
+                    document.getElementById('cfgCloudHost').value = defaults.CloudHost || '';
+                    document.getElementById('cfgCloudPort').value = defaults.CloudPort || '443';
+
+                    // If admin, also update the defaults form
+                    if (currentUserRole === 'admin') {
+                        document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
+                        document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || 'password';
+                        document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                        document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                        document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
+                        document.getElementById('defaultSilent').checked = defaults.Silent || false;
+                        document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
+                        document.getElementById('defaultLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
+                        document.getElementById('defaultLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                        document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
+                        document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
+                        document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
+                    }
+
+                    // Trigger cloud fields update
+                    toggleCloudFields();
+                    updateConfigPreview();
+                }
+            } catch (error) {
+                console.error('Error loading persisted defaults:', error);
+                // Silently fail - use hardcoded defaults in the HTML
+            }
+        }
+
         // Auto-update preview when any field changes
         document.addEventListener('DOMContentLoaded', function() {
             const configInputs = [
-                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled', 'cfgAutoUpdateEnabled',
-                'cfgSilent', 'cfgNoLogs', 'cfgEnableCloud', 'cfgCloudHost', 'cfgCloudPort', 'cfgCloudAPIKey'
+                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled', 'cfgSpeedTestInterval',
+                'cfgAutoUpdateEnabled', 'cfgSilent', 'cfgNoLogs', 'cfgLocalCleanupEnabled',
+                'cfgLocalRetentionDays', 'cfgEnableCloud', 'cfgCloudHost', 'cfgCloudPort', 'cfgCloudAPIKey'
             ];
 
             configInputs.forEach(id => {
@@ -2228,13 +2593,379 @@
                 }
             });
 
-            // Load defaults on page load and apply them to generator (admin only)
-            if (currentUserRole === 'admin') {
-                loadConfigDefaults().then(() => {
-                    applyDefaultsToGenerator();
-                });
-            }
+            // Load defaults on page load and apply them to generator (all users)
+            loadPersistedDefaultsToGenerator();
         });
+
+        // ========================================
+        // DATA MANAGEMENT FUNCTIONS
+        // ========================================
+
+        const DATA_MGMT_API = '/cgi-bin/data-management-api.py';
+        const DB_API = '/cgi-bin/db-api.py';
+
+        // Sub-tab switching for Data Management
+        function showDataManagementSubTab(subTabName) {
+            // Hide all sub-tab content sections
+            document.getElementById('bulkUploadContent').classList.remove('active');
+            document.getElementById('bulkDownloadContent').classList.remove('active');
+            document.getElementById('deleteChecksContent').classList.remove('active');
+
+            // Remove active class from all sub-tab buttons
+            document.querySelectorAll('#dataManagementSection .sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected sub-tab
+            if (subTabName === 'bulkUpload') {
+                document.getElementById('bulkUploadContent').classList.add('active');
+                document.getElementById('bulkUploadSubTab').classList.add('active');
+            } else if (subTabName === 'bulkDownload') {
+                document.getElementById('bulkDownloadContent').classList.add('active');
+                document.getElementById('bulkDownloadSubTab').classList.add('active');
+                loadModemsForDownload();
+            } else if (subTabName === 'deleteChecks') {
+                document.getElementById('deleteChecksContent').classList.add('active');
+                document.getElementById('deleteChecksSubTab').classList.add('active');
+                loadModemsForDeletion();
+            }
+        }
+
+        // Initialize Data Management tab
+        async function initDataManagement() {
+            // Show bulk upload sub-tab by default
+            showDataManagementSubTab('bulkUpload');
+        }
+
+        // Bulk Upload Functions
+        async function bulkUploadChecks() {
+            const fileInput = document.getElementById('bulkUploadFiles');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                showMessage('Please select at least one JSON file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'bulk_upload');
+
+            // Add all selected files
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const progressDiv = document.getElementById('bulkUploadProgress');
+            const statusDiv = document.getElementById('bulkUploadStatus');
+            progressDiv.style.display = 'block';
+            statusDiv.innerHTML = '<div class="loading">Uploading files...</div>';
+
+            try {
+                const response = await fetch(DATA_MGMT_API, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+
+                // Display results
+                let resultsHtml = `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Upload Complete:</strong><br>
+                        Total: ${data.total} files<br>
+                        Success: <span style="color: #10b981;">${data.success_count}</span><br>
+                        Errors: <span style="color: #ef4444;">${data.error_count}</span>
+                    </div>
+                `;
+
+                if (data.results && data.results.length > 0) {
+                    resultsHtml += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;">';
+                    data.results.forEach(result => {
+                        const statusColor = result.success ? '#10b981' : '#ef4444';
+                        const statusText = result.success ? '✓ Success' : '✗ Failed';
+                        resultsHtml += `
+                            <div style="padding: 8px; border-bottom: 1px solid #e5e7eb;">
+                                <strong>${result.filename}</strong>:
+                                <span style="color: ${statusColor};">${statusText}</span>
+                                ${result.error ? `<br><span style="color: #ef4444; font-size: 12px;">${result.error}</span>` : ''}
+                            </div>
+                        `;
+                    });
+                    resultsHtml += '</div>';
+                }
+
+                statusDiv.innerHTML = resultsHtml;
+
+                if (data.success_count > 0) {
+                    showMessage(`Successfully uploaded ${data.success_count} of ${data.total} files`, 'success');
+                }
+
+                // Clear file input
+                fileInput.value = '';
+
+            } catch (error) {
+                statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+                showMessage('Upload failed: ' + error.message, 'error');
+            }
+        }
+
+        // Bulk Download Functions
+        async function loadModemsForDownload() {
+            try {
+                const response = await fetch(DB_API + '?action=list_modems');
+                const data = await response.json();
+
+                const select = document.getElementById('downloadModemId');
+                select.innerHTML = '<option value="">All Modems</option>';
+
+                if (data.modems && data.modems.length > 0) {
+                    data.modems.forEach(modem => {
+                        const option = document.createElement('option');
+                        option.value = modem.modem_id;
+                        option.textContent = `${modem.modem_id} (${modem.file_count} checks)`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading modems:', error);
+            }
+        }
+
+        async function bulkDownloadChecks() {
+            const modemId = document.getElementById('downloadModemId').value;
+            const startDate = document.getElementById('downloadStartDate').value;
+            const endDate = document.getElementById('downloadEndDate').value;
+            const limit = document.getElementById('downloadLimit').value;
+
+            // Build query string
+            let queryParams = ['action=bulk_download'];
+            if (modemId) queryParams.push(`modem_id=${encodeURIComponent(modemId)}`);
+            if (startDate) queryParams.push(`start_date=${encodeURIComponent(startDate)}`);
+            if (endDate) queryParams.push(`end_date=${encodeURIComponent(endDate)}`);
+            if (limit) queryParams.push(`limit=${encodeURIComponent(limit)}`);
+
+            const url = DATA_MGMT_API + '?' + queryParams.join('&');
+
+            try {
+                showMessage('Preparing download...', 'success');
+
+                // Use fetch to download the file
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Download failed');
+                }
+
+                // Get the blob from response
+                const blob = await response.blob();
+
+                // Create download link
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `modemcheck_bulk_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+                showMessage('Download started successfully', 'success');
+            } catch (error) {
+                showMessage('Download failed: ' + error.message, 'error');
+            }
+        }
+
+        // Delete Checks Functions
+        async function loadModemsForDeletion() {
+            try {
+                const response = await fetch(DB_API + '?action=list_modems');
+                const data = await response.json();
+
+                const select = document.getElementById('deleteModemIdFilter');
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select a modem...</option>';
+
+                if (data.modems && data.modems.length > 0) {
+                    data.modems.forEach(modem => {
+                        const option = document.createElement('option');
+                        option.value = modem.modem_id;
+                        option.textContent = `${modem.modem_id} (${modem.file_count} checks)`;
+                        select.appendChild(option);
+                    });
+
+                    // Restore previous selection if it exists
+                    if (currentValue) {
+                        select.value = currentValue;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading modems:', error);
+            }
+        }
+
+        async function loadChecksForDeletion() {
+            const modemId = document.getElementById('deleteModemIdFilter').value;
+
+            if (!modemId) {
+                document.getElementById('checksListContainer').innerHTML = '<div class="empty-state">Please select a modem</div>';
+                return;
+            }
+
+            const startDate = document.getElementById('deleteStartDate').value;
+            const endDate = document.getElementById('deleteEndDate').value;
+
+            // Build query string
+            let queryParams = ['action=get_checks_summary', `modem_id=${encodeURIComponent(modemId)}`];
+            if (startDate) queryParams.push(`start_date=${encodeURIComponent(startDate)}`);
+            if (endDate) queryParams.push(`end_date=${encodeURIComponent(endDate)}`);
+
+            const url = DATA_MGMT_API + '?' + queryParams.join('&');
+
+            try {
+                document.getElementById('checksListContainer').innerHTML = '<div class="loading">Loading checks...</div>';
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load checks');
+                }
+
+                const container = document.getElementById('checksListContainer');
+
+                if (data.checks.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No checks found</div>';
+                    return;
+                }
+
+                // Display checks in a table
+                let html = `
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Filename</th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.checks.forEach(check => {
+                    html += `
+                        <tr>
+                            <td>${check.id}</td>
+                            <td>${check.filename || 'N/A'}</td>
+                            <td>${check.timestamp}</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deleteIndividualCheck(${check.id}, '${check.filename || check.id}')" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 6px 12px;">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 15px; color: #666;">
+                        Total: ${data.count} checks
+                    </div>
+                `;
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('checksListContainer').innerHTML = `<div class="error">${error.message}</div>`;
+                showMessage('Error loading checks: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteIndividualCheck(checkId, filename) {
+            if (!confirm(`Are you sure you want to delete check:\n\n${filename}\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(DATA_MGMT_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'delete_check',
+                        check_id: checkId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Delete failed');
+                }
+
+                showMessage('Check deleted successfully', 'success');
+                loadChecksForDeletion();
+
+            } catch (error) {
+                showMessage('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteAllChecksForModem() {
+            const modemId = document.getElementById('deleteModemIdFilter').value;
+
+            if (!modemId) {
+                showMessage('Please select a modem first', 'error');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING ⚠️\n\nAre you sure you want to delete ALL checks for modem:\n\n${modemId}\n\nThis will permanently delete all check data for this modem and CANNOT be undone!\n\nType "DELETE" in the next prompt to confirm.`)) {
+                return;
+            }
+
+            const confirmText = prompt('Type "DELETE" to confirm deletion of ALL checks:');
+            if (confirmText !== 'DELETE') {
+                showMessage('Deletion cancelled', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(DATA_MGMT_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'delete_all_checks',
+                        modem_id: modemId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Bulk delete failed');
+                }
+
+                showMessage(`Successfully deleted ${data.count} checks`, 'success');
+
+                // Reload the modem list and clear the checks display
+                loadModemsForDeletion();
+                document.getElementById('checksListContainer').innerHTML = '<div class="empty-state">Select a modem and click "Load Checks" to view checks</div>';
+
+            } catch (error) {
+                showMessage('Bulk delete failed: ' + error.message, 'error');
+            }
+        }
+
     </script>
 </body>
 </html>
