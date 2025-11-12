@@ -482,37 +482,37 @@ try:
                 result = {'success': False, 'error': f'Failed to save config defaults: {str(e)}'}
 
     elif action == 'get_config_defaults':
-        # Only admin can get config defaults
-        if session.get('role') != 'admin':
-            result = {'success': False, 'error': 'Unauthorized - Admin access required for config defaults'}
-        else:
-            # Get config generator defaults
-            try:
-                defaults_file = '/modemcheck-cloud/config/config_defaults.json'
+        # All authenticated users can get config defaults (not just admin)
+        # Get config generator defaults
+        try:
+            defaults_file = '/modemcheck-cloud/config/config_defaults.json'
 
-                if os.path.exists(defaults_file):
-                    with open(defaults_file, 'r') as f:
-                        defaults = json.load(f)
-                    result = {'success': True, 'defaults': defaults}
-                else:
-                    # Return default values if file doesn't exist
-                    result = {
-                        'success': True,
-                        'defaults': {
-                            'ModemAddress': 'autodetect',
-                            'IgnitePassword': 'password',
-                            'SpeedTestEnabled': True,
-                            'AutoUpdateEnabled': True,
-                            'Silent': False,
-                            'NoLogs': False,
-                            'EnableCloud': False,
-                            'CloudHost': '',
-                            'CloudPort': '443'
-                        }
+            if os.path.exists(defaults_file):
+                with open(defaults_file, 'r') as f:
+                    defaults = json.load(f)
+                result = {'success': True, 'defaults': defaults}
+            else:
+                # Return default values if file doesn't exist
+                result = {
+                    'success': True,
+                    'defaults': {
+                        'ModemAddress': 'autodetect',
+                        'IgnitePassword': 'password',
+                        'SpeedTestEnabled': True,
+                        'SpeedTestInterval': 1,
+                        'AutoUpdateEnabled': True,
+                        'Silent': False,
+                        'NoLogs': False,
+                        'LocalCleanupEnabled': True,
+                        'LocalRetentionDays': 90,
+                        'EnableCloud': False,
+                        'CloudHost': '',
+                        'CloudPort': '443'
                     }
-            except Exception as e:
-                print(f"Error loading config defaults: {e}", file=sys.stderr)
-                result = {'success': False, 'error': f'Failed to load config defaults: {str(e)}'}
+                }
+        except Exception as e:
+            print(f"Error loading config defaults: {e}", file=sys.stderr)
+            result = {'success': False, 'error': f'Failed to load config defaults: {str(e)}'}
 
     else:
         result = {'success': False, 'error': 'Unknown action'}

@@ -114,6 +114,67 @@ func (m *ModemCheck) Log(message string) {
 	}
 }
 
+// CleanupOldFiles removes JSON files older than the configured retention period.
+func (m *ModemCheck) CleanupOldFiles(baseDir string) {
+	m.Log(fmt.Sprintf("Performing local file cleanup (retention: %d days)", m.config.LocalRetentionDays))
+
+	cutoffTime := time.Now().AddDate(0, 0, -m.config.LocalRetentionDays)
+	deletedCount := 0
+	totalSize := int64(0)
+
+	// Walk through all modem directories
+	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip files that can't be accessed
+		}
+
+		// Only process JSON files
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
+			// Skip state files
+			if info.Name() == "speedtest_state.json" || info.Name() == "upload_queue.json" {
+				return nil
+			}
+
+			// Parse date from filename (format: YYYY-MM-DD_HH-MM-SS.json)
+			fileDate, err := time.Parse("2006-01-02_15-04-05.json", info.Name())
+			if err != nil {
+				// If we can't parse the date, check file modification time instead
+				if info.ModTime().Before(cutoffTime) {
+					m.Log(fmt.Sprintf("Deleting old file (by mod time): %s", info.Name()))
+					if err := os.Remove(path); err == nil {
+						deletedCount++
+						totalSize += info.Size()
+					}
+				}
+				return nil
+			}
+
+			// Delete if older than retention period
+			if fileDate.Before(cutoffTime) {
+				m.Log(fmt.Sprintf("Deleting old file: %s (age: %d days)",
+					info.Name(), int(time.Since(fileDate).Hours()/24)))
+				if err := os.Remove(path); err == nil {
+					deletedCount++
+					totalSize += info.Size()
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		m.Log(fmt.Sprintf("Warning: Error during cleanup: %v", err))
+	}
+
+	if deletedCount > 0 {
+		m.Log(fmt.Sprintf("Cleanup complete: deleted %d files (%.2f MB freed)",
+			deletedCount, float64(totalSize)/(1024*1024)))
+	} else {
+		m.Log("Cleanup complete: no files to delete")
+	}
+}
+
 // InitLogFile initializes the log file.
 func (m *ModemCheck) InitLogFile() error {
 	// Skip log file creation if NoLogs is enabled
@@ -249,6 +310,28 @@ func (m *ModemCheck) Run() error {
 	os.MkdirAll(m.checkDir, 0755)
 	m.checkFile = filepath.Join(m.checkDir, m.checkTimeString+".json")
 
+	// Load speed test state
+	speedTestState, err := LoadSpeedTestState(m.checkDir)
+	if err != nil {
+		m.Log(fmt.Sprintf("Warning: Failed to load speed test state: %v", err))
+		// Continue with default state
+		speedTestState = &SpeedTestState{
+			RunCount:        0,
+			LastSpeedTest:   0,
+			LastTestSuccess: true,
+			StateFilePath:   filepath.Join(m.checkDir, "speedtest_state.json"),
+		}
+	}
+
+	// Increment run count
+	speedTestState.RunCount++
+	m.Log(fmt.Sprintf("Run count: %d", speedTestState.RunCount))
+
+	// Perform local file cleanup if enabled
+	if m.config.LocalCleanupEnabled {
+		m.CleanupOldFiles(baseDir)
+	}
+
 	// Collect data
 	m.Log("Collecting modem diagnostic data")
 	data, err := m.modemScraper.GetData(m.checkTime)
@@ -275,8 +358,14 @@ func (m *ModemCheck) Run() error {
 	// Ping tests (run before speed tests)
 	m.RunPingTests(data)
 
-	// Speed tests (run after ping tests)
-	m.RunSpeedTests(data)
+	// Speed tests (run after ping tests) - returns success status
+	speedTestSuccess := m.RunSpeedTests(data, speedTestState)
+	speedTestState.LastTestSuccess = speedTestSuccess
+
+	// Save speed test state
+	if err := speedTestState.Save(); err != nil {
+		m.Log(fmt.Sprintf("Warning: Failed to save speed test state: %v", err))
+	}
 
 	// Save updated data with ping and speed test results
 	m.Log(fmt.Sprintf("Adding test results to %s", m.checkFile))
@@ -332,12 +421,15 @@ func main() {
 	flag.Parse()
 
 	config := Configuration{
-		ModemAddress:      *modemAddress,
-		IgnitePassword:    *xfinityPassword,
-		SpeedTestEnabled:  *speedTestEnabled,
-		AutoUpdateEnabled: !*noUpdate, // Auto-update enabled by default
-		Silent:            *silent,
-		NoLogs:            *noLogs,
+		ModemAddress:        *modemAddress,
+		IgnitePassword:      *xfinityPassword,
+		SpeedTestEnabled:    *speedTestEnabled,
+		SpeedTestInterval:   1,     // Default: run every time
+		AutoUpdateEnabled:   !*noUpdate, // Auto-update enabled by default
+		Silent:              *silent,
+		NoLogs:              *noLogs,
+		LocalCleanupEnabled: true,  // Default: cleanup enabled
+		LocalRetentionDays:  90,    // Default: 90 days
 		// Cloud settings default to disabled, loaded from config file if provided
 		EnableCloud: *enableCloud,
 		CloudHost:   "",

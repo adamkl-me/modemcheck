@@ -136,8 +136,8 @@ def handle_upload():
         print(json.dumps({'success': False, 'error': 'Invalid modem_id format'}))
         return
 
-    # Filename should match: YYYY-MM-DD_HH-MM-SS.json
-    if not re.match(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.json$', filename):
+    # Filename should match: YYYY-MM-DD_HH-MM-SS.json or YYYY-MM-DD_HH-MM-SS_nanoseconds.json
+    if not re.match(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?\.json$', filename):
         print("Status: 400 Bad Request")
         print("Content-Type: application/json")
         print()

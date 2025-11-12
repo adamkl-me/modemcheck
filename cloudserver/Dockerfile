@@ -42,6 +42,7 @@ COPY cgi-bin/upload.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/admin-api.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/auth.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/user-management.py /modemcheck-cloud/cgi-bin/
+COPY cgi-bin/data-management-api.py /modemcheck-cloud/cgi-bin/
 COPY nginx.conf /etc/nginx/http.d/modemcheck.conf
 
 # Remove default nginx config that listens on port 80
@@ -52,7 +53,8 @@ RUN chmod +x /modemcheck-cloud/cgi-bin/db-api.py && \
     chmod +x /modemcheck-cloud/cgi-bin/upload.py && \
     chmod +x /modemcheck-cloud/cgi-bin/admin-api.py && \
     chmod +x /modemcheck-cloud/cgi-bin/auth.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/user-management.py
+    chmod +x /modemcheck-cloud/cgi-bin/user-management.py && \
+    chmod +x /modemcheck-cloud/cgi-bin/data-management-api.py
 
 # Create startup script
 COPY start.sh /start.sh

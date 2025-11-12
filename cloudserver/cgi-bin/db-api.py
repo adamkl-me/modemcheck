@@ -125,6 +125,7 @@ def handle_list_modems():
         for modem in modems:
             modem_id = modem['modem_id']
             modem_type = modem.get('modem_type', 'unknown')
+            file_count = modem.get('total_checks', 0)
             
             # Split modem_id into type and MAC (format: TYPE-MAC)
             parts = modem_id.split('-', 1)
@@ -137,9 +138,11 @@ def handle_list_modems():
             
             modem_list.append({
                 'id': modem_id,
+                'modem_id': modem_id,  # Add for data management compatibility
                 'type': display_type,
                 'mac': mac,
-                'display': modem_id
+                'display': modem_id,
+                'file_count': file_count  # Add for data management compatibility
             })
         
         # Sort by display name

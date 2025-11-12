@@ -262,6 +262,90 @@ The admin dashboard includes a Config Generator feature with two sub-tabs:
 
 This eliminates manual JSON editing and reduces configuration errors.
 
+## Data Management
+
+The admin dashboard includes a comprehensive Data Management feature with three sub-tabs for managing modem check data. This feature is available to admin and elevated users.
+
+### Bulk Upload Sub-tab
+
+Upload multiple modem check JSON files at once:
+- **Multi-file selection**: Select multiple JSON files from your computer
+- **Batch processing**: All files are parsed and inserted in one operation
+- **Error handling**: Shows detailed results for each file (success/failure)
+- **Validation**: Each file is validated before insertion
+- **Progress tracking**: Real-time display of upload status
+
+**Usage:**
+1. Navigate to "Data Management" tab → "Bulk Upload" sub-tab
+2. Click "Select JSON Files" and choose multiple .json files
+3. Click "Upload Files"
+4. View detailed results showing which files succeeded/failed
+
+**Permissions:**
+- **Admin**: Full access
+- **Elevated**: Full access
+- **Basic**: No access
+
+### Bulk Download Sub-tab
+
+Download multiple checks as a ZIP archive with filtering options:
+- **Modem filtering**: Download checks for specific modem or all modems
+- **Date range filtering**: Select start/end dates to narrow results
+- **Limit control**: Set maximum number of files to download
+- **ZIP format**: All checks packaged in a single download
+- **Original filenames**: Preserves original check filenames in ZIP
+
+**Usage:**
+1. Navigate to "Data Management" tab → "Bulk Download" sub-tab
+2. (Optional) Select a specific modem from the dropdown
+3. (Optional) Set date range filters
+4. (Optional) Set maximum number of files
+5. Click "Download as ZIP"
+6. File downloads as `modemcheck_bulk_TIMESTAMP.zip`
+
+**Permissions:**
+- **Admin**: Full access
+- **Elevated**: Full access
+- **Basic**: No access
+
+### Delete Checks Sub-tab
+
+View and delete individual checks or bulk delete all checks for a modem:
+- **Modem filtering**: View checks for a specific modem
+- **Date range filtering**: Narrow down visible checks by date
+- **Individual deletion**: Delete specific checks one at a time
+- **Bulk deletion**: Delete all checks for a modem (admin only)
+- **Confirmation prompts**: Two-step confirmation for bulk deletions
+- **Detailed view**: Table showing check ID, filename, and timestamp
+
+**Usage:**
+1. Navigate to "Data Management" tab → "Delete Checks" sub-tab
+2. Select a modem from the dropdown
+3. (Optional) Set date range filters
+4. Click "Load Checks" to view available checks
+5. **Individual Delete**: Click "Delete" button on any check row
+6. **Bulk Delete**: Click "Delete All for This Modem" (requires typing "DELETE" to confirm)
+
+**Permissions:**
+- **Admin**: Full access (individual and bulk delete)
+- **Elevated**: View and load checks only (deletion blocked)
+- **Basic**: No access
+
+**Safety Features:**
+- Bulk delete requires double confirmation (alert + typing "DELETE")
+- Admin-only restriction on bulk delete operations
+- Cannot be undone - all deletions are permanent
+- Audit logging tracks all deletion operations
+
+### Security
+
+All Data Management operations:
+- Require authentication (session-based)
+- Enforce role-based access control (RBAC)
+- Log all actions to audit database
+- Validate all inputs for security
+- Prevent SQL injection and path traversal attacks
+
 ## Migrating Existing Data
 
 ### Architecture Change (v5.0+)

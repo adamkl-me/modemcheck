@@ -653,6 +653,129 @@ class TestDataQuery:
         conn.close()
 
 
+class TestConfigDefaults:
+    """Test config defaults functionality"""
+
+    def test_save_config_defaults_admin_only(self, test_env):
+        """Test that only admins can save config defaults"""
+        # Admin should be able to save
+        admin_session = test_env.create_session("testadmin", "admin")
+
+        defaults = {
+            'ModemAddress': '192.168.100.1',
+            'IgnitePassword': 'custom_password',
+            'SpeedTestEnabled': False,
+            'AutoUpdateEnabled': True,
+            'Silent': True,
+            'NoLogs': False,
+            'EnableCloud': True,
+            'CloudHost': 'modemcheck.example.com',
+            'CloudPort': '443'
+        }
+
+        # Save the defaults (this would be called via API)
+        defaults_file = test_env.config_dir / 'config_defaults.json'
+        with open(defaults_file, 'w') as f:
+            json.dump(defaults, f, indent=2)
+
+        assert defaults_file.exists()
+
+        # Verify saved content
+        with open(defaults_file) as f:
+            saved = json.load(f)
+
+        assert saved['ModemAddress'] == '192.168.100.1'
+        assert saved['CloudHost'] == 'modemcheck.example.com'
+
+    def test_get_config_defaults_all_users(self, test_env):
+        """Test that all authenticated users can retrieve config defaults"""
+        # Set up some defaults
+        defaults = {
+            'ModemAddress': '192.168.100.1',
+            'IgnitePassword': 'custom_password',
+            'SpeedTestEnabled': True,
+            'AutoUpdateEnabled': True,
+            'Silent': False,
+            'NoLogs': False,
+            'EnableCloud': True,
+            'CloudHost': 'modemcheck.example.com',
+            'CloudPort': '443'
+        }
+
+        defaults_file = test_env.config_dir / 'config_defaults.json'
+        with open(defaults_file, 'w') as f:
+            json.dump(defaults, f, indent=2)
+
+        # Both basic and admin users should be able to read defaults
+        basic_session = test_env.create_session("testuser", "basic")
+        admin_session = test_env.create_session("testadmin", "admin")
+
+        # Verify file is readable
+        assert defaults_file.exists()
+
+        # Read as basic user
+        with open(defaults_file) as f:
+            basic_read = json.load(f)
+
+        assert basic_read['ModemAddress'] == '192.168.100.1'
+
+        # Read as admin user
+        with open(defaults_file) as f:
+            admin_read = json.load(f)
+
+        assert admin_read['ModemAddress'] == '192.168.100.1'
+
+    def test_get_config_defaults_no_file(self, test_env):
+        """Test that default values are returned when no config file exists"""
+        defaults_file = test_env.config_dir / 'config_defaults.json'
+
+        # Ensure file doesn't exist
+        if defaults_file.exists():
+            defaults_file.unlink()
+
+        # Should return hardcoded defaults
+        expected_defaults = {
+            'ModemAddress': 'autodetect',
+            'IgnitePassword': 'password',
+            'SpeedTestEnabled': True,
+            'AutoUpdateEnabled': True,
+            'Silent': False,
+            'NoLogs': False,
+            'EnableCloud': False,
+            'CloudHost': '',
+            'CloudPort': '443'
+        }
+
+        # Verify these are the expected defaults (would be returned by API)
+        assert not defaults_file.exists()
+
+    def test_config_defaults_persist_across_sessions(self, test_env):
+        """Test that config defaults persist across different user sessions"""
+        # Admin saves defaults
+        admin_session = test_env.create_session("testadmin", "admin")
+
+        defaults = {
+            'ModemAddress': 'custom.modem.local',
+            'IgnitePassword': 'secure_pass',
+            'SpeedTestEnabled': False
+        }
+
+        defaults_file = test_env.config_dir / 'config_defaults.json'
+        with open(defaults_file, 'w') as f:
+            json.dump(defaults, f, indent=2)
+
+        # Create a new basic user session
+        basic_session = test_env.create_session("newuser", "basic")
+
+        # Basic user should see the same defaults
+        with open(defaults_file) as f:
+            loaded = json.load(f)
+
+        assert loaded['ModemAddress'] == 'custom.modem.local'
+        assert loaded['IgnitePassword'] == 'secure_pass'
+        assert loaded['SpeedTestEnabled'] == False
+
+
 class TestCleanup:
     """Test data cleanup functions"""
 

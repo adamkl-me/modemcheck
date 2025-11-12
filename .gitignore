@@ -11,6 +11,7 @@ __pycache__/
 ModemExampleDatafiles/
 Playground/
 .upload_queue.json
+rebuild-docker.sh   
 
 # Go build artifacts
 modem-check
@@ -25,11 +26,6 @@ coverage*.html
 config.json
 *.local.json
 
-# Cloud server runtime data (created by Docker)
-cloudserver/config/
-cloudserver/datafiles/
-
 # Claude AI
 CLAUDE.md
-SUGGESTIONS.md
 .claude/

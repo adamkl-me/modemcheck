@@ -18,19 +18,53 @@ import (
 	"github.com/showwin/speedtest-go/speedtest" // MIT License - Copyright (c) 2015 ITO Shogo
 )
 
+// ShouldRunSpeedTest determines if a speed test should run based on interval and previous results.
+func (m *ModemCheck) ShouldRunSpeedTest(state *SpeedTestState) bool {
+	if !m.config.SpeedTestEnabled {
+		return false
+	}
+
+	// If last test failed, always run on next attempt
+	if !state.LastTestSuccess {
+		m.Log(fmt.Sprintf("Last speed test failed, retrying now (run %d)", state.RunCount))
+		return true
+	}
+
+	// Check if enough runs have passed since last test
+	runsSinceLastTest := state.RunCount - state.LastSpeedTest
+	if runsSinceLastTest >= m.config.SpeedTestInterval {
+		m.Log(fmt.Sprintf("Speed test interval reached (%d runs), executing test (run %d)",
+			m.config.SpeedTestInterval, state.RunCount))
+		return true
+	}
+
+	m.Log(fmt.Sprintf("Skipping speed test (run %d of %d until next test)",
+		runsSinceLastTest, m.config.SpeedTestInterval))
+	return false
+}
+
 // RunSpeedTests runs speed tests against public servers using speedtest-go and records
 // download/upload speeds, latency, and jitter metrics.
-func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
+func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestState) bool {
 	data.SpeedTestEnabled = m.config.SpeedTestEnabled
 
 	if !m.config.SpeedTestEnabled {
 		m.Log("Speed tests are disabled")
 		data.SpeedTestUpload = -1
 		data.SpeedTestDownload = -1
-		return
+		return true // Return true since "disabled" is not a failure
+	}
+
+	// Check if we should run the speed test
+	if !m.ShouldRunSpeedTest(state) {
+		m.Log("Speed test skipped based on interval configuration")
+		data.SpeedTestUpload = -2  // -2 indicates "skipped by interval"
+		data.SpeedTestDownload = -2
+		return true // Return true since skipping is not a failure
 	}
 
 	m.Log("Running speed test using public servers...")
+	state.LastSpeedTest = state.RunCount
 
 	// Fetch server list
 	serverList, err := speedtest.FetchServers()
@@ -38,7 +72,7 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
 		m.Log(fmt.Sprintf("Failed to fetch server list: %v", err))
 		data.SpeedTestUpload = -1
 		data.SpeedTestDownload = -1
-		return
+		return false
 	}
 
 	// Find nearby servers
@@ -47,14 +81,14 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
 		m.Log(fmt.Sprintf("Failed to find servers: %v", err))
 		data.SpeedTestUpload = -1
 		data.SpeedTestDownload = -1
-		return
+		return false
 	}
 
 	if len(targets) == 0 {
 		m.Log("No speed test servers found")
 		data.SpeedTestUpload = -1
 		data.SpeedTestDownload = -1
-		return
+		return false
 	}
 
 	// Use the first (closest) server
@@ -102,6 +136,10 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData) {
 
 	m.Log(fmt.Sprintf("Speed test complete - DL: %.2f Mbps, UL: %.2f Mbps",
 		data.SpeedTestDownload, data.SpeedTestUpload))
+
+	// Check if test was successful (both upload and download succeeded)
+	success := data.SpeedTestDownload != -1 && data.SpeedTestUpload != -1
+	return success
 }
 
 // RunPingTests runs ping tests to Google and Cloudflare concurrently and records

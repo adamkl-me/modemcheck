@@ -505,7 +505,11 @@ Add cloud settings to your `config.json`:
 - **Config Generator**: Point-and-click interface to create config.json files with live preview
   - Generator sub-tab for creating configurations
   - Defaults sub-tab for setting default values that auto-populate the generator
-- **Role Management**: Promote/demote users between basic and admin roles
+- **Data Management**: Comprehensive tools for managing modem check data
+  - Bulk Upload: Upload multiple JSON check files at once
+  - Bulk Download: Download checks as a ZIP archive with filtering options
+  - Delete Checks: Remove individual checks or all checks for a specific modem
+- **Role Management**: Promote/demote users between basic, elevated, and admin roles
 - **API Key Management**: Create, view, edit, and delete API keys through web dashboard
 - **User Management**: Create viewer and admin users with forced password changes
 - **Usage Tracking**: See when each API key was last used
