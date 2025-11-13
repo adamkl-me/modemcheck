@@ -411,11 +411,8 @@ async function loadData() {
             welcomeMsg.style.display = 'none';
         }
         
-        if (allChecks.length > 1) {
-            showTrendsView();
-        } else {
-            showSingleView();
-        }
+        // Always show Single View by default
+        showSingleView();
         
         displayCurrentCheck();
         showStatus(`Loaded ${allChecks.length} check(s) successfully`, 'success');
@@ -545,12 +542,18 @@ function displayCurrentCheck() {
 
     // Display speed test status (in speed-cards section now)
     const speedTestEnabled = data.speedtest_enabled;
-    const hasSpeedTestData = data.iperf3test_dl && data.iperf3test_dl > 0;
+    const downloadSpeed = data.iperf3test_dl;
+    const uploadSpeed = data.iperf3test_ul;
 
     let speedTestStatus = '';
     if (speedTestEnabled === true || speedTestEnabled === 1) {
-        if (hasSpeedTestData) {
+        // Check if speed test was skipped (value is -2)
+        if (downloadSpeed === -2 || uploadSpeed === -2) {
+            speedTestStatus = 'Skipped';
+        } else if (downloadSpeed > 0 && uploadSpeed > 0) {
             speedTestStatus = 'Enabled';
+        } else if (downloadSpeed === -1 || uploadSpeed === -1) {
+            speedTestStatus = 'Failed';
         } else {
             speedTestStatus = 'Failed';
         }

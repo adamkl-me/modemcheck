@@ -482,16 +482,25 @@
                             <div id="clientinfo" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🧪 Speed Test Enabled?</label>
-                            <div id="speedtest_enabled" class="value">-</div>
+                            <label>✅ Detection Status</label>
+                            <div id="detection_status" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🌐 Speed Test Server</label>
-                            <div id="speedtest_server" class="value">-</div>
+                            <label>🌍 Public IP</label>
+                            <div id="public_ip" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🏢 ISP / ASN</label>
+                            <div id="isp_info" class="value">-</div>
                         </div>
                     </div>
 
                     <div class="speed-cards">
+                        <div class="speed-card">
+                            <label>🌐 Speed Test Info</label>
+                            <div id="speedtest_status" class="value">-</div>
+                            <div id="speedtest_server" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
                         <div class="speed-card">
                             <label>📡 Speed Test Ping</label>
                             <div id="speedtest_ping" class="value">-</div>
@@ -861,32 +870,70 @@
                 }
                 document.getElementById('clientinfo').textContent = clientInfo;
 
-                // Display speed test enabled status
-                const speedTestEnabled = data.speedtest_enabled;
-                const hasSpeedTestData = data.iperf3test_dl && data.iperf3test_dl > 0;
-                
-                if (speedTestEnabled === true || speedTestEnabled === 1) {
-                    if (hasSpeedTestData) {
-                        document.getElementById('speedtest_enabled').textContent = 'Yes';
-                    } else {
-                        document.getElementById('speedtest_enabled').textContent = 'Failed';
-                    }
-                } else if (speedTestEnabled === false || speedTestEnabled === 0) {
-                    document.getElementById('speedtest_enabled').textContent = 'Disabled';
+                // Display detection status
+                const detectionStatus = data.sysinfo?.detection_status || '';
+                if (detectionStatus === 'success') {
+                    document.getElementById('detection_status').textContent = 'Success';
+                } else if (detectionStatus === 'detection_failed') {
+                    document.getElementById('detection_status').textContent = 'Failed';
                 } else {
-                    document.getElementById('speedtest_enabled').textContent = '-';
+                    document.getElementById('detection_status').textContent = '-';
                 }
 
-                // Display speed test server information
+                // Display public IP
+                document.getElementById('public_ip').textContent = data.public_ip || '-';
+
+                // Display ISP and ASN combined
+                const ispName = data.isp_name || '';
+                const asn = data.asn || '';
+                let ispInfo = '';
+                if (ispName && asn) {
+                    ispInfo = `${ispName} (${asn})`;
+                } else if (ispName) {
+                    ispInfo = ispName;
+                } else if (asn) {
+                    ispInfo = asn;
+                } else {
+                    ispInfo = '-';
+                }
+                document.getElementById('isp_info').textContent = ispInfo;
+
+                // Display speed test status (in speed-cards section now)
+                const speedTestEnabled = data.speedtest_enabled;
+                const downloadSpeed = data.iperf3test_dl;
+                const uploadSpeed = data.iperf3test_ul;
+
+                let speedTestStatus = '';
+                if (speedTestEnabled === true || speedTestEnabled === 1) {
+                    // Check if speed test was skipped (value is -2)
+                    if (downloadSpeed === -2 || uploadSpeed === -2) {
+                        speedTestStatus = 'Skipped';
+                    } else if (downloadSpeed > 0 && uploadSpeed > 0) {
+                        speedTestStatus = 'Enabled';
+                    } else if (downloadSpeed === -1 || uploadSpeed === -1) {
+                        speedTestStatus = 'Failed';
+                    } else {
+                        speedTestStatus = 'Failed';
+                    }
+                } else if (speedTestEnabled === false || speedTestEnabled === 0) {
+                    speedTestStatus = 'Disabled';
+                } else {
+                    speedTestStatus = '-';
+                }
+                document.getElementById('speedtest_status').textContent = speedTestStatus;
+
+                // Display speed test server in small text below status
                 const serverName = data.speedtest_server_name || '';
                 const serverID = data.speedtest_server_id || '';
+                let serverInfo = '';
                 if (serverName && serverID) {
-                    document.getElementById('speedtest_server').textContent = `${serverName} (ID: ${serverID})`;
+                    serverInfo = `Server ID: ${serverID} (${serverName})`;
                 } else if (serverName) {
-                    document.getElementById('speedtest_server').textContent = serverName;
-                } else {
-                    document.getElementById('speedtest_server').textContent = '-';
+                    serverInfo = serverName;
+                } else if (serverID) {
+                    serverInfo = `Server ID: ${serverID}`;
                 }
+                document.getElementById('speedtest_server').textContent = serverInfo;
 
                 // Display Speed Test Ping (average latency prominently)
                 if (data.speedtest_latency) {
@@ -940,10 +987,16 @@
                 if (pingGoogleJitter && pingGoogleJitter !== 'N/A') {
                     googleParts.push(`Jitter: ${parseFloat(pingGoogleJitter).toFixed(1)} ms`);
                 }
+
+                let googleDetailsText = googleParts.join(' | ');
                 if (pingGoogleLoss && pingGoogleLoss !== 'N/A') {
-                    googleParts.push(`Loss: ${pingGoogleLoss}`);
+                    if (googleDetailsText) {
+                        googleDetailsText += '\nLoss: ' + pingGoogleLoss;
+                    } else {
+                        googleDetailsText = 'Loss: ' + pingGoogleLoss;
+                    }
                 }
-                document.getElementById('ping_google_details').textContent = googleParts.join(' | ');
+                document.getElementById('ping_google_details').textContent = googleDetailsText;
 
                 // Display ping Cloudflare results with jitter and max latency
                 const pingCloudflareAvg = data.ping_cloudflare_avg || '-';
@@ -964,10 +1017,16 @@
                 if (pingCloudflareJitter && pingCloudflareJitter !== 'N/A') {
                     cloudflareParts.push(`Jitter: ${parseFloat(pingCloudflareJitter).toFixed(1)} ms`);
                 }
+
+                let cloudflareDetailsText = cloudflareParts.join(' | ');
                 if (pingCloudflareLoss && pingCloudflareLoss !== 'N/A') {
-                    cloudflareParts.push(`Loss: ${pingCloudflareLoss}`);
+                    if (cloudflareDetailsText) {
+                        cloudflareDetailsText += '\nLoss: ' + pingCloudflareLoss;
+                    } else {
+                        cloudflareDetailsText = 'Loss: ' + pingCloudflareLoss;
+                    }
                 }
-                document.getElementById('ping_cloudflare_details').textContent = cloudflareParts.join(' | ');
+                document.getElementById('ping_cloudflare_details').textContent = cloudflareDetailsText;
                 
                 // Populate tables
                 populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
@@ -1316,25 +1375,27 @@
 
             function renderSpeedChart(labels, uploadData, downloadData, uploadLimits, downloadLimits) {
                 const ctx = document.getElementById('speedChart');
-                
+
                 if (charts.speed) {
                     charts.speed.destroy();
                 }
-                
+
                 const datasets = [{
                     label: 'Download Speed',
                     data: downloadData,
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    spanGaps: true  // Connect line across gaps in data
                 }, {
                     label: 'Upload Speed',
                     data: uploadData,
                     borderColor: '#764ba2',
                     backgroundColor: 'rgba(118, 75, 162, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    spanGaps: true  // Connect line across gaps in data
                 }];
                 
                 // Add download limit line if available
