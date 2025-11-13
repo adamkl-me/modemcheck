@@ -4,14 +4,90 @@ BINARY_NAME=modem-check
 SOURCE_DIR=modemcheck-client
 
 # Version info
-VERSION?=5.7.1
+VERSION?=5.8.0
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
-.PHONY: all build clean test cross-compile help
+# Signing keys
+MINISIGN_KEY_DIR=.signing-keys
+MINISIGN_SECRET_KEY=$(MINISIGN_KEY_DIR)/minisign.key
+MINISIGN_PUBLIC_KEY=$(MINISIGN_KEY_DIR)/minisign.pub
+
+.PHONY: all build clean test cross-compile help setup-keys sign-binary update-public-key
 
 # Default target: cross-compile for all platforms
 all: cross-compile
+
+# Setup Minisign signing keys (auto-generates if not present)
+setup-keys:
+	@echo "Checking for Minisign installation..."
+	@if ! command -v minisign > /dev/null 2>&1; then \
+		echo "ERROR: minisign is not installed!"; \
+		echo ""; \
+		echo "Please install minisign:"; \
+		echo "  macOS:   brew install minisign"; \
+		echo "  Debian:  apt-get install minisign"; \
+		echo "  Fedora:  dnf install minisign"; \
+		echo "  Arch:    pacman -S minisign"; \
+		echo "  Other:   https://jedisct1.github.io/minisign/"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(MINISIGN_SECRET_KEY)" ]; then \
+		echo "No signing keys found. Generating new Minisign key pair..."; \
+		mkdir -p $(MINISIGN_KEY_DIR); \
+		echo ""; \
+		echo "========================================"; \
+		echo "You will be prompted to set a password for the secret key."; \
+		echo "Press Enter for no password (not recommended for production)."; \
+		echo "========================================"; \
+		echo ""; \
+		cd $(MINISIGN_KEY_DIR) && minisign -G -p minisign.pub -s minisign.key; \
+		echo ""; \
+		echo "✓ Keys generated in $(MINISIGN_KEY_DIR)/"; \
+		echo "✓ IMPORTANT: Backup your secret key securely!"; \
+		echo "✓ Add $(MINISIGN_KEY_DIR)/ to .gitignore to prevent committing keys"; \
+		$(MAKE) update-public-key; \
+	else \
+		echo "✓ Signing keys already exist at $(MINISIGN_KEY_DIR)/"; \
+	fi
+
+# Update the public key in the Go source code
+update-public-key:
+	@if [ ! -f "$(MINISIGN_PUBLIC_KEY)" ]; then \
+		echo "ERROR: Public key file not found at $(MINISIGN_PUBLIC_KEY)"; \
+		echo "Run 'make setup-keys' first"; \
+		exit 1; \
+	fi
+	@echo "Updating public key in source code..."
+	@PUBLIC_KEY=$$(cat $(MINISIGN_PUBLIC_KEY)); \
+	if grep -q "PLACEHOLDER.*REPLACE_WITH_ACTUAL_KEY" $(SOURCE_DIR)/updater.go; then \
+		sed -i.bak "s|MinisignPublicKey = \"RWQ.*PLACEHOLDER.*REPLACE_WITH_ACTUAL_KEY\"|MinisignPublicKey = \"$$PUBLIC_KEY\"|g" $(SOURCE_DIR)/updater.go; \
+		rm -f $(SOURCE_DIR)/updater.go.bak; \
+		echo "✓ Public key embedded in $(SOURCE_DIR)/updater.go"; \
+	else \
+		echo "✓ Public key already configured (or placeholder not found)"; \
+		echo "  Current key: $$PUBLIC_KEY"; \
+	fi
+
+# Sign a binary with Minisign
+# Usage: make sign-binary BINARY=path/to/binary
+sign-binary:
+	@if [ -z "$(BINARY)" ]; then \
+		echo "ERROR: BINARY parameter required"; \
+		echo "Usage: make sign-binary BINARY=path/to/binary"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(BINARY)" ]; then \
+		echo "ERROR: Binary not found: $(BINARY)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(MINISIGN_SECRET_KEY)" ]; then \
+		echo "ERROR: Secret key not found. Run 'make setup-keys' first"; \
+		exit 1; \
+	fi
+	@echo "Signing $(BINARY)..."
+	@minisign -Sm "$(BINARY)" -s "$(MINISIGN_SECRET_KEY)" -t "modem-check v$(VERSION)"
+	@echo "✓ Signature created: $(BINARY).minisig"
 
 # Build for current platform
 build:
@@ -31,10 +107,10 @@ build-small:
 	fi
 
 # Cross-compile for all platforms
-cross-compile:
+cross-compile: setup-keys
 	@echo "Cross-compiling for multiple platforms (v$(VERSION))..."
 	@mkdir -p dist
-
+	@echo ""
 	@echo "Building for Linux x64..."
 	-cd $(SOURCE_DIR) && GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-linux-x64 .
 
@@ -63,8 +139,10 @@ cross-compile:
 	-cd $(SOURCE_DIR) && GOOS=freebsd GOARCH=amd64 go build $(LDFLAGS) -o ../dist/$(BINARY_NAME)-freebsd-x64 . || echo "  Warning: FreeBSD build failed (cross-compile limitation)"
 
 	@echo ""
-	@echo "Cross-compilation complete! Built binaries:"
-	@ls -lh dist/ 2>/dev/null || echo "No binaries built"
+	@echo "========================================"
+	@echo "Builds complete! Now signing binaries..."
+	@echo "========================================"
+	@VERSION=$(VERSION) ./sign-all.sh
 
 # Individual platform targets (without version in filename)
 linux:
@@ -97,6 +175,14 @@ clean:
 	@rm -rf dist/
 	@echo "Clean complete"
 
+# Clean everything including signing keys (use with caution!)
+clean-all: clean
+	@echo "WARNING: This will delete signing keys!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read dummy
+	@rm -rf $(MINISIGN_KEY_DIR)/
+	@echo "All artifacts and keys removed"
+
 # Run the program
 run: build
 	./$(BINARY_NAME)
@@ -122,8 +208,8 @@ help:
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Targets:"
-	@echo "  all              Cross-compile for all platforms (default)"
+	@echo "Build Targets:"
+	@echo "  all              Cross-compile for all platforms with signing (default)"
 	@echo "  build            Build for current platform"
 	@echo "  build-small      Build optimized binary with compression"
 	@echo "  cross-compile    Build for all supported platforms"
@@ -134,14 +220,26 @@ help:
 	@echo "  linux-mips       Build for Linux MIPS (big-endian)"
 	@echo "  windows          Build for Windows x64"
 	@echo "  macos            Build for macOS (Intel + Apple Silicon)"
+	@echo ""
+	@echo "Security Targets:"
+	@echo "  setup-keys       Generate Minisign keys for signing releases"
+	@echo "  update-public-key Update embedded public key in source code"
+	@echo "  sign-binary      Sign a binary (Usage: make sign-binary BINARY=path)"
+	@echo ""
+	@echo "Utility Targets:"
 	@echo "  run              Build and run the program"
 	@echo "  test             Test that code compiles"
 	@echo "  clean            Remove build artifacts"
+	@echo "  clean-all        Remove build artifacts AND signing keys"
 	@echo "  deps             Check dependencies"
 	@echo "  help             Show this help message"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make                    # Cross-compile for all platforms (default)"
-	@echo "  make build              # Build for current platform only"
-	@echo "  make linux-arm64        # Build for ARM64 devices"
-	@echo "  make clean all          # Clean and rebuild all platforms"
+	@echo "  make                           # Cross-compile all platforms with auto-signing"
+	@echo "  make setup-keys                # Generate signing keys (one-time setup)"
+	@echo "  make build                     # Build for current platform only"
+	@echo "  make linux-arm64               # Build for ARM64 devices"
+	@echo "  make clean all                 # Clean and rebuild all platforms"
+	@echo "  make sign-binary BINARY=dist/modem-check-linux-x64  # Sign a specific binary"
+	@echo ""
+	@echo "Note: Cross-compilation automatically generates keys and signs binaries"
