@@ -16,36 +16,8 @@ except ImportError:
     def get_audit_connection():
         raise ImportError("audit_schema not available")
 
-SESSION_DIR = '/modemcheck-cloud/config/sessions'
-
-def verify_session(session_id):
-    """Verify session and return user info"""
-    if not session_id:
-        return None
-    session_file = os.path.join(SESSION_DIR, session_id + '.json')
-    if not os.path.exists(session_file):
-        return None
-    
-    with open(session_file, 'r') as f:
-        session_data = json.load(f)
-    
-    # Check expiration
-    expires = datetime.fromisoformat(session_data['expires'])
-    if datetime.now() > expires:
-        os.remove(session_file)
-        return None
-    
-    return session_data
-
-def get_cookie(name):
-    """Get cookie value from environment"""
-    cookie_string = os.environ.get('HTTP_COOKIE', '')
-    cookies = {}
-    for cookie in cookie_string.split(';'):
-        if '=' in cookie:
-            key, value = cookie.strip().split('=', 1)
-            cookies[key] = value
-    return cookies.get(name)
+# Import session management from auth.py (Redis-based)
+from auth import verify_session, get_cookie
 
 def generate_api_key():
     """Generate a secure random API key"""

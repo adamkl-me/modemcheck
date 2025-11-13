@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# ModemCheck Cloud API Test Suite
+# ModemCheck Cloud Server Integration Test Suite
 # ============================================================================
 # Comprehensive testing script for cloud server components:
 # - Sets up isolated test environment (no impact on production)
@@ -13,7 +13,7 @@
 #
 # Note: This tests the cloud server only, not the modem-check.go program
 #
-# Usage: ./cloud_api_test.sh [--keep-env]
+# Usage: ./test_cloud_server.sh [--keep-env]
 #   --keep-env: Don't cleanup test environment after tests (for debugging)
 # ============================================================================
 

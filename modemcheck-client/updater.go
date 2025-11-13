@@ -28,8 +28,7 @@ const (
 
 	// MinisignPublicKey is the public key used to verify update signatures
 	// This key must match the private key used to sign release binaries
-	// TODO: Replace this placeholder with your actual Minisign public key before release
-	MinisignPublicKey = "RWQ...PLACEHOLDER...REPLACE_WITH_ACTUAL_KEY"
+	MinisignPublicKey = "RWQGilCovDisAC2fs6E3Og2ETthVyaxIlAW/En1rsPQmR5aA2TVO9n90"
 )
 
 // GitHubRelease represents a GitHub release API response.

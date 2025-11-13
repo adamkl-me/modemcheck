@@ -4,11 +4,20 @@ FROM alpine:3.22
 RUN apk add --no-cache \
     nginx \
     python3 \
+    py3-pip \
+    py3-redis \
     fcgiwrap \
     spawn-fcgi \
     bash \
     tzdata \
-    sqlite
+    sqlite \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev
+
+# Install Python packages for security enhancements
+RUN pip3 install --no-cache-dir argon2-cffi==23.1.0 --break-system-packages
 
 # Set timezone to America/Toronto
 RUN cp /usr/share/zoneinfo/America/Toronto /etc/localtime && \
@@ -18,16 +27,19 @@ RUN cp /usr/share/zoneinfo/America/Toronto /etc/localtime && \
 RUN mkdir -p /modemcheck-cloud/cgi-bin && \
     mkdir -p /modemcheck-cloud/config && \
     mkdir -p /modemcheck-cloud/data && \
+    mkdir -p /modemcheck-cloud/logs && \
     mkdir -p /run/fcgiwrap && \
     mkdir -p /var/log/nginx
 
-# Set up permissions - make config and data writable by nginx user
+# Set up permissions - make config, data, and logs writable by nginx user
 RUN chmod 755 /modemcheck-cloud && \
     chmod 777 /modemcheck-cloud/config && \
     chmod 777 /modemcheck-cloud/data && \
+    chmod 777 /modemcheck-cloud/logs && \
     chmod 755 /modemcheck-cloud/cgi-bin && \
     chown -R nginx:nginx /modemcheck-cloud/config && \
-    chown -R nginx:nginx /modemcheck-cloud/data
+    chown -R nginx:nginx /modemcheck-cloud/data && \
+    chown -R nginx:nginx /modemcheck-cloud/logs
 
 # Copy application files
 COPY db-viewer.html /modemcheck-cloud/index.html
@@ -43,6 +55,7 @@ COPY cgi-bin/admin-api.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/auth.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/user-management.py /modemcheck-cloud/cgi-bin/
 COPY cgi-bin/data-management-api.py /modemcheck-cloud/cgi-bin/
+COPY cgi-bin/common_passwords.py /modemcheck-cloud/cgi-bin/
 COPY nginx.conf /etc/nginx/http.d/modemcheck.conf
 
 # Remove default nginx config that listens on port 80

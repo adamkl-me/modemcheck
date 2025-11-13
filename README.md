@@ -51,13 +51,14 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 
 ## Recent Highlights
 
-* **Network Information Tracking**: Automatically detects and records public IP, ASN, ISP name, and geolocation for each check
+* **Update Channels**: Configure stable, beta, or test release channels for automatic updates with cryptographic signature verification
+* **Network Information Tracking**: Multi-tier fallback for reliable public IP, ASN, and ISP detection even during API outages
+* **Secure Auto-Updates**: Cryptographic signature verification with Minisign prevents tampered or malicious updates
 * **Failed Detection Handling**: Records checks even when modem detection fails, maintaining continuity with last successful modem info
 * **Speed Test Interval Control**: Run speed tests every N runs instead of every time, with automatic retry on failures
 * **Local File Cleanup**: Automatic removal of old JSON files with configurable retention (default: 90 days)
 * **Data Management API**: Bulk upload/download of modem check data with filtering and ZIP export
-* **Self-Updating Binary**: Automatically checks GitHub for updates and applies them with zero user interaction
-* **Enhanced RBAC**: Three-tier role system (basic/elevated/admin) with granular permissions
+* **Enhanced RBAC**: Three-tier role system (basic/elevated/admin) with granular permissions and Argon2id password hashing
 * **Multi-Architecture Support**: Runs on x64, ARM, ARM64, MIPS devices including routers and embedded systems
 * **Config Generator**: Point-and-click interface for creating config.json files with live preview and defaults management
 * **Native Diagnostics**: All speed tests and ping operations use native Go libraries - no external dependencies
@@ -110,9 +111,13 @@ Create a `config.json` file using the Admin Dashboard Config Generator (recommen
   "ModemAddress": "autodetect",
   "IgnitePassword": "password",
   "SpeedTestEnabled": true,
+  "SpeedTestInterval": 1,
   "AutoUpdateEnabled": true,
+  "UpdateChannel": "stable",
   "Silent": false,
   "NoLogs": false,
+  "LocalCleanupEnabled": true,
+  "LocalRetentionDays": 90,
   "EnableCloud": true,
   "CloudHost": "your.cloud.server",
   "CloudPort": "22557",
@@ -272,21 +277,32 @@ Example: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
 ## Security
 
-**Authentication:**
+**Auto-Update Security:**
+- Cryptographic signature verification with Minisign (Ed25519)
+- Pre-execution testing of binaries before installation
+- Automatic rollback on failed updates
+- TOCTOU attack prevention with atomic operations
+- See [SECURITY.md](SECURITY.md) for detailed threat model
+
+**Cloud Server Authentication:**
 - API keys: 32-byte cryptographically random tokens
-- Passwords: PBKDF2-HMAC-SHA256 with 100,000 iterations
-- Sessions: HttpOnly, SameSite=Strict cookies (7-day expiry)
+- Passwords: Argon2id memory-hard hashing (64MB, 3 iterations)
+- Automatic upgrade from legacy PBKDF2 hashes on login
+- Sessions: Redis-backed with HttpOnly, SameSite=Strict cookies (24-hour expiry)
+- Common password prevention (10,000+ blocked passwords)
 
 **Network:**
 - HTTPS enforcement for public deployments
-- Security headers enabled
+- Security headers enabled (CSP, X-Frame-Options, etc.)
 
 **Input Validation:**
 - Path traversal protection
+- SQL injection prevention
+- XSS protection
 - File size limits (10MB)
 - Sanitized error messages
 
-For deployment security details, see [cloudserver/README.md](cloudserver/README.md)
+For cloud deployment security, see [cloudserver/README.md](cloudserver/README.md)
 
 ## Automated Execution
 
@@ -381,11 +397,19 @@ Modem-Check uses the following open-source libraries:
   - Provides ICMP ping functionality in pure Go
   - Enables cross-platform network latency testing
 
+- **[Minisign](https://jedisct1.github.io/minisign/)** by Frank Denis (ISC License)
+  - Dead simple tool to sign files and verify digital signatures
+  - Used for secure auto-update signature verification
+
+- **[go-minisign](https://github.com/jedisct1/go-minisign)** by Frank Denis (BSD-2-Clause License)
+  - Go implementation of Minisign signature verification
+  - Enables cryptographic verification of binary updates
+
 - **[google/uuid](https://github.com/google/uuid)** by Google Inc. (BSD-3-Clause License)
   - UUID generation library
 
 - **golang.org/x packages** by The Go Authors (BSD-3-Clause License)
-  - Official Go supplementary libraries (net, sync, sys)
+  - Official Go supplementary libraries (net, sync, sys, crypto)
 
 Full license texts and detailed attribution information can be found in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 

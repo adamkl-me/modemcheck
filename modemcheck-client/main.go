@@ -58,6 +58,8 @@ func NewModemCheck(config Configuration) *ModemCheck {
 }
 
 // VerifyUpdateSuccess checks if a previous update succeeded and clears the lock if so.
+// If the update failed (current version doesn't match the expected version in the lock),
+// it will attempt to automatically rollback to the previous working version.
 func (m *ModemCheck) VerifyUpdateSuccess() {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -68,7 +70,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
-		// No lock file exists
+		// No lock file exists - no recent update to verify
 		return
 	}
 
@@ -92,10 +94,45 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 		// Update was successful, remove lock
 		os.Remove(lockPath)
 		if !m.config.Silent {
-			fmt.Printf("Successfully verified update to v%s\n", lock.Version)
+			fmt.Printf("✓ Successfully verified update to v%s\n", lock.Version)
 		}
+
+		// Clean up old backup file if update succeeded
+		backupFile := exePath + ".old"
+		if _, err := os.Stat(backupFile); err == nil {
+			os.Remove(backupFile)
+		}
+		return
 	}
-	// If current version < lock version, keep the lock (update failed)
+
+	// If we get here, the update failed (current version < lock version)
+	// This means an update was attempted but we're still running an older version
+	m.Log(fmt.Sprintf("⚠ Update to v%s appears to have failed (currently running v%s)", lock.Version, currentVersion))
+
+	// Check if there's a backup available for rollback
+	backupFile := exePath + ".old"
+	if _, err := os.Stat(backupFile); err == nil {
+		m.Log("Attempting automatic rollback to previous version...")
+
+		// Perform rollback
+		if err := m.RollbackUpdate(); err != nil {
+			m.Log(fmt.Sprintf("Automatic rollback failed: %v", err))
+			m.Log("Manual intervention may be required")
+		} else {
+			m.Log("✓ Rollback successful, restarting with previous version...")
+
+			// Restart the process with the rolled-back version
+			if err := RestartProcess(); err != nil {
+				m.Log(fmt.Sprintf("Failed to restart after rollback: %v", err))
+				m.Log("Please restart manually")
+			}
+			// If restart succeeds, this line won't be reached
+		}
+	} else {
+		// No backup available, just clear the lock and continue
+		m.Log("No backup available for rollback, continuing with current version")
+		os.Remove(lockPath)
+	}
 }
 
 // Log writes to both stdout and log file.
@@ -499,8 +536,15 @@ func main() {
 	noLogs := flag.Bool("nologs", false, "Disable log file creation")
 	enableCloud := flag.Bool("enablecloud", false, "Enable cloud upload (always saves locally)")
 	configFile := flag.String("config", "", "Path to configuration file")
+	version := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
+
+	// Handle version flag
+	if *version {
+		fmt.Printf("Modem Check v%s\n", Version)
+		os.Exit(0)
+	}
 
 	config := Configuration{
 		ModemAddress:        *modemAddress,
