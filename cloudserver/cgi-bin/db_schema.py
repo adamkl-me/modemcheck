@@ -78,6 +78,14 @@ def init_database():
             client_os TEXT,
             client_arch TEXT,
 
+            -- Network information
+            detection_status TEXT,
+            public_ip TEXT,
+            asn TEXT,
+            isp_name TEXT,
+            ip_city TEXT,
+            ip_country TEXT,
+
             -- Full JSON data
             full_data TEXT NOT NULL,
             
@@ -264,6 +272,14 @@ def insert_check(data_dict, filename):
         client_os = data_dict.get('client_os', '')
         client_arch = data_dict.get('client_arch', '')
 
+        # Network information
+        detection_status = sysinfo.get('detection_status', '')
+        public_ip = data_dict.get('public_ip', '')
+        asn = data_dict.get('asn', '')
+        isp_name = data_dict.get('isp_name', '')
+        ip_city = data_dict.get('ip_city', '')
+        ip_country = data_dict.get('ip_country', '')
+
         # Store full JSON as text
         full_data = json.dumps(data_dict)
         
@@ -284,8 +300,9 @@ def insert_check(data_dict, filename):
                 ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency,
                 ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency,
                 client_version, client_os, client_arch,
+                detection_status, public_ip, asn, isp_name, ip_city, ip_country,
                 full_data, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             modem_id, modem_type, check_time, filename,
             firmware, uptime_seconds, system_time,
@@ -298,6 +315,7 @@ def insert_check(data_dict, filename):
             ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency,
             ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency,
             client_version, client_os, client_arch,
+            detection_status, public_ip, asn, isp_name, ip_city, ip_country,
             full_data, created_at
         ))
         
