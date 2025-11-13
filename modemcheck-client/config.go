@@ -36,6 +36,7 @@ type Configuration struct {
 	SpeedTestEnabled    bool   // Enable speed tests (default: true)
 	SpeedTestInterval   int    // Run speed test every N runs (default: 1)
 	AutoUpdateEnabled   bool   // Enable automatic updates (default: true)
+	UpdateChannel       string // Update channel: "stable" (default), "beta", or "test" for pre-releases
 	Silent              bool   // Suppress console output
 	NoLogs              bool   // Disable log file creation
 	LocalCleanupEnabled bool   // Enable automatic cleanup of old local files (default: true)
@@ -72,6 +73,16 @@ func LoadConfigFile(path string, config *Configuration) error {
 	}
 	if config.LocalRetentionDays < 1 {
 		return fmt.Errorf("LocalRetentionDays must be at least 1")
+	}
+
+	// Set default update channel if not specified
+	if config.UpdateChannel == "" {
+		config.UpdateChannel = "stable" // Default: stable releases only
+	}
+	// Validate update channel
+	validChannels := map[string]bool{"stable": true, "beta": true, "test": true}
+	if !validChannels[config.UpdateChannel] {
+		return fmt.Errorf("UpdateChannel must be 'stable', 'beta', or 'test' (got: %s)", config.UpdateChannel)
 	}
 
 	// Validate critical configuration

@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"modemcheck-client/scraper"
@@ -363,16 +365,53 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 }
 
 // GetPublicIPInfo detects the client's public IP address, ASN, and ISP information.
+// Uses multiple fallback services to ensure reliability.
 func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	m.Log("Detecting public IP and network information...")
 
+	// Try primary service (ipapi.co)
+	if m.tryIPAPICo(data) {
+		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
+			data.PublicIP, data.ASN, data.ISPName))
+		return
+	}
+
+	m.Log("Primary IP service failed, trying fallback (ip-api.com)...")
+
+	// Try fallback service (ip-api.com)
+	if m.tryIPAPI(data) {
+		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
+			data.PublicIP, data.ASN, data.ISPName))
+		return
+	}
+
+	m.Log("All IP detection services failed, trying basic IP-only service...")
+
+	// Last resort: just get the IP without ASN/ISP info
+	if m.trySimpleIP(data) {
+		m.Log(fmt.Sprintf("Public IP: %s (ASN/ISP info unavailable)", data.PublicIP))
+		data.ASN = "N/A"
+		data.ISPName = "N/A"
+		return
+	}
+
+	m.Log("Warning: Failed to detect public IP from all sources")
+}
+
+// tryIPAPICo attempts to get IP info from ipapi.co (primary service)
+func (m *ModemCheck) tryIPAPICo(data *scraper.ModemData) bool {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get("https://ipapi.co/json/")
 	if err != nil {
-		m.Log(fmt.Sprintf("Failed to get IP info: %v", err))
-		return
+		m.Log(fmt.Sprintf("ipapi.co error: %v", err))
+		return false
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		m.Log(fmt.Sprintf("ipapi.co returned status %d", resp.StatusCode))
+		return false
+	}
 
 	var ipInfo struct {
 		IP      string `json:"ip"`
@@ -383,8 +422,14 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&ipInfo); err != nil {
-		m.Log(fmt.Sprintf("Failed to parse IP info: %v", err))
-		return
+		m.Log(fmt.Sprintf("ipapi.co parse error: %v", err))
+		return false
+	}
+
+	// Validate we got actual data
+	if ipInfo.IP == "" {
+		m.Log("ipapi.co returned empty IP")
+		return false
 	}
 
 	data.PublicIP = ipInfo.IP
@@ -393,6 +438,95 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	data.IPCity = ipInfo.City
 	data.IPCountry = ipInfo.Country
 
-	m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
-		data.PublicIP, data.ASN, data.ISPName))
+	return true
+}
+
+// tryIPAPI attempts to get IP info from ip-api.com (fallback service)
+func (m *ModemCheck) tryIPAPI(data *scraper.ModemData) bool {
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("http://ip-api.com/json/")
+	if err != nil {
+		m.Log(fmt.Sprintf("ip-api.com error: %v", err))
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		m.Log(fmt.Sprintf("ip-api.com returned status %d", resp.StatusCode))
+		return false
+	}
+
+	var ipInfo struct {
+		Query   string `json:"query"` // ip-api.com uses "query" for IP
+		AS      string `json:"as"`    // Format: "AS15169 Google LLC"
+		ISP     string `json:"isp"`
+		City    string `json:"city"`
+		Country string `json:"country"`
+		Status  string `json:"status"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&ipInfo); err != nil {
+		m.Log(fmt.Sprintf("ip-api.com parse error: %v", err))
+		return false
+	}
+
+	// Check for API failure
+	if ipInfo.Status == "fail" || ipInfo.Query == "" {
+		m.Log("ip-api.com returned failure status")
+		return false
+	}
+
+	data.PublicIP = ipInfo.Query
+	data.ASN = ipInfo.AS
+	data.ISPName = ipInfo.ISP
+	data.IPCity = ipInfo.City
+	data.IPCountry = ipInfo.Country
+
+	return true
+}
+
+// trySimpleIP attempts to get just the IP address from a simple service (last resort)
+func (m *ModemCheck) trySimpleIP(data *scraper.ModemData) bool {
+	// Try multiple simple IP services
+	services := []string{
+		"https://api.ipify.org?format=json",
+		"https://ifconfig.me/ip",
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	for _, service := range services {
+		resp, err := client.Get(service)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			continue
+		}
+
+		// Try parsing as JSON first (ipify)
+		var jsonIP struct {
+			IP string `json:"ip"`
+		}
+		if err := json.Unmarshal(body, &jsonIP); err == nil && jsonIP.IP != "" {
+			data.PublicIP = jsonIP.IP
+			return true
+		}
+
+		// Try as plain text (ifconfig.me)
+		ip := strings.TrimSpace(string(body))
+		if ip != "" && len(ip) < 50 { // Basic validation
+			data.PublicIP = ip
+			return true
+		}
+	}
+
+	return false
 }
