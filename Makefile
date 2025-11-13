@@ -61,8 +61,7 @@ update-public-key:
 	@echo "Updating public key in source code..."
 	@PUBLIC_KEY=$$(cat $(MINISIGN_PUBLIC_KEY)); \
 	if grep -q "PLACEHOLDER.*REPLACE_WITH_ACTUAL_KEY" $(SOURCE_DIR)/updater.go; then \
-		sed -i.bak "s|MinisignPublicKey = \"RWQ.*PLACEHOLDER.*REPLACE_WITH_ACTUAL_KEY\"|MinisignPublicKey = \"$$PUBLIC_KEY\"|g" $(SOURCE_DIR)/updater.go; \
-		rm -f $(SOURCE_DIR)/updater.go.bak; \
+		sed -i "s|MinisignPublicKey = \"RWQ.*PLACEHOLDER.*REPLACE_WITH_ACTUAL_KEY\"|MinisignPublicKey = \"$$PUBLIC_KEY\"|g" $(SOURCE_DIR)/updater.go; \
 		echo "✓ Public key embedded in $(SOURCE_DIR)/updater.go"; \
 	else \
 		echo "✓ Public key already configured (or placeholder not found)"; \
@@ -211,8 +210,8 @@ help:
 	@echo "Build Targets:"
 	@echo "  all              Cross-compile for all platforms with signing (default)"
 	@echo "  build            Build for current platform"
-	@echo "  build-small      Build optimized binary with compression"
-	@echo "  cross-compile    Build for all supported platforms"
+	@echo "  build-small      Build optimized binary with UPX compression"
+	@echo "  cross-compile    Build for all supported platforms with signing"
 	@echo "  linux            Build for Linux x64"
 	@echo "  linux-arm        Build for Linux ARM (32-bit)"
 	@echo "  linux-arm64      Build for Linux ARM64"

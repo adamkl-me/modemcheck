@@ -8,10 +8,14 @@ __pycache__/
 .pytest_cache/
 
 # Test data, logs, and personal notes
-ModemExampleDatafiles/
+ModemWebUIDataExamples/
 Playground/
 .upload_queue.json
-rebuild-docker.sh   
+rebuild-docker.sh
+
+# Test environment scripts
+cloudserver/start-test-env.sh
+cloudserver/stop-test-env.sh   
 
 # Go build artifacts
 modem-check
@@ -21,6 +25,10 @@ dist/
 *.out
 coverage.out
 coverage*.html
+
+# Minisign signing keys (CRITICAL: Never commit private keys!)
+.signing-keys/
+*.minisig
 
 # Configuration files (may contain passwords/API keys)
 config.json

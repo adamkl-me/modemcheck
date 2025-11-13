@@ -132,14 +132,57 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
+### go-minisign
+
+**Package:** `github.com/jedisct1/go-minisign`
+
+**Purpose:** Pure Go implementation of Minisign signature verification. Used to cryptographically verify the authenticity and integrity of auto-update binaries, preventing supply chain attacks and ensuring only authorized updates are installed.
+
+**License:** BSD-2-Clause License
+
+**Copyright:** Copyright (c) 2018-2024 Frank Denis
+
+**License Text:**
+
+```
+Copyright (c) 2018-2024, Frank Denis
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+**Project URL:** https://github.com/jedisct1/go-minisign
+
+---
+
 ### golang.org/x Packages
 
 **Packages:**
 - `golang.org/x/net`
 - `golang.org/x/sync`
 - `golang.org/x/sys`
+- `golang.org/x/crypto`
 
-**Purpose:** Official Go supplementary libraries for networking, synchronization, and system calls.
+**Purpose:** Official Go supplementary libraries for networking, synchronization, system calls, and cryptography.
 
 **License:** BSD-3-Clause License
 
@@ -181,6 +224,44 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
+## External Tools
+
+### Minisign (Build-time dependency)
+
+**Tool:** Minisign command-line utility
+
+**Purpose:** Signs release binaries during the build process. Required by developers building releases but not by end users. End users only need the verification capability (provided by go-minisign library embedded in the client).
+
+**License:** ISC License
+
+**Copyright:** Copyright (c) 2015-2024 Frank Denis
+
+**License Text:**
+
+```
+ISC License
+
+Copyright (c) 2015-2024 Frank Denis
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+**Project URL:** https://jedisct1.github.io/minisign/
+
+**About the Author:** Frank Denis ([@jedisct1](https://github.com/jedisct1)) is a prominent security researcher and the creator of libsodium, DNSCrypt, and other widely-used security tools. Minisign is designed to be a simpler, more auditable alternative to GPG for software signing.
+
+---
+
 ## Attribution Requirements
 
 This project complies with all third-party license requirements:
@@ -190,10 +271,21 @@ This project complies with all third-party license requirements:
    - ✅ License text included
    - ✅ Attribution provided
 
-2. **BSD-3-Clause Licensed Dependencies** (google/uuid, golang.org/x):
+2. **BSD-2-Clause Licensed Dependencies** (go-minisign):
    - ✅ Copyright notices preserved
    - ✅ License text included
    - ✅ Attribution provided
+
+3. **BSD-3-Clause Licensed Dependencies** (google/uuid, golang.org/x):
+   - ✅ Copyright notices preserved
+   - ✅ License text included
+   - ✅ Attribution provided
+
+4. **ISC Licensed Tools** (Minisign):
+   - ✅ Copyright notices preserved
+   - ✅ License text included
+   - ✅ Attribution provided
+   - ℹ️ Build-time only (not distributed with binaries)
 
 ---
 
@@ -217,17 +309,145 @@ Or visit the repository directly on GitHub to view the LICENSE file.
 
 ---
 
+## Python Server Dependencies
+
+### redis-py
+
+**Package:** `redis 5.0.0` (Python Redis client)
+
+**Purpose:** Provides Python client library for Redis, used for secure session management with atomic operations and automatic expiration in the cloud server component.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2012-2023 Redis Contributors
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2012-2023 Redis Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/redis/redis-py
+
+---
+
+### argon2-cffi
+
+**Package:** `argon2-cffi 23.1.0`
+
+**Purpose:** Provides secure Argon2 password hashing algorithm (Argon2id variant). Used for protecting user passwords with memory-hard, GPU-resistant hashing in the cloud server authentication system.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2015 Hynek Schlawack and the argon2-cffi contributors
+
+**License Text:**
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2015 Hynek Schlawack and the argon2-cffi contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/hynek/argon2-cffi
+
+---
+
+## JavaScript Frontend Dependencies
+
+### zxcvbn
+
+**Package:** `zxcvbn 4.4.2` (JavaScript password strength estimator)
+
+**Purpose:** Provides realistic password strength estimation in the admin dashboard. Used for real-time feedback on password security during user account creation and password changes.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2012-2016 Dan Wheeler and Dropbox, Inc.
+
+**License Text:**
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2012-2016 Dan Wheeler and Dropbox, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/dropbox/zxcvbn
+
+---
+
 ## Acknowledgments
 
 Special thanks to:
 - **ITO Shogo** for creating speedtest-go, enabling native Go speed testing
 - **Cameron Sparr and contributors** for go-ping, providing ICMP ping in pure Go
+- **Frank Denis** for Minisign and go-minisign, providing simple and secure cryptographic signing
+- **Redis Contributors** for redis-py, enabling secure session management
+- **Hynek Schlawack and argon2-cffi contributors** for providing secure Argon2 password hashing
+- **Dan Wheeler and Dropbox** for zxcvbn, enabling realistic password strength estimation
 - **Google** for the UUID library
-- **The Go Authors** for the official supplementary packages
+- **The Go Authors** for the official supplementary packages including crypto libraries
 - **Ookla** for speedtest.net infrastructure used by speedtest-go
 
-These libraries make it possible for Modem-Check to run as a single, standalone binary with no external dependencies.
+These libraries and tools make it possible for Modem-Check to run as a single, standalone, securely-updatable binary with no external runtime dependencies, and provide enterprise-grade security for the cloud server component.
 
 ---
 
-*Last Updated: 2025-11-10*
+*Last Updated: 2025-11-13*

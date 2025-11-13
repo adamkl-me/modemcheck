@@ -1,6 +1,21 @@
 name: modemcheck
 
 services:
+  redis:
+    container_name: modemcheck-redis
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - modemcheck-cloud_redis:/data
+    restart: unless-stopped
+    networks:
+      - modemcheck
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   modemcheck-cloud:
     container_name: modemcheck-cloud
     image: modemcheck-cloud:latest
@@ -15,6 +30,12 @@ services:
     restart: unless-stopped
     networks:
       - modemcheck
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
 networks:
   modemcheck:
@@ -31,3 +52,6 @@ volumes:
   modemcheck-cloud_db:
     external: true
     name: modemcheck-cloud_db
+  modemcheck-cloud_redis:
+    external: true
+    name: modemcheck-cloud_redis

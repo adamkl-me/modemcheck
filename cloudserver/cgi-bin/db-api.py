@@ -22,55 +22,8 @@ except ImportError:
     def log_user_activity(*args, **kwargs):
         pass
 
-def get_cookie(name):
-    """Extract cookie value from HTTP_COOKIE environment variable"""
-    cookie_string = os.environ.get('HTTP_COOKIE', '')
-    cookies = {}
-    for cookie in cookie_string.split(';'):
-        cookie = cookie.strip()
-        if '=' in cookie:
-            key, value = cookie.split('=', 1)
-            cookies[key] = value
-    return cookies.get(name)
-
-def get_client_info():
-    """Extract client IP and user agent from environment"""
-    client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
-               os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
-               os.environ.get('REMOTE_ADDR', 'unknown')
-    user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
-    return client_ip, user_agent
-
-def verify_session():
-    """Verify session cookie and return session data"""
-    session_id = get_cookie('modemcheck_session')
-    
-    if not session_id:
-        return None
-    
-    # Load session from file (same as api.py)
-    SESSION_DIR = '/modemcheck-cloud/config/sessions'
-    session_file = os.path.join(SESSION_DIR, session_id + '.json')
-    
-    if not os.path.exists(session_file):
-        return None
-    
-    try:
-        with open(session_file, 'r') as f:
-            session = json.load(f)
-    except (IOError, json.JSONDecodeError):
-        return None
-    
-    # Check if session is expired
-    expiry = datetime.fromisoformat(session['expires'])
-    if datetime.now() > expiry:
-        try:
-            os.remove(session_file)
-        except OSError:
-            pass  # Session already deleted or permission issue
-        return None
-    
-    return session
+# Import session management from auth.py (Redis-based)
+from auth import verify_session, get_cookie, get_client_info
 
 def handle_request():
     """Handle API requests"""
@@ -78,13 +31,14 @@ def handle_request():
     import sys
     sys.stderr.write(f"DEBUG db-api: Cookie header: {os.environ.get('HTTP_COOKIE', 'NONE')}\n")
     sys.stderr.flush()
-    
+
     # Verify authentication
-    session = verify_session()
-    
+    session_id = get_cookie('modemcheck_session')
+    session = verify_session(session_id)
+
     sys.stderr.write(f"DEBUG db-api: Session result: {session}\n")
     sys.stderr.flush()
-    
+
     if not session:
         print("Status: 401 Unauthorized")
         print("Content-Type: application/json")
@@ -322,12 +276,12 @@ def handle_get_all_checks(params):
         all_data = [check['full_data'] for check in checks]
         
         print(f"DEBUG: Returning {len(all_data)} data objects", file=sys.stderr)
-        
+
         # Log the view action (server-side, invisible to user)
-        session = verify_session()
+        session_id = get_cookie('modemcheck_session')
+        session = verify_session(session_id)
         if session:
             client_ip, user_agent = get_client_info()
-            session_id = get_cookie('modemcheck_session')
             
             # Build action details with date range if specified
             details_parts = [f"Viewed {len(all_data)} check(s) for modem '{modem_id}'"]
