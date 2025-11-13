@@ -1,696 +1,440 @@
-# Modem Check Cloud Server - Docker Setup
+# Modem Check Cloud Server
 
-This directory contains everything needed to run the Modem Check Cloud Server in a Docker container. The cloud server provides:
-- **Upload API** for uploading modem check results (port 22557)
-- **Web Viewer** for visualizing collected data (port 23890)
-- **Admin Dashboard** for managing API keys and users (port 23891)
+Docker-based cloud server for centralized modem diagnostic data storage and visualization.
+
+**Ports:**
+- **22557** - Upload API (HTTPS)
+- **23890** - Web Viewer
+- **23891** - Admin Dashboard
+
+## Table of Contents
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Admin Dashboard](#admin-dashboard)
+- [User Roles & Permissions](#user-roles--permissions)
+- [Container Management](#container-management)
+- [API Reference](#api-reference)
+- [Production Deployment](#production-deployment)
+- [Backup & Restore](#backup--restore)
+- [Troubleshooting](#troubleshooting)
+- [Updating](#updating)
 
 ## Quick Start
 
-### 1. Create Docker Volumes
+### 1. Create Volumes and Start
 
 ```bash
-# Create volumes for database and configuration
 docker volume create modemcheck-cloud_db
 docker volume create modemcheck-cloud_config
-```
-
-### 2. Build and Start the Container
-
-```bash
 cd cloudserver
 docker compose up -d
 ```
 
-This will:
-- Build the Alpine Linux container with nginx, Python, and fcgiwrap
-- Create persistent volumes for SQLite database and configuration storage
-- Expose port 22557 for data uploads (direct to database)
-- Expose port 23890 for web viewer
-- Expose port 23891 for admin dashboard
+### 2. Create API Key
 
-### 3. Verify the Container is Running
+Open admin dashboard at `http://localhost:23891` (login: `admin` / `changeme`)
 
-```bash
-docker ps | grep modemcheck-cloud
-```
+**Using Config Generator (Recommended):**
+1. Navigate to "Config Generator" tab
+2. Fill in modem settings or configure defaults in "Defaults" sub-tab
+3. Click "Generate Key" or select existing API key
+4. Download complete `config.json` file
 
-### 4. Create Your First API Key and Configuration
+**Manual Creation:**
+1. Navigate to "API Keys" tab
+2. Enter descriptive name → Click "Create API Key"
+3. Copy key immediately (not shown again)
 
-**Option A: Manual Creation (Quick)**
-
-1. Open the admin dashboard in your browser:
-   ```
-   http://localhost:23891
-   ```
-
-2. Navigate to the API Keys tab
-
-3. Enter a descriptive name (e.g., "Home Router", "Office Modem")
-
-4. Click "Create API Key"
-
-5. **Copy the key immediately** - you won't be able to see it again!
-
-**Option B: Using Config Generator (Recommended)**
-
-1. Open the admin dashboard at `http://localhost:23891`
-
-2. Navigate to the "Config Generator" tab
-
-3. (Optional) Click the "Defaults" sub-tab to set default values for common settings
-
-4. Return to the "Generator" sub-tab (pre-filled with defaults)
-
-5. Fill in or adjust modem settings as needed
-
-6. Click "Generate Key" or "Select Existing" to choose an API key
-
-7. Download the complete `config.json` file
-
-### 5. Update Your modem-check Configuration
-
-If you created the API key manually, create or update your `config.json`:
-
-```json
-{
-  "ModemAddress": "autodetect",
-  "EnableCloud": true,
-  "CloudHost": "localhost",
-  "CloudPort": "22557",
-  "CloudAPIKey": "paste-your-api-key-here"
-}
-```
-
-### 6. Test the Setup
-
-Run modem-check with your config:
+### 3. Test Upload
 
 ```bash
 ./modem-check -config config.json
 ```
 
-Check the logs for successful upload, then view your data at:
-```
-http://localhost:23890
-```
+Check the web viewer at `http://localhost:23890` to verify data appeared.
 
 ## Architecture
 
-### Port Layout
-- **Port 22557**:
-  - Data upload API (`/cgi-bin/upload.py`) - inserts directly to database
-- **Port 23890**:
-  - Data viewer web interface
-  - Database API (`/cgi-bin/db-api.py`)
-- **Port 23891**:
-  - Admin dashboard for user management
-  - Admin API (`/cgi-bin/admin-api.py`)
+### Components
 
-### File Structure
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Web Server | nginx | Serves static files and proxies CGI requests |
+| Application | Python 3 CGI | Handles API endpoints and database operations |
+| Database | SQLite | Stores modem data, users, API keys, audit logs |
+| Container | Alpine Linux | Minimal base image with fcgiwrap for CGI |
+
+### Directory Structure
+
 ```
 /modemcheck-cloud/
-├── data/                     # SQLite database (persistent volume)
-│   ├── modemcheck.db        # Main database with all modem data
-│   └── audit.db             # Audit log database
-├── config/                   # Configuration (persistent volume)
-│   ├── users.db             # User accounts database
-│   ├── sessions/            # Session files
-│   └── config_defaults.json # Config Generator default values
+├── db-viewer.html          # Web viewer interface
+├── db-viewer.js            # Viewer JavaScript
+├── admin.html              # Admin dashboard
+├── login.html              # Viewer login page
+├── admin-login.html        # Admin login page
 ├── cgi-bin/
-│   ├── db-api.py            # Data viewer API
-│   ├── upload.py            # Data upload handler (inserts to database)
-│   ├── db_schema.py         # Database schema and utilities
-│   ├── admin-api.py         # API key management
-│   └── auth.py              # Authentication handler
-├── db-viewer.html           # Data viewer interface
-├── db-viewer.js             # Data viewer JavaScript
-└── admin.html               # Admin dashboard with Config Generator
+│   ├── upload.py           # Upload API endpoint
+│   ├── db-api.py           # Database query API
+│   ├── auth.py             # Authentication/sessions
+│   ├── admin-api.py        # Admin operations
+│   ├── user-management.py  # User CRUD operations
+│   ├── data-management-api.py # Bulk upload/download/delete
+│   ├── db_schema.py        # Main database schema
+│   └── audit_schema.py     # Audit logging schema
 ```
+
+### Data Storage
+
+- **Database**: Docker volume `modemcheck-cloud_db` → `/modemcheck-cloud/db/`
+- **Config**: Docker volume `modemcheck-cloud_config` → `/modemcheck-cloud/config/`
+
+### Stored Data Fields
+
+The database stores comprehensive modem diagnostic data including:
+
+**Modem Information**
+- Detection status (success/failed)
+- Modem type, MAC address, firmware version
+- System time and uptime
+
+**Channel Metrics**
+- Downstream/upstream power levels and SNR
+- FEC error counts (corrected/uncorrected)
+- Channel frequencies and modulation
+
+**Network Performance**
+- Speed test results (download/upload/latency/jitter)
+- Ping test results (Google and Cloudflare)
+- Speed test server information
+
+**Network Information** *(new in v5.7.0)*
+- Public IP address
+- ASN and ISP name
+- Geolocation (city, country)
+
+**Client Information**
+- Client version, OS, and architecture
+
+## Web Viewer
+
+Access at `http://localhost:23890` (requires login)
+
+### Features
+
+**Modem Selection**
+- Browse all registered modems
+- View modem type and last check time
+- Filter and search capabilities
+
+**Check Visualization**
+- Timeline view of all checks for selected modem
+- Date range filtering
+- Interactive charts for signal quality trends
+
+**Data Display**
+- System information and detection status
+- Network information (IP, ISP, location)
+- Channel power levels and SNR
+- Error rates and event logs
+- Speed test and ping results
+- All data automatically refreshes when selecting different checks
+
+## Admin Dashboard
+
+Access at `http://localhost:23891` (default: admin/changeme, change on first login)
+
+### Features
+
+**API Key Management**
+- Create, view, edit, and delete API keys
+- Track last usage time for each key
+- Enable/disable keys without deletion
+- Required permissions: Admin (create/delete), Elevated (view/toggle)
+
+**Config Generator**
+- Point-and-click interface for creating `config.json` files
+- **Generator sub-tab**: Create configurations with live JSON preview
+- **Defaults sub-tab**: Set default values that auto-populate the generator
+- Download complete config files ready to use
+- Required permissions: Admin, Elevated
+
+**Data Management**
+- **Bulk Upload**: Upload multiple JSON check files at once
+- **Bulk Download**: Download checks as ZIP with date/limit filtering
+- **Delete Operations**: Remove individual checks or all checks for a modem
+- Required permissions: Admin (all), Elevated (upload/download only)
+
+**User Management**
+- Create viewer users (basic/elevated/admin roles)
+- Promote/demote user roles
+- Force password changes on next login
+- View user activity and last login times
+- Required permissions: Admin only
+
+**Audit Logging**
+- Complete tracking of all user actions
+- Role changes, API key operations, data deletions
+- Searchable by user, action type, and date
+- Required permissions: Admin only
+
+## User Roles & Permissions
+
+| Feature | Basic | Elevated | Admin |
+|---------|-------|----------|-------|
+| View modem data | ✓ | ✓ | ✓ |
+| View own API keys | ✓ | ✓ | ✓ |
+| List/toggle API keys | ✗ | ✓ | ✓ |
+| Delete API keys | ✗ | ✗ | ✓ |
+| Config Generator | ✗ | ✓ | ✓ |
+| Bulk upload/download | ✗ | ✓ | ✓ |
+| Delete checks | ✗ | ✗ | ✓ |
+| User management | ✗ | ✗ | ✓ |
+| View audit logs | ✗ | ✗ | ✓ |
+
+**Default Credentials:**
+- Username: `admin`
+- Password: `changeme` (must change on first login)
+
+**Managing Roles:**
+1. Login as admin → Navigate to "User Management" tab
+2. Select user → Choose new role → Click "Update Role"
+3. Changes are logged in audit trail
 
 ## Container Management
 
-### View Logs
+### Common Commands
+
+| Operation | Command |
+|-----------|---------|
+| Start | `docker compose up -d` |
+| Stop | `docker compose down` |
+| Restart | `docker compose restart` |
+| View logs | `docker compose logs -f` |
+| Shell access | `docker exec -it modemcheck-cloud /bin/sh` |
+| Rebuild | `docker compose up -d --build` |
+
+### Viewing Logs
 
 ```bash
-docker logs modemcheck-cloud
-docker logs -f modemcheck-cloud  # Follow logs
+# All logs
+docker compose logs -f
+
+# Nginx only
+docker compose logs -f | grep nginx
+
+# Python errors
+docker compose logs -f | grep "ERROR\|Traceback"
 ```
 
-### Restart Container
+## API Reference
+
+### Upload Endpoint
+
+**POST** `https://your-server:22557/cgi-bin/upload.py`
 
 ```bash
-docker compose restart
+curl -X POST https://localhost:22557/cgi-bin/upload.py \
+  -F "api_key=your-api-key-here" \
+  -F "modem_id=XB8-AABBCCDDEEFF" \
+  -F "filename=2025-01-12_10-30-00.json" \
+  -F "file=@/path/to/check.json"
 ```
 
-### Stop Container
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Data uploaded successfully",
+  "database_id": 1234
+}
+```
+
+### Query Endpoint
+
+**GET** `http://localhost:23890/cgi-bin/db-api.py`
 
 ```bash
-docker compose down
+# Get all modems
+curl "http://localhost:23890/cgi-bin/db-api.py?action=list_modems"
+
+# Get checks for specific modem
+curl "http://localhost:23890/cgi-bin/db-api.py?action=get_checks&modem_id=XB8-AABBCCDDEEFF&start_date=2025-01-01&end_date=2025-01-31"
 ```
 
-### Rebuild After Changes
+### Authentication
 
-```bash
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-```
-
-### Access Container Shell
-
-```bash
-docker exec -it modemcheck-cloud /bin/sh
-```
-
-## API Key Management
-
-### Via Web Dashboard (Recommended)
-
-1. Open `http://localhost:23891`
-2. Use the interface to:
-   - Create new keys with descriptive names
-   - View all keys with usage timestamps
-   - Edit key names or disable keys
-   - Delete keys
-   - Copy keys to clipboard
-   - Use the Config Generator with Defaults sub-tab to create config.json files with pre-filled values
-
-### Via API (Advanced)
-
-List all keys:
-```bash
-curl http://localhost:23891/cgi-bin/admin-api.py?action=list
-```
-
-Create a new key:
-```bash
-curl -X POST http://localhost:23891/cgi-bin/admin-api.py \
-  -H "Content-Type: application/json" \
-  -d '{"action":"create","name":"My New Key"}'
-```
-
-Delete a key:
-```bash
-curl -X POST http://localhost:23891/cgi-bin/admin-api.py \
-  -H "Content-Type: application/json" \
-  -d '{"action":"delete","key":"key-to-delete"}'
-```
-
-## Testing
-
-### Test File Upload
-
-Create a test JSON file:
-```bash
-echo '{"test":"data"}' > test.json
-```
-
-Upload using curl:
-```bash
-curl -X POST http://localhost:22557/cgi-bin/upload.py \
-  -F "api_key=your-api-key" \
-  -F "modem_id=TEST-123456" \
-  -F "filename=test.json" \
-  -F "file=@test.json"
-```
-
-### Test Web Viewer
-
-Open in browser:
-- **Data Viewer**: http://localhost:23890
-- **Admin Dashboard**: http://localhost:23891
-
-### Test Data Access API
-
-```bash
-# List all modems
-curl http://localhost:23890/cgi-bin/db-api.py?action=list_modems
-
-# List files for a modem
-curl "http://localhost:23890/cgi-bin/db-api.py?action=list_files&modem_id=CODA56-xxx"
-
-# Get a specific file
-curl "http://localhost:23890/cgi-bin/db-api.py?action=get_file&modem_id=CODA56-xxx&filename=2025-11-05_12-00-00.json"
-```
-
-## Config Generator
-
-The admin dashboard includes a Config Generator feature with two sub-tabs:
-
-### Generator Sub-tab
-- Point-and-click interface for creating `config.json` files
-- Live JSON preview that updates as you type
-- Select existing API keys or generate new ones inline
-- Download button for instant `config.json` file
-- All configuration options available (modem settings, cloud upload, speed tests, etc.)
-
-### Defaults Sub-tab
-- Set default values for all configuration fields
-- Defaults automatically populate the Generator sub-tab
-- Saves time when creating multiple similar configurations
-- Changes persist across sessions
-- Stored in `/modemcheck-cloud/config/config_defaults.json`
-
-**Usage:**
-1. Navigate to the Config Generator tab in the admin dashboard
-2. (Optional) Click the "Defaults" sub-tab to set your preferred default values
-3. Click "Save Defaults" to persist your settings
-4. Return to the "Generator" sub-tab - fields will be pre-filled with your defaults
-5. Customize as needed for the specific device
-6. Download the generated `config.json` file
-
-This eliminates manual JSON editing and reduces configuration errors.
-
-## Data Management
-
-The admin dashboard includes a comprehensive Data Management feature with three sub-tabs for managing modem check data. This feature is available to admin and elevated users.
-
-### Bulk Upload Sub-tab
-
-Upload multiple modem check JSON files at once:
-- **Multi-file selection**: Select multiple JSON files from your computer
-- **Batch processing**: All files are parsed and inserted in one operation
-- **Error handling**: Shows detailed results for each file (success/failure)
-- **Validation**: Each file is validated before insertion
-- **Progress tracking**: Real-time display of upload status
-
-**Usage:**
-1. Navigate to "Data Management" tab → "Bulk Upload" sub-tab
-2. Click "Select JSON Files" and choose multiple .json files
-3. Click "Upload Files"
-4. View detailed results showing which files succeeded/failed
-
-**Permissions:**
-- **Admin**: Full access
-- **Elevated**: Full access
-- **Basic**: No access
-
-### Bulk Download Sub-tab
-
-Download multiple checks as a ZIP archive with filtering options:
-- **Modem filtering**: Download checks for specific modem or all modems
-- **Date range filtering**: Select start/end dates to narrow results
-- **Limit control**: Set maximum number of files to download
-- **ZIP format**: All checks packaged in a single download
-- **Original filenames**: Preserves original check filenames in ZIP
-
-**Usage:**
-1. Navigate to "Data Management" tab → "Bulk Download" sub-tab
-2. (Optional) Select a specific modem from the dropdown
-3. (Optional) Set date range filters
-4. (Optional) Set maximum number of files
-5. Click "Download as ZIP"
-6. File downloads as `modemcheck_bulk_TIMESTAMP.zip`
-
-**Permissions:**
-- **Admin**: Full access
-- **Elevated**: Full access
-- **Basic**: No access
-
-### Delete Checks Sub-tab
-
-View and delete individual checks or bulk delete all checks for a modem:
-- **Modem filtering**: View checks for a specific modem
-- **Date range filtering**: Narrow down visible checks by date
-- **Individual deletion**: Delete specific checks one at a time
-- **Bulk deletion**: Delete all checks for a modem (admin only)
-- **Confirmation prompts**: Two-step confirmation for bulk deletions
-- **Detailed view**: Table showing check ID, filename, and timestamp
-
-**Usage:**
-1. Navigate to "Data Management" tab → "Delete Checks" sub-tab
-2. Select a modem from the dropdown
-3. (Optional) Set date range filters
-4. Click "Load Checks" to view available checks
-5. **Individual Delete**: Click "Delete" button on any check row
-6. **Bulk Delete**: Click "Delete All for This Modem" (requires typing "DELETE" to confirm)
-
-**Permissions:**
-- **Admin**: Full access (individual and bulk delete)
-- **Elevated**: View and load checks only (deletion blocked)
-- **Basic**: No access
-
-**Safety Features:**
-- Bulk delete requires double confirmation (alert + typing "DELETE")
-- Admin-only restriction on bulk delete operations
-- Cannot be undone - all deletions are permanent
-- Audit logging tracks all deletion operations
-
-### Security
-
-All Data Management operations:
-- Require authentication (session-based)
-- Enforce role-based access control (RBAC)
-- Log all actions to audit database
-- Validate all inputs for security
-- Prevent SQL injection and path traversal attacks
-
-## Migrating Existing Data
-
-### Architecture Change (v5.0+)
-
-**Important:** Starting with v5.0, the cloud server stores all data directly in an SQLite database instead of JSON files. This provides:
-- Immediate data availability (no daemon delay)
-- Faster queries and filtering
-- Reduced disk usage
-- Simpler architecture
-
-### Migrating from Old File-Based System
-
-If you have historical JSON files from the old system, you can import them using the database schema utilities:
-
-```bash
-# Option 1: Use Python directly in the container
-docker exec -it modemcheck-cloud python3 << 'EOF'
-from pathlib import Path
-import json
-import sys
-sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
-from db_schema import insert_check
-
-# Import JSON files
-for json_file in Path('/path/to/old/files').rglob('*.json'):
-    with open(json_file) as f:
-        data = json.load(f)
-    modem_id = json_file.parent.name  # e.g., "XB8-400FC1F7904C"
-    filename = f"{modem_id}/{json_file.name}"
-    insert_check(data, filename)
-    print(f"Imported: {filename}")
-EOF
-
-# Option 2: Copy files and use manual import script
-# (Contact for migration assistance if needed)
-```
-
-### From Previous Database
-
-If upgrading from an older version with a database:
-
-```bash
-# Backup old database
-docker run --rm \
-  -v old_modemcheck_db:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/old-db.tar.gz -C /data .
-
-# Restore to new volume
-docker run --rm \
-  -v modemcheck-cloud_db:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar xzf /backup/old-db.tar.gz -C /data
-```
-
-## User Role Management
-
-### Permission Levels
-
-The admin dashboard supports three user roles with different permission levels:
-
-| Role | Permissions |
-|------|------------|
-| **admin** | Full system access including User Management, User Activity audit logs, Config Defaults, API Keys, and all other features |
-| **elevated** | Limited admin access to API Keys, Config Generator (Generator sub-tab only), and Client Submissions |
-| **basic** | View-only access to check data |
-
-### First-Time Setup
-
-After building the container for the first time, you'll need to fix the database role constraint to support the new permission levels:
-
-```bash
-# Fix the database constraint to allow 'admin', 'elevated', and 'basic' roles
-docker exec -it modemcheck-cloud python3 /modemcheck-cloud/fix_role_constraint.py
-```
-
-**Note:** The default admin account is created with username `admin` and password `changeme`. You'll be prompted to change this on first login.
-
-### Migrating from Old Role Hierarchy
-
-If you're upgrading from a previous version that used different role names (superadmin/admin), run the migration script:
-
-```bash
-# Migrate old role names to new hierarchy
-docker exec -it modemcheck-cloud python3 /modemcheck-cloud/migrate_roles.py
-```
-
-This will:
-- Convert `superadmin` → `admin` (full access)
-- Convert old `admin` → `elevated` (limited admin)
-- Keep `basic` unchanged
-
-### Upgrading Users to Admin
-
-To give a user full admin access:
-
-```bash
-# Upgrade a user to admin role
-docker exec -it modemcheck-cloud python3 /modemcheck-cloud/upgrade_to_admin.py username
-```
-
-### Managing Users via Dashboard
-
-Users with **admin** role can:
-- Access the admin dashboard with full visibility
-- Create new users with any role (basic, elevated, or admin)
-- Change user roles via dropdown
-- Reset user passwords
-- Delete users
-- View user activity logs
-- Manage API keys
-- Use Config Generator (all tabs including Defaults)
-- View client submission logs
-
-Users with **elevated** role can:
-- Access the admin dashboard with reduced visibility
-- Manage API keys
-- Use Config Generator (Generator tab only - Defaults tab is hidden)
-- View client submission logs
-- **Cannot** access User Management tab
-- **Cannot** view User Activity audit logs
-- **Cannot** modify Config Defaults
-
-Users with **basic** role:
-- Cannot access the admin dashboard
-- View-only access to check data via the viewer
-
-## Backup and Restore
-
-### Backup Data
-
-```bash
-# Backup SQLite database (contains all modem data)
-docker run --rm \
-  -v modemcheck-cloud_db:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/database-$(date +%Y%m%d).tar.gz -C /data .
-
-# Backup configuration (users and API keys)
-docker run --rm \
-  -v modemcheck-cloud_config:/config \
-  -v $(pwd)/backups:/backup \
-  alpine tar czf /backup/config-$(date +%Y%m%d).tar.gz -C /config .
-```
-
-### Restore Data
-
-```bash
-# Restore database
-docker run --rm \
-  -v modemcheck-cloud_db:/data \
-  -v $(pwd)/backups:/backup \
-  alpine tar xzf /backup/database-20251105.tar.gz -C /data
-
-# Restore configuration
-docker run --rm \
-  -v modemcheck-cloud_config:/config \
-  -v $(pwd)/backups:/backup \
-  alpine tar xzf /backup/config-20251105.tar.gz -C /config
-```
+All API requests to port 23890 and 23891 require session cookies obtained via login.
 
 ## Production Deployment
 
-### Reverse Proxy with HTTPS
+### HTTPS Setup
 
-The container serves plain HTTP. For production, use a reverse proxy with HTTPS:
-
-**Nginx example:**
-```nginx
-server {
-    listen 443 ssl;
-    server_name modemcheck.example.com;
-
-    ssl_certificate /etc/letsencrypt/live/modemcheck.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/modemcheck.example.com/privkey.pem;
-
-    # Data viewer and upload API
-    location / {
-        proxy_pass http://localhost:23890;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name admin.modemcheck.example.com;
-
-    ssl_certificate /etc/letsencrypt/live/modemcheck.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/modemcheck.example.com/privkey.pem;
-
-    # Admin dashboard - consider IP restrictions
-    location / {
-        proxy_pass http://localhost:23891;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        # Optional: restrict to trusted IPs
-        # allow 192.168.1.0/24;
-        # deny all;
-    }
-}
-```
-
-**Caddy example:**
-```
-modemcheck.example.com {
-    reverse_proxy localhost:23890
-}
-
-admin.modemcheck.example.com {
-    reverse_proxy localhost:23891
-    # Optional: restrict to trusted IPs
-    # @blocked not remote_ip 192.168.1.0/24
-    # respond @blocked 403
-}
-```
-
-### Firewall Configuration
+**Option 1: Cloudflare Tunnel (Recommended)**
 
 ```bash
-# Allow HTTPS traffic
-sudo ufw allow 443/tcp
+# Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared
 
-# If not using reverse proxy, allow direct access:
-sudo ufw allow 22557/tcp  # Upload API
-sudo ufw allow 23890/tcp  # Data viewer
-sudo ufw allow 23891/tcp  # Admin dashboard (consider restricting)
+# Create tunnel
+./cloudflared tunnel create modemcheck
+./cloudflared tunnel route dns modemcheck modemcheck.yourdomain.com
+
+# Configure tunnel (config.yml)
+tunnel: <tunnel-id>
+credentials-file: /path/to/credentials.json
+
+ingress:
+  - hostname: modemcheck.yourdomain.com
+    service: http://localhost:22557
+  - hostname: viewer.yourdomain.com
+    service: http://localhost:23890
+  - service: http_status:404
+
+# Run tunnel
+./cloudflared tunnel run modemcheck
+```
+
+**Option 2: Reverse Proxy (nginx/Caddy)**
+
+See full nginx/Caddy configuration examples in repository wiki.
+
+### Security Checklist
+
+- [ ] Change default admin password
+- [ ] Use strong, unique API keys
+- [ ] Enable HTTPS for public access
+- [ ] Keep admin dashboard on local network only (or behind VPN)
+- [ ] Regular backups of database
+- [ ] Update container regularly
+- [ ] Monitor audit logs for suspicious activity
+
+## Backup & Restore
+
+### Backup
+
+```bash
+# Stop container
+docker compose down
+
+# Backup database
+docker run --rm -v modemcheck-cloud_db:/data -v $(pwd):/backup alpine \
+  tar czf /backup/modemcheck-db-$(date +%Y%m%d).tar.gz -C /data .
+
+# Backup config
+docker run --rm -v modemcheck-cloud_config:/data -v $(pwd):/backup alpine \
+  tar czf /backup/modemcheck-config-$(date +%Y%m%d).tar.gz -C /data .
+
+# Restart
+docker compose up -d
+```
+
+### Restore
+
+```bash
+# Stop container
+docker compose down
+
+# Restore database
+docker run --rm -v modemcheck-cloud_db:/data -v $(pwd):/backup alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/modemcheck-db-YYYYMMDD.tar.gz -C /data"
+
+# Restore config
+docker run --rm -v modemcheck-cloud_config:/data -v $(pwd):/backup alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/modemcheck-config-YYYYMMDD.tar.gz -C /data"
+
+# Restart
+docker compose up -d
 ```
 
 ## Troubleshooting
 
 ### Container Won't Start
 
-Check logs:
+**Check logs:**
 ```bash
-docker logs modemcheck-cloud
+docker compose logs
 ```
 
-Verify volumes exist:
+**Common causes:**
+- Port already in use: Check with `netstat -tlnp | grep -E '22557|23890|23891'`
+- Volume permissions: Ensure Docker has access to volume paths
+- Missing volumes: Recreate with `docker volume create` commands
+
+### Upload Fails
+
+**Symptoms:** `curl` returns error or timeout
+
+**Solutions:**
+1. Verify API key is valid in admin dashboard
+2. Check modem_id format (e.g., `XB8-AABBCCDDEEFF`)
+3. Verify JSON file is valid: `python3 -m json.tool check.json`
+4. Check container logs: `docker compose logs -f`
+
+### Web Viewer Shows No Data
+
+**Solutions:**
+1. Verify data exists: Check database via admin dashboard
+2. Check date range filter (default: last 14 days)
+3. Verify modem selection in dropdown
+4. Clear browser cache and cookies
+
+### Login Issues
+
+**Reset admin password:**
 ```bash
-docker volume ls | grep modemcheck
+docker exec -it modemcheck-cloud python3 -c "
+from cgi_bin.auth import hash_password
+import sqlite3
+conn = sqlite3.connect('/modemcheck-cloud/db/modemcheck.db')
+conn.execute('UPDATE users SET password_hash=?, must_change_password=1 WHERE username=?',
+             (hash_password('changeme'), 'admin'))
+conn.commit()
+"
 ```
 
-### Upload Fails with "Invalid API key"
+### Slow Performance
 
-1. Verify the API key in your config.json
-2. Check that the key exists in the admin dashboard
-3. Verify the key is active (not disabled)
-4. Check Docker logs for errors: `docker logs modemcheck-cloud`
-
-### Web Interface Not Loading
-
-Check nginx status:
+**Check database size:**
 ```bash
-docker exec modemcheck-cloud ps aux | grep nginx
+docker exec modemcheck-cloud du -sh /modemcheck-cloud/db/modemcheck.db
 ```
 
-Check fcgiwrap:
+**Optimize if large:**
 ```bash
-docker exec modemcheck-cloud ps aux | grep fcgiwrap
+docker exec modemcheck-cloud sqlite3 /modemcheck-cloud/db/modemcheck.db "VACUUM;"
 ```
 
-Check nginx logs:
-```bash
-docker exec modemcheck-cloud cat /var/log/nginx/error.log
-```
+**Consider cleanup:**
+- Remove old data via Data Management tab
+- Archive and delete checks older than X days
 
-### API Endpoints Return Errors
+## Updating
 
-Test the API directly:
-```bash
-docker exec modemcheck-cloud python3 /modemcheck-cloud/cgi-bin/db-api.py
-```
-
-Check CGI script permissions:
-```bash
-docker exec modemcheck-cloud ls -l /modemcheck-cloud/cgi-bin/
-```
-
-### Admin Dashboard Not Accessible
-
-Verify port is exposed:
-```bash
-docker port modemcheck-cloud 23891
-```
-
-Check nginx is listening on both ports:
-```bash
-docker exec modemcheck-cloud netstat -tulpn | grep nginx
-```
-
-## Performance
-
-The container uses minimal resources:
-- **Memory**: ~30MB (no SSH server!)
-- **CPU**: Minimal (only during uploads/queries)
-- **Storage**: Depends on data volume
-- **Startup Time**: < 2 seconds
-
-## Security Considerations
-
-### API Key Security
-- Keys are 32-byte URL-safe random tokens (256 bits of entropy)
-- Keys shown only once during creation
-- Keys stored in persistent volume as JSON
-- Each device can have its own key
-- Easy to revoke access by deleting keys
-
-### Network Security
-- Use HTTPS in production (reverse proxy)
-- Consider restricting admin dashboard to trusted IPs
-- Use firewall rules to limit access
-- Keep Docker and Alpine packages updated
-
-### Best Practices
-- Use separate API keys for each device
-- Use descriptive key names
-- Regularly review and remove unused keys
-- Enable HTTPS for production deployments
-- Set appropriate file permissions on config files
-- Use TestMode "both" to maintain local backups
-
-## Updating the Container
-
-To update to a new version:
+### Update Container
 
 ```bash
+# Pull latest code
+git pull
+
+# Rebuild and restart
 cd cloudserver
-git pull  # Get latest changes
 docker compose down
-docker compose build --no-cache
-docker compose up -d
+docker compose up -d --build
 ```
 
-Your data and API keys are preserved in Docker volumes.
+### Database Migrations
 
-**Important:** After updating to a version with new user role features, run the database fix script:
+Database schema updates are handled automatically on container startup. Check logs for migration messages:
 
 ```bash
-docker exec -it modemcheck-cloud python3 /modemcheck-cloud/fix_role_constraint.py
+docker compose logs | grep -i migration
 ```
-
-This updates the database schema to support the new permission levels (admin, elevated, basic).
 
 ## Support
 
-- Main documentation: `../README.md`
-- Project docs: `../CLAUDE.md`
+For issues, questions, or feature requests:
+- Check this documentation
+- Review [main README](../README.md) for client setup
+- Check [GitHub Issues](https://github.com/adamkl-me/modemcheck/issues)

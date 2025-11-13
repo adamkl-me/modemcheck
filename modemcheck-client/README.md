@@ -1,4 +1,4 @@
-# Modem Check Client v5.5.0
+# Modem Check Client v5.7.1
 
 This is the main application source code for modem-check, organized into a clean modular package structure for better maintainability and extensibility.
 
@@ -48,6 +48,13 @@ This is the main application source code for modem-check, organized into a clean
   - Automatic server selection based on proximity
   - Results in Mbps with 2 decimal precision
   - Enabled by default, can be disabled via flag or config file
+
+- **Network Information Detection**: Automatic detection of public IP and network information
+  - Public IP address detection
+  - ASN (Autonomous System Number) identification
+  - ISP/provider name
+  - Geolocation (city, country)
+  - Uses ipapi.co free API (no authentication required)
 
 ## Building
 
@@ -114,10 +121,12 @@ To add support for a new modem:
 
 ## Version History
 
+- **v5.7.0** - Network information tracking (public IP, ASN, ISP, geolocation), failed detection handling, merged speed test cards in viewer
+- **v5.6.0** - Speed test interval control, local file cleanup, enhanced help output
+- **v5.5.0** - Enhanced RBAC, config defaults, update improvements
 - **v5.4.0** - MIPS architecture support (routers/embedded devices), cleaner binary naming, viewer improvements
-- **v5.3.1** - Bug fixes (date filtering, speedtest_enabled display), UI improvements (speed test reorganization), removed non-functional packet loss
+- **v5.3.1** - Bug fixes (date filtering, speedtest_enabled display), UI improvements (speed test reorganization)
 - **v5.3.0** - Auto-update system with GitHub integration, automatic binary updates
-- **v5.2.0** - Enhanced metrics (speed test server info, unloaded/loaded latency, ping jitter/max), database schema expansion, client tracking
+- **v5.2.0** - Enhanced metrics (speed test server info, unloaded/loaded latency, ping jitter/max), database schema expansion
 - **v5.1.0** - Automatic version injection from Makefile, system ping fallback for Linux compatibility
 - **v5.0.0** - Cloud architecture improvements, config generator, role management
-- **v4.5.0** - Initial refactored modular architecture with native speed tests

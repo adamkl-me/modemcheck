@@ -262,11 +262,18 @@ func (m *ModemCheck) Run() error {
 		m.retryFailedUploads(queue)
 	}
 
+	// Load last successful modem state
+	lastSuccessful, _ := LoadLastSuccessfulModem()
+
 	// Detect modem
+	detectionFailed := false
+	var detectionErr error
+
 	if m.config.ModemAddress == "autodetect" {
 		if err := m.AutoDetectModem(); err != nil {
 			m.Log(err.Error())
-			return err
+			detectionErr = err
+			detectionFailed = true
 		}
 	} else {
 		m.modemAddress = m.config.ModemAddress
@@ -274,32 +281,52 @@ func (m *ModemCheck) Run() error {
 		m.Log("Attempting to detect modem model...")
 		m.modemType = scraper.DetectModem(m.modemAddress, m.client)
 		if m.modemType == "Unknown" {
-			return fmt.Errorf("modem model not detected at %s", m.modemAddress)
+			detectionErr = fmt.Errorf("modem model not detected at %s", m.modemAddress)
+			detectionFailed = true
+		} else {
+			m.Log(fmt.Sprintf("Modem model detected: %s", m.modemType))
 		}
-		m.Log(fmt.Sprintf("Modem model detected: %s", m.modemType))
 	}
 
-	// Create appropriate scraper
-	if err := m.createScraper(); err != nil {
-		return err
-	}
+	// Handle detection failure
+	if detectionFailed {
+		if lastSuccessful != nil && lastSuccessful.ModemType != "" {
+			m.Log("Modem detection failed, but using last successful modem for diagnostics")
+			m.modemType = lastSuccessful.ModemType
+			m.modemMAC = lastSuccessful.ModemMAC
+			m.modemAddress = lastSuccessful.ModemAddress
+		} else {
+			m.Log("Modem detection failed and no previous successful modem found")
+			return detectionErr
+		}
+	} else {
+		// Create appropriate scraper
+		if err := m.createScraper(); err != nil {
+			return err
+		}
 
-	// Login
-	m.Log("Logging in to modem")
-	if err := m.modemScraper.Login(); err != nil {
-		return err
-	}
+		// Login
+		m.Log("Logging in to modem")
+		if err := m.modemScraper.Login(); err != nil {
+			return err
+		}
 
-	// Update modem type (may be more specific after login, e.g., Xfinity -> XB8)
-	m.modemType = m.modemScraper.GetModemType()
+		// Update modem type (may be more specific after login, e.g., Xfinity -> XB8)
+		m.modemType = m.modemScraper.GetModemType()
 
-	// Get MAC
-	m.Log("Getting modem MAC address")
-	mac, err := m.modemScraper.GetMAC()
-	if err != nil {
-		return err
+		// Get MAC
+		m.Log("Getting modem MAC address")
+		mac, err := m.modemScraper.GetMAC()
+		if err != nil {
+			return err
+		}
+		m.modemMAC = mac
+
+		// Save successful detection
+		if err := SaveLastSuccessfulModem(m.modemType, m.modemMAC, m.modemAddress); err != nil {
+			m.Log(fmt.Sprintf("Warning: Failed to save last successful modem: %v", err))
+		}
 	}
-	m.modemMAC = mac
 
 	// Create output directory
 	m.Log("Creating folder to store check results")
@@ -333,10 +360,38 @@ func (m *ModemCheck) Run() error {
 	}
 
 	// Collect data
-	m.Log("Collecting modem diagnostic data")
-	data, err := m.modemScraper.GetData(m.checkTime)
-	if err != nil {
-		return err
+	var data *scraper.ModemData
+	if detectionFailed {
+		// Create empty ModemData with detection_failed status
+		m.Log("Creating diagnostic check with failed detection status")
+		data = &scraper.ModemData{
+			SysInfo: scraper.SysInfo{
+				SysTime:         0,
+				Firmware:        "",
+				Uptime:          0,
+				ModemType:       m.modemType,
+				ModemMAC:        m.modemMAC,
+				CheckTime:       m.checkTime,
+				DetectionStatus: "detection_failed",
+			},
+			RX:       []scraper.RXChannel{},
+			RXOFDM:   []scraper.RXOFDMChannel{},
+			TX:       []scraper.TXChannel{},
+			TXOFDM:   []scraper.TXOFDMAChannel{},
+			EventLog: []scraper.EventLog{},
+		}
+	} else {
+		m.Log("Collecting modem diagnostic data")
+		var err error
+		data, err = m.modemScraper.GetData(m.checkTime)
+		if err != nil {
+			return err
+		}
+		data.SysInfo.DetectionStatus = "success"
+
+		// Clear FEC after collecting data
+		m.Log("Clearing FEC counters")
+		m.modemScraper.ClearFEC()
 	}
 
 	// Add client version and platform information
@@ -344,16 +399,15 @@ func (m *ModemCheck) Run() error {
 	data.ClientOS = runtime.GOOS
 	data.ClientArch = runtime.GOARCH
 
+	// Get public IP and network information
+	m.GetPublicIPInfo(data)
+
 	// Save data
 	jsonData, _ := json.MarshalIndent(data, "", "  ")
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
 		return err
 	}
 	m.Log(fmt.Sprintf("Modem data collected and saved to %s", m.checkFile))
-
-	// Clear FEC
-	m.Log("Clearing FEC counters")
-	m.modemScraper.ClearFEC()
 
 	// Ping tests (run before speed tests)
 	m.RunPingTests(data)
@@ -408,15 +462,43 @@ func (m *ModemCheck) Run() error {
 }
 
 func main() {
+	// Custom usage function
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Modem Check v%s - Cable modem diagnostic tool\n\n", Version)
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Command-Line Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nConfiguration File Options (use with -config):\n")
+		fmt.Fprintf(os.Stderr, "  ModemAddress          Modem IP address or 'autodetect'\n")
+		fmt.Fprintf(os.Stderr, "  IgnitePassword        Password for Rogers Xfinity modems\n")
+		fmt.Fprintf(os.Stderr, "  SpeedTestEnabled      Enable/disable speed tests (default: true)\n")
+		fmt.Fprintf(os.Stderr, "  SpeedTestInterval     Run speed test every N runs (default: 1)\n")
+		fmt.Fprintf(os.Stderr, "  AutoUpdateEnabled     Enable/disable automatic updates (default: true)\n")
+		fmt.Fprintf(os.Stderr, "  Silent                Suppress console output (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  NoLogs                Disable log file creation (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  LocalCleanupEnabled   Enable automatic cleanup of old files (default: true)\n")
+		fmt.Fprintf(os.Stderr, "  LocalRetentionDays    Days to retain local files (default: 90)\n")
+		fmt.Fprintf(os.Stderr, "  EnableCloud           Enable cloud upload (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  CloudHost             Cloud server hostname or IP\n")
+		fmt.Fprintf(os.Stderr, "  CloudPort             Cloud server port (default: 22557)\n")
+		fmt.Fprintf(os.Stderr, "  CloudAPIKey           API key for cloud authentication\n")
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  %s                                    # Auto-detect modem\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -address 192.168.100.1            # Specify modem IP\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -config config.json               # Use config file\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -silent -nologs -noupdate         # Silent mode for cron\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\nFor more information, visit: https://github.com/adamkl-me/modemcheck\n")
+	}
+
 	// Command-line flags
 	modemAddress := flag.String("address", "autodetect", "Modem IP address or 'autodetect'")
 	xfinityPassword := flag.String("xfinitypassword", "password", "Password for Rogers Xfinity modems")
-	speedTestEnabled := flag.Bool("speedtest", true, "Enable speed tests using public servers (default: true)")
-	noUpdate := flag.Bool("noupdate", false, "Disable automatic updates (default: false, updates enabled)")
+	speedTestEnabled := flag.Bool("speedtest", true, "Enable speed tests using public servers")
+	noUpdate := flag.Bool("noupdate", false, "Disable automatic updates")
 	silent := flag.Bool("silent", false, "Suppress output to terminal")
 	noLogs := flag.Bool("nologs", false, "Disable log file creation")
 	enableCloud := flag.Bool("enablecloud", false, "Enable cloud upload (always saves locally)")
-	configFile := flag.String("config", "", "Path to configuration file (optional)")
+	configFile := flag.String("config", "", "Path to configuration file")
 
 	flag.Parse()
 

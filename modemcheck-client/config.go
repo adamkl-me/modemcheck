@@ -87,6 +87,73 @@ func LoadConfigFile(path string, config *Configuration) error {
 	return nil
 }
 
+// LastSuccessfulModem tracks the most recently successful modem detection.
+type LastSuccessfulModem struct {
+	ModemType       string `json:"modem_type"`
+	ModemMAC        string `json:"modem_mac"`
+	LastSuccessTime int64  `json:"last_success_time"`
+	ModemAddress    string `json:"modem_address"`
+	StateFilePath   string `json:"-"` // Path to state file (not serialized)
+}
+
+// LoadLastSuccessfulModem loads the last successful modem state from executable directory.
+func LoadLastSuccessfulModem() (*LastSuccessfulModem, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	stateFile := filepath.Join(exeDir, "last_successful_modem.json")
+
+	state := &LastSuccessfulModem{
+		StateFilePath: stateFile,
+	}
+
+	data, err := os.ReadFile(stateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist, return empty state
+			return state, nil
+		}
+		return nil, fmt.Errorf("failed to read state file: %w", err)
+	}
+
+	if err := json.Unmarshal(data, state); err != nil {
+		return nil, fmt.Errorf("failed to parse state file: %w", err)
+	}
+
+	state.StateFilePath = stateFile
+	return state, nil
+}
+
+// SaveLastSuccessfulModem saves the last successful modem state to executable directory.
+func SaveLastSuccessfulModem(modemType, modemMAC, modemAddress string) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	stateFile := filepath.Join(exeDir, "last_successful_modem.json")
+
+	state := &LastSuccessfulModem{
+		ModemType:       modemType,
+		ModemMAC:        modemMAC,
+		LastSuccessTime: time.Now().Unix(),
+		ModemAddress:    modemAddress,
+	}
+
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal state: %w", err)
+	}
+
+	if err := os.WriteFile(stateFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write state file: %w", err)
+	}
+
+	return nil
+}
+
 // SpeedTestState tracks speed test execution history.
 type SpeedTestState struct {
 	RunCount        int    `json:"run_count"`         // Total number of runs

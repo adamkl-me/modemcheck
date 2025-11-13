@@ -515,32 +515,64 @@ function displayCurrentCheck() {
     }
     document.getElementById('clientinfo').textContent = clientInfo;
 
-    // Display speed test enabled status
-    const speedTestEnabled = data.speedtest_enabled;
-    const hasSpeedTestData = data.iperf3test_dl && data.iperf3test_dl > 0;
-    
-    if (speedTestEnabled === true || speedTestEnabled === 1) {
-        if (hasSpeedTestData) {
-            document.getElementById('speedtest_enabled').textContent = 'Yes';
-        } else {
-            document.getElementById('speedtest_enabled').textContent = 'Failed';
-        }
-    } else if (speedTestEnabled === false || speedTestEnabled === 0) {
-        document.getElementById('speedtest_enabled').textContent = 'Disabled';
+    // Display detection status
+    const detectionStatus = data.sysinfo?.detection_status || '';
+    if (detectionStatus === 'success') {
+        document.getElementById('detection_status').textContent = 'Success';
+    } else if (detectionStatus === 'detection_failed') {
+        document.getElementById('detection_status').textContent = 'Failed';
     } else {
-        document.getElementById('speedtest_enabled').textContent = '-';
+        document.getElementById('detection_status').textContent = '-';
     }
 
-    // Display speed test server information
+    // Display public IP
+    document.getElementById('public_ip').textContent = data.public_ip || '-';
+
+    // Display ISP and ASN combined
+    const ispName = data.isp_name || '';
+    const asn = data.asn || '';
+    let ispInfo = '';
+    if (ispName && asn) {
+        ispInfo = `${ispName} (${asn})`;
+    } else if (ispName) {
+        ispInfo = ispName;
+    } else if (asn) {
+        ispInfo = asn;
+    } else {
+        ispInfo = '-';
+    }
+    document.getElementById('isp_info').textContent = ispInfo;
+
+    // Display speed test status (in speed-cards section now)
+    const speedTestEnabled = data.speedtest_enabled;
+    const hasSpeedTestData = data.iperf3test_dl && data.iperf3test_dl > 0;
+
+    let speedTestStatus = '';
+    if (speedTestEnabled === true || speedTestEnabled === 1) {
+        if (hasSpeedTestData) {
+            speedTestStatus = 'Enabled';
+        } else {
+            speedTestStatus = 'Failed';
+        }
+    } else if (speedTestEnabled === false || speedTestEnabled === 0) {
+        speedTestStatus = 'Disabled';
+    } else {
+        speedTestStatus = '-';
+    }
+    document.getElementById('speedtest_status').textContent = speedTestStatus;
+
+    // Display speed test server in small text below status
     const serverName = data.speedtest_server_name || '';
     const serverID = data.speedtest_server_id || '';
+    let serverInfo = '';
     if (serverName && serverID) {
-        document.getElementById('speedtest_server').textContent = `${serverName} (ID: ${serverID})`;
+        serverInfo = `Server ID: ${serverID} (${serverName})`;
     } else if (serverName) {
-        document.getElementById('speedtest_server').textContent = serverName;
-    } else {
-        document.getElementById('speedtest_server').textContent = '-';
+        serverInfo = serverName;
+    } else if (serverID) {
+        serverInfo = `Server ID: ${serverID}`;
     }
+    document.getElementById('speedtest_server').textContent = serverInfo;
 
     // Display Speed Test Ping (average latency prominently)
     if (data.speedtest_latency) {
@@ -594,10 +626,16 @@ function displayCurrentCheck() {
     if (pingGoogleJitter && pingGoogleJitter !== 'N/A') {
         googleParts.push(`Jitter: ${parseFloat(pingGoogleJitter).toFixed(1)} ms`);
     }
+
+    let googleDetailsText = googleParts.join(' | ');
     if (pingGoogleLoss && pingGoogleLoss !== 'N/A') {
-        googleParts.push(`Loss: ${pingGoogleLoss}`);
+        if (googleDetailsText) {
+            googleDetailsText += '\nLoss: ' + pingGoogleLoss;
+        } else {
+            googleDetailsText = 'Loss: ' + pingGoogleLoss;
+        }
     }
-    document.getElementById('ping_google_details').textContent = googleParts.join(' | ');
+    document.getElementById('ping_google_details').textContent = googleDetailsText;
 
     // Display ping Cloudflare results with jitter and max latency
     const pingCloudflareAvg = data.ping_cloudflare_avg || '-';
@@ -618,10 +656,16 @@ function displayCurrentCheck() {
     if (pingCloudflareJitter && pingCloudflareJitter !== 'N/A') {
         cloudflareParts.push(`Jitter: ${parseFloat(pingCloudflareJitter).toFixed(1)} ms`);
     }
+
+    let cloudflareDetailsText = cloudflareParts.join(' | ');
     if (pingCloudflareLoss && pingCloudflareLoss !== 'N/A') {
-        cloudflareParts.push(`Loss: ${pingCloudflareLoss}`);
+        if (cloudflareDetailsText) {
+            cloudflareDetailsText += '\nLoss: ' + pingCloudflareLoss;
+        } else {
+            cloudflareDetailsText = 'Loss: ' + pingCloudflareLoss;
+        }
     }
-    document.getElementById('ping_cloudflare_details').textContent = cloudflareParts.join(' | ');
+    document.getElementById('ping_cloudflare_details').textContent = cloudflareDetailsText;
     
     populateTable('rxTable', data.rx, ['portid', 'frequency', 'power', 'snr', 'octets', 'correcteds', 'uncorrectds']);
     populateTable('rxofdmTable', data.rxofdm, ['portid', 'subcarr0freq', 'plclock', 'ncplock', 'mdc1lock', 'plcpower', 'plcsnr', 'octets', 'correcteds', 'uncorrectds']);
@@ -1004,26 +1048,31 @@ function renderTrendChartsFromChecks() {
 
             function renderSpeedChart(timestamps, uploadData, downloadData, uploadLimits, downloadLimits) {
                 const ctx = document.getElementById('speedChart');
-                
+
                 if (charts.speed) {
                     charts.speed.destroy();
                 }
-                
-                // Convert to {x, y} format for time scale
+
+                // Convert to {x, y} format for time scale, filtering out null values
+                // This allows lines to connect between valid points even when there are gaps
                 const datasets = [{
                     label: 'Download Speed',
-                    data: timestamps.map((t, i) => ({ x: t * 1000, y: downloadData[i] })),
+                    data: timestamps.map((t, i) => ({ x: t * 1000, y: downloadData[i] }))
+                        .filter(point => point.y !== null && point.y !== undefined),
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    spanGaps: true  // Connect line across gaps in data
                 }, {
                     label: 'Upload Speed',
-                    data: timestamps.map((t, i) => ({ x: t * 1000, y: uploadData[i] })),
+                    data: timestamps.map((t, i) => ({ x: t * 1000, y: uploadData[i] }))
+                        .filter(point => point.y !== null && point.y !== undefined),
                     borderColor: '#764ba2',
                     backgroundColor: 'rgba(118, 75, 162, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    spanGaps: true  // Connect line across gaps in data
                 }];
                 
                 // Add download limit line if available

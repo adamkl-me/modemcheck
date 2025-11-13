@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -14,7 +16,7 @@ import (
 
 	// Third-party libraries for network diagnostics
 	// See THIRD-PARTY-LICENSES.md for full license information
-	"github.com/go-ping/ping"              // MIT License - Copyright (c) 2016 Cameron Sparr and contributors
+	"github.com/go-ping/ping"                   // MIT License - Copyright (c) 2016 Cameron Sparr and contributors
 	"github.com/showwin/speedtest-go/speedtest" // MIT License - Copyright (c) 2015 ITO Shogo
 )
 
@@ -358,4 +360,39 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 	}
 
 	return avg, loss, jitter, maxLatency
+}
+
+// GetPublicIPInfo detects the client's public IP address, ASN, and ISP information.
+func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
+	m.Log("Detecting public IP and network information...")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("https://ipapi.co/json/")
+	if err != nil {
+		m.Log(fmt.Sprintf("Failed to get IP info: %v", err))
+		return
+	}
+	defer resp.Body.Close()
+
+	var ipInfo struct {
+		IP      string `json:"ip"`
+		ASN     string `json:"asn"`
+		Org     string `json:"org"`
+		City    string `json:"city"`
+		Country string `json:"country"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&ipInfo); err != nil {
+		m.Log(fmt.Sprintf("Failed to parse IP info: %v", err))
+		return
+	}
+
+	data.PublicIP = ipInfo.IP
+	data.ASN = ipInfo.ASN
+	data.ISPName = ipInfo.Org
+	data.IPCity = ipInfo.City
+	data.IPCountry = ipInfo.Country
+
+	m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
+		data.PublicIP, data.ASN, data.ISPName))
 }

@@ -11,12 +11,13 @@ import (
 
 // SysInfo represents system information from the modem.
 type SysInfo struct {
-	SysTime   int64  `json:"systime"`   // Unix epoch timestamp
-	Firmware  string `json:"firmware"`  // Firmware version string
-	Uptime    int64  `json:"uptime"`    // Uptime in seconds
-	ModemType string `json:"modemtype"` // Modem model type
-	ModemMAC  string `json:"modemmac"`  // Modem MAC address (uppercase hex, no separators)
-	CheckTime int64  `json:"checktime"` // Unix epoch timestamp of when check was performed
+	SysTime          int64  `json:"systime"`                    // Unix epoch timestamp
+	Firmware         string `json:"firmware"`                   // Firmware version string
+	Uptime           int64  `json:"uptime"`                     // Uptime in seconds
+	ModemType        string `json:"modemtype"`                  // Modem model type
+	ModemMAC         string `json:"modemmac"`                   // Modem MAC address (uppercase hex, no separators)
+	CheckTime        int64  `json:"checktime"`                  // Unix epoch timestamp of when check was performed
+	DetectionStatus  string `json:"detection_status,omitempty"` // "success" or "detection_failed"
 }
 
 // RXChannel represents downstream SC-QAM channel data.
@@ -107,6 +108,13 @@ type ModemData struct {
 	ClientVersion string `json:"client_version,omitempty"` // Version of modem-check client
 	ClientOS      string `json:"client_os,omitempty"`      // Operating system (e.g., "linux", "windows", "darwin")
 	ClientArch    string `json:"client_arch,omitempty"`    // Architecture (e.g., "amd64", "arm64")
+
+	// Network information
+	PublicIP  string `json:"public_ip,omitempty"`  // Client's public IP address
+	ASN       string `json:"asn,omitempty"`        // Autonomous System Number
+	ISPName   string `json:"isp_name,omitempty"`   // ISP/Provider name
+	IPCity    string `json:"ip_city,omitempty"`    // City from IP geolocation
+	IPCountry string `json:"ip_country,omitempty"` // Country from IP geolocation
 }
 
 // ModemScraper defines the interface that all modem scrapers must implement.
