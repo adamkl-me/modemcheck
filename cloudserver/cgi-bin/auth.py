@@ -538,6 +538,7 @@ def handle_login(form):
     password = form.getvalue('password', '')
 
     if not username or not password:
+        print("Content-Type: application/json")
         print()
         print(json.dumps({'success': False, 'error': 'Username and password required'}))
         return
@@ -569,6 +570,7 @@ def handle_login(form):
                 failure_reason='User not found',
                 user_agent=user_agent
             )
+            print("Content-Type: application/json")
             print()
             print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
             return
@@ -588,6 +590,7 @@ def handle_login(form):
                 user_role=user.get('role'),
                 user_agent=user_agent
             )
+            print("Content-Type: application/json")
             print()
             print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
             return
@@ -620,6 +623,7 @@ def handle_login(form):
         )
 
         # Set secure cookie
+        print("Content-Type: application/json")
         print(f"Set-Cookie: modemcheck_session={session_id}; Path=/; Max-Age={SESSION_TTL}; HttpOnly; SameSite=Strict")
         print()
         print(json.dumps({
@@ -640,6 +644,7 @@ def handle_change_password(form):
     client_ip, user_agent = get_client_info()
 
     if not session:
+        print("Content-Type: application/json")
         print()
         print(json.dumps({'success': False, 'error': 'Not authenticated'}))
         return
@@ -649,6 +654,7 @@ def handle_change_password(form):
     # Validate password against policy
     is_valid, error_message = validate_password(new_password)
     if not is_valid:
+        print("Content-Type: application/json")
         print()
         print(json.dumps({'success': False, 'error': error_message}))
         return
@@ -678,6 +684,7 @@ def handle_change_password(form):
             session_id=session_id
         )
 
+        print("Content-Type: application/json")
         print()
         print(json.dumps({'success': True, 'message': 'Password changed successfully'}))
 
@@ -707,6 +714,7 @@ def handle_logout(form):
     delete_session(session_id)
 
     # Clear cookie
+    print("Content-Type: application/json")
     print("Set-Cookie: modemcheck_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict")
     print()
     print(json.dumps({'success': True}))
@@ -716,6 +724,7 @@ def handle_session_check():
     session_id = get_cookie('modemcheck_session')
     session = verify_session(session_id)
 
+    print("Content-Type: application/json")
     print()
     if session:
         try:
@@ -756,8 +765,6 @@ def handle_session_check():
 def main():
     """Main CGI entry point with comprehensive error handling"""
     try:
-        print("Content-Type: application/json")
-
         request_method = os.environ.get('REQUEST_METHOD', 'GET')
 
         if request_method == 'POST':

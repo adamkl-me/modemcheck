@@ -162,6 +162,20 @@ def init_audit_database():
         ON api_keys(is_active)
     ''')
     
+    # Create default admin user if no users exist
+    cursor.execute("SELECT COUNT(*) as count FROM users")
+    user_count = cursor.fetchone()[0]
+
+    if user_count == 0:
+        # Create default admin user with Argon2id hash
+        from auth import hash_password
+        from datetime import datetime
+        cursor.execute("""
+            INSERT INTO users (username, password_hash, role, created_at, must_change_password)
+            VALUES (?, ?, 'admin', ?, 1)
+        """, ('admin', hash_password('changeme'), datetime.now().isoformat()))
+        print("  Created default admin user (username: admin, password: changeme)")
+
     conn.commit()
     conn.close()
 
