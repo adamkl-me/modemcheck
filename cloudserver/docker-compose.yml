@@ -15,6 +15,14 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
   modemcheck-cloud:
     container_name: modemcheck-cloud
@@ -36,6 +44,14 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
 networks:
   modemcheck:

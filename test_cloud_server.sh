@@ -1004,7 +1004,7 @@ test_auth_password_change() {
         -b "modemcheck_session=$admin_session" \
         -F "action=create" \
         -F "username=$test_username" \
-        -F "password=OldPassword123" \
+        -F "password=TempPass4Test!" \
         -F "role=basic")
 
     if ! echo "$create_resp" | grep -q '"success": true'; then
@@ -1013,7 +1013,7 @@ test_auth_password_change() {
     fi
 
     # Login as test user
-    temp_session=$(login_user "$test_username" "OldPassword123")
+    temp_session=$(login_user "$test_username" "TempPass4Test!")
     if [ -z "$temp_session" ]; then
         log_fail "Could not login as test user"
         return 1
@@ -1023,7 +1023,7 @@ test_auth_password_change() {
     change_resp=$(curl -s -X POST "$TEST_AUTH_URL" \
         -b "modemcheck_session=$temp_session" \
         -F "action=change_own_password" \
-        -F "new_password=NewPassword456")
+        -F "new_password=NewPass4Change!")
 
     # Handle HTML error responses (fcgiwrap issues)
     if echo "$change_resp" | grep -q '<html>'; then
@@ -1032,7 +1032,7 @@ test_auth_password_change() {
         change_resp=$(curl -s -X POST "$TEST_AUTH_URL" \
             -b "modemcheck_session=$temp_session" \
             -F "action=change_own_password" \
-            -F "new_password=NewPassword456")
+            -F "new_password=NewPass4Change!")
     fi
 
     if ! echo "$change_resp" | grep -q '"success": true'; then
@@ -1042,7 +1042,7 @@ test_auth_password_change() {
 
     # Try to login with new password
     sleep 1  # Pause to ensure password change is committed to database
-    new_session=$(login_user "$test_username" "NewPassword456")
+    new_session=$(login_user "$test_username" "NewPass4Change!")
 
     if [ -n "$new_session" ]; then
         log_pass "Password change successful"
@@ -1318,7 +1318,7 @@ test_user_mgmt_create_user() {
         -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
         -F "action=create" \
         -F "username=test_created_user" \
-        -F "password=TestPass123" \
+        -F "password=TestPass123!" \
         -F "role=basic")
 
     if echo "$response" | grep -q '"success": true'; then
@@ -1366,14 +1366,14 @@ test_user_mgmt_change_user_password() {
         -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
         -F "action=create" \
         -F "username=test_pw_user" \
-        -F "password=OldPass123" \
+        -F "password=TempPass4User!" \
         -F "role=basic" > /dev/null
 
     response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
         -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
         -F "action=change_password" \
         -F "username=test_pw_user" \
-        -F "new_password=NewPass456")
+        -F "new_password=NewPass4Change!")
 
     if echo "$response" | grep -q '"success": true'; then
         log_pass "User password changed successfully"
@@ -1518,6 +1518,80 @@ test_security_api_key_cannot_access_admin() {
         log_security_pass "API key correctly blocked from admin operations"
     else
         log_security_fail "API key should not access admin operations"
+    fi
+}
+
+test_security_password_validation() {
+    log_security "Password validation enforcement"
+
+    # Test 1: Password too short (< 12 characters)
+    response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
+        -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
+        -F "action=create" \
+        -F "username=test_short_pw" \
+        -F "password=Short1!" \
+        -F "role=basic")
+
+    if echo "$response" | grep -q '"success": false'; then
+        log_security_pass "Short password correctly rejected"
+    else
+        log_security_fail "Short password was not rejected. Response: $response"
+    fi
+
+    # Test 2: Password without uppercase (but meets 12 char requirement)
+    response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
+        -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
+        -F "action=create" \
+        -F "username=test_no_upper" \
+        -F "password=lowercase1234!" \
+        -F "role=basic")
+
+    if echo "$response" | grep -q '"success": false'; then
+        log_security_pass "Password without uppercase correctly rejected"
+    else
+        log_security_fail "Password without uppercase was not rejected. Response: $response"
+    fi
+
+    # Test 3: Password without number (but meets 12 char requirement)
+    response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
+        -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
+        -F "action=create" \
+        -F "username=test_no_number" \
+        -F "password=NoNumbersHere!" \
+        -F "role=basic")
+
+    if echo "$response" | grep -q '"success": false'; then
+        log_security_pass "Password without number correctly rejected"
+    else
+        log_security_fail "Password without number was not rejected. Response: $response"
+    fi
+
+    # Test 4: Password without special character (but meets 12 char requirement)
+    response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
+        -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
+        -F "action=create" \
+        -F "username=test_no_special" \
+        -F "password=NoSpecial1234" \
+        -F "role=basic")
+
+    if echo "$response" | grep -q '"success": false'; then
+        log_security_pass "Password without special character correctly rejected"
+    else
+        log_security_fail "Password without special character was not rejected. Response: $response"
+    fi
+
+    # Test 5: Common password (from common_passwords.py list)
+    response=$(curl -s -X POST "$TEST_USER_MGMT_URL" \
+        -b "modemcheck_session=$ADMIN_SESSION_COOKIE" \
+        -F "action=create" \
+        -F "username=test_common_pw" \
+        -F "password=Password123!" \
+        -F "role=basic")
+
+    if echo "$response" | grep -q '"success": false'; then
+        log_security_pass "Common password correctly rejected"
+    else
+        log_security_fail "Common password was not rejected. Response: $response"
     fi
 }
 
@@ -2133,6 +2207,7 @@ run_all_tests() {
     test_security_sql_injection_username
     test_security_sql_injection_db_api
     test_security_api_key_cannot_access_admin
+    test_security_password_validation
     test_security_rate_limiting_login
 
     log_section "SECURITY TESTS - Data Management API"

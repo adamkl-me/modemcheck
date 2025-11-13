@@ -35,5 +35,4 @@ config.json
 *.local.json
 
 # Claude AI
-CLAUDE.md
 .claude/

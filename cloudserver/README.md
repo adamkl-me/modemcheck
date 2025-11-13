@@ -26,9 +26,14 @@ Docker-based cloud server for centralized modem diagnostic data storage and visu
 ```bash
 docker volume create modemcheck-cloud_db
 docker volume create modemcheck-cloud_config
+docker volume create modemcheck-cloud_redis
 cd cloudserver
 docker compose up -d
 ```
+
+This starts two containers:
+- `modemcheck-cloud`: nginx + Python CGI application
+- `redis`: Session storage for authentication
 
 ### 2. Create API Key
 
@@ -60,8 +65,9 @@ Check the web viewer at `http://localhost:23890` to verify data appeared.
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Web Server | nginx | Serves static files and proxies CGI requests |
-| Application | Python 3 CGI | Handles API endpoints and database operations |
-| Database | SQLite | Stores modem data, users, API keys, audit logs |
+| Application | Python 3 CGI | Handles API endpoints and database operations (10 fcgiwrap workers) |
+| Database | SQLite (WAL mode) | Stores modem data, users, API keys, audit logs |
+| Session Store | Redis | Manages user sessions (12-hour TTL, 256MB max memory) |
 | Container | Alpine Linux | Minimal base image with fcgiwrap for CGI |
 
 ### Directory Structure
@@ -86,7 +92,11 @@ Check the web viewer at `http://localhost:23890` to verify data appeared.
 
 ### Data Storage
 
-- **Database**: Docker volume `modemcheck-cloud_db` → `/modemcheck-cloud/db/`
+- **Database**: Docker volume `modemcheck-cloud_db` → `/modemcheck-cloud/data/`
+  - `modemcheck.db` - Main modem check data (SQLite WAL mode)
+  - `audit.db` - Users, API keys, and audit logs
+- **Redis**: Docker volume `modemcheck-cloud_redis` → Redis `/data` directory
+  - Session data (in-memory with persistence)
 - **Config**: Docker volume `modemcheck-cloud_config` → `/modemcheck-cloud/config/`
 
 ### Stored Data Fields
@@ -326,9 +336,15 @@ docker run --rm -v modemcheck-cloud_db:/data -v $(pwd):/backup alpine \
 docker run --rm -v modemcheck-cloud_config:/data -v $(pwd):/backup alpine \
   tar czf /backup/modemcheck-config-$(date +%Y%m%d).tar.gz -C /data .
 
+# Backup Redis (optional - sessions are temporary)
+docker run --rm -v modemcheck-cloud_redis:/data -v $(pwd):/backup alpine \
+  tar czf /backup/modemcheck-redis-$(date +%Y%m%d).tar.gz -C /data .
+
 # Restart
 docker compose up -d
 ```
+
+**Note:** Redis backup is optional since it only contains temporary session data (12-hour TTL). Users will need to re-login after restore.
 
 ### Restore
 

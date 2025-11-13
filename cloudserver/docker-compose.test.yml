@@ -1,4 +1,19 @@
 services:
+  redis-test:
+    container_name: modemcheck-redis-test
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-test-data:/data
+    restart: "no"
+    networks:
+      - modemcheck-test
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   modemcheck-cloud-test:
     build:
       context: .
@@ -21,9 +36,14 @@ services:
     environment:
       - TEST_MODE=true
       - PYTHONPATH=/modemcheck-cloud/cgi-bin
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
     networks:
       - modemcheck-test
     restart: "no"  # Don't restart automatically in test mode
+    depends_on:
+      redis-test:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:22557/"]
       interval: 5s
@@ -38,3 +58,6 @@ networks:
       driver: default
       config:
         - subnet: 172.26.0.0/16
+
+volumes:
+  redis-test-data:
