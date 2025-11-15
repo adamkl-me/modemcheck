@@ -29,6 +29,7 @@ from auth import (
     get_cookie,
     delete_user_sessions,
     validate_password,
+    validate_csrf_token,
     log_error,
     get_client_info
 )
@@ -100,6 +101,26 @@ def main():
 
         elif request_method == 'POST':
             action = form.getvalue('action')
+
+            # CSRF protection for all state-changing operations
+            csrf_token = form.getvalue('csrf_token', '')
+            if not csrf_token:
+                # Try X-CSRF-Token header
+                csrf_token = os.environ.get('HTTP_X_CSRF_TOKEN', '')
+
+            if not validate_csrf_token(csrf_token, session_id):
+                print(json.dumps({'success': False, 'error': 'CSRF validation failed. Please refresh the page and try again.'}))
+                log_user_activity(
+                    username=session['username'],
+                    action_type=f'csrf_failed_{action}',
+                    ip_address=client_ip,
+                    success=False,
+                    user_role=session.get('role'),
+                    action_details=f'CSRF token validation failed for {action}',
+                    user_agent=user_agent,
+                    session_id=session_id
+                )
+                return
 
             if action == 'create':
                 handle_create_user(form, session, client_ip, user_agent, session_id)

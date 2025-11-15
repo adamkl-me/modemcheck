@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import hashlib
+import hmac
 import time
 import secrets
 from datetime import datetime
@@ -26,6 +27,43 @@ except ImportError:
     def init_database():
         raise ImportError("db_schema not available")
 
+def validate_request_signature(api_key, timestamp, modem_id, filename, checksum, provided_signature):
+    """
+    Validate HMAC-SHA256 request signature to prevent replay attacks and ensure request integrity.
+
+    Returns: (is_valid: bool, error_message: str)
+    """
+    # Validate timestamp is present
+    if not timestamp:
+        return False, "Missing request timestamp"
+
+    # Parse timestamp
+    try:
+        request_time = int(timestamp)
+    except (ValueError, TypeError):
+        return False, "Invalid timestamp format"
+
+    # Check timestamp is within 5 minutes (300 seconds) to prevent replay attacks
+    current_time = int(time.time())
+    time_diff = abs(current_time - request_time)
+    if time_diff > 300:  # 5 minutes
+        return False, f"Request timestamp too old (difference: {time_diff}s, max: 300s)"
+
+    # Compute expected signature using same algorithm as client
+    # Format: HMAC-SHA256(api_key, timestamp|modem_id|filename|checksum)
+    message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+    expected_signature = hmac.new(
+        api_key.encode('utf-8'),
+        message.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    # Timing-safe comparison to prevent timing attacks
+    if not secrets.compare_digest(provided_signature, expected_signature):
+        return False, "Invalid request signature"
+
+    return True, ""
+
 def validate_api_key(api_key):
     """Validate if the API key is valid and active (timing-safe comparison)"""
     # Load API keys from database
@@ -33,8 +71,8 @@ def validate_api_key(api_key):
         conn = get_audit_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT api_key, is_active, name 
-            FROM api_keys 
+            SELECT api_key, is_active, name
+            FROM api_keys
             WHERE is_active = 1
         """)
         api_keys = {row['api_key']: row['name'] for row in cursor.fetchall()}
@@ -42,31 +80,31 @@ def validate_api_key(api_key):
     except Exception as e:
         print(f"Error loading API keys: {e}", file=sys.stderr)
         return False, "Database error"
-    
+
     # Timing-safe comparison: check all keys
     found_key = None
     for stored_key in api_keys:
         if secrets.compare_digest(api_key, stored_key):
             found_key = stored_key
             break
-    
+
     if found_key is None:
         return False, "Invalid API key"
-    
+
     # Update last_used timestamp in database
     try:
         conn = get_audit_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE api_keys 
-            SET last_used = ? 
+            UPDATE api_keys
+            SET last_used = ?
             WHERE api_key = ?
         """, (datetime.now().isoformat(), found_key))
         conn.commit()
         conn.close()
     except Exception as e:
         print(f"Warning: Failed to update last_used: {e}", file=sys.stderr)
-    
+
     return True, api_keys[found_key]
 
 def handle_upload():
@@ -86,11 +124,16 @@ def handle_upload():
     api_key = form.getvalue('api_key', '')
     modem_id = form.getvalue('modem_id', '')
     filename = form.getvalue('filename', '')
+    client_checksum = form.getvalue('checksum', '')
+
+    # Extract HMAC signature and timestamp from headers
+    request_timestamp = os.environ.get('HTTP_X_REQUEST_TIMESTAMP', '')
+    request_signature = os.environ.get('HTTP_X_REQUEST_SIGNATURE', '')
 
     # Create API key hash for logging (privacy-preserving)
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
 
-    # Validate API key
+    # Validate API key first
     is_valid, key_name = validate_api_key(api_key)
     if not is_valid:
         # Log failed submission
@@ -107,6 +150,28 @@ def handle_upload():
         print("Content-Type: application/json")
         print()
         print(json.dumps({'success': False, 'error': key_name}))
+        return
+
+    # Validate HMAC signature (prevents replay attacks and ensures request integrity)
+    sig_valid, sig_error = validate_request_signature(
+        api_key, request_timestamp, modem_id, filename, client_checksum, request_signature
+    )
+    if not sig_valid:
+        # Log failed submission
+        log_client_submission(
+            ip_address=client_ip,
+            api_key_hash=api_key_hash,
+            api_key_name=key_name,
+            modem_id=modem_id or 'unknown',
+            filename=filename or 'unknown',
+            success=False,
+            failure_reason=f'Invalid request signature: {sig_error}',
+            user_agent=user_agent
+        )
+        print("Status: 401 Unauthorized")
+        print("Content-Type: application/json")
+        print()
+        print(json.dumps({'success': False, 'error': f'Authentication failed: {sig_error}'}))
         return
 
     # Validate required fields
@@ -169,6 +234,48 @@ def handle_upload():
         print("Content-Type: application/json")
         print()
         print(json.dumps({'success': False, 'error': 'File size exceeds 10MB limit'}))
+        return
+
+    # Validate checksum (data integrity check)
+    if client_checksum:
+        # Calculate SHA-256 of received data
+        server_checksum = hashlib.sha256(file_data).hexdigest()
+
+        # Timing-safe comparison to prevent timing attacks
+        if not secrets.compare_digest(client_checksum.lower(), server_checksum.lower()):
+            log_client_submission(
+                ip_address=client_ip,
+                api_key_hash=api_key_hash,
+                api_key_name=key_name,
+                modem_id=modem_id,
+                filename=filename,
+                file_size=len(file_data),
+                success=False,
+                failure_reason='Checksum validation failed (data corruption or tampering)',
+                user_agent=user_agent
+            )
+            print("Status: 400 Bad Request")
+            print("Content-Type: application/json")
+            print()
+            print(json.dumps({'success': False, 'error': 'Checksum validation failed'}))
+            return
+    else:
+        # Checksum is required for all uploads (v6.0.0+)
+        log_client_submission(
+            ip_address=client_ip,
+            api_key_hash=api_key_hash,
+            api_key_name=key_name,
+            modem_id=modem_id,
+            filename=filename,
+            file_size=len(file_data),
+            success=False,
+            failure_reason='Missing checksum field (upgrade client to v6.0.0+)',
+            user_agent=user_agent
+        )
+        print("Status: 400 Bad Request")
+        print("Content-Type: application/json")
+        print()
+        print(json.dumps({'success': False, 'error': 'Missing checksum field (upgrade client to v6.0.0+)'}))
         return
 
     # Parse JSON data (in memory, no disk I/O)
@@ -270,15 +377,11 @@ def handle_upload():
         processing_time_ms=processing_time_ms
     )
 
-    # Success response
+    # Success response - minimal data to prevent information disclosure
+    # Internal metrics still logged in audit trail above (lines 258-271)
     response = {
         'success': True,
-        'message': 'Data uploaded and stored successfully',
-        'database_id': db_row_id,
-        'modem_id': modem_id,
-        'filename': filename,
-        'size': len(file_data),
-        'processing_time_ms': processing_time_ms
+        'message': 'Data uploaded successfully'
     }
 
     print("Content-Type: application/json")

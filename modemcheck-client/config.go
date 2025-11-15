@@ -35,6 +35,7 @@ type Configuration struct {
 	IgnitePassword      string
 	SpeedTestEnabled    bool   // Enable speed tests (default: true)
 	SpeedTestInterval   int    // Run speed test every N runs (default: 1)
+	PingCount           int    // Number of pings to perform (default: 25)
 	AutoUpdateEnabled   bool   // Enable automatic updates (default: true)
 	UpdateChannel       string // Update channel: "stable" (default), "beta", or "test" for pre-releases
 	Silent              bool   // Suppress console output
@@ -42,11 +43,13 @@ type Configuration struct {
 	LocalCleanupEnabled bool   // Enable automatic cleanup of old local files (default: true)
 	LocalRetentionDays  int    // Days to retain local files (default: 90)
 	// Cloud mode settings
-	EnableCloud bool   // Enable cloud upload (always saves locally)
-	CloudHost   string // Cloud server hostname or IP
-	CloudPort   string // Cloud server port
-	CloudAPIKey string // API key for authentication
-	CloudPath   string // Cloud storage path
+	EnableCloud  bool   // Enable cloud upload (always saves locally)
+	CloudHost    string // Cloud server hostname or IP
+	CloudPort    string // Cloud server port
+	CloudAPIKey  string // API key for authentication
+	CloudPath    string // Cloud storage path
+	EnforceHTTPS bool   // Always use HTTPS, reject HTTP connections (default: true)
+	InsecureTLS  bool   // Allow self-signed/invalid certificates for local dev (default: false)
 }
 
 // LoadConfigFile loads configuration from a JSON file and validates required settings.
@@ -66,6 +69,13 @@ func LoadConfigFile(path string, config *Configuration) error {
 	}
 	if config.SpeedTestInterval < 1 {
 		return fmt.Errorf("SpeedTestInterval must be at least 1")
+	}
+
+	if config.PingCount == 0 {
+		config.PingCount = DefaultPingCount // Default: 25 pings
+	}
+	if config.PingCount < 1 || config.PingCount > 100 {
+		return fmt.Errorf("PingCount must be between 1 and 100 (got: %d)", config.PingCount)
 	}
 
 	if config.LocalRetentionDays == 0 {
@@ -160,6 +170,78 @@ func SaveLastSuccessfulModem(modemType, modemMAC, modemAddress string) error {
 
 	if err := os.WriteFile(stateFile, data, 0644); err != nil {
 		return fmt.Errorf("failed to write state file: %w", err)
+	}
+
+	return nil
+}
+
+// IPInfoCache stores cached IP/ASN information to reduce API calls
+type IPInfoCache struct {
+	PublicIP  string    `json:"public_ip"`
+	ASN       string    `json:"asn"`
+	ISPName   string    `json:"isp_name"`
+	IPCity    string    `json:"ip_city"`
+	IPCountry string    `json:"ip_country"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// LoadIPInfoCache loads cached IP info from executable directory
+func LoadIPInfoCache() (*IPInfoCache, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	cacheFile := filepath.Join(exeDir, ".ip_info_cache.json")
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist, return nil (no cache)
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read cache file: %w", err)
+	}
+
+	var cache IPInfoCache
+	if err := json.Unmarshal(data, &cache); err != nil {
+		return nil, fmt.Errorf("failed to parse cache file: %w", err)
+	}
+
+	// Check if cache is older than 24 hours
+	if time.Since(cache.Timestamp) > 24*time.Hour {
+		// Cache is too old, return nil to force refresh
+		return nil, nil
+	}
+
+	return &cache, nil
+}
+
+// SaveIPInfoCache saves IP info cache to executable directory
+func SaveIPInfoCache(publicIP, asn, ispName, ipCity, ipCountry string) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exeDir := filepath.Dir(exePath)
+	cacheFile := filepath.Join(exeDir, ".ip_info_cache.json")
+
+	cache := IPInfoCache{
+		PublicIP:  publicIP,
+		ASN:       asn,
+		ISPName:   ispName,
+		IPCity:    ipCity,
+		IPCountry: ipCountry,
+		Timestamp: time.Now(),
+	}
+
+	data, err := json.MarshalIndent(cache, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal cache: %w", err)
+	}
+
+	if err := os.WriteFile(cacheFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 
 	return nil

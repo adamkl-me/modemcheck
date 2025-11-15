@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"modemcheck-client/scraper"
@@ -33,14 +34,21 @@ type ModemCheck struct {
 	checkDir        string
 	checkFile       string
 	logFile         *os.File
+	logMutex        sync.Mutex // Protects concurrent access to logFile
 }
 
 // NewModemCheck creates a new ModemCheck instance.
 func NewModemCheck(config Configuration) *ModemCheck {
-	// Create HTTP client with custom transport (ignore SSL errors)
-	jar, _ := cookiejar.New(nil)
+	// Create HTTP client with TLS configuration based on user settings
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		log.Fatalf("Failed to create cookie jar: %v", err)
+	}
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: config.InsecureTLS, // Only skip verification if explicitly enabled for local dev
+	}
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: tlsConfig,
 	}
 	client := &http.Client{
 		Transport: transport,
@@ -145,9 +153,11 @@ func (m *ModemCheck) Log(message string) {
 		fmt.Print(logMessage)
 	}
 
-	// Write to log file unless NoLogs is enabled
+	// Write to log file unless NoLogs is enabled (protected by mutex for concurrent access)
 	if m.logFile != nil && !m.config.NoLogs {
+		m.logMutex.Lock()
 		m.logFile.WriteString(logMessage)
+		m.logMutex.Unlock()
 	}
 }
 
@@ -503,13 +513,20 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Modem Check v%s - Cable modem diagnostic tool\n\n", Version)
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Command-Line Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nConfiguration File Options (use with -config):\n")
+		fmt.Fprintf(os.Stderr, "Command-Line Flags:\n")
+		fmt.Fprintf(os.Stderr, "  -a, --address <ip>        Modem IP address or hostname (default: autodetect)\n")
+		fmt.Fprintf(os.Stderr, "  -c, --config <file>       Path to JSON configuration file\n")
+		fmt.Fprintf(os.Stderr, "  -s, --silent              Suppress terminal output (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  -l, --nologs              Disable log file creation (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  -x, --xfinitypassword     Password for Xfinity modems\n")
+		fmt.Fprintf(os.Stderr, "  -n, --nospeedtest         Disable speed tests (default: false)\n")
+		fmt.Fprintf(os.Stderr, "      --version             Print version and exit\n")
+		fmt.Fprintf(os.Stderr, "\nConfiguration File Options (use with -c config.json):\n")
 		fmt.Fprintf(os.Stderr, "  ModemAddress          Modem IP address or 'autodetect'\n")
 		fmt.Fprintf(os.Stderr, "  IgnitePassword        Password for Rogers Xfinity modems\n")
 		fmt.Fprintf(os.Stderr, "  SpeedTestEnabled      Enable/disable speed tests (default: true)\n")
 		fmt.Fprintf(os.Stderr, "  SpeedTestInterval     Run speed test every N runs (default: 1)\n")
+		fmt.Fprintf(os.Stderr, "  PingCount             Number of pings to perform (default: 25, max: 100)\n")
 		fmt.Fprintf(os.Stderr, "  AutoUpdateEnabled     Enable/disable automatic updates (default: true)\n")
 		fmt.Fprintf(os.Stderr, "  Silent                Suppress console output (default: false)\n")
 		fmt.Fprintf(os.Stderr, "  NoLogs                Disable log file creation (default: false)\n")
@@ -519,23 +536,36 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  CloudHost             Cloud server hostname or IP\n")
 		fmt.Fprintf(os.Stderr, "  CloudPort             Cloud server port (default: 22557)\n")
 		fmt.Fprintf(os.Stderr, "  CloudAPIKey           API key for cloud authentication\n")
+		fmt.Fprintf(os.Stderr, "  EnforceHTTPS          Always use HTTPS for uploads (default: true for security)\n")
+		fmt.Fprintf(os.Stderr, "  InsecureTLS           Allow self-signed certs for local dev (default: false)\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s                                    # Auto-detect modem\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -address 192.168.100.1            # Specify modem IP\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -config config.json               # Use config file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -silent -nologs -noupdate         # Silent mode for cron\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s                                 # Auto-detect modem\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -a 192.168.100.1                # Specify modem IP\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -c config.json                  # Use config file\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -s -l -n                        # Silent, no logs, no speed test\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -x mypassword                   # Xfinity modem with password\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nFor more information, visit: https://github.com/adamkl-me/modemcheck\n")
 	}
 
-	// Command-line flags
-	modemAddress := flag.String("address", "autodetect", "Modem IP address or 'autodetect'")
-	xfinityPassword := flag.String("xfinitypassword", "password", "Password for Rogers Xfinity modems")
-	speedTestEnabled := flag.Bool("speedtest", true, "Enable speed tests using public servers")
-	noUpdate := flag.Bool("noupdate", false, "Disable automatic updates")
-	silent := flag.Bool("silent", false, "Suppress output to terminal")
-	noLogs := flag.Bool("nologs", false, "Disable log file creation")
-	enableCloud := flag.Bool("enablecloud", false, "Enable cloud upload (always saves locally)")
-	configFile := flag.String("config", "", "Path to configuration file")
+	// Command-line flags - new simplified set
+	modemAddress := flag.String("a", "autodetect", "Modem IP address or hostname")
+	flag.StringVar(modemAddress, "address", "autodetect", "Modem IP address or hostname")
+
+	configFile := flag.String("c", "", "Path to JSON config file")
+	flag.StringVar(configFile, "config", "", "Path to JSON config file")
+
+	silent := flag.Bool("s", false, "Suppress terminal output")
+	flag.BoolVar(silent, "silent", false, "Suppress terminal output")
+
+	noLogs := flag.Bool("l", false, "Disable log file creation")
+	flag.BoolVar(noLogs, "nologs", false, "Disable log file creation")
+
+	xfinityPassword := flag.String("x", "", "Password for Xfinity modems")
+	flag.StringVar(xfinityPassword, "xfinitypassword", "", "Password for Xfinity modems")
+
+	noSpeedTest := flag.Bool("n", false, "Disable speed tests")
+	flag.BoolVar(noSpeedTest, "nospeedtest", false, "Disable speed tests")
+
 	version := flag.Bool("version", false, "Print version and exit")
 
 	flag.Parse()
@@ -548,20 +578,26 @@ func main() {
 
 	config := Configuration{
 		ModemAddress:        *modemAddress,
-		IgnitePassword:      *xfinityPassword,
-		SpeedTestEnabled:    *speedTestEnabled,
-		SpeedTestInterval:   1,     // Default: run every time
-		AutoUpdateEnabled:   !*noUpdate, // Auto-update enabled by default
+		IgnitePassword:      "",     // Will be set below if provided
+		SpeedTestEnabled:    !*noSpeedTest, // Speed tests enabled by default
+		SpeedTestInterval:   1,      // Default: run every time
+		PingCount:           DefaultPingCount, // Default: 25 pings
+		AutoUpdateEnabled:   true,   // Auto-update enabled by default
 		Silent:              *silent,
 		NoLogs:              *noLogs,
-		LocalCleanupEnabled: true,  // Default: cleanup enabled
-		LocalRetentionDays:  90,    // Default: 90 days
+		LocalCleanupEnabled: true,   // Default: cleanup enabled
+		LocalRetentionDays:  90,     // Default: 90 days
 		// Cloud settings default to disabled, loaded from config file if provided
-		EnableCloud: *enableCloud,
+		EnableCloud: false,
 		CloudHost:   "",
 		CloudPort:   "",
 		CloudAPIKey: "",
 		CloudPath:   "",
+	}
+
+	// Only set the password if provided via command line
+	if *xfinityPassword != "" {
+		config.IgnitePassword = *xfinityPassword
 	}
 
 	// Determine config file path

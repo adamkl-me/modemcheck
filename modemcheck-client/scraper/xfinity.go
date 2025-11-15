@@ -46,7 +46,7 @@ func (s *XfinityScraper) Login() error {
 		s.logger.Log(fmt.Sprintf("Login POST request failed: %v", err))
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 
 	// Verify login
 	s.logger.Log("Verifying login and detecting model...")
@@ -165,10 +165,13 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	if !strings.Contains(pageStr, "CM MAC:") {
 		s.logger.Log("Failed to fetch data page. Re-logging in...")
 		s.Login()
-		resp, _ = s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
-		pageContent, _ = io.ReadAll(resp.Body)
+		retryResp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch network setup after re-login: %w", err)
+		}
+		defer retryResp.Body.Close()
+		pageContent, _ = io.ReadAll(retryResp.Body)
 		pageStr = string(pageContent)
-		resp.Body.Close()
 	}
 
 	data := &ModemData{}
@@ -182,13 +185,17 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	data.SysInfo.CheckTime = checkTime
 
 	// Get firmware from software.jst
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/software.jst", s.modemAddress))
-	softwareBody, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	swResp, err := s.client.Get(fmt.Sprintf("http://%s/software.jst", s.modemAddress))
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to fetch software version: %v", err))
+	} else {
+		defer swResp.Body.Close()
+		softwareBody, _ := io.ReadAll(swResp.Body)
 
-	fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
-	if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
-		data.SysInfo.Firmware = strings.TrimSpace(matches[1])
+		fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
+		if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
+			data.SysInfo.Firmware = strings.TrimSpace(matches[1])
+		}
 	}
 
 	// Parse downstream channels

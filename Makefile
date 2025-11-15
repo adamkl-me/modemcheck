@@ -4,7 +4,7 @@ BINARY_NAME=modem-check
 SOURCE_DIR=modemcheck-client
 
 # Version info
-VERSION?=5.8.0
+VERSION?=6.0.0-test.1
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
 
@@ -68,6 +68,40 @@ update-public-key:
 		echo "  Current key: $$PUBLIC_KEY"; \
 	fi
 
+# Validate that the hardcoded public key matches the actual public key file
+# This prevents build system compromise from embedding a different key
+validate-public-key:
+	@if [ ! -f "$(MINISIGN_PUBLIC_KEY)" ]; then \
+		echo "ERROR: Public key file not found at $(MINISIGN_PUBLIC_KEY)"; \
+		echo "Cannot validate embedded public key without reference key file"; \
+		exit 1; \
+	fi
+	@echo "Validating embedded public key..."
+	@EXPECTED_KEY=$$(tail -n 1 $(MINISIGN_PUBLIC_KEY)); \
+	EMBEDDED_KEY=$$(grep "MinisignPublicKey = " $(SOURCE_DIR)/updater.go | sed 's/.*"\(RW[^"]*\)".*/\1/'); \
+	if [ "$$EMBEDDED_KEY" != "$$EXPECTED_KEY" ]; then \
+		echo ""; \
+		echo "❌ SECURITY ERROR: Embedded public key does NOT match key file!"; \
+		echo ""; \
+		echo "Expected (from $(MINISIGN_PUBLIC_KEY)):"; \
+		echo "  $$EXPECTED_KEY"; \
+		echo ""; \
+		echo "Found in $(SOURCE_DIR)/updater.go:"; \
+		echo "  $$EMBEDDED_KEY"; \
+		echo ""; \
+		echo "This could indicate:"; \
+		echo "  1. Build system compromise"; \
+		echo "  2. Manual code modification"; \
+		echo "  3. Key rotation without updating source code"; \
+		echo ""; \
+		echo "ACTION REQUIRED:"; \
+		echo "  Run 'make update-public-key' to sync keys"; \
+		echo "  Or investigate potential security breach"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "✓ Embedded public key matches $(MINISIGN_PUBLIC_KEY)"
+
 # Sign a binary with Minisign
 # Usage: make sign-binary BINARY=path/to/binary
 sign-binary:
@@ -89,7 +123,7 @@ sign-binary:
 	@echo "✓ Signature created: $(BINARY).minisig"
 
 # Build for current platform
-build:
+build: validate-public-key
 	@echo "Building $(BINARY_NAME)..."
 	cd $(SOURCE_DIR) && go build $(LDFLAGS) -o ../$(BINARY_NAME) .
 	@echo "Build complete: ./$(BINARY_NAME)"
@@ -106,7 +140,7 @@ build-small:
 	fi
 
 # Cross-compile for all platforms
-cross-compile: setup-keys
+cross-compile: setup-keys validate-public-key
 	@echo "Cross-compiling for multiple platforms (v$(VERSION))..."
 	@mkdir -p dist
 	@echo ""

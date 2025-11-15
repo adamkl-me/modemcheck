@@ -70,9 +70,12 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	var sysInfoArray []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&sysInfoArray)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&sysInfoArray); err != nil {
+		return nil, fmt.Errorf("failed to decode system info: %w", err)
+	}
 
 	if len(sysInfoArray) > 0 {
 		modemMAC, _ := s.GetMAC()
@@ -88,10 +91,16 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get RX data
 	s.logger.Log("Fetching downstream channel data...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/dsinfo.asp", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/data/dsinfo.asp", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch downstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var rxRaw []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&rxRaw)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&rxRaw); err != nil {
+		return nil, fmt.Errorf("failed to decode downstream data: %w", err)
+	}
 
 	for _, ch := range rxRaw {
 		data.RX = append(data.RX, RXChannel{
@@ -106,10 +115,16 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get RX OFDM data
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/dsofdminfo.asp", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/data/dsofdminfo.asp", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch OFDM downstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var rxofdmRaw []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&rxofdmRaw)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&rxofdmRaw); err != nil {
+		return nil, fmt.Errorf("failed to decode OFDM downstream data: %w", err)
+	}
 
 	for _, ch := range rxofdmRaw {
 		data.RXOFDM = append(data.RXOFDM, RXOFDMChannel{
@@ -128,10 +143,16 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get TX data
 	s.logger.Log("Fetching upstream channel data...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/usinfo.asp", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/data/usinfo.asp", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch upstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var txRaw []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&txRaw)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&txRaw); err != nil {
+		return nil, fmt.Errorf("failed to decode upstream data: %w", err)
+	}
 
 	for _, ch := range txRaw {
 		data.TX = append(data.TX, TXChannel{
@@ -142,10 +163,16 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get TX OFDM data
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/usofdminfo.asp", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/data/usofdminfo.asp", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch OFDM upstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var txofdmRaw []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&txofdmRaw)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&txofdmRaw); err != nil {
+		return nil, fmt.Errorf("failed to decode OFDM upstream data: %w", err)
+	}
 
 	for _, ch := range txofdmRaw {
 		data.TXOFDM = append(data.TXOFDM, TXOFDMAChannel{
@@ -158,10 +185,16 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get event log
 	s.logger.Log("Fetching event log...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/data/status_log.asp", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/data/status_log.asp", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch event log: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var eventLogRaw []map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&eventLogRaw)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&eventLogRaw); err != nil {
+		return nil, fmt.Errorf("failed to decode event log: %w", err)
+	}
 
 	for _, event := range eventLogRaw {
 		data.EventLog = append(data.EventLog, EventLog{
@@ -177,8 +210,12 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 // ClearFEC clears the FEC (Forward Error Correction) counters.
 func (s *CODAScraper) ClearFEC() error {
 	data := `model=%7B%22portId%22%3A%221%22%2C%22frequency%22%3A%22591000000%22%2C%22modulation%22%3A%222%22%2C%22signalStrength%22%3A%225.700%22%2C%22snr%22%3A%2237.356%22%2C%22dsoctets%22%3A%221113110%22%2C%22correcteds%22%3A%220%22%2C%22uncorrect%22%3A%220%22%2C%22channelId%22%3A%224%22%2C%22resetval%22%3A%221%22%7D`
-	_, err := s.client.Post(fmt.Sprintf("http://%s/goform/ResetFECCnt", s.modemAddress), "application/x-www-form-urlencoded", strings.NewReader(data))
-	return err
+	resp, err := s.client.Post(fmt.Sprintf("http://%s/goform/ResetFECCnt", s.modemAddress), "application/x-www-form-urlencoded", strings.NewReader(data))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
 }
 
 // GetModemType returns the modem type string (CODA45 or CODA56).

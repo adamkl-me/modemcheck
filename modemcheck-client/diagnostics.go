@@ -149,7 +149,7 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 // RunPingTests runs ping tests to Google and Cloudflare concurrently and records
 // average latency, packet loss, jitter, and maximum latency for each target.
 func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
-	m.Log("Running ping tests to google.ca and one.one.one.one...")
+	m.Log(fmt.Sprintf("Running ping tests (%d pings each) to google.ca and one.one.one.one...", m.config.PingCount))
 
 	// Use channels to collect results from concurrent goroutines
 	type pingResult struct {
@@ -163,12 +163,24 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 
 	// Start both pings concurrently
 	go func() {
-		avg, loss, jitter, maxLatency := m.runPing("google.ca", DefaultPingCount)
+		defer func() {
+			if r := recover(); r != nil {
+				m.Log(fmt.Sprintf("Panic in google.ca ping test: %v", r))
+				results <- pingResult{"google.ca", "", "", "", ""}
+			}
+		}()
+		avg, loss, jitter, maxLatency := m.runPing("google.ca", m.config.PingCount)
 		results <- pingResult{"google.ca", avg, loss, jitter, maxLatency}
 	}()
 
 	go func() {
-		avg, loss, jitter, maxLatency := m.runPing("one.one.one.one", DefaultPingCount)
+		defer func() {
+			if r := recover(); r != nil {
+				m.Log(fmt.Sprintf("Panic in one.one.one.one ping test: %v", r))
+				results <- pingResult{"one.one.one.one", "", "", "", ""}
+			}
+		}()
+		avg, loss, jitter, maxLatency := m.runPing("one.one.one.one", m.config.PingCount)
 		results <- pingResult{"one.one.one.one", avg, loss, jitter, maxLatency}
 	}()
 
@@ -365,31 +377,70 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 }
 
 // GetPublicIPInfo detects the client's public IP address, ASN, and ISP information.
-// Uses multiple fallback services to ensure reliability.
+// Uses caching to reduce API calls and multiple fallback services for reliability.
 func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	m.Log("Detecting public IP and network information...")
 
-	// Try primary service (ipapi.co)
-	if m.tryIPAPICo(data) {
-		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
+	// First, try to load cached IP info
+	cache, err := LoadIPInfoCache()
+	if err != nil {
+		m.Log(fmt.Sprintf("Warning: Failed to load IP cache: %v", err))
+	}
+
+	// Quick check to get current IP only (minimal API call)
+	currentIP := ""
+	if m.trySimpleIP(data) {
+		currentIP = data.PublicIP
+	}
+
+	// If we have cached info and the IP hasn't changed, use the cache
+	if cache != nil && cache.PublicIP == currentIP && cache.ASN != "" {
+		m.Log(fmt.Sprintf("Using cached ASN info for IP: %s", currentIP))
+		data.PublicIP = cache.PublicIP
+		data.ASN = cache.ASN
+		data.ISPName = cache.ISPName
+		data.IPCity = cache.IPCity
+		data.IPCountry = cache.IPCountry
+		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s) [cached]",
 			data.PublicIP, data.ASN, data.ISPName))
 		return
 	}
 
-	m.Log("Primary IP service failed, trying fallback (ip-api.com)...")
+	// IP has changed or no cache, fetch full info
+	if currentIP != "" {
+		m.Log(fmt.Sprintf("IP changed or cache expired, fetching fresh ASN info..."))
+	} else {
+		m.Log("Fetching IP and ASN information...")
+	}
 
-	// Try fallback service (ip-api.com)
+	// Try primary service (ip-api.com - free, no rate limits for reasonable usage)
 	if m.tryIPAPI(data) {
 		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
 			data.PublicIP, data.ASN, data.ISPName))
+		// Save to cache for future use
+		if err := SaveIPInfoCache(data.PublicIP, data.ASN, data.ISPName, data.IPCity, data.IPCountry); err != nil {
+			m.Log(fmt.Sprintf("Warning: Failed to save IP cache: %v", err))
+		}
 		return
 	}
 
-	m.Log("All IP detection services failed, trying basic IP-only service...")
+	m.Log("Primary IP service failed, trying fallback (ipapi.co)...")
 
-	// Last resort: just get the IP without ASN/ISP info
-	if m.trySimpleIP(data) {
-		m.Log(fmt.Sprintf("Public IP: %s (ASN/ISP info unavailable)", data.PublicIP))
+	// Try fallback service (ipapi.co)
+	if m.tryIPAPICo(data) {
+		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
+			data.PublicIP, data.ASN, data.ISPName))
+		// Save to cache for future use
+		if err := SaveIPInfoCache(data.PublicIP, data.ASN, data.ISPName, data.IPCity, data.IPCountry); err != nil {
+			m.Log(fmt.Sprintf("Warning: Failed to save IP cache: %v", err))
+		}
+		return
+	}
+
+	// If we already have the IP from the simple check, use that
+	if currentIP != "" {
+		m.Log(fmt.Sprintf("Public IP: %s (ASN/ISP info unavailable)", currentIP))
+		data.PublicIP = currentIP
 		data.ASN = "N/A"
 		data.ISPName = "N/A"
 		return

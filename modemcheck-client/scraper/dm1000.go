@@ -38,16 +38,17 @@ func (s *DM1000Scraper) Login() error {
 	data := fmt.Sprintf("login_user=%s&pws=%s&submit=Apply&is_parent_window=1&todo=login&this_file=login.html&next_file=&language=en&message=&passwd=%s&cur_passwd=",
 		user, passB64, passB64)
 
-	_, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
+	resp, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
 		"application/x-www-form-urlencoded", strings.NewReader(data))
 	if err != nil {
 		s.logger.Log(fmt.Sprintf("Login POST request failed: %v", err))
 		return err
 	}
+	defer resp.Body.Close()
 
 	// Verify login
 	s.logger.Log("Verifying login...")
-	resp, err := s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Cm_Status", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Cm_Status", s.modemAddress))
 	if err != nil {
 		s.logger.Log(fmt.Sprintf("Verification GET request failed: %v", err))
 		return err
@@ -94,9 +95,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	data := &ModemData{}
 
 	// Get status page for uptime and system time
-	resp, _ := s.client.Get(fmt.Sprintf("http://%s/status.html", s.modemAddress))
-	statusBody, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	resp, err := s.client.Get(fmt.Sprintf("http://%s/status.html", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch status page: %w", err)
+	}
+	defer resp.Body.Close()
+
+	statusBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read status page: %w", err)
+	}
 
 	// Extract system time
 	timeRe := regexp.MustCompile(`<td  align="left" id ="time_date">([^<]+)`)
@@ -111,10 +119,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get firmware version
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Version_Info", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Version_Info", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch version info: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var versionInfo map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&versionInfo)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&versionInfo); err != nil {
+		return nil, fmt.Errorf("failed to decode version info: %w", err)
+	}
 
 	if nodes, ok := versionInfo["nodes"].([]interface{}); ok {
 		for _, node := range nodes {
@@ -134,10 +148,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get RX data
 	s.logger.Log("Fetching downstream channel data...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_DS_param", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_DS_param", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch downstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var rxData map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&rxData)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&rxData); err != nil {
+		return nil, fmt.Errorf("failed to decode downstream data: %w", err)
+	}
 
 	if nodes, ok := rxData["nodes"].([]interface{}); ok {
 		for _, node := range nodes {
@@ -156,10 +176,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get RX OFDM data
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_DS_31_param", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_DS_31_param", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch OFDM downstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var rxofdmData map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&rxofdmData)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&rxofdmData); err != nil {
+		return nil, fmt.Errorf("failed to decode OFDM downstream data: %w", err)
+	}
 
 	if nodes, ok := rxofdmData["nodes"].([]interface{}); ok {
 		for _, node := range nodes {
@@ -182,10 +208,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get TX data
 	s.logger.Log("Fetching upstream channel data...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_US_param", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_US_param", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch upstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var txData map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&txData)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&txData); err != nil {
+		return nil, fmt.Errorf("failed to decode upstream data: %w", err)
+	}
 
 	if nodes, ok := txData["nodes"].([]interface{}); ok {
 		for _, node := range nodes {
@@ -200,10 +232,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Get TX OFDMA data
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_US_31_param", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=RF_US_31_param", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch OFDMA upstream data: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var txofdmData map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&txofdmData)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&txofdmData); err != nil {
+		return nil, fmt.Errorf("failed to decode OFDMA upstream data: %w", err)
+	}
 
 	if nodes, ok := txofdmData["nodes"].([]interface{}); ok && len(nodes) > 0 {
 		if nodeMap, ok := nodes[0].(map[string]interface{}); ok {
@@ -219,10 +257,16 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 
 	// Get event log
 	s.logger.Log("Fetching event log...")
-	resp, _ = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Event_Log", s.modemAddress))
+	resp, err = s.client.Get(fmt.Sprintf("http://%s/setup.cgi?todo=Event_Log", s.modemAddress))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch event log: %w", err)
+	}
+	defer resp.Body.Close()
+
 	var eventData map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&eventData)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&eventData); err != nil {
+		return nil, fmt.Errorf("failed to decode event log: %w", err)
+	}
 
 	if nodes, ok := eventData["nodes"].([]interface{}); ok {
 		for _, node := range nodes {
@@ -289,9 +333,13 @@ func (s *DM1000Scraper) extractDM1000OFDMA(nodes []interface{}, indexKey string)
 // ClearFEC clears the FEC (Forward Error Correction) counters.
 func (s *DM1000Scraper) ClearFEC() error {
 	data := "todo=reset_FEC_Counters&this_file=status.html&next_file=status.html"
-	_, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
+	resp, err := s.client.Post(fmt.Sprintf("http://%s/setup.cgi", s.modemAddress),
 		"application/x-www-form-urlencoded", strings.NewReader(data))
-	return err
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
 }
 
 // GetModemType returns the modem type string (DM1000).
