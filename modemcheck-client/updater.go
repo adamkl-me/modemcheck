@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -46,6 +47,73 @@ type GitHubRelease struct {
 type UpdateLock struct {
 	Version   string    `json:"version"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// parseSemanticVersion parses a semantic version string (e.g., "1.2.3") into major, minor, patch integers.
+// Returns an error if the version string is not valid semver format.
+func parseSemanticVersion(version string) (major, minor, patch int, err error) {
+	// Remove any 'v' prefix
+	version = strings.TrimPrefix(version, "v")
+
+	// Split by dots
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("invalid version format: expected X.Y.Z, got %s", version)
+	}
+
+	// Parse each component
+	major, err = strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid major version: %w", err)
+	}
+
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid minor version: %w", err)
+	}
+
+	patch, err = strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid patch version: %w", err)
+	}
+
+	return major, minor, patch, nil
+}
+
+// shouldUpdateVersion returns true if latestVersion is newer than currentVersion using proper semver comparison.
+// This fixes the lexicographic comparison bug where "5.10.0" would be incorrectly considered older than "5.9.0".
+func shouldUpdateVersion(currentVersion, latestVersion string) (bool, error) {
+	curMajor, curMinor, curPatch, err := parseSemanticVersion(currentVersion)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse current version: %w", err)
+	}
+
+	latMajor, latMinor, latPatch, err := parseSemanticVersion(latestVersion)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse latest version: %w", err)
+	}
+
+	// Compare major version first
+	if latMajor > curMajor {
+		return true, nil
+	} else if latMajor < curMajor {
+		return false, nil
+	}
+
+	// Major versions equal, compare minor
+	if latMinor > curMinor {
+		return true, nil
+	} else if latMinor < curMinor {
+		return false, nil
+	}
+
+	// Major and minor equal, compare patch
+	if latPatch > curPatch {
+		return true, nil
+	}
+
+	// Latest version is equal or older
+	return false, nil
 }
 
 // checkUpdateLock checks if an update was recently attempted and failed.
@@ -298,9 +366,16 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 	latestVersion = strings.TrimPrefix(release.TagName, "v")
 	currentVersion := strings.TrimPrefix(Version, "v")
 
-	// Simple string comparison for version checking (works for basic semver)
-	// Note: This uses lexicographic comparison which may not work for all version formats
-	if latestVersion <= currentVersion {
+	// Compare versions using proper semantic versioning
+	shouldUpdate, err := shouldUpdateVersion(currentVersion, latestVersion)
+	if err != nil {
+		m.Log(fmt.Sprintf("Warning: Failed to parse version numbers: %v (current: %s, latest: %s)", err, currentVersion, latestVersion))
+		// Fall back to string comparison for non-semver versions
+		if latestVersion <= currentVersion {
+			m.Log(fmt.Sprintf("Already running latest version: v%s", currentVersion))
+			return false, "", ""
+		}
+	} else if !shouldUpdate {
 		m.Log(fmt.Sprintf("Already running latest version: v%s", currentVersion))
 		return false, "", ""
 	}

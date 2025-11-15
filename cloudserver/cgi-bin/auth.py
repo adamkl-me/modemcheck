@@ -65,7 +65,14 @@ except ImportError:
 REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
 REDIS_DB = int(os.environ.get('REDIS_DB', 0))
-SESSION_TTL = 43200  # 12 hours in seconds
+SESSION_TTL = 3600  # 1 hour in seconds (reduced from 12 hours for security)
+
+# Account lockout configuration
+FAILED_LOGIN_LIMIT = 5  # Number of failed attempts before lockout
+LOCKOUT_DURATION = 1800  # 30 minutes in seconds
+
+# CSRF token configuration
+CSRF_TOKEN_TTL = 3600  # 1 hour in seconds (matches session TTL)
 
 # Logging configuration
 LOG_FILE = '/modemcheck-cloud/logs/auth_errors.log'
@@ -213,12 +220,14 @@ def create_session(username, role):
         log_error(f"Failed to create session for {username}", sys.exc_info(), {'username': username})
         raise
 
-def verify_session(session_id):
+def verify_session(session_id, refresh_ttl=True):
     """
     Verify session exists in Redis and return user info.
+    Implements sliding window by refreshing TTL on each verification.
 
     Args:
         session_id: Session token to verify
+        refresh_ttl: If True, refresh the session TTL (sliding window)
 
     Returns:
         dict: Session data if valid, None if invalid/expired
@@ -244,6 +253,22 @@ def verify_session(session_id):
         if datetime.now() > expires:
             r.delete(session_key)
             return None
+
+        # SECURITY: Sliding window session refresh
+        # Refresh TTL on each successful verification to keep active sessions alive
+        if refresh_ttl:
+            # Update expires timestamp
+            new_expires = datetime.now() + timedelta(seconds=SESSION_TTL)
+            session_data['expires'] = new_expires.isoformat()
+
+            # Update Redis with new TTL (atomic operation)
+            r.setex(session_key, SESSION_TTL, json.dumps(session_data))
+
+            # Also refresh user_sessions key TTL
+            username = session_data.get('username')
+            if username:
+                user_sessions_key = f"user_sessions:{username}"
+                r.expire(user_sessions_key, SESSION_TTL)
 
         return session_data
     except Exception as e:
@@ -309,6 +334,170 @@ def delete_user_sessions(username):
     except Exception as e:
         log_error(f"Failed to delete user sessions", sys.exc_info(), {'username': username})
         return 0
+
+# ============================================================================
+# ACCOUNT LOCKOUT MANAGEMENT
+# ============================================================================
+
+def check_account_locked(username):
+    """
+    Check if account is locked due to failed login attempts.
+
+    Args:
+        username: Username to check
+
+    Returns:
+        tuple: (is_locked: bool, attempts: int, remaining_time: int)
+    """
+    try:
+        r = get_redis_connection()
+        if not r:
+            return (False, 0, 0)
+
+        failed_key = f"failed_logins:{username}"
+        attempts = r.get(failed_key)
+
+        if not attempts:
+            return (False, 0, 0)
+
+        attempts = int(attempts)
+
+        if attempts >= FAILED_LOGIN_LIMIT:
+            # Account is locked - get remaining TTL
+            ttl = r.ttl(failed_key)
+            return (True, attempts, ttl if ttl > 0 else 0)
+
+        return (False, attempts, 0)
+    except Exception as e:
+        log_error(f"Failed to check account lockout", sys.exc_info(), {'username': username})
+        return (False, 0, 0)
+
+def record_failed_login(username):
+    """
+    Record a failed login attempt and increment counter.
+
+    Args:
+        username: Username that failed login
+
+    Returns:
+        int: Number of failed attempts
+    """
+    try:
+        r = get_redis_connection()
+        if not r:
+            return 0
+
+        failed_key = f"failed_logins:{username}"
+
+        # Increment counter (creates key if doesn't exist)
+        attempts = r.incr(failed_key)
+
+        # Set TTL on first attempt
+        if attempts == 1:
+            r.expire(failed_key, LOCKOUT_DURATION)
+
+        return attempts
+    except Exception as e:
+        log_error(f"Failed to record failed login", sys.exc_info(), {'username': username})
+        return 0
+
+def clear_failed_logins(username):
+    """
+    Clear failed login attempts for a user (called on successful login).
+
+    Args:
+        username: Username to clear
+    """
+    try:
+        r = get_redis_connection()
+        if not r:
+            return
+
+        failed_key = f"failed_logins:{username}"
+        r.delete(failed_key)
+    except Exception as e:
+        log_error(f"Failed to clear failed logins", sys.exc_info(), {'username': username})
+
+# ============================================================================
+# CSRF PROTECTION
+# ============================================================================
+
+def generate_csrf_token(session_id):
+    """
+    Generate a CSRF token tied to a session.
+
+    Args:
+        session_id: Session ID to tie token to
+
+    Returns:
+        str: CSRF token (32-byte URL-safe)
+    """
+    try:
+        r = get_redis_connection()
+        if not r:
+            raise Exception("Redis connection failed")
+
+        csrf_token = secrets.token_urlsafe(32)
+        csrf_key = f"csrf:{csrf_token}"
+
+        # Store mapping of CSRF token -> session ID
+        r.setex(csrf_key, CSRF_TOKEN_TTL, session_id)
+
+        return csrf_token
+    except Exception as e:
+        log_error(f"Failed to generate CSRF token", sys.exc_info(), {'session_id': session_id[:10] + '...'})
+        raise
+
+def validate_csrf_token(csrf_token, session_id):
+    """
+    Validate CSRF token matches the session.
+
+    Args:
+        csrf_token: CSRF token from request
+        session_id: Session ID from cookie
+
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    if not csrf_token or not session_id:
+        return False
+
+    try:
+        r = get_redis_connection()
+        if not r:
+            return False
+
+        csrf_key = f"csrf:{csrf_token}"
+        stored_session_id = r.get(csrf_key)
+
+        if not stored_session_id:
+            return False
+
+        # Verify CSRF token belongs to this session (timing-safe comparison)
+        return secrets.compare_digest(stored_session_id, session_id)
+    except Exception as e:
+        log_error(f"Failed to validate CSRF token", sys.exc_info())
+        return False
+
+def delete_csrf_token(csrf_token):
+    """
+    Delete a CSRF token (one-time use).
+
+    Args:
+        csrf_token: CSRF token to delete
+    """
+    if not csrf_token:
+        return
+
+    try:
+        r = get_redis_connection()
+        if not r:
+            return
+
+        csrf_key = f"csrf:{csrf_token}"
+        r.delete(csrf_key)
+    except Exception as e:
+        log_error(f"Failed to delete CSRF token", sys.exc_info())
 
 # ============================================================================
 # PASSWORD HASHING (Argon2id with PBKDF2 backward compatibility)
@@ -533,7 +722,7 @@ def ensure_default_admin():
 # ============================================================================
 
 def handle_login(form):
-    """Handle user login request"""
+    """Handle user login request with account lockout protection"""
     username = form.getvalue('username', '').strip()
     password = form.getvalue('password', '')
 
@@ -546,6 +735,26 @@ def handle_login(form):
     client_ip, user_agent = get_client_info()
 
     try:
+        # SECURITY: Check if account is locked before attempting login
+        is_locked, failed_attempts, remaining_time = check_account_locked(username)
+        if is_locked:
+            minutes_remaining = (remaining_time + 59) // 60  # Round up to nearest minute
+            log_user_activity(
+                username=username,
+                action_type='login',
+                ip_address=client_ip,
+                success=False,
+                failure_reason=f'Account locked - {failed_attempts} failed attempts',
+                user_agent=user_agent
+            )
+            print("Content-Type: application/json")
+            print()
+            print(json.dumps({
+                'success': False,
+                'error': f'Account locked due to too many failed login attempts. Please try again in {minutes_remaining} minute(s).'
+            }))
+            return
+
         # Ensure default admin exists
         ensure_default_admin()
 
@@ -561,13 +770,15 @@ def handle_login(form):
 
         if user_row is None:
             conn.close()
+            # SECURITY: Record failed login attempt
+            attempts = record_failed_login(username)
             # Log failed login attempt
             log_user_activity(
                 username=username,
                 action_type='login',
                 ip_address=client_ip,
                 success=False,
-                failure_reason='User not found',
+                failure_reason=f'User not found (attempt {attempts}/{FAILED_LOGIN_LIMIT})',
                 user_agent=user_agent
             )
             print("Content-Type: application/json")
@@ -580,13 +791,15 @@ def handle_login(form):
 
         if not is_valid:
             conn.close()
+            # SECURITY: Record failed login attempt
+            attempts = record_failed_login(username)
             # Log failed login attempt
             log_user_activity(
                 username=username,
                 action_type='login',
                 ip_address=client_ip,
                 success=False,
-                failure_reason='Invalid password',
+                failure_reason=f'Invalid password (attempt {attempts}/{FAILED_LOGIN_LIMIT})',
                 user_role=user.get('role'),
                 user_agent=user_agent
             )
@@ -594,6 +807,9 @@ def handle_login(form):
             print()
             print(json.dumps({'success': False, 'error': 'Invalid credentials'}))
             return
+
+        # SECURITY: Clear failed login attempts on successful login
+        clear_failed_logins(username)
 
         # Upgrade password hash if needed
         if needs_upgrade:
@@ -622,9 +838,15 @@ def handle_login(form):
             session_id=session_id
         )
 
-        # Set secure cookie
+        # Set secure cookie with all security flags
+        # Note: Secure flag only for HTTPS connections (detected via X-Forwarded-Proto header or TEST_MODE)
+        # Cloudflare tunnel and other reverse proxies set X-Forwarded-Proto to indicate original protocol
+        forwarded_proto = os.environ.get('HTTP_X_FORWARDED_PROTO', '').lower()
+        test_mode = os.environ.get('TEST_MODE', '').lower() == 'true'
+        is_https = forwarded_proto == 'https' or (not test_mode and forwarded_proto != 'http')
+        secure_flag = 'Secure; ' if is_https else ''
         print("Content-Type: application/json")
-        print(f"Set-Cookie: modemcheck_session={session_id}; Path=/; Max-Age={SESSION_TTL}; HttpOnly; SameSite=Strict")
+        print(f"Set-Cookie: modemcheck_session={session_id}; Path=/; Max-Age={SESSION_TTL}; {secure_flag}HttpOnly; SameSite=Strict")
         print()
         print(json.dumps({
             'success': True,
@@ -637,7 +859,21 @@ def handle_login(form):
         handle_error(f"Login failed for {username}", log_context={'username': username})
 
 def handle_change_password(form):
-    """Handle user password change request"""
+    """
+    Handle user password change request.
+
+    SECURITY TODO: Implement email-based password reset verification.
+    Current implementation requires current password for regular users.
+    Admin users can change any user's password without verification.
+
+    Future enhancement: Add email verification workflow:
+    1. User requests password reset via email
+    2. Generate time-limited reset token (store in Redis with 1 hour TTL)
+    3. Send reset link to user's registered email
+    4. User clicks link and submits new password with token
+    5. Verify token before allowing password change
+    6. This requires email infrastructure (SMTP configuration)
+    """
     session_id = get_cookie('modemcheck_session')
     session = verify_session(session_id)
 
@@ -713,14 +949,19 @@ def handle_logout(form):
 
     delete_session(session_id)
 
-    # Clear cookie
+    # Clear cookie with all security flags
+    # Note: Secure flag only for HTTPS connections (detected via X-Forwarded-Proto header or TEST_MODE)
+    forwarded_proto = os.environ.get('HTTP_X_FORWARDED_PROTO', '').lower()
+    test_mode = os.environ.get('TEST_MODE', '').lower() == 'true'
+    is_https = forwarded_proto == 'https' or (not test_mode and forwarded_proto != 'http')
+    secure_flag = 'Secure; ' if is_https else ''
     print("Content-Type: application/json")
-    print("Set-Cookie: modemcheck_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict")
+    print(f"Set-Cookie: modemcheck_session=; Path=/; Max-Age=0; {secure_flag}HttpOnly; SameSite=Strict")
     print()
     print(json.dumps({'success': True}))
 
 def handle_session_check():
-    """Handle session verification (GET request)"""
+    """Handle session verification (GET request) and generate CSRF token"""
     session_id = get_cookie('modemcheck_session')
     session = verify_session(session_id)
 
@@ -741,19 +982,25 @@ def handle_session_check():
 
             must_change = bool(user_row['must_change_password']) if user_row else False
 
+            # Generate CSRF token for this session
+            csrf_token = generate_csrf_token(session_id)
+
             print(json.dumps({
                 'authenticated': True,
                 'username': session['username'],
                 'role': session.get('role'),
-                'must_change_password': must_change
+                'must_change_password': must_change,
+                'csrf_token': csrf_token
             }))
         except Exception as e:
             # Fallback if database query fails
+            csrf_token = generate_csrf_token(session_id)
             print(json.dumps({
                 'authenticated': True,
                 'username': session['username'],
                 'role': session.get('role'),
-                'must_change_password': False
+                'must_change_password': False,
+                'csrf_token': csrf_token
             }))
     else:
         print(json.dumps({'authenticated': False}))
@@ -778,6 +1025,7 @@ def main():
             elif action == 'logout':
                 handle_logout(form)
             else:
+                print("Content-Type: application/json")
                 print()
                 print(json.dumps({'success': False, 'error': 'Unknown action'}))
 
@@ -785,6 +1033,7 @@ def main():
             handle_session_check()
 
         else:
+            print("Content-Type: application/json")
             print()
             print(json.dumps({'success': False, 'error': 'Method not allowed'}))
 

@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bufio"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -25,6 +31,21 @@ type UploadQueueEntry struct {
 // UploadQueue manages failed uploads.
 type UploadQueue struct {
 	FailedUploads []UploadQueueEntry `json:"failed_uploads"`
+}
+
+// generateRequestSignature creates an HMAC-SHA256 signature for API request authentication.
+// This prevents replay attacks and ensures request integrity.
+// Format: HMAC-SHA256(api_key, timestamp + modem_id + filename + checksum)
+func generateRequestSignature(apiKey, timestamp, modemID, filename, checksum string) string {
+	// Construct message to sign: timestamp|modem_id|filename|checksum
+	message := fmt.Sprintf("%s|%s|%s|%s", timestamp, modemID, filename, checksum)
+
+	// Create HMAC-SHA256 signature
+	mac := hmac.New(sha256.New, []byte(apiKey))
+	mac.Write([]byte(message))
+	signature := hex.EncodeToString(mac.Sum(nil))
+
+	return signature
 }
 
 const queueFilePath = "ModemCheck-Results/.upload_queue.json"
@@ -127,7 +148,7 @@ func cleanupUploadQueue(queue *UploadQueue) {
 // uploadToCloudWithModemID uploads a file to the cloud server with a specific modem ID.
 // It uses multipart form data and automatically selects HTTP or HTTPS based on the host.
 func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) error {
-	m.Log(fmt.Sprintf("Uploading to cloud server: %s:%s", m.config.CloudHost, m.config.CloudPort))
+	m.Log(fmt.Sprintf("Uploading to cloud server: %s:%s (with integrity checksum)", m.config.CloudHost, m.config.CloudPort))
 
 	// Validate API key
 	if m.config.CloudAPIKey == "" {
@@ -147,21 +168,36 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 		return fmt.Errorf("failed to read local file: %v", err)
 	}
 
+	// Calculate SHA-256 checksum for data integrity validation
+	checksumBytes := sha256.Sum256(fileContents)
+	checksum := hex.EncodeToString(checksumBytes[:])
+
 	// Prepare remote directory and filename
 	remoteDirName := modemID
 	remoteFileName := filepath.Base(localFile)
 
-	// Smart protocol detection: use HTTP for localhost/local IPs, HTTPS for external domains
+	// SECURITY: Cloud API key transmission uses HTTPS by default
+	// HTTP is ONLY allowed when ALL of these conditions are met:
+	// 1. EnforceHTTPS=false (not strictly enforcing HTTPS)
+	// 2. InsecureTLS=true (explicitly allowing insecure connections)
+	// 3. Host is on a private network (not public internet)
 	protocol := "https"
 	host := strings.ToLower(m.config.CloudHost)
-	if strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") ||
-		strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") ||
-		strings.HasPrefix(host, "172.16.") {
+
+	// Only allow HTTP if user explicitly disabled HTTPS enforcement AND enabled insecure TLS for private networks
+	if !m.config.EnforceHTTPS && m.config.InsecureTLS && isPrivateNetwork(host) {
+		m.Log("WARNING: Using HTTP for API key transmission (InsecureTLS enabled for private network)")
 		protocol = "http"
 	}
 
 	// Build upload URL
 	uploadURL := fmt.Sprintf("%s://%s:%s/cgi-bin/upload.py", protocol, m.config.CloudHost, m.config.CloudPort)
+
+	// Generate timestamp for request signing (Unix timestamp as string)
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+
+	// Generate HMAC-SHA256 signature for request authentication
+	signature := generateRequestSignature(m.config.CloudAPIKey, timestamp, remoteDirName, remoteFileName, checksum)
 
 	// Create HTTP request with multipart form data
 	body := &strings.Builder{}
@@ -175,15 +211,13 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	body.WriteString("Content-Disposition: form-data; name=\"filename\"\r\n\r\n")
 	body.WriteString(fmt.Sprintf("%s\r\n", remoteFileName))
 	body.WriteString("--boundary123\r\n")
+	body.WriteString("Content-Disposition: form-data; name=\"checksum\"\r\n\r\n")
+	body.WriteString(fmt.Sprintf("%s\r\n", checksum))
+	body.WriteString("--boundary123\r\n")
 	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n", remoteFileName))
 	body.WriteString("Content-Type: application/json\r\n\r\n")
 	body.Write(fileContents)
 	body.WriteString("\r\n--boundary123--\r\n")
-
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
 
 	// Create POST request
 	req, err := http.NewRequest("POST", uploadURL, strings.NewReader(body.String()))
@@ -192,17 +226,45 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	}
 	req.Header.Set("Content-Type", "multipart/form-data; boundary=boundary123")
 
-	// Send request
-	resp, err := client.Do(req)
+	// Add authentication headers (HMAC signature + timestamp)
+	req.Header.Set("X-Request-Timestamp", timestamp)
+	req.Header.Set("X-Request-Signature", signature)
+
+	// Send request using configured client (with proper TLS settings)
+	resp, err := m.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to upload file: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Check response
+	// Check response status
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	// Parse and validate JSON response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var uploadResp struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+		Error   string `json:"error"`
+	}
+
+	if err := json.Unmarshal(respBody, &uploadResp); err != nil {
+		return fmt.Errorf("invalid server response (not valid JSON): %v", err)
+	}
+
+	if !uploadResp.Success {
+		errorMsg := uploadResp.Error
+		if errorMsg == "" {
+			errorMsg = uploadResp.Message
+		}
+		return fmt.Errorf("server rejected upload: %s", errorMsg)
 	}
 
 	m.Log(fmt.Sprintf("Successfully uploaded %s to %s/%s", remoteFileName, m.config.CloudPath, remoteDirName))
@@ -277,7 +339,7 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 }
 
 // cleanupLogFile purges log entries older than LogMaxAgeDays (30 days) to prevent
-// unbounded log file growth.
+// unbounded log file growth. Uses streaming to minimize memory usage.
 func (m *ModemCheck) cleanupLogFile() error {
 	logFileName := "modem-check_logs.txt"
 
@@ -286,42 +348,125 @@ func (m *ModemCheck) cleanupLogFile() error {
 		return nil // No log file to clean up
 	}
 
-	// Read the log file
-	data, err := os.ReadFile(logFileName)
+	// Open log file for reading
+	logFile, err := os.Open(logFileName)
 	if err != nil {
 		return err
 	}
+	defer logFile.Close()
 
-	lines := strings.Split(string(data), "\n")
+	// Create temporary file for cleaned log
+	tmpFile, err := os.CreateTemp("", "modem-check_logs_*.txt")
+	if err != nil {
+		return err
+	}
+	tmpFileName := tmpFile.Name()
+	defer os.Remove(tmpFileName) // Clean up temp file if we error out
+
 	cutoffDate := time.Now().AddDate(0, 0, -LogMaxAgeDays)
-	var keptLines []string
+	scanner := bufio.NewScanner(logFile)
+	writer := bufio.NewWriter(tmpFile)
+	linesProcessed := 0
+	linesKept := 0
 
-	for _, line := range lines {
+	// Process file line by line (streaming)
+	for scanner.Scan() {
+		line := scanner.Text()
+		linesProcessed++
+
 		// Skip empty lines
 		if len(strings.TrimSpace(line)) == 0 {
 			continue
 		}
 
-		// Try to parse timestamp from log line format: [YYYY-MM-DD HH:MM:SS]
-		if len(line) > 21 && line[0] == '[' {
-			timestampStr := line[1:20] // Extract YYYY-MM-DD HH:MM:SS
-			if logTime, err := time.Parse("2006-01-02 15:04:05", timestampStr); err == nil {
+		// Try to parse timestamp from log line format: "Mon Jan 2 03:04:05 PM MST 2006"
+		// The actual format varies, so we look for the first 20 characters after the first space
+		shouldKeep := true
+		parts := strings.SplitN(line, ": ", 2)
+		if len(parts) == 2 {
+			timestampStr := parts[0]
+			if logTime, err := time.Parse("Mon Jan 2 03:04:05 PM MST 2006", timestampStr); err == nil {
 				if logTime.Before(cutoffDate) {
-					continue // Skip old entries
+					shouldKeep = false
 				}
 			}
 		}
 
-		keptLines = append(keptLines, line)
+		if shouldKeep {
+			if _, err := writer.WriteString(line + "\n"); err != nil {
+				tmpFile.Close()
+				return err
+			}
+			linesKept++
+		}
 	}
 
-	// Write back the cleaned log
-	if len(keptLines) < len(lines) {
-		cleanedData := strings.Join(keptLines, "\n")
-		if err := os.WriteFile(logFileName, []byte(cleanedData), 0644); err != nil {
+	if err := scanner.Err(); err != nil {
+		tmpFile.Close()
+		return err
+	}
+
+	// Flush and close files
+	if err := writer.Flush(); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+
+	// Only replace log file if we removed some lines
+	if linesKept < linesProcessed {
+		if err := os.Rename(tmpFileName, logFileName); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// isPrivateNetwork checks if the host is on a private network using proper IP parsing.
+// This prevents the string comparison bug where "172.99.0.1" would incorrectly be treated as private.
+func isPrivateNetwork(host string) bool {
+	// Handle localhost strings
+	if strings.Contains(host, "localhost") {
+		return true
+	}
+
+	// Parse the host as an IP address
+	// If it's a hostname, try to resolve it first
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// Might be a hostname, try to resolve
+		ips, err := net.LookupIP(host)
+		if err != nil || len(ips) == 0 {
+			// Can't resolve, assume public for safety
+			return false
+		}
+		ip = ips[0]
+	}
+
+	// Check against private IP ranges using proper CIDR notation
+	privateRanges := []string{
+		"10.0.0.0/8",        // Class A private network
+		"172.16.0.0/12",     // Class B private networks (172.16.0.0 - 172.31.255.255)
+		"192.168.0.0/16",    // Class C private networks
+		"127.0.0.0/8",       // Loopback
+		"169.254.0.0/16",    // Link-local
+		"::1/128",           // IPv6 loopback
+		"fc00::/7",          // IPv6 unique local addresses
+		"fe80::/10",         // IPv6 link-local
+	}
+
+	for _, cidr := range privateRanges {
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if ipNet.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -17,7 +17,7 @@ except ImportError:
         raise ImportError("audit_schema not available")
 
 # Import session management from auth.py (Redis-based)
-from auth import verify_session, get_cookie
+from auth import verify_session, get_cookie, validate_csrf_token
 
 def generate_api_key():
     """Generate a secure random API key"""
@@ -171,6 +171,28 @@ client_ip = os.environ.get('HTTP_CF_CONNECTING_IP') or \
            os.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or \
            os.environ.get('REMOTE_ADDR', 'unknown')
 user_agent = os.environ.get('HTTP_USER_AGENT', 'unknown')
+
+# CSRF protection for state-changing operations
+state_changing_actions = ['create', 'update', 'toggle_active', 'delete', 'change_role', 'save_config_defaults']
+if action in state_changing_actions:
+    csrf_token = params.get('csrf_token', post_data.get('csrf_token'))
+    if not csrf_token:
+        # Try X-CSRF-Token header
+        csrf_token = os.environ.get('HTTP_X_CSRF_TOKEN', '')
+
+    if not validate_csrf_token(csrf_token, session_id):
+        print(json.dumps({'success': False, 'error': 'CSRF validation failed. Please refresh the page and try again.'}))
+        log_user_activity(
+            username=session['username'],
+            action_type=f'csrf_failed_{action}',
+            ip_address=client_ip,
+            success=False,
+            user_role=session.get('role'),
+            action_details=f'CSRF token validation failed for {action}',
+            user_agent=user_agent,
+            session_id=session_id
+        )
+        sys.exit(1)
 
 try:
     if action == 'list':

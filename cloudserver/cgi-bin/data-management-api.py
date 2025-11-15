@@ -20,7 +20,7 @@ from urllib.parse import parse_qs
 # Add cgi-bin directory to path
 sys.path.insert(0, '/modemcheck-cloud/cgi-bin')
 
-from auth import verify_session, get_cookie
+from auth import verify_session, get_cookie, validate_csrf_token
 from db_schema import get_connection
 from audit_schema import log_user_activity, get_audit_connection
 
@@ -215,7 +215,8 @@ elif request_method == 'POST':
         form = cgi.FieldStorage()
         action = form.getvalue('action', '')
         params = {}
-        post_data = {}
+        # Extract form values into post_data for CSRF token
+        post_data = {'csrf_token': form.getvalue('csrf_token', '')}
     elif 'application/json' in content_type:
         content_length = int(os.environ.get('CONTENT_LENGTH', 0))
         post_body = sys.stdin.read(content_length)
@@ -245,6 +246,31 @@ if not session:
     sys.exit(1)
 
 user_role = session.get('role', '')
+
+# CSRF protection for state-changing operations
+state_changing_actions = ['delete_check', 'delete_all_checks', 'bulk_upload']
+if action in state_changing_actions:
+    # Validate CSRF token for state-changing operations
+    csrf_token = params.get('csrf_token', post_data.get('csrf_token'))
+    if not csrf_token:
+        # Try X-CSRF-Token header
+        csrf_token = os.environ.get('HTTP_X_CSRF_TOKEN', '')
+
+    if not validate_csrf_token(csrf_token, session_id):
+        print("Content-Type: application/json")
+        print()
+        print(json.dumps({'success': False, 'error': 'CSRF validation failed. Please refresh the page and try again.'}))
+        log_user_activity(
+            username=session['username'],
+            action_type=f'csrf_failed_{action}',
+            ip_address=client_ip,
+            success=False,
+            user_role=user_role,
+            action_details=f'CSRF token validation failed for {action}',
+            user_agent=user_agent,
+            session_id=session_id
+        )
+        sys.exit(1)
 
 # Check permissions based on action
 if action in ['delete_check', 'delete_all_checks']:

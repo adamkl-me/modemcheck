@@ -112,6 +112,7 @@ Create a `config.json` file using the Admin Dashboard Config Generator (recommen
   "IgnitePassword": "password",
   "SpeedTestEnabled": true,
   "SpeedTestInterval": 1,
+  "PingCount": 25,
   "AutoUpdateEnabled": true,
   "UpdateChannel": "stable",
   "Silent": false,
@@ -125,22 +126,50 @@ Create a `config.json` file using the Admin Dashboard Config Generator (recommen
 }
 ```
 
-Then run: `./modem-check -config config.json`
+Then run: `./modem-check -c config.json`
+
+### Configuration Options
+
+| Field | Type | Default | Range/Values | Description |
+|-------|------|---------|--------------|-------------|
+| **Basic Settings** |||||
+| `ModemAddress` | string | "autodetect" | IP/hostname or "autodetect" | Modem IP address or hostname |
+| `IgnitePassword` | string | "" | Any string | Password for Xfinity/Rogers modems |
+| **Testing** |||||
+| `SpeedTestEnabled` | bool | true | true/false | Enable Ookla speed tests |
+| `SpeedTestInterval` | int | 1 | 1-∞ | Run speed test every N checks |
+| `PingCount` | int | 25 | 1-100 | Number of pings per target |
+| **Updates** |||||
+| `AutoUpdateEnabled` | bool | true | true/false | Enable automatic updates |
+| `UpdateChannel` | string | "stable" | "stable", "beta", "test" | Update channel selection |
+| **Output** |||||
+| `Silent` | bool | false | true/false | Suppress terminal output |
+| `NoLogs` | bool | false | true/false | Disable log file creation |
+| **Storage** |||||
+| `LocalCleanupEnabled` | bool | true | true/false | Auto-cleanup old local files |
+| `LocalRetentionDays` | int | 90 | 1-∞ | Days to keep local results |
+| **Cloud Settings** |||||
+| `EnableCloud` | bool | false | true/false | Enable cloud upload |
+| `CloudHost` | string | "" | hostname/IP | Cloud server address |
+| `CloudPort` | string | "22557" | 1-65535 | Cloud server port |
+| `CloudAPIKey` | string | "" | Any string | API key for authentication |
+| `CloudPath` | string | "" | Any string | Cloud storage path |
+| `EnforceHTTPS` | bool | **true** | true/false | **Always use HTTPS (secure by default)** |
+| `InsecureTLS` | bool | false | true/false | Allow self-signed certs (local dev only) |
 
 See "Cloud Mode" section below for API key generation.
 
 ### Command-Line Flags
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `-address` | string | autodetect | Modem IP address or 'autodetect' |
-| `-xfinitypassword` | string | password | Password for Rogers Xfinity modems |
-| `-speedtest` | bool | true | Enable native Go speed tests using Ookla servers |
-| `-noupdate` | bool | false | Disable automatic updates (default: false, updates enabled) |
-| `-silent` | bool | false | Suppress output to terminal |
-| `-nologs` | bool | false | Disable log file creation |
-| `-config` | string | | Path to JSON configuration file |
-| `-enablecloud` | bool | false | Enable cloud upload (requires config file) |
+| Short | Long | Default | Description |
+|-------|------|---------|-------------|
+| `-a` | `--address` | autodetect | Modem IP address or hostname (or "autodetect") |
+| `-c` | `--config` | | Path to JSON configuration file |
+| `-s` | `--silent` | false | Suppress terminal output |
+| `-l` | `--nologs` | false | Disable log file creation |
+| `-x` | `--xfinitypassword` | | Password for Xfinity modems |
+| `-n` | `--nospeedtest` | false | Disable speed tests |
+| | `--version` | | Print version and exit |
 
 ## Usage
 
@@ -150,23 +179,27 @@ See "Cloud Mode" section below for API key generation.
 # Automatic detection with default settings (auto-update & speed tests enabled)
 ./modem-check
 
-# Disable automatic updates
-./modem-check -noupdate
-
 # Specify modem IP manually
-./modem-check -address 192.168.100.1
+./modem-check -a 192.168.100.1
+./modem-check --address 192.168.100.1
 
 # Xfinity modem with password
-./modem-check -address 10.0.0.1 -xfinitypassword mypassword
+./modem-check -x mypassword
+./modem-check --xfinitypassword mypassword
 
 # Run without speed tests
-./modem-check -speedtest=false
+./modem-check -n
+./modem-check --nospeedtest
 
-# Silent execution (for cron jobs, disable updates to avoid mid-run changes)
-./modem-check -silent -nologs -noupdate
+# Silent execution for cron jobs
+./modem-check -s -l -n
 
 # Use configuration file
-./modem-check -config ~/modem-configs/xb8.json
+./modem-check -c config.json
+./modem-check --config ~/modem-configs/xb8.json
+
+# Combined flags
+./modem-check -a 192.168.100.1 -x mypassword -s -l
 ```
 
 ### View Results
@@ -288,7 +321,9 @@ Example: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 - API keys: 32-byte cryptographically random tokens
 - Passwords: Argon2id memory-hard hashing (64MB, 3 iterations)
 - Automatic upgrade from legacy PBKDF2 hashes on login
-- Sessions: Redis-backed with HttpOnly, SameSite=Strict cookies (24-hour expiry)
+- Sessions: Redis-backed with HttpOnly, SameSite=Strict, Secure cookies (1-hour sliding window)
+- Account lockout: 5 failed attempts trigger 30-minute lockout
+- CSRF protection: Token-based validation for all state-changing operations
 - Common password prevention (10,000+ blocked passwords)
 
 **Network:**
@@ -312,14 +347,15 @@ For cloud deployment security, see [cloudserver/README.md](cloudserver/README.md
 # Edit crontab
 crontab -e
 
-# Run every hour
-0 * * * * /path/to/modem-check --silent --nologs --noupdate
+# Run every hour with silent mode and no logs
+0 * * * * /path/to/modem-check -s -l
 
 # Run every 15 minutes
-*/15 * * * * /path/to/modem-check --silent --nologs --noupdate
+*/15 * * * * /path/to/modem-check -s -l
 
-# Run with config file
-0 * * * * /path/to/modem-check -config /path/to/config.json --silent --noupdate
+# Run with config file (recommended for disabling auto-update)
+# Set "AutoUpdateEnabled": false in config.json to disable updates
+0 * * * * /path/to/modem-check -c /path/to/config.json -s
 ```
 
 ### Windows Task Scheduler
@@ -329,7 +365,7 @@ crontab -e
 3. Set trigger (e.g., hourly)
 4. Action: Start a program
 5. Program: `C:\path\to\modem-check.exe`
-6. Arguments: `--silent --nologs --noupdate` or `-config C:\path\to\config.json --silent --noupdate`
+6. Arguments: `-s -l` or `-c C:\path\to\config.json -s` (set `AutoUpdateEnabled: false` in config to disable updates)
 
 ## Project Structure
 
