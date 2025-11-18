@@ -28,6 +28,18 @@ func NewXfinityScraper(client *http.Client, modemAddress string, password string
 	}
 }
 
+// readResponseBody reads the HTTP response body with a size limit to prevent memory exhaustion
+// Limit is set to 2MB which is more than sufficient for modem HTML pages
+func readResponseBody(body io.Reader) ([]byte, error) {
+	const maxResponseSize = 2 * 1024 * 1024 // 2MB limit
+	limitedReader := io.LimitReader(body, maxResponseSize)
+	data, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	return data, nil
+}
+
 // Login authenticates with the modem and detects the specific model (XB7 or XB8).
 func (s *XfinityScraper) Login() error {
 	s.logger.Log("Attempting login to Rogers Xfinity Modem...")
@@ -57,7 +69,11 @@ func (s *XfinityScraper) Login() error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readResponseBody(resp.Body)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to read verification response: %v", err))
+		return fmt.Errorf("failed to read login verification response: %w", err)
+	}
 	bodyStr := string(body)
 
 	if !strings.Contains(bodyStr, "CM MAC:") {
@@ -87,7 +103,11 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readResponseBody(resp.Body)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to read MAC address page: %v", err))
+		return "", fmt.Errorf("failed to read MAC address page: %w", err)
+	}
 	bodyStr := string(body)
 
 	if !strings.Contains(bodyStr, "CM MAC:") {
