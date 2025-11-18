@@ -450,7 +450,10 @@ func (m *ModemCheck) Run() error {
 	m.GetPublicIPInfo(data)
 
 	// Save data
-	jsonData, _ := json.MarshalIndent(data, "", "  ")
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal modem data to JSON: %w", err)
+	}
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
 		return err
 	}
@@ -470,8 +473,15 @@ func (m *ModemCheck) Run() error {
 
 	// Save updated data with ping and speed test results
 	m.Log(fmt.Sprintf("Adding test results to %s", m.checkFile))
-	jsonData, _ = json.MarshalIndent(data, "", "  ")
-	os.WriteFile(m.checkFile, jsonData, 0644)
+	jsonData, err = json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		m.Log(fmt.Sprintf("ERROR: Failed to marshal test results to JSON: %v", err))
+		return fmt.Errorf("failed to marshal test results: %w", err)
+	}
+	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
+		m.Log(fmt.Sprintf("ERROR: Failed to write test results to file: %v", err))
+		return fmt.Errorf("failed to write test results: %w", err)
+	}
 
 	// Upload to cloud if enabled
 	if m.config.EnableCloud {

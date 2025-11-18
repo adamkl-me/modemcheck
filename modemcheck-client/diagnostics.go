@@ -236,6 +236,7 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 	// Create a new pinger
 	pinger, err := ping.NewPinger(host)
 	if err != nil {
+		m.Log(fmt.Sprintf("Failed to create pinger for %s: %v", host, err))
 		return "", "", "", ""
 	}
 
@@ -253,8 +254,10 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 	if err != nil {
 		// If it failed and we tried privileged mode, fall back to unprivileged
 		if usePrivileged {
+			m.Log(fmt.Sprintf("Privileged ping failed for %s: %v, trying unprivileged mode", host, err))
 			pinger, err = ping.NewPinger(host)
 			if err != nil {
+				m.Log(fmt.Sprintf("Failed to create unprivileged pinger for %s: %v", host, err))
 				return "", "", "", ""
 			}
 			pinger.Count = count
@@ -263,12 +266,15 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 
 			err = pinger.Run()
 			if err != nil {
+				m.Log(fmt.Sprintf("Unprivileged ping also failed for %s: %v", host, err))
 				return "", "", "", ""
 			}
 		} else {
 			// Try privileged mode as a fallback on Linux
+			m.Log(fmt.Sprintf("Unprivileged ping failed for %s: %v, trying privileged mode", host, err))
 			pinger, err = ping.NewPinger(host)
 			if err != nil {
+				m.Log(fmt.Sprintf("Failed to create privileged pinger for %s: %v", host, err))
 				return "", "", "", ""
 			}
 			pinger.Count = count
@@ -278,6 +284,7 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 			err = pinger.Run()
 			if err != nil {
 				// Both modes failed, return empty to trigger system ping fallback
+				m.Log(fmt.Sprintf("Both privileged and unprivileged ping failed for %s: %v, will fallback to system ping", host, err))
 				return "", "", "", ""
 			}
 		}
@@ -330,6 +337,7 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
+		m.Log(fmt.Sprintf("System ping command failed for %s: %v, output: %s", host, err, string(output)))
 		return "", "", "", ""
 	}
 
