@@ -242,16 +242,15 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	}
 	defer resp.Body.Close()
 
-	// Check response status
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	// Parse and validate JSON response
+	// Read response body once (before status check to avoid double-read bug)
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %v", err)
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Check response status after reading body
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var uploadResp struct {
