@@ -1,0 +1,22 @@
+[Unit]
+Description=ModemCheck Cloud Server Backup Timer
+Documentation=https://github.com/adamkl-me/modemcheck
+Requires=modemcheck-cloud-backup.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=daily
+# Specifically at 2 AM
+OnCalendar=*-*-* 02:00:00
+
+# If system was off at 2 AM, run 15 minutes after boot
+Persistent=true
+
+# Add random delay of 0-5 minutes to avoid load spikes
+RandomizedDelaySec=5min
+
+# Show in systemctl list-timers output
+Unit=modemcheck-cloud-backup.service
+
+[Install]
+WantedBy=timers.target
