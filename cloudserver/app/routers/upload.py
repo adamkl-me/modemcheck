@@ -75,34 +75,37 @@ async def validate_and_get_api_key(
     """
     Validate API key and return key name if valid.
 
+    Uses Redis cache for performance optimization.
+
     Returns:
         (is_valid, key_name)
     """
-    # Get all active API keys
-    result = await db.execute(
-        select(APIKey).where(APIKey.is_active == True)
+    from app.core.api_key_cache import APIKeyCache, api_key_cache_stats
+
+    # Database fallback function
+    async def get_active_keys_from_db():
+        result = await db.execute(
+            select(APIKey).where(APIKey.is_active == True)
+        )
+        return result.scalars().all()
+
+    # Validate using cache with DB fallback
+    is_valid, key_name = await APIKeyCache.validate_api_key_cached(
+        api_key,
+        get_active_keys_from_db
     )
-    active_keys = result.scalars().all()
 
-    # Timing-safe comparison: check all keys
-    found_key = None
-    for stored_key in active_keys:
-        if secrets.compare_digest(api_key, stored_key.api_key):
-            found_key = stored_key
-            break
+    if is_valid:
+        # Update cache statistics
+        if await APIKeyCache.get_cached_keys() is not None:
+            api_key_cache_stats.record_hit()
+        else:
+            api_key_cache_stats.record_miss()
 
-    if not found_key:
-        return False, None
+        # Update last_used timestamp asynchronously
+        await APIKeyCache.update_last_used(api_key, db)
 
-    # Update last_used timestamp
-    await db.execute(
-        update(APIKey)
-        .where(APIKey.api_key == found_key.api_key)
-        .values(last_used=datetime.utcnow())
-    )
-    await db.commit()
-
-    return True, found_key.name
+    return is_valid, key_name
 
 
 @router.post("", response_model=ModemCheckUploadResponse)
@@ -155,27 +158,44 @@ async def upload_check(
             detail="Invalid or inactive API key"
         )
 
-    # Validate HMAC signature
-    if x_request_timestamp and x_request_signature:
-        is_valid_sig, sig_error = validate_request_signature(
-            api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
+    # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
+    if not x_request_timestamp or not x_request_signature:
+        await log_client_submission(
+            db=db,
+            ip_address=client_ip,
+            api_key_hash=api_key_hash,
+            api_key_name=key_name,
+            modem_id=modem_id or 'unknown',
+            filename=filename or 'unknown',
+            success=False,
+            failure_reason='Missing HMAC signature headers (upgrade client to v6.0.0+)',
+            user_agent=user_agent
         )
-        if not is_valid_sig:
-            await log_client_submission(
-                db=db,
-                ip_address=client_ip,
-                api_key_hash=api_key_hash,
-                api_key_name=key_name,
-                modem_id=modem_id,
-                filename=filename,
-                success=False,
-                failure_reason=f'Signature validation failed: {sig_error}',
-                user_agent=user_agent
-            )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Signature validation failed: {sig_error}"
-            )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
+        )
+
+    # Validate the signature
+    is_valid_sig, sig_error = validate_request_signature(
+        api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
+    )
+    if not is_valid_sig:
+        await log_client_submission(
+            db=db,
+            ip_address=client_ip,
+            api_key_hash=api_key_hash,
+            api_key_name=key_name,
+            modem_id=modem_id,
+            filename=filename,
+            success=False,
+            failure_reason=f'Signature validation failed: {sig_error}',
+            user_agent=user_agent
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Signature validation failed: {sig_error}"
+        )
 
     # Validate required fields
     if not modem_id or not filename:

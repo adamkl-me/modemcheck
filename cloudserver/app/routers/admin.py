@@ -67,6 +67,10 @@ async def create_api_key(
     db.add(api_key)
     await db.commit()
 
+    # Invalidate API key cache
+    from app.core.api_key_cache import APIKeyCache
+    await APIKeyCache.invalidate_cache()
+
     # Log creation
     await log_user_activity(
         db=db,
@@ -132,15 +136,30 @@ async def reveal_api_key(
 
     Requires: elevated or admin role
     """
-    # Find API key by preview
-    result = await db.execute(select(APIKey))
-    all_keys = result.scalars().all()
+    # Find API key by preview - extract the pattern from preview
+    # Preview format is "first4...last4", so we need to extract these parts
+    if "..." not in api_key_preview or len(api_key_preview) != 11:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid API key preview format"
+        )
 
-    target_key = None
-    for key in all_keys:
-        if create_api_key_preview(key.api_key) == api_key_preview:
-            target_key = key
-            break
+    first_part = api_key_preview[:4]
+    last_part = api_key_preview[-4:]
+
+    # Query database for keys matching this pattern
+    # Using SQL functions to match first 4 and last 4 characters
+    from sqlalchemy import and_, func
+
+    query = select(APIKey).where(
+        and_(
+            func.substring(APIKey.api_key, 1, 4) == first_part,
+            func.right(APIKey.api_key, 4) == last_part
+        )
+    )
+
+    result = await db.execute(query)
+    target_key = result.scalar_one_or_none()
 
     if not target_key:
         raise HTTPException(
@@ -180,15 +199,28 @@ async def toggle_api_key(
 
     Requires: elevated or admin role
     """
-    # Find API key by preview (need to check all keys)
-    result = await db.execute(select(APIKey))
-    all_keys = result.scalars().all()
+    # Find API key by preview - extract the pattern from preview
+    if "..." not in toggle_data.api_key_preview or len(toggle_data.api_key_preview) != 11:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid API key preview format"
+        )
 
-    target_key = None
-    for key in all_keys:
-        if create_api_key_preview(key.api_key) == toggle_data.api_key_preview:
-            target_key = key
-            break
+    first_part = toggle_data.api_key_preview[:4]
+    last_part = toggle_data.api_key_preview[-4:]
+
+    # Query database for keys matching this pattern
+    from sqlalchemy import and_, func
+
+    query = select(APIKey).where(
+        and_(
+            func.substring(APIKey.api_key, 1, 4) == first_part,
+            func.right(APIKey.api_key, 4) == last_part
+        )
+    )
+
+    result = await db.execute(query)
+    target_key = result.scalar_one_or_none()
 
     if not target_key:
         raise HTTPException(
@@ -203,6 +235,10 @@ async def toggle_api_key(
         .values(is_active=toggle_data.is_active)
     )
     await db.commit()
+
+    # Invalidate API key cache
+    from app.core.api_key_cache import APIKeyCache
+    await APIKeyCache.invalidate_cache()
 
     # Log action
     await log_user_activity(
@@ -235,15 +271,28 @@ async def delete_api_key(
 
     Requires: elevated or admin role
     """
-    # Find API key by preview
-    result = await db.execute(select(APIKey))
-    all_keys = result.scalars().all()
+    # Find API key by preview - extract the pattern from preview
+    if "..." not in delete_data.api_key_preview or len(delete_data.api_key_preview) != 11:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid API key preview format"
+        )
 
-    target_key = None
-    for key in all_keys:
-        if create_api_key_preview(key.api_key) == delete_data.api_key_preview:
-            target_key = key
-            break
+    first_part = delete_data.api_key_preview[:4]
+    last_part = delete_data.api_key_preview[-4:]
+
+    # Query database for keys matching this pattern
+    from sqlalchemy import and_, func
+
+    query = select(APIKey).where(
+        and_(
+            func.substring(APIKey.api_key, 1, 4) == first_part,
+            func.right(APIKey.api_key, 4) == last_part
+        )
+    )
+
+    result = await db.execute(query)
+    target_key = result.scalar_one_or_none()
 
     if not target_key:
         raise HTTPException(
@@ -256,6 +305,10 @@ async def delete_api_key(
         delete(APIKey).where(APIKey.api_key == target_key.api_key)
     )
     await db.commit()
+
+    # Invalidate API key cache
+    from app.core.api_key_cache import APIKeyCache
+    await APIKeyCache.invalidate_cache()
 
     # Log deletion
     await log_user_activity(
