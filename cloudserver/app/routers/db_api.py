@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, over
 
 from app.core.database import get_db
 from app.core.limiter import limiter
@@ -100,8 +100,12 @@ async def list_checks(
             detail="Invalid date format. Use YYYY-MM-DD"
         )
 
-    # Query checks
-    query = select(ModemCheck).where(
+    # Optimized: Use a single query with window function to get both data and count
+    # This avoids executing the same WHERE clause twice
+    query = select(
+        ModemCheck,
+        func.count().over().label('total_count')
+    ).where(
         and_(
             ModemCheck.modem_id == modem_id,
             ModemCheck.check_time >= start_dt,
@@ -110,18 +114,11 @@ async def list_checks(
     ).order_by(ModemCheck.check_time.desc()).limit(limit)
 
     result = await db.execute(query)
-    checks = result.scalars().all()
+    rows = result.all()
 
-    # Count total (for pagination info)
-    count_query = select(func.count(ModemCheck.id)).where(
-        and_(
-            ModemCheck.modem_id == modem_id,
-            ModemCheck.check_time >= start_dt,
-            ModemCheck.check_time <= end_dt
-        )
-    )
-    total_result = await db.execute(count_query)
-    total_count = total_result.scalar()
+    # Extract ORM objects and total count
+    checks = [row[0] for row in rows] if rows else []
+    total_count = rows[0][1] if rows else 0
 
     check_items = [
         CheckListItem(

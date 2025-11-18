@@ -50,7 +50,8 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     if system_time_str:
         try:
             metrics['system_time'] = datetime.fromisoformat(system_time_str.replace('Z', '+00:00'))
-        except:
+        except (ValueError, TypeError, AttributeError) as e:
+            # Log the error but continue processing other metrics
             metrics['system_time'] = None
     else:
         metrics['system_time'] = None

@@ -55,7 +55,11 @@ func (s *DM1000Scraper) Login() error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to read verification response: %v", err))
+		return fmt.Errorf("failed to read login verification response: %w", err)
+	}
 	if len(body) > 0 {
 		s.logger.Log("Sercomm DM1000 modem login successful")
 		return nil
@@ -73,7 +77,11 @@ func (s *DM1000Scraper) GetMAC() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to read MAC address page: %v", err))
+		return "", fmt.Errorf("failed to read interface parameters: %w", err)
+	}
 	re := regexp.MustCompile(`"name":"wan0".*?"mac":"([^"]+)"`)
 	matches := re.FindStringSubmatch(string(body))
 
@@ -355,6 +363,9 @@ func DetectDM1000(address string, client *http.Client) bool {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false
+	}
 	return strings.Contains(string(body), "<title>DM1000</title>")
 }
