@@ -292,6 +292,27 @@ func verifyBinaryExecutable(binaryPath string) error {
 	return nil
 }
 
+// normalizeExecutablePath removes any trailing .old extensions from an executable path.
+// This prevents infinite .old.old.old chaining if the binary is executed from a backup file.
+//
+// Examples:
+//   - /usr/local/bin/modem-check          → /usr/local/bin/modem-check
+//   - /usr/local/bin/modem-check.old      → /usr/local/bin/modem-check
+//   - /usr/local/bin/modem-check.old.old  → /usr/local/bin/modem-check
+//
+// This handles edge cases where:
+//   - User manually runs the .old backup
+//   - Cron job or systemd service points to .old file
+//   - Process continues running after a failed rollback
+func normalizeExecutablePath(path string) string {
+	// Remove all trailing .old extensions
+	// Use a loop in case there are multiple .old.old.old extensions
+	for strings.HasSuffix(path, ".old") {
+		path = strings.TrimSuffix(path, ".old")
+	}
+	return path
+}
+
 // RollbackUpdate restores the backup binary if it exists.
 // This is called when a new update fails to work properly.
 func (m *ModemCheck) RollbackUpdate() error {
@@ -304,6 +325,9 @@ func (m *ModemCheck) RollbackUpdate() error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
+
+	// Normalize executable path to prevent .old chaining
+	currentExe = normalizeExecutablePath(currentExe)
 
 	backupFile := currentExe + ".old"
 
@@ -351,8 +375,12 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 		m.Log("Checking for updates...")
 	}
 
-	client := &http.Client{Timeout: UpdateTimeout}
-	req, err := http.NewRequest("GET", apiURL, nil)
+	// Use context-based timeout for better control and graceful cancellation
+	ctx, cancel := context.WithTimeout(context.Background(), UpdateTimeout)
+	defer cancel()
+
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		m.Log(fmt.Sprintf("Update check failed: %v", err))
 		return false, "", ""
@@ -469,6 +497,11 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 		return fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
 
+	// Normalize executable path by removing any trailing .old extensions
+	// This prevents infinite .old.old.old chaining if the binary is somehow
+	// executed from a backup file (e.g., manual execution, cron job misconfiguration)
+	currentExe = normalizeExecutablePath(currentExe)
+
 	// Define file paths
 	tmpFile := currentExe + ".tmp"
 	sigFile := tmpFile + ".minisig"
@@ -580,11 +613,15 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 }
 
 // downloadFile downloads a file from the given URL and saves it to the specified filepath.
-// It uses an HTTP client with a 5-minute timeout and validates the response status code.
+// It uses context-based timeout for better control and graceful cancellation.
 func downloadFile(filepath string, url string) error {
-	client := &http.Client{Timeout: 5 * time.Minute}
+	// Use context-based timeout for better control and graceful cancellation
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	req, err := http.NewRequest("GET", url, nil)
+	client := &http.Client{}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}

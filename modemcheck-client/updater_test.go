@@ -266,3 +266,86 @@ func TestExtractPrereleaseNumber(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeExecutablePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "No .old extension",
+			input:    "/usr/local/bin/modem-check",
+			expected: "/usr/local/bin/modem-check",
+		},
+		{
+			name:     "Single .old extension",
+			input:    "/usr/local/bin/modem-check.old",
+			expected: "/usr/local/bin/modem-check",
+		},
+		{
+			name:     "Double .old extension",
+			input:    "/usr/local/bin/modem-check.old.old",
+			expected: "/usr/local/bin/modem-check",
+		},
+		{
+			name:     "Triple .old extension",
+			input:    "/usr/local/bin/modem-check.old.old.old",
+			expected: "/usr/local/bin/modem-check",
+		},
+		{
+			name:     "Many .old extensions",
+			input:    "/usr/local/bin/modem-check.old.old.old.old.old.old.old.old",
+			expected: "/usr/local/bin/modem-check",
+		},
+		{
+			name:     "Windows path with .old",
+			input:    "C:\\Program Files\\modem-check.exe.old",
+			expected: "C:\\Program Files\\modem-check.exe",
+		},
+		{
+			name:     "Windows path with multiple .old",
+			input:    "C:\\Program Files\\modem-check.exe.old.old.old",
+			expected: "C:\\Program Files\\modem-check.exe",
+		},
+		{
+			name:     "Path containing .old in directory name",
+			input:    "/home/user/.old-stuff/modem-check",
+			expected: "/home/user/.old-stuff/modem-check",
+		},
+		{
+			name:     "Path containing .old in directory name with .old extension",
+			input:    "/home/user/.old-stuff/modem-check.old",
+			expected: "/home/user/.old-stuff/modem-check",
+		},
+		{
+			name:     "Path with .oldfile (not .old extension)",
+			input:    "/usr/local/bin/modem-check.oldfile",
+			expected: "/usr/local/bin/modem-check.oldfile",
+		},
+		{
+			name:     "Empty path",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "Just .old",
+			input:    ".old",
+			expected: "",
+		},
+		{
+			name:     "Multiple .old only",
+			input:    ".old.old.old",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeExecutablePath(tt.input)
+			if result != tt.expected {
+				t.Errorf("normalizeExecutablePath(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

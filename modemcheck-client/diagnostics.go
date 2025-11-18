@@ -334,6 +334,23 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 // runSystemPing uses the system ping command as a fallback when go-ping fails.
 // It parses the output to extract statistics and handles platform-specific output formats.
 func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss string, jitter string, maxLatency string) {
+	// Validate host parameter to prevent command injection and invalid inputs
+	// DNS hostname max length is 253 characters per RFC 1035
+	if len(host) == 0 || len(host) > 253 {
+		m.Log(fmt.Sprintf("Invalid host length for ping: %d characters (must be 1-253)", len(host)))
+		return "", "", "", ""
+	}
+
+	// Check for obviously invalid characters that could indicate injection attempts
+	// Valid hostnames and IPs should only contain alphanumeric, dots, hyphens, and colons (IPv6)
+	for _, char := range host {
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '.' || char == '-' || char == ':') {
+			m.Log(fmt.Sprintf("Invalid characters in hostname for ping: %s", host))
+			return "", "", "", ""
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
 	defer cancel()
 

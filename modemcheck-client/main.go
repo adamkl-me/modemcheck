@@ -73,6 +73,10 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 	if err != nil {
 		return
 	}
+
+	// Normalize executable path to prevent .old chaining
+	exePath = normalizeExecutablePath(exePath)
+
 	exeDir := filepath.Dir(exePath)
 	lockPath := filepath.Join(exeDir, ".update_lock")
 
