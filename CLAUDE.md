@@ -621,10 +621,13 @@ The Go client has been hardened against memory leaks, crashes, and resource exha
 
 ## Security-Critical Files
 
+### Cryptographic Keys & Authentication
 - `.signing-keys/minisign.key` - Private key (gitignored, password-protected)
 - `.signing-keys/minisign.pub` - Public key (committed, embedded in updater.go)
 - `updater.go:31` - Hardcoded public key (must match minisign.pub)
 - `cloudserver/.env` - Production credentials (NEVER commit, chmod 600)
+
+### Core Security Modules
 - `app/core/auth.py` - Password hashing and session management
 - `app/core/security.py` - CSRF protection, rate limiting, input validation
 - `app/core/passwords.py` - 10,000+ blocked weak passwords
@@ -633,10 +636,23 @@ The Go client has been hardened against memory leaks, crashes, and resource exha
 - `app/core/audit_retention.py` - Automated audit log cleanup
 - `app/core/metric_extraction.py` - Extract metrics from modem check JSON
 - `app/core/api_key_cache.py` - Redis-based API key caching (v6.0.1)
+
+### API Endpoints & Upload Security
 - `app/routers/upload.py` - API key validation with timing-safe comparison + mandatory HMAC
+
+### Client Security (Go)
+- `modemcheck-client/diagnostics.go` - Hostname validation before ping execution
+- `modemcheck-client/cloud_client.go` - Response body handling, error handling
+- `modemcheck-client/updater.go` - Context-based HTTP timeouts
+
+### Operations & Maintenance
 - `backup-database.sh`, `restore-database.sh`, `backup-all.sh` - Backup and recovery scripts
-- `update-db-password.sh` - Safe credential rotation script (v6.0.1)
+- `update-db-password.sh` - Safe credential rotation with SQL injection prevention (v6.0.1+)
 - `add_performance_indexes.py` - Database performance migration (v6.0.1)
+
+### Test Files
+- `cloudserver/test-password-validation.sh` - Password validation test suite (36 tests)
+- `modemcheck-client/diagnostics_test.go` - Hostname validation tests (34 sub-tests)
 
 **Key backup critical:** No recovery possible if private key lost. Backup `.signing-keys/` securely.
 **Credential security:** `.env` file contains production secrets. Ensure chmod 600 and never commit to git.

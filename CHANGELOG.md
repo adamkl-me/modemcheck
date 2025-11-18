@@ -7,9 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [7.0.0] - 2025-11-17
+
 ### Security
+- **CRITICAL**: Fixed SQL injection vulnerability in `update-db-password.sh` (password now passed via stdin heredoc)
+- **CRITICAL**: Fixed password exposure in process listings (passwords no longer visible in `ps aux`)
 - **CRITICAL**: Rotated all production credentials (database password, SECRET_KEY, CSRF_SECRET_KEY)
 - Made HMAC signature validation mandatory for all upload requests (v6.0.0+ requirement)
+- Added comprehensive input validation to password rotation script:
+  - Minimum 12-character length requirement
+  - Blocks passwords with single quotes (prevents SQL syntax errors)
+  - Blocks passwords with semicolons (prevents SQL injection)
+- Added hostname validation before ping execution (prevents command injection)
+- Added context-based timeout for HTTP requests (proper cancellation on SIGTERM)
 - Added comprehensive error logging to prevent silent security failures
 - Improved error context in diagnostic functions for better security auditing
 
@@ -33,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Response body reading now uses streaming with size limits instead of unlimited io.ReadAll()
 
 ### Fixed
+- **CRITICAL**: Fixed double-read bug in `cloud_client.go` (response body read twice, success responses were empty)
 - Fixed silent error ignoring in JSON marshaling (main.go)
 - Added proper error handling for all io.ReadAll() calls in xfinity.go scraper
 - Improved error context in diagnostic ping test failures
@@ -41,10 +54,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Created `app/core/api_key_cache.py` for Redis-based API key caching
 - Created `cloudserver/add_performance_indexes.py` database migration script
-- Created `cloudserver/update-db-password.sh` for safe credential rotation
+- Created `cloudserver/update-db-password.sh` for safe credential rotation with input validation
+- Created `cloudserver/test-password-validation.sh` comprehensive test suite (36 tests)
+- Created `modemcheck-client/diagnostics_test.go` hostname validation tests (34 sub-tests)
 - Added `fetchJSONFromService()` helper function to eliminate code duplication
 - Added `readResponseBody()` with size limits in scraper package
 - Added cache invalidation hooks in API key create/update/delete operations
+- Added hostname validation in `runSystemPing()` to prevent command injection:
+  - Length validation (1-253 characters per RFC 1035)
+  - Character set validation (alphanumeric, dots, hyphens, colons only)
+  - Blocks shell metacharacters and SQL injection attempts
 
 ## Impact Summary
 
@@ -58,10 +77,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Memory Safety | Unlimited response reads | 2MB hard limit | **OOM prevention** |
 
 ### Security Enhancements
+- **SQL Injection Prevention**: Fixed critical vulnerability in password rotation script
+- **Command Injection Prevention**: Added hostname validation before ping execution
+- **Password Security**: Input validation prevents weak passwords and SQL injection
+- **Process Security**: Passwords no longer exposed in process listings
 - All production credentials rotated with cryptographically secure tokens (32-48 bytes)
 - HMAC signature validation now mandatory (prevents replay attacks and tampering)
 - Comprehensive error logging (100% visibility into failures)
 - File permissions set to 600 on sensitive configuration files
+- **Test Coverage**: 70+ new security tests covering injection attacks and edge cases
 
 ### Code Quality
 - Reduced code duplication by ~80 lines

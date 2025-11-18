@@ -189,6 +189,16 @@ The ModemCheck cloud server (FastAPI v2) includes comprehensive security feature
 - **Account lockout** after 5 failed login attempts (30-minute lockout)
 - **Common password prevention** (10,000+ blocked passwords)
 
+### Credential Management Security
+- **Safe password rotation script** (`update-db-password.sh`) with comprehensive validation:
+  - Minimum 12-character length requirement
+  - Blocks single quotes (prevents SQL syntax errors)
+  - Blocks semicolons (prevents SQL injection)
+  - Password passed via stdin heredoc (not visible in process listings)
+  - Automatic connectivity verification after rotation
+- **Input validation** prevents weak passwords and injection attacks
+- **Test coverage**: 36 automated tests for all validation rules
+
 ### API Security
 - **Dual-layer rate limiting**:
   - IP-based: 30/min (auth), 60/min (upload), 300/sec (API)
@@ -199,11 +209,28 @@ The ModemCheck cloud server (FastAPI v2) includes comprehensive security feature
 
 ### Data Security
 - **Input validation** with Pydantic schemas
-- **SQL injection prevention** via SQLAlchemy ORM
+- **SQL injection prevention** via SQLAlchemy ORM and parameterized queries
+- **Command injection prevention** in Go client hostname validation
 - **XSS protection** with Content-Security-Policy headers
 - **Path traversal protection** for file operations
 - **Audit logging** with 90-day retention policy
 - **Automated backups** (daily PostgreSQL + Redis with verification)
+
+### Client Security (Go Application)
+- **Hostname validation** before ping execution:
+  - Length validation (1-253 characters per RFC 1035)
+  - Character whitelist (alphanumeric, dots, hyphens, colons only)
+  - Blocks shell metacharacters: `;`, `|`, `&`, `` ` ``, `$`, etc.
+  - Prevents command injection and SQL injection attempts
+- **HTTP timeout with context cancellation**:
+  - Graceful shutdown on SIGTERM/SIGINT
+  - Prevents hanging requests
+  - Context-based cancellation for all HTTP operations
+- **Response body handling**:
+  - Single-read pattern prevents double-read bugs
+  - Proper error handling for all I/O operations
+  - Memory-safe with explicit size limits
+- **Test coverage**: 34 sub-tests covering injection attacks and edge cases
 
 For complete cloud server security documentation, see [cloudserver/README.md](cloudserver/README.md).
 

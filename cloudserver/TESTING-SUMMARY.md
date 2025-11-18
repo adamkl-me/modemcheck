@@ -203,18 +203,23 @@ This document summarizes the comprehensive test suite created for all new securi
 - **Session security:** 20+ tests
 - **Enhanced rate limiting:** 20+ tests
 - **Audit retention:** 15+ tests
-- **Total new tests:** ~77 tests
+- **Password validation (Bash):** 36 tests
+- **Hostname validation (Go):** 34 sub-tests
+- **Total new tests:** ~147 tests
 
 ### Updated Test Count
-- **Total tests:** ~192 tests
-- **Expected passing:** ~185+ tests
+- **Cloud server tests:** ~192 tests
+- **Go client tests:** 4 test functions with 34+ sub-tests
+- **Bash validation tests:** 36 tests
+- **Total tests:** ~262+ tests
+- **Expected passing:** ~255+ tests
 - **Expected coverage:** 88%+
 
 ---
 
 ## Running the Tests
 
-### Run All New Tests
+### Cloud Server Tests
 
 ```bash
 cd cloudserver
@@ -235,6 +240,36 @@ pytest tests/api/test_metric_extraction.py \
        --cov-report=html
 ```
 
+### Go Client Tests
+
+```bash
+cd modemcheck-client
+
+# Run all Go tests
+go test -v
+
+# Run specific test
+go test -v -run TestHostnameValidation
+
+# Run all hostname validation tests
+go test -v -run TestHostnameValidation
+```
+
+### Bash Validation Tests
+
+```bash
+cd cloudserver
+
+# Run password validation tests
+./test-password-validation.sh
+
+# Expected output:
+# Tests Run:    36
+# Tests Passed: 36
+# Tests Failed: 0
+# ✓ All tests passed!
+```
+
 ### Run by Feature
 
 ```bash
@@ -246,6 +281,12 @@ pytest tests/security/test_session_security.py -v
 
 # Rate limiting tests
 pytest tests/security/test_enhanced_rate_limiting.py -v
+
+# Hostname validation (Go)
+go test -v -run TestHostnameValidation
+
+# Password validation (Bash)
+./test-password-validation.sh
 
 # Audit retention tests
 pytest tests/api/test_audit_retention.py -v
