@@ -1,0 +1,89 @@
+# ModemCheck Cloud Server - Cron Configuration Example
+#
+# Add these entries to your crontab to automate maintenance tasks.
+#
+# Installation:
+#   crontab -e
+#   (paste the relevant entries below)
+#
+# Note: Update paths to match your installation directory
+
+# ============================================================================
+# AUTOMATED BACKUPS
+# ============================================================================
+
+# Daily full backup at 2:00 AM (PostgreSQL + Redis with verification)
+0 2 * * * cd /path/to/modemcheck/cloudserver && ./backup-all.sh --verify >> logs/backup.log 2>&1
+
+# Alternative: Separate backup schedules
+# Daily PostgreSQL backup at 2:00 AM
+# 0 2 * * * cd /path/to/modemcheck/cloudserver && ./backup-database.sh --verify >> logs/backup-postgres.log 2>&1
+
+# Daily Redis backup at 2:30 AM
+# 30 2 * * * cd /path/to/modemcheck/cloudserver && ./backup-redis.sh >> logs/backup-redis.log 2>&1
+
+
+# ============================================================================
+# AUDIT LOG CLEANUP
+# ============================================================================
+
+# Weekly audit log cleanup (every Sunday at 3:00 AM)
+# Keeps 90 days of logs by default
+0 3 * * 0 cd /path/to/modemcheck/cloudserver && python3 cleanup-audit-logs.py >> logs/cleanup.log 2>&1
+
+# Alternative: Monthly cleanup with custom retention
+# 0 3 1 * * cd /path/to/modemcheck/cloudserver && python3 cleanup-audit-logs.py --user-retention 60 --client-retention 120 >> logs/cleanup.log 2>&1
+
+
+# ============================================================================
+# SYSTEM MONITORING
+# ============================================================================
+
+# Hourly health check (optional - monitors service availability)
+# */60 * * * * curl -f http://localhost:22557/health || echo "ModemCheck API health check failed" | mail -s "Alert: ModemCheck API Down" admin@example.com
+
+# Daily disk space check (optional - alerts if backups directory is full)
+# 0 1 * * * [ $(df /path/to/modemcheck/cloudserver/backups | tail -1 | awk '{print $5}' | sed 's/%//') -gt 80 ] && echo "Backup disk usage above 80%" | mail -s "Alert: Backup Disk Space" admin@example.com
+
+
+# ============================================================================
+# SECURITY SCANS
+# ============================================================================
+
+# Weekly dependency vulnerability scan (every Monday at 4:00 AM)
+# Requires GitHub Actions or local scan-dependencies.sh script
+# 0 4 * * 1 cd /path/to/modemcheck/cloudserver && ./scan-dependencies.sh >> logs/security-scan.log 2>&1
+
+
+# ============================================================================
+# LOG ROTATION
+# ============================================================================
+
+# Rotate application logs (if not using logrotate)
+# Daily at 11:59 PM
+# 59 23 * * * find /path/to/modemcheck/cloudserver/logs -name "*.log" -size +100M -exec gzip {} \;
+
+# Delete old compressed logs (older than 30 days)
+# 0 4 * * * find /path/to/modemcheck/cloudserver/logs -name "*.log.gz" -mtime +30 -delete
+
+
+# ============================================================================
+# NOTES
+# ============================================================================
+#
+# Logging recommendations:
+#   - Create logs/ directory: mkdir -p logs
+#   - Set appropriate permissions: chmod 755 logs
+#   - Use logrotate for production log management
+#
+# Backup recommendations:
+#   - Store backups on separate disk/volume
+#   - Test restore procedures regularly
+#   - Monitor backup success via email or monitoring system
+#   - Consider offsite backup replication for disaster recovery
+#
+# Email notifications:
+#   - Install mailutils: apt-get install mailutils
+#   - Configure mail relay in /etc/postfix/main.cf
+#   - Test: echo "test" | mail -s "test" admin@example.com
+#

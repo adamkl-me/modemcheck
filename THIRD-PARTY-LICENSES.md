@@ -266,7 +266,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 This project complies with all third-party license requirements:
 
-1. **MIT Licensed Dependencies** (speedtest-go, go-ping):
+1. **MIT Licensed Dependencies** (speedtest-go, go-ping, redis-py, argon2-cffi, FastAPI, Gunicorn, SQLAlchemy, Pydantic, Chart.js, chartjs-adapter-date-fns, zxcvbn):
    - ✅ Copyright notices preserved
    - ✅ License text included
    - ✅ Attribution provided
@@ -276,7 +276,7 @@ This project complies with all third-party license requirements:
    - ✅ License text included
    - ✅ Attribution provided
 
-3. **BSD-3-Clause Licensed Dependencies** (google/uuid, golang.org/x):
+3. **BSD-3-Clause Licensed Dependencies** (google/uuid, golang.org/x, Uvicorn):
    - ✅ Copyright notices preserved
    - ✅ License text included
    - ✅ Attribution provided
@@ -391,7 +391,340 @@ SOFTWARE.
 
 ---
 
+## Python FastAPI Backend Dependencies
+
+### FastAPI
+
+**Package:** `fastapi 0.115.5`
+
+**Purpose:** Modern async web framework for building APIs. Used as the foundation for the v2 cloud server, providing automatic OpenAPI documentation, type safety with Pydantic, dependency injection, and high-performance async request handling.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2018 Sebastián Ramírez
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2018 Sebastián Ramírez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/fastapi/fastapi
+
+---
+
+### Uvicorn
+
+**Package:** `uvicorn 0.32.1`
+
+**Purpose:** Lightning-fast ASGI server implementation for Python. Runs FastAPI applications with async/await support, WebSocket handling, and automatic reload during development. Production deployment uses Gunicorn with Uvicorn workers.
+
+**License:** BSD-3-Clause License
+
+**Copyright:** Copyright (c) 2017-present, Encode OSS Ltd.
+
+**License Text:**
+
+```
+BSD 3-Clause License
+
+Copyright (c) 2017-present, Encode OSS Ltd.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+**Project URL:** https://github.com/encode/uvicorn
+
+---
+
+### Gunicorn
+
+**Package:** `gunicorn 23.0.0`
+
+**Purpose:** Pre-fork Python WSGI/ASGI HTTP server for production deployments. Manages multiple Uvicorn worker processes, provides process monitoring, graceful restarts, and load balancing for high-concurrency cloud server operations.
+
+**License:** MIT License
+
+**Copyright:**
+- Copyright (c) 2009-2024 Benoît Chesneau <benoitc@gunicorn.org>
+- Copyright (c) 2009-2015 Paul J. Davis <paul.joseph.davis@gmail.com>
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2009-2024 Benoît Chesneau <benoitc@gunicorn.org>
+Copyright (c) 2009-2015 Paul J. Davis <paul.joseph.davis@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/benoitc/gunicorn
+
+---
+
+### SQLAlchemy
+
+**Package:** `sqlalchemy 2.0.36`
+
+**Purpose:** Python SQL toolkit and Object-Relational Mapping (ORM) library. Provides async database operations, connection pooling, and JSONB support for PostgreSQL. Maps database tables to Python classes for type-safe modem data storage and queries.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2005-2025 SQLAlchemy authors and contributors
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2005-2025 SQLAlchemy authors and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/sqlalchemy/sqlalchemy
+
+---
+
+### Pydantic
+
+**Package:** `pydantic 2.10.3`
+
+**Purpose:** Data validation and settings management using Python type annotations. Validates API requests/responses, provides automatic JSON serialization, and ensures type safety throughout the FastAPI application with runtime validation.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2017-present Pydantic Services Inc. and individual contributors
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2017-present Pydantic Services Inc. and individual contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/pydantic/pydantic
+
+---
+
+### SlowAPI
+
+**Package:** `slowapi 0.1.9`
+
+**Purpose:** Rate limiting library for FastAPI with Redis backend support. Provides distributed rate limiting across multiple workers, protecting authentication endpoints (30 req/min), upload endpoints (60 req/min), and API endpoints (300 req/sec) from abuse and DoS attacks.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2020 Laurent Savaete
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2020 Laurent Savaete
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/laurentS/slowapi
+
+---
+
 ## JavaScript Frontend Dependencies
+
+### Chart.js
+
+**Package:** `Chart.js 4.4.0`
+
+**Purpose:** Flexible JavaScript charting library for data visualization. Renders interactive time-series graphs in the cloud data viewer, displaying historical trends for signal levels, speeds, latency, and other modem metrics with zoom, pan, and tooltip interactions.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2014-2024 Chart.js Contributors
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2014-2024 Chart.js Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/chartjs/Chart.js
+
+---
+
+### chartjs-adapter-date-fns
+
+**Package:** `chartjs-adapter-date-fns 3.0.0`
+
+**Purpose:** Date adapter for Chart.js time-scale axes using date-fns library. Enables accurate time-based x-axis rendering for modem diagnostic trends, handling timezone conversions and date formatting for historical data visualization.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2019 Chart.js Contributors
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2019 Chart.js Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/chartjs/chartjs-adapter-date-fns
+
+---
 
 ### zxcvbn
 
@@ -436,18 +769,32 @@ SOFTWARE.
 ## Acknowledgments
 
 Special thanks to:
+
+**Go Client Contributors:**
 - **ITO Shogo** for creating speedtest-go, enabling native Go speed testing
 - **Cameron Sparr and contributors** for go-ping, providing ICMP ping in pure Go
 - **Frank Denis** for Minisign and go-minisign, providing simple and secure cryptographic signing
-- **Redis Contributors** for redis-py, enabling secure session management
-- **Hynek Schlawack and argon2-cffi contributors** for providing secure Argon2 password hashing
-- **Dan Wheeler and Dropbox** for zxcvbn, enabling realistic password strength estimation
 - **Google** for the UUID library
 - **The Go Authors** for the official supplementary packages including crypto libraries
 - **Ookla** for speedtest.net infrastructure used by speedtest-go
 
-These libraries and tools make it possible for Modem-Check to run as a single, standalone, securely-updatable binary with no external runtime dependencies, and provide enterprise-grade security for the cloud server component.
+**Python Backend Contributors:**
+- **Sebastián Ramírez** for FastAPI, providing modern async web framework capabilities
+- **Encode OSS Ltd** for Uvicorn, enabling high-performance ASGI server operations
+- **Benoît Chesneau and Paul J. Davis** for Gunicorn, providing production-grade process management
+- **SQLAlchemy authors and contributors** for the powerful async ORM and database toolkit
+- **Pydantic Services Inc. and contributors** for data validation and type safety
+- **Laurent Savaete** for SlowAPI, enabling distributed rate limiting with Redis backend
+- **Redis Contributors** for redis-py, enabling secure session management and caching
+- **Hynek Schlawack and argon2-cffi contributors** for providing secure Argon2 password hashing
+
+**JavaScript Frontend Contributors:**
+- **Chart.js Contributors** for the flexible charting library enabling interactive data visualization
+- **Chart.js Contributors** for chartjs-adapter-date-fns, enabling accurate time-series rendering
+- **Dan Wheeler and Dropbox** for zxcvbn, enabling realistic password strength estimation
+
+These libraries and tools make it possible for Modem-Check to run as a single, standalone, securely-updatable binary with no external runtime dependencies, and provide enterprise-grade security and scalability for the FastAPI-based cloud server component.
 
 ---
 
-*Last Updated: 2025-11-13*
+*Last Updated: 2025-11-17*

@@ -449,6 +449,16 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	m.Log("Warning: Failed to detect public IP from all sources")
 }
 
+// extractASN extracts just the ASN number from a string like "AS812 Rogers Communications Canada Inc."
+// Returns just "AS812" or the original string if no space found.
+func extractASN(asnString string) string {
+	// Find the first space and take everything before it
+	if idx := strings.Index(asnString, " "); idx != -1 {
+		return asnString[:idx]
+	}
+	return asnString
+}
+
 // tryIPAPICo attempts to get IP info from ipapi.co (primary service)
 func (m *ModemCheck) tryIPAPICo(data *scraper.ModemData) bool {
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -484,7 +494,7 @@ func (m *ModemCheck) tryIPAPICo(data *scraper.ModemData) bool {
 	}
 
 	data.PublicIP = ipInfo.IP
-	data.ASN = ipInfo.ASN
+	data.ASN = extractASN(ipInfo.ASN)  // Extract just "AS812" from "AS812 Rogers..."
 	data.ISPName = ipInfo.Org
 	data.IPCity = ipInfo.City
 	data.IPCountry = ipInfo.Country
@@ -528,7 +538,7 @@ func (m *ModemCheck) tryIPAPI(data *scraper.ModemData) bool {
 	}
 
 	data.PublicIP = ipInfo.Query
-	data.ASN = ipInfo.AS
+	data.ASN = extractASN(ipInfo.AS)  // Extract just "AS812" from "AS812 Rogers..."
 	data.ISPName = ipInfo.ISP
 	data.IPCity = ipInfo.City
 	data.IPCountry = ipInfo.Country

@@ -176,6 +176,37 @@ The public key is available:
 - Embedded in the client source code (`modemcheck-client/updater.go`)
 - In `.signing-keys/minisign.pub` in the repository (if keys generated)
 
+## Cloud Server Security Enhancements
+
+The ModemCheck cloud server (FastAPI v2) includes comprehensive security features:
+
+### Authentication & Session Security
+- **Argon2id password hashing** (64MB memory, 3 iterations) with automatic upgrade from PBKDF2
+- **Redis session management** with 1-hour sliding window
+- **Device fingerprinting** (SHA256 hash of user-agent + IP) to detect session hijacking
+- **Session anomaly detection** logs IP changes and user-agent mismatches
+- **Concurrent session limits** (max 5 per user) with automatic termination of oldest sessions
+- **Account lockout** after 5 failed login attempts (30-minute lockout)
+- **Common password prevention** (10,000+ blocked passwords)
+
+### API Security
+- **Dual-layer rate limiting**:
+  - IP-based: 30/min (auth), 60/min (upload), 300/sec (API)
+  - Per-user: 100 requests/hour across all IPs (prevents multi-IP abuse)
+- **CSRF protection** with token-based validation for all state-changing operations
+- **HMAC-SHA256 signatures** for client uploads with replay attack prevention
+- **Timing-safe comparisons** for passwords and API keys
+
+### Data Security
+- **Input validation** with Pydantic schemas
+- **SQL injection prevention** via SQLAlchemy ORM
+- **XSS protection** with Content-Security-Policy headers
+- **Path traversal protection** for file operations
+- **Audit logging** with 90-day retention policy
+- **Automated backups** (daily PostgreSQL + Redis with verification)
+
+For complete cloud server security documentation, see [cloudserver/README.md](cloudserver/README.md).
+
 ## Security Disclosure
 
 If you discover a security vulnerability, please email security@yourdomain.com or open a private security advisory on GitHub.

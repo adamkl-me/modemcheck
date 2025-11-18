@@ -1,0 +1,37 @@
+# FastAPI and ASGI Server
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Redis for sessions and caching
+redis[hiredis]==5.2.0
+
+# Security
+passlib[argon2]==1.7.4
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.20
+fastapi-csrf-protect==0.3.4
+slowapi==0.1.9
+
+# Validation and serialization
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# Utilities
+python-dotenv==1.0.1
+aiofiles==24.1.0
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
+faker==33.1.0
+
+# Monitoring and logging
+uvicorn-worker==0.2.0

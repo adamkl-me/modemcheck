@@ -191,7 +191,12 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	}
 
 	// Build upload URL
-	uploadURL := fmt.Sprintf("%s://%s:%s/cgi-bin/upload.py", protocol, m.config.CloudHost, m.config.CloudPort)
+	// Use CloudPath if specified, otherwise use root path "/"
+	path := m.config.CloudPath
+	if path == "" {
+		path = "/"
+	}
+	uploadURL := fmt.Sprintf("%s://%s:%s%s", protocol, m.config.CloudHost, m.config.CloudPort, path)
 
 	// Generate timestamp for request signing (Unix timestamp as string)
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)

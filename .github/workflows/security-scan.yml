@@ -1,0 +1,110 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  python-security:
+    name: Python Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd cloudserver
+          pip install -r requirements.txt
+          pip install pip-audit safety bandit
+
+      - name: Run pip-audit (vulnerability scanner)
+        run: |
+          cd cloudserver
+          pip-audit --desc --format json --output pip-audit-report.json || true
+          pip-audit --desc
+
+      - name: Run Safety (security advisories)
+        run: |
+          cd cloudserver
+          safety check --json --output safety-report.json || true
+          safety check
+
+      - name: Run Bandit (security linter)
+        run: |
+          cd cloudserver
+          bandit -r app/ -f json -o bandit-report.json || true
+          bandit -r app/ -ll  # Only show medium/high severity
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            cloudserver/pip-audit-report.json
+            cloudserver/safety-report.json
+            cloudserver/bandit-report.json
+          retention-days: 30
+
+  secret-detection:
+    name: Secret Detection Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Run detect-secrets
+        run: |
+          detect-secrets scan --baseline .secrets.baseline \
+            --exclude-files '\.venv/|node_modules/|\.git/|dist/|\.minisig$|\.env$'
+
+  go-security:
+    name: Go Dependency Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          cd modemcheck-client
+          govulncheck ./...
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate

@@ -1,0 +1,54 @@
+# Bandit security linting configuration
+# https://bandit.readthedocs.io/
+
+tests:
+  - B201  # flask_debug_true
+  - B301  # pickle
+  - B302  # marshal
+  - B303  # md5
+  - B304  # ciphers
+  - B305  # cipher_modes
+  - B306  # mktemp_q
+  - B307  # eval
+  - B308  # mark_safe
+  - B310  # urllib_urlopen
+  - B311  # random
+  - B312  # telnetlib
+  - B313  # xml_bad_cElementTree
+  - B314  # xml_bad_ElementTree
+  - B315  # xml_bad_expatreader
+  - B316  # xml_bad_expatbuilder
+  - B317  # xml_bad_sax
+  - B318  # xml_bad_minidom
+  - B319  # xml_bad_pulldom
+  - B320  # xml_bad_etree
+  - B323  # unverified_context
+  - B324  # hashlib_insecure_functions
+  - B501  # request_with_no_cert_validation
+  - B502  # ssl_with_bad_version
+  - B503  # ssl_with_bad_defaults
+  - B504  # ssl_with_no_version
+  - B505  # weak_cryptographic_key
+  - B506  # yaml_load
+  - B507  # ssh_no_host_key_verification
+  - B601  # paramiko_calls
+  - B602  # shell_injection
+  - B603  # subprocess_without_shell_equals_true
+  - B604  # any_other_function_with_shell_equals_true
+  - B605  # start_process_with_a_shell
+  - B606  # start_process_with_no_shell
+  - B607  # start_process_with_partial_path
+  - B608  # hardcoded_sql_expressions
+  - B609  # wildcard_injection
+
+exclude_dirs:
+  - /tests/
+  - /test/
+  - /.venv/
+  - /venv/
+  - /__pycache__/
+  - /.pytest_cache/
+
+skips:
+  # Skip test files from certain checks
+  - B101  # assert_used (okay in tests)
