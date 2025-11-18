@@ -46,7 +46,6 @@ if [[ "$NEW_PASSWORD" == *";"* ]]; then
     exit 1
 fi
 
-echo "New password found in .env: ${NEW_PASSWORD:0:8}... (showing first 8 chars)"
 echo "Password validation: ✓ Length OK (${#NEW_PASSWORD} chars), ✓ No dangerous characters"
 echo ""
 
@@ -61,12 +60,13 @@ fi
 echo ""
 echo "Step 1: Updating PostgreSQL password in database..."
 
-# Update the password directly in PostgreSQL using secure heredoc method
+# Update the password directly in PostgreSQL using secure method
 # This prevents SQL injection and avoids password exposure in process listings
-# The password is passed via stdin, not as a command-line argument
-docker exec -i modemcheck-postgres psql -U modemcheck -d modemcheck 2>/dev/null <<EOF
-ALTER USER modemcheck WITH PASSWORD '$NEW_PASSWORD';
-EOF
+# The password is escaped and passed via environment variable
+printf -v ESCAPED_PASSWORD '%s' "$NEW_PASSWORD"
+docker exec -i -e PGPWD="$ESCAPED_PASSWORD" modemcheck-postgres \
+    psql -U modemcheck -d modemcheck -v pwd="$ESCAPED_PASSWORD" \
+    -c "ALTER USER modemcheck WITH PASSWORD :'pwd';" 2>/dev/null
 
 if [ $? -eq 0 ]; then
     echo "✓ PostgreSQL password updated successfully in database"

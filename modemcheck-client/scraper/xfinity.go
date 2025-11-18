@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -45,7 +46,11 @@ func (s *XfinityScraper) Login() error {
 	s.logger.Log("Attempting login to Rogers Xfinity Modem...")
 
 	username := "admin"
-	postData := fmt.Sprintf("username=%s&password=%s&locale=false", username, s.password)
+	postData := url.Values{
+		"username": {username},
+		"password": {s.password},
+		"locale":   {"false"},
+	}.Encode()
 
 	req, _ := http.NewRequest("POST", fmt.Sprintf("http://%s/check.jst", s.modemAddress),
 		strings.NewReader(postData))
@@ -179,7 +184,11 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 	defer resp.Body.Close()
 
-	pageContent, _ := io.ReadAll(resp.Body)
+	pageContent, err := readResponseBody(resp.Body)
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Failed to read response body: %v", err))
+		return nil, fmt.Errorf("failed to read network setup page: %w", err)
+	}
 	pageStr := string(pageContent)
 
 	if !strings.Contains(pageStr, "CM MAC:") {
@@ -190,7 +199,11 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 			return nil, fmt.Errorf("failed to fetch network setup after re-login: %w", err)
 		}
 		defer retryResp.Body.Close()
-		pageContent, _ = io.ReadAll(retryResp.Body)
+		pageContent, err = readResponseBody(retryResp.Body)
+		if err != nil {
+			s.logger.Log(fmt.Sprintf("Failed to read retry response body: %v", err))
+			return nil, fmt.Errorf("failed to read network setup retry page: %w", err)
+		}
 		pageStr = string(pageContent)
 	}
 
@@ -210,11 +223,14 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 		s.logger.Log(fmt.Sprintf("Failed to fetch software version: %v", err))
 	} else {
 		defer swResp.Body.Close()
-		softwareBody, _ := io.ReadAll(swResp.Body)
-
-		fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
-		if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
-			data.SysInfo.Firmware = strings.TrimSpace(matches[1])
+		softwareBody, err := readResponseBody(swResp.Body)
+		if err != nil {
+			s.logger.Log(fmt.Sprintf("Failed to read software version response: %v", err))
+		} else {
+			fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
+			if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
+				data.SysInfo.Firmware = strings.TrimSpace(matches[1])
+			}
 		}
 	}
 
@@ -411,7 +427,10 @@ func DetectXfinity(address string, client *http.Client) bool {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readResponseBody(resp.Body)
+	if err != nil {
+		return false
+	}
 	bodyStr := string(body)
 
 	if strings.Contains(bodyStr, "<title>403 Forbidden</title>") {
@@ -419,8 +438,8 @@ func DetectXfinity(address string, client *http.Client) bool {
 		rootResp, err := client.Get(fmt.Sprintf("http://%s", address))
 		if err == nil {
 			defer rootResp.Body.Close()
-			rootBody, _ := io.ReadAll(rootResp.Body)
-			if strings.Contains(string(rootBody), "<title>Rogers</title>") {
+			rootBody, err := readResponseBody(rootResp.Body)
+			if err == nil && strings.Contains(string(rootBody), "<title>Rogers</title>") {
 				return true
 			}
 		}
