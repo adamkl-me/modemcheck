@@ -93,16 +93,13 @@ if [ "$VERIFY_BACKUP" = true ]; then
     fi
 
     # Check if backup contains tables
-    if zcat "$BACKUP_FILE" | grep -q "CREATE TABLE"; then
-        echo "✅ Backup contains tables: OK"
+    TABLE_COUNT=$(zcat "$BACKUP_FILE" | grep -c "CREATE TABLE" || true)
+    if [ "$TABLE_COUNT" -gt 0 ]; then
+        echo "✅ Backup contains tables: OK ($TABLE_COUNT tables)"
     else
         echo "❌ Backup missing tables: FAILED"
         exit 1
     fi
-
-    # Count number of tables in backup
-    TABLE_COUNT=$(zcat "$BACKUP_FILE" | grep -c "CREATE TABLE" || true)
-    echo "✅ Tables in backup: $TABLE_COUNT"
 fi
 
 # Cleanup old backups
