@@ -1,63 +1,98 @@
+name: modemcheck-test
+
 services:
   redis-test:
     container_name: modemcheck-redis-test
     image: redis:7-alpine
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    environment:
+      - TZ=America/Toronto
+    ports:
+      - "6380:6379"  # Expose Redis on port 6380 to avoid conflicts with local Redis
     volumes:
-      - redis-test-data:/data
-    restart: "no"
+      - modemcheck-test_redis:/data
     networks:
       - modemcheck-test
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-  modemcheck-cloud-test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: modemcheck-cloud-test
-    ports:
-      - "22558:22557"  # Upload API (different port to avoid conflict)
-      - "23892:23890"  # Viewer (different port)
-      - "23893:23891"  # Admin (different port)
-    volumes:
-      # Use test-specific volumes (no datafiles - direct DB insertion)
-      - ./test-data/data:/modemcheck-cloud/data
-      - ./test-data/config:/modemcheck-cloud/config
-      # Mount CGI scripts for testing
-      - ./cgi-bin:/modemcheck-cloud/cgi-bin:ro
-      # Mount test scripts
-      - ../tests:/modemcheck-cloud/tests:ro
-      # Use test-specific nginx config with relaxed rate limits
-      - ./nginx.test.conf:/etc/nginx/http.d/modemcheck.conf:ro
-    environment:
-      - TEST_MODE=true
-      - PYTHONPATH=/modemcheck-cloud/cgi-bin
-      - REDIS_HOST=redis-test
-      - REDIS_PORT=6379
-    networks:
-      - modemcheck-test
-    restart: "no"  # Don't restart automatically in test mode
-    depends_on:
-      redis-test:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:22557/"]
       interval: 5s
       timeout: 3s
       retries: 3
-      start_period: 10s
+
+  postgres-test:
+    container_name: modemcheck-postgres-test
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"  # Expose PostgreSQL on port 5433 to avoid conflicts with local PostgreSQL
+    environment:
+      - TZ=America/Toronto
+      - POSTGRES_USER=modemcheck
+      - POSTGRES_PASSWORD=modemcheck_test_password
+      - POSTGRES_DB=modemcheck_test
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - modemcheck-test_postgres:/var/lib/postgresql/data
+    networks:
+      - modemcheck-test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U modemcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  modemcheck-cloud-test:
+    container_name: modemcheck-cloud-test
+    image: modemcheck-cloud:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "22560:8000"  # Upload API (test port)
+      - "23894:8000"  # Web UI (test port)
+    environment:
+      # System
+      - TZ=America/Toronto
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://modemcheck:modemcheck_test_password@postgres-test:5432/modemcheck_test
+      # Redis
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      # Application
+      - APP_ENV=test
+      - SECRET_KEY=test-secret-key-not-for-production
+      - SESSION_TTL=3600
+      - CSRF_SECRET_KEY=test-csrf-secret-key
+      # CORS
+      - ALLOWED_ORIGINS=*
+      # Workers
+      - WORKERS=2
+      # Test-specific settings
+      - MAX_UPLOAD_SIZE=52428800
+      - MAX_BULK_UPLOAD_FILES=100
+    networks:
+      - modemcheck-test
+    depends_on:
+      redis-test:
+        condition: service_healthy
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 networks:
   modemcheck-test:
     driver: bridge
     ipam:
-      driver: default
       config:
-        - subnet: 172.26.0.0/16
+        - subnet: 172.27.0.0/16
+          gateway: 172.27.0.1
 
 volumes:
-  redis-test-data:
+  modemcheck-test_postgres:
+    name: modemcheck-test_postgres
+  modemcheck-test_redis:
+    name: modemcheck-test_redis

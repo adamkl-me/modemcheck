@@ -1,80 +1,51 @@
-FROM alpine:3.22
+# Multi-stage Dockerfile for ModemCheck Cloud API v2
+FROM python:3.11-slim as base
 
-# Install required packages
-RUN apk add --no-cache \
-    nginx \
-    python3 \
-    py3-pip \
-    py3-redis \
-    fcgiwrap \
-    spawn-fcgi \
-    bash \
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
     tzdata \
-    sqlite \
-    gcc \
-    musl-dev \
-    python3-dev \
-    libffi-dev
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages for security enhancements
-RUN pip3 install --no-cache-dir argon2-cffi==23.1.0 --break-system-packages
+# Create app user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Set timezone to America/Toronto
-RUN cp /usr/share/zoneinfo/America/Toronto /etc/localtime && \
-    echo "America/Toronto" > /etc/timezone
+# Set working directory
+WORKDIR /app
 
-# Create directory structure
-RUN mkdir -p /modemcheck-cloud/cgi-bin && \
-    mkdir -p /modemcheck-cloud/config && \
-    mkdir -p /modemcheck-cloud/data && \
-    mkdir -p /modemcheck-cloud/logs && \
-    mkdir -p /run/fcgiwrap && \
-    mkdir -p /var/log/nginx
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set up permissions - make config, data, and logs writable by nginx user
-RUN chmod 755 /modemcheck-cloud && \
-    chmod 777 /modemcheck-cloud/config && \
-    chmod 777 /modemcheck-cloud/data && \
-    chmod 777 /modemcheck-cloud/logs && \
-    chmod 755 /modemcheck-cloud/cgi-bin && \
-    chown -R nginx:nginx /modemcheck-cloud/config && \
-    chown -R nginx:nginx /modemcheck-cloud/data && \
-    chown -R nginx:nginx /modemcheck-cloud/logs
+# Copy application code
+COPY ./app /app/app
+COPY ./static /app/static
+COPY ./common_passwords.txt /app/common_passwords.txt
 
-# Copy application files
-COPY db-viewer.html /modemcheck-cloud/index.html
-COPY db-viewer.js /modemcheck-cloud/
-COPY admin.html /modemcheck-cloud/
-COPY admin-login.html /modemcheck-cloud/
-COPY login.html /modemcheck-cloud/
-COPY cgi-bin/db-api.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/db_schema.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/audit_schema.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/upload.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/admin-api.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/auth.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/user-management.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/data-management-api.py /modemcheck-cloud/cgi-bin/
-COPY cgi-bin/common_passwords.py /modemcheck-cloud/cgi-bin/
-COPY nginx.conf /etc/nginx/http.d/modemcheck.conf
+# Change ownership
+RUN chown -R appuser:appuser /app
 
-# Remove default nginx config that listens on port 80
-RUN rm -f /etc/nginx/http.d/default.conf
+# Switch to non-root user
+USER appuser
 
-# Make CGI scripts executable
-RUN chmod +x /modemcheck-cloud/cgi-bin/db-api.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/upload.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/admin-api.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/auth.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/user-management.py && \
-    chmod +x /modemcheck-cloud/cgi-bin/data-management-api.py
+# Expose port
+EXPOSE 8000
 
-# Create startup script
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Expose ports: 22557 (API), 23890 (Viewer), 23891 (Admin)
-EXPOSE 22557 23890 23891
-
-# Start services
-CMD ["/start.sh"]
+# Run with Gunicorn + Uvicorn workers
+CMD ["gunicorn", "app.main:app", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info"]

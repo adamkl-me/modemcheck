@@ -1,0 +1,3833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+    <title>ModemCheck - Admin Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: none; /* Hidden until auth verified */
+        }
+
+        .container.authenticated {
+            display: block;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            min-height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 0;
+            color: white;
+        }
+
+        /* Header navigation buttons */
+        .header-nav {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .header-nav-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.8);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-nav-btn.viewer {
+            background: rgba(102, 126, 234, 0.9);
+        }
+
+        .header-nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .header-nav-btn.viewer:hover {
+            background: rgba(86, 110, 220, 0.95);
+        }
+
+        /* Hamburger menu (mobile only) */
+        .hamburger {
+            display: none;
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            padding: 10px;
+        }
+
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: white;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+
+        /* Mobile menu */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 250px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b0764 100%);
+            box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            padding: 80px 20px 20px 20px;
+            transition: right 0.3s ease;
+        }
+
+        .mobile-menu.active {
+            right: 0;
+        }
+
+        .mobile-menu button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.8);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu button.viewer {
+            background: rgba(102, 126, 234, 0.9);
+        }
+
+        .mobile-menu button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateX(-5px);
+        }
+
+        .mobile-menu button.viewer:hover {
+            background: rgba(86, 110, 220, 0.95);
+        }
+
+        /* Mobile overlay */
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .menu-overlay.active {
+            display: block;
+        }
+
+        .action-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-section h2,
+        .keys-section h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.6em;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+        }
+
+        .action-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        input[type="date"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="text"]:disabled,
+        input[type="number"]:disabled,
+        input[type="password"]:disabled,
+        input[type="date"]:disabled,
+        select:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f0f2ff;
+        }
+
+        .btn:disabled {
+            background: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn:disabled:hover {
+            background: #d1d5db;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .keys-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .keys-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .keys-table th {
+            background: transparent;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: white;
+            border-bottom: none;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 0.5px;
+        }
+
+        .keys-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .keys-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .keys-table thead tr:hover {
+            background: transparent;
+        }
+
+        .key-preview {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-active {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .status-inactive {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        /* Toast Notification Container */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 300px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            pointer-events: auto;
+            cursor: pointer;
+            transform: translateX(calc(100% + 40px));
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+            opacity: 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.hiding {
+            transform: translateX(calc(100% + 40px));
+            opacity: 0;
+        }
+
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .toast-close {
+            font-size: 18px;
+            opacity: 0.6;
+            flex-shrink: 0;
+            transition: opacity 0.2s;
+        }
+
+        .toast:hover .toast-close {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .toast.info {
+            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+            color: white;
+        }
+
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        /* Old message banner (hidden, kept for compatibility) */
+        .message {
+            display: none;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+
+        .message.error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .role-select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .role-select:hover:not(:disabled) {
+            border-color: #667eea;
+        }
+
+        .role-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .role-select:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #f3f4f6;
+        }
+
+        .role-select option[value="admin"] {
+            font-weight: bold;
+            color: #c53030;
+        }
+
+        .role-select option[value="basic"] {
+            color: #2d3748;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .key-display {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .copy-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a4191 100%);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 20px 30px;
+            margin-bottom: 0;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 25px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: #f0f2ff;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            pointer-events: none;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            max-height: none;
+            overflow: visible;
+        }
+
+        .tabs-wrapper {
+            position: relative;
+        }
+
+        .sub-tab-navigation {
+            display: flex;
+            gap: 10px;
+            background: #f9fafb;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 15px 30px;
+            margin: 0;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .sub-tab-btn {
+            padding: 8px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            color: #6b7280;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .sub-tab-btn:hover {
+            color: #667eea;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .sub-tab-btn.active {
+            color: white;
+            border-color: #667eea;
+            background: #667eea;
+        }
+
+        .sub-tab-content {
+            display: none;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .sub-tab-content.active {
+            display: block;
+        }
+
+        #logoutBtn:hover {
+            background: rgba(255,255,255,0.25) !important;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 1024px) {
+            .header h1 {
+                font-size: 2em;
+                padding-right: 50px; /* Make room for hamburger */
+            }
+
+            /* Hide desktop nav, show hamburger and mobile menu */
+            .header-nav {
+                display: none;
+            }
+
+            .hamburger {
+                display: flex;
+            }
+
+            .mobile-menu {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .keys-table {
+                font-size: 12px;
+            }
+
+            .keys-table th,
+            .keys-table td {
+                padding: 8px;
+            }
+
+            .btn-small {
+                display: block;
+                margin: 5px 0;
+                width: 100%;
+            }
+        }
+
+        /* Password Strength Meter Styles */
+        .password-strength-container {
+            margin-top: 8px;
+        }
+
+        .password-strength-bar {
+            height: 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .password-strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .password-strength-fill.strength-0 { width: 0%; background-color: #e0e0e0; }
+        .password-strength-fill.strength-1 { width: 25%; background-color: #ef4444; }
+        .password-strength-fill.strength-2 { width: 50%; background-color: #f59e0b; }
+        .password-strength-fill.strength-3 { width: 75%; background-color: #10b981; }
+        .password-strength-fill.strength-4 { width: 100%; background-color: #059669; }
+
+        .password-strength-text {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .password-strength-text.strength-0 { color: #999; }
+        .password-strength-text.strength-1 { color: #ef4444; font-weight: 600; }
+        .password-strength-text.strength-2 { color: #f59e0b; font-weight: 600; }
+        .password-strength-text.strength-3 { color: #10b981; font-weight: 600; }
+        .password-strength-text.strength-4 { color: #059669; font-weight: 600; }
+
+        .password-requirements {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+
+        .password-requirements ul {
+            margin: 5px 0 0 20px;
+            padding: 0;
+        }
+
+        .password-requirements li {
+            margin: 2px 0;
+        }
+
+        .req-met { color: #10b981; }
+        .req-unmet { color: #ef4444; }
+    </style>
+
+    <!-- Password Strength Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js" integrity="sha512-TZlMGFY9xKj38t/5m2FzJ+RM/aD5alMHDe26p0mYUMoCF5G7ibfHUQILq0qQPV3wlsnCwL+TPRNK4vIWGLOkUQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 ModemCheck Admin Dashboard</h1>
+
+            <!-- Desktop navigation -->
+            <div class="header-nav">
+                <button id="viewerBtn" class="header-nav-btn viewer">📊 Viewer</button>
+                <button id="logoutBtn" class="header-nav-btn">Logout</button>
+            </div>
+
+            <!-- Mobile hamburger -->
+            <div class="hamburger" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <!-- Mobile menu overlay -->
+        <div class="menu-overlay" onclick="closeMobileMenu()"></div>
+
+        <!-- Mobile slide-out menu -->
+        <div class="mobile-menu">
+            <button id="viewerBtnMobile" class="viewer">📊 Viewer</button>
+            <button id="logoutBtnMobile">Logout</button>
+        </div>
+
+        <div id="message" class="message"></div>
+        <div id="toast-container"></div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button id="configGenTab" class="tab-btn active" onclick="showTab('configGen')">Config Generator</button>
+            <button id="apiKeysTab" class="tab-btn" onclick="showTab('apiKeys')">API Keys</button>
+            <button id="dataManagementTab" class="tab-btn" onclick="showTab('dataManagement')">Data Management</button>
+            <button id="clientLogsTab" class="tab-btn" onclick="showTab('clientLogs')">Client Submissions</button>
+            <button id="usersTab" class="tab-btn" onclick="showTab('users')">User Management</button>
+            <button id="userActivityTab" class="tab-btn" onclick="showTab('userActivity')">User Activity</button>
+        </div>
+
+        <div class="tabs-wrapper">
+        <!-- API Keys Section -->
+        <div id="apiKeysSection" class="tab-content">
+            <div class="action-section">
+                <h2>Create New API Key</h2>
+            <div class="form-group">
+                <label for="keyName">Key Name / Description</label>
+                <input type="text" id="keyName" placeholder="e.g., Home Router, Office Modem, etc.">
+            </div>
+            <button class="btn btn-primary" onclick="createKey()">Create API Key</button>
+        </div>
+
+            <div class="keys-section">
+                <h2>Existing API Keys</h2>
+                <div id="keysContainer">
+                    <div class="loading">Loading API keys...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div id="dataManagementSection" class="tab-content">
+            <!-- Sub-tab Navigation -->
+            <div class="sub-tab-navigation">
+                <button id="bulkUploadSubTab" class="sub-tab-btn active" onclick="showDataManagementSubTab('bulkUpload')">Bulk Upload</button>
+                <button id="bulkDownloadSubTab" class="sub-tab-btn" onclick="showDataManagementSubTab('bulkDownload')">Bulk Download</button>
+                <button id="deleteChecksSubTab" class="sub-tab-btn" onclick="showDataManagementSubTab('deleteChecks')">Delete Checks</button>
+            </div>
+
+            <!-- Bulk Upload Sub-tab -->
+            <div id="bulkUploadContent" class="sub-tab-content active">
+                <div class="action-section">
+                    <h2>Bulk Upload Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Upload multiple JSON check files at once. Files will be parsed and inserted into the database.</p>
+
+                    <div class="form-group">
+                        <label for="bulkUploadFiles">Select JSON Files</label>
+                        <input type="file" id="bulkUploadFiles" multiple accept=".json" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
+                        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                            <strong>Tip:</strong> You can select multiple files at once. Each file should be a valid modem check JSON file.
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="bulkUploadChecks()">Upload Files</button>
+
+                    <div id="bulkUploadProgress" style="display: none; margin-top: 20px;">
+                        <div style="background: #f3f4f6; border-radius: 8px; padding: 15px;">
+                            <div style="font-weight: 500; margin-bottom: 10px;">Upload Progress:</div>
+                            <div id="bulkUploadStatus"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Download Sub-tab -->
+            <div id="bulkDownloadContent" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>Bulk Download Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Download multiple check files as a ZIP archive. Select filters to narrow down your download.</p>
+
+                    <div class="form-group">
+                        <label for="downloadModemId">Modem ID (optional - leave empty for all)</label>
+                        <select id="downloadModemId" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
+                            <option value="">All Modems</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label for="downloadStartDate">Start Date (optional)</label>
+                            <input type="date" id="downloadStartDate">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="downloadEndDate">End Date (optional)</label>
+                            <input type="date" id="downloadEndDate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="downloadLimit">Maximum Files (optional)</label>
+                        <input type="number" id="downloadLimit" placeholder="Leave empty for all files" min="1">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="bulkDownloadChecks()">Download as ZIP</button>
+                </div>
+            </div>
+
+            <!-- Delete Checks Sub-tab -->
+            <div id="deleteChecksContent" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>Delete Modem Checks</h2>
+                    <p style="color: #666; margin-bottom: 20px;">View and delete individual checks or bulk delete all checks for a specific modem.</p>
+
+                    <div class="form-group">
+                        <label for="deleteModemIdFilter">Filter by Modem ID</label>
+                        <select id="deleteModemIdFilter" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;" onchange="loadChecksForDeletion()">
+                            <option value="">Select a modem...</option>
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label for="deleteStartDate">Start Date (optional)</label>
+                            <input type="date" id="deleteStartDate" onchange="loadChecksForDeletion()">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="deleteEndDate">End Date (optional)</label>
+                            <input type="date" id="deleteEndDate" onchange="loadChecksForDeletion()">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="loadChecksForDeletion()">Load Checks</button>
+                        <button class="btn" onclick="deleteAllChecksForModem()" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">Delete All for This Modem</button>
+                    </div>
+
+                    <div id="checksListContainer">
+                        <div class="empty-state">Select a modem and click "Load Checks" to view checks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Section -->
+        <div id="usersSection" class="tab-content">
+            <div class="action-section">
+                <h2>Create New User</h2>
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" placeholder="Enter username" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter password" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
+                    <div class="password-strength-container" id="newPassword-strength-container" style="display: none;">
+                        <div class="password-strength-bar">
+                            <div class="password-strength-fill" id="newPassword-strength-bar"></div>
+                        </div>
+                        <div class="password-strength-text" id="newPassword-strength-text"></div>
+                    </div>
+                    <div class="password-requirements" id="newPassword-requirements">
+                        <strong>Password Requirements:</strong>
+                        <ul>
+                            <li id="newPassword-req-length" class="req-unmet">At least 12 characters</li>
+                            <li id="newPassword-req-uppercase" class="req-unmet">One uppercase letter</li>
+                            <li id="newPassword-req-lowercase" class="req-unmet">One lowercase letter</li>
+                            <li id="newPassword-req-digit" class="req-unmet">One digit</li>
+                            <li id="newPassword-req-special" class="req-unmet">One special character (!@#$%^&*(),.?\":{}|<>)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="newUserRole">Role</label>
+                    <select id="newUserRole" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+                        <option value="basic">Basic (Viewer only)</option>
+                        <option value="elevated">Elevated (Limited admin access)</option>
+                        <option value="admin" id="adminRoleOption" style="display: none;">Admin (Full system access)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="createUser()">Create User</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Existing Users</h2>
+                <div id="usersContainer">
+                    <div class="loading">Loading users...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Activity Audit Log Section -->
+        <div id="userActivitySection" class="tab-content">
+            <div class="action-section">
+                <h2>User Activity Audit Log</h2>
+                <p class="subtitle">Track all user actions including logins, logouts, and administrative activities</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Actions</div>
+                        <div id="totalActions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Actions</div>
+                        <div id="failedActions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Users</div>
+                        <div id="uniqueUsers" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="activityUsername">Filter by Username</label>
+                        <input type="text" id="activityUsername" placeholder="All users">
+                    </div>
+                    <div class="form-group">
+                        <label for="activityType">Filter by Action Type</label>
+                        <select id="activityType">
+                            <option value="">All actions</option>
+                            <option value="login">Login</option>
+                            <option value="logout">Logout</option>
+                            <option value="view_checks">View Checks</option>
+                            <option value="change_password">Password Change</option>
+                            <option value="logout_user">Logout User</option>
+                            <option value="create_user">Create User</option>
+                            <option value="delete_user">Delete User</option>
+                            <option value="create_api_key">Create API Key</option>
+                            <option value="delete_api_key">Delete API Key</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="activityStartDate">Start Date</label>
+                        <input type="date" id="activityStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="activityEndDate">End Date</label>
+                        <input type="date" id="activityEndDate">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadUserActivity()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearActivityFilters()">Clear Filters</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Activity Log (<span id="activityCount">0</span> entries)</h2>
+                <div id="userActivityContainer">
+                    <div class="loading">Loading activity log...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Submission Audit Log Section -->
+        <div id="clientLogsSection" class="tab-content">
+            <div class="action-section">
+                <h2>Client Submission Audit Log</h2>
+                <p class="subtitle">Monitor all check data submissions from client devices</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total Submissions</div>
+                        <div id="totalSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Submissions</div>
+                        <div id="failedSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Modems</div>
+                        <div id="uniqueModems" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <div style="font-size: 0.9em; opacity: 0.9;">Unique API Keys</div>
+                        <div id="uniqueApiKeys" style="font-size: 2em; font-weight: bold;">-</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="clientModemId">Filter by Modem ID</label>
+                        <input type="text" id="clientModemId" placeholder="All modems">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientIp">Filter by IP Address</label>
+                        <input type="text" id="clientIp" placeholder="All IPs">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientStartDate">Start Date</label>
+                        <input type="date" id="clientStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientEndDate">End Date</label>
+                        <input type="date" id="clientEndDate">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadClientLogs()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearClientFilters()">Clear Filters</button>
+            </div>
+
+            <div class="keys-section">
+                <h2>Submission Log (<span id="clientCount">0</span> entries)</h2>
+                <div id="clientLogsContainer">
+                    <div class="loading">Loading submission log...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Generator Section -->
+        <div id="configGenSection" class="tab-content active">
+            <!-- Sub-tab Navigation -->
+            <div class="sub-tab-navigation">
+                <button id="configGenGeneratorSubTab" class="sub-tab-btn active" onclick="showConfigSubTab('generator')">Generator</button>
+                <button id="configGenDefaultsSubTab" class="sub-tab-btn" onclick="showConfigSubTab('defaults')">Defaults</button>
+            </div>
+
+            <!-- Generator Sub-tab -->
+            <div id="configGenGeneratorSection" class="sub-tab-content active">
+                <div class="action-section">
+                    <h2>🔧 ModemCheck Configuration Generator</h2>
+                    <p class="subtitle">Create a config.json file for the ModemCheck program</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <!-- Left Column -->
+                        <div>
+                        <h3 style="margin-bottom: 15px; color: #667eea;">Basic Settings</h3>
+                        
+                        <div class="form-group">
+                            <label for="cfgModemAddress">Modem Address</label>
+                            <input type="text" id="cfgModemAddress" value="autodetect" placeholder="autodetect or IP address">
+                            <small style="color: #6b7280;">Use "autodetect" or specify modem IP (e.g., 192.168.100.1)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgIgnitePassword">Ignite/Xfinity Password</label>
+                            <input type="text" id="cfgIgnitePassword" value="password" placeholder="password">
+                            <small style="color: #6b7280;">Password for Rogers Ignite or Xfinity modems</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgSilent"> Silent Mode
+                            </label>
+                            <small style="color: #6b7280; display: block; margin-left: 25px;">Suppress terminal output</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgNoLogs"> Disable Logs
+                            </label>
+                            <small style="color: #6b7280; display: block; margin-left: 25px;">Prevent local log file creation</small>
+                        </div>
+
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Speed Test Settings</h3>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgSpeedTestEnabled" checked> Enable Speed Tests
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Uses public Ookla speed test servers. Enabled by default.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgSpeedTestInterval">Speed Test Interval</label>
+                            <input type="number" id="cfgSpeedTestInterval" value="1" min="1" placeholder="1">
+                            <small style="color: #6b7280;">Run speed test every N executions (1 = every time). If a test fails, it will retry on the next run.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgAutoUpdateEnabled" checked> Enable Automatic Updates
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Automatically checks GitHub for updates and installs them. Enabled by default.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgUpdateChannel">Update Channel</label>
+                            <select id="cfgUpdateChannel">
+                                <option value="stable" selected>Stable (production releases only)</option>
+                                <option value="beta">Beta (pre-release builds)</option>
+                                <option value="test">Test (same as beta, for testing)</option>
+                            </select>
+                            <small style="color: #6b7280;">
+                                <strong>Stable:</strong> Only production releases (e.g., v6.0.0)<br>
+                                <strong>Beta/Test:</strong> Pre-release versions (e.g., v6.1.0-beta.1)
+                            </small>
+                        </div>
+
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Network Diagnostics</h3>
+
+                        <div class="form-group">
+                            <label for="cfgPingCount">Ping Test Count</label>
+                            <input type="number" id="cfgPingCount" value="25" min="1" max="100" placeholder="25">
+                            <small style="color: #6b7280;">Number of ICMP ping packets to send (default: 25)</small>
+                        </div>
+
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Local File Management</h3>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgLocalCleanupEnabled" checked> Enable Local Cleanup
+                            </label>
+                            <small style="display: block; margin-top: 5px; color: #666;">
+                                Automatically delete old result files based on retention policy. Enabled by default.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgLocalRetentionDays">Local Retention Days</label>
+                            <input type="number" id="cfgLocalRetentionDays" value="90" min="1" placeholder="90">
+                            <small style="color: #6b7280;">Number of days to keep local result files (default: 90)</small>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div>
+                        <h3 style="margin-bottom: 15px; color: #667eea;">Cloud Upload Settings</h3>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="cfgEnableCloud" onchange="toggleCloudFields()"> Enable Cloud Upload
+                            </label>
+                            <small style="color: #6b7280; display: block; margin-left: 25px;">Upload check results to cloud server</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgCloudHost">Cloud Host</label>
+                            <input type="text" id="cfgCloudHost" placeholder="e.g., modemcheck.example.com" disabled>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgCloudPort">Cloud Port</label>
+                            <input type="text" id="cfgCloudPort" value="443" placeholder="443" disabled>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cfgCloudPath">Cloud Path (optional)</label>
+                            <input type="text" id="cfgCloudPath" value="" placeholder="/api/upload or leave empty" disabled>
+                            <small style="color: #6b7280;">Upload endpoint path - leave empty to use root / (recommended)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Cloud API Key</label>
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <button class="btn btn-primary" id="generateKeyBtn" onclick="generateNewAPIKey()" style="flex: 1;" disabled>Generate New Key</button>
+                                <button class="btn btn-primary" id="selectKeyBtn" onclick="selectExistingAPIKey()" style="flex: 1;" disabled>Select Existing</button>
+                            </div>
+                            <div id="selectedKeyDisplay" style="display: none; background: #f3f4f6; padding: 10px; border-radius: 5px; border: 2px solid #e0e0e0;">
+                                <small style="color: #6b7280;">Using Key:</small>
+                                <div id="selectedKeyName" style="font-weight: 500; color: #333; margin-top: 5px;"></div>
+                            </div>
+                            <input type="text" id="cfgCloudAPIKey" placeholder="Paste existing API key, generate new one, or select existing" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; font-family: monospace; font-size: 12px;" disabled>
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">Generate a new key, select an existing one, or paste manually</small>
+                        </div>
+
+
+                        <h3 style="margin: 25px 0 15px 0; color: #667eea;">Preview & Download</h3>
+                        
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 15px; max-height: 400px; overflow-y: auto;">
+                            <pre id="configPreview" style="margin: 0; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word;">{ }</pre>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="updateConfigPreview()" style="flex: 1;">Update Preview</button>
+                            <button class="btn btn-primary" onclick="downloadConfig()" style="flex: 1;">📥 Download config.json</button>
+                        </div>
+
+                        <div style="margin-top: 15px; padding: 12px; background: #f0f2ff; border-left: 4px solid #667eea; border-radius: 4px;">
+                            <strong>💡 Tip:</strong> Place the downloaded config.json file in the same directory as your modem-check binary and it will be loaded automatically!
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- Defaults Sub-tab -->
+            <div id="configGenDefaultsSection" class="sub-tab-content">
+                <div class="action-section">
+                    <h2>⚙️ Configuration Defaults</h2>
+                    <p class="subtitle">Set default values for the configuration generator. These values will be pre-filled when creating new configurations.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <!-- Left Column -->
+                        <div>
+                            <h3 style="margin-bottom: 15px; color: #667eea;">Basic Settings Defaults</h3>
+
+                            <div class="form-group">
+                                <label for="defaultModemAddress">Default Modem Address</label>
+                                <input type="text" id="defaultModemAddress" value="autodetect" placeholder="autodetect or IP address">
+                                <small style="color: #6b7280;">Default value for modem address</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultIgnitePassword">Default Ignite/Xfinity Password</label>
+                                <input type="text" id="defaultIgnitePassword" value="password" placeholder="password">
+                                <small style="color: #6b7280;">Default password for Rogers Ignite or Xfinity modems</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultSilent"> Silent Mode (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultNoLogs"> Disable Logs (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultSpeedTestEnabled" checked> Enable Speed Tests (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultSpeedTestInterval">Default Speed Test Interval</label>
+                                <input type="number" id="defaultSpeedTestInterval" value="1" min="1" placeholder="1">
+                                <small style="color: #6b7280;">Run speed test every N executions</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultPingCount">Default Ping Count</label>
+                                <input type="number" id="defaultPingCount" value="25" min="1" max="100" placeholder="25">
+                                <small style="color: #6b7280;">Number of ping packets to send</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultAutoUpdateEnabled" checked> Enable Automatic Updates (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultUpdateChannel">Default Update Channel</label>
+                                <select id="defaultUpdateChannel">
+                                    <option value="stable" selected>Stable</option>
+                                    <option value="beta">Beta</option>
+                                    <option value="test">Test</option>
+                                </select>
+                                <small style="color: #6b7280;">Update channel for new configs</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultLocalCleanupEnabled" checked> Enable Local Cleanup (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultLocalRetentionDays">Default Local Retention Days</label>
+                                <input type="number" id="defaultLocalRetentionDays" value="90" min="1" placeholder="90">
+                                <small style="color: #6b7280;">Days to keep local files</small>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div>
+                            <h3 style="margin-bottom: 15px; color: #667eea;">Cloud Upload Defaults</h3>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="defaultEnableCloud"> Enable Cloud Upload (default)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultCloudHost">Default Cloud Host</label>
+                                <input type="text" id="defaultCloudHost" placeholder="e.g., modemcheck.example.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultCloudPort">Default Cloud Port</label>
+                                <input type="text" id="defaultCloudPort" value="443" placeholder="443">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="defaultCloudPath">Default Cloud Path</label>
+                                <input type="text" id="defaultCloudPath" value="" placeholder="Leave empty (recommended)">
+                                <small style="color: #6b7280;">Upload endpoint path - leave empty to use root / (works without path)</small>
+                            </div>
+
+                            <div style="margin-top: 30px;">
+                                <button class="btn btn-primary" onclick="saveConfigDefaults()" style="margin-right: 10px;">✅ Apply to Generator</button>
+                                <button class="btn btn-secondary" onclick="loadConfigDefaults()">🔄 Reset to Defaults</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tabs-wrapper -->
+    </div>
+
+    <!-- Modal for showing new key -->
+    <div id="newKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>API Key Created Successfully!</h2>
+            </div>
+            <div>
+                <p style="margin-bottom: 15px; color: #374151;">
+                    <strong>Important:</strong> Copy this API key now. You won't be able to see it again!
+                </p>
+                <div class="key-display" id="newKeyDisplay"></div>
+                <button class="copy-btn" onclick="copyNewKey()">Copy to Clipboard</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeNewKeyModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing key -->
+    <div id="editKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit API Key</h2>
+            </div>
+            <div class="form-group">
+                <label for="editKeyName">Key Name / Description</label>
+                <input type="text" id="editKeyName">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="editKeyActive"> Active
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveKeyEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        const USER_API_BASE = '/api/users';
+        const DATA_MGMT_API = '/api/data';
+        const DB_API = '/api/db';
+        let currentEditKey = null;
+        let newKeyValue = null;
+        let currentUserRole = null;
+        let csrfToken = null;
+
+        // Password Strength Checking
+        function checkPasswordRequirements(password, prefix) {
+            const requirements = {
+                length: password.length >= 12,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                digit: /\d/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+
+            // Update requirement indicators
+            if (document.getElementById(prefix + '-req-length')) {
+                document.getElementById(prefix + '-req-length').className = requirements.length ? 'req-met' : 'req-unmet';
+                document.getElementById(prefix + '-req-uppercase').className = requirements.uppercase ? 'req-met' : 'req-unmet';
+                document.getElementById(prefix + '-req-lowercase').className = requirements.lowercase ? 'req-met' : 'req-unmet';
+                document.getElementById(prefix + '-req-digit').className = requirements.digit ? 'req-met' : 'req-unmet';
+                document.getElementById(prefix + '-req-special').className = requirements.special ? 'req-met' : 'req-unmet';
+            }
+
+            return Object.values(requirements).every(Boolean);
+        }
+
+        function updatePasswordStrength(password, prefix) {
+            const strengthContainer = document.getElementById(prefix + '-strength-container');
+            const strengthBar = document.getElementById(prefix + '-strength-bar');
+            const strengthText = document.getElementById(prefix + '-strength-text');
+
+            if (!password || password.length === 0) {
+                if (strengthContainer) strengthContainer.style.display = 'none';
+                return;
+            }
+
+            if (strengthContainer) strengthContainer.style.display = 'block';
+
+            // Check requirements first
+            const meetsRequirements = checkPasswordRequirements(password, prefix);
+
+            // Use zxcvbn to calculate strength (0-4 scale)
+            let score = 0;
+            if (typeof zxcvbn !== 'undefined') {
+                try {
+                    const result = zxcvbn(password);
+                    score = result.score;
+                } catch (e) {
+                    console.error('zxcvbn error:', e);
+                    // Fallback to basic strength calculation
+                    score = calculateBasicStrength(password);
+                }
+            } else {
+                // zxcvbn not loaded yet, use basic calculation
+                score = calculateBasicStrength(password);
+            }
+
+            // Update strength bar
+            if (strengthBar) {
+                strengthBar.className = 'password-strength-fill strength-' + score;
+            }
+
+            // Update strength text
+            const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+            let strengthMessage = strengthLabels[score];
+
+            if (!meetsRequirements && score > 0) {
+                strengthMessage += ' (does not meet requirements)';
+            }
+
+            if (strengthText) {
+                strengthText.textContent = strengthMessage;
+                strengthText.className = 'password-strength-text strength-' + score;
+            }
+        }
+
+        // Fallback strength calculation when zxcvbn is not available
+        function calculateBasicStrength(password) {
+            let score = 0;
+
+            // Length scoring
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (password.length >= 16) score++;
+
+            // Character variety scoring
+            const hasLower = /[a-z]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            const hasDigit = /\d/.test(password);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+            const varietyCount = [hasLower, hasUpper, hasDigit, hasSpecial].filter(Boolean).length;
+            if (varietyCount >= 3) score++;
+
+            // Cap at 4
+            return Math.min(score, 4);
+        }
+
+        function setupPasswordStrengthMeter(inputId, prefix) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', function() {
+                    updatePasswordStrength(this.value, prefix);
+                });
+            }
+        }
+
+        // Check authentication
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/session_check', {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+
+                const data = await response.json();
+
+                if (!data.authenticated) {
+                    window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+
+                // Store CSRF token
+                csrfToken = data.csrf_token;
+
+                // Enforce role-based access control
+                if (data.role !== 'admin' && data.role !== 'elevated') {
+                    // Basic users cannot access admin dashboard
+                    // Redirect to login with error indication
+                    window.location.href = '/login?error=access_denied&return=' + encodeURIComponent(window.location.pathname);
+                    return false;
+                }
+
+                // Store the user's role for later use
+                currentUserRole = data.role;
+
+                // Hide elements based on role
+                applyRoleBasedVisibility();
+
+                // Show the page content now that auth is verified
+                document.querySelector('.container').classList.add('authenticated');
+
+                // Check if password change is required
+                if (data.must_change_password || sessionStorage.getItem('must_change_password') === 'true') {
+                    sessionStorage.removeItem('must_change_password');
+                    showPasswordChangeDialog();
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
+                return false;
+            }
+        }
+
+        // Apply role-based visibility
+        function applyRoleBasedVisibility() {
+            if (currentUserRole === 'admin') {
+                // Show admin option in user creation dropdown
+                const adminOption = document.getElementById('adminRoleOption');
+                if (adminOption) adminOption.style.display = 'block';
+            } else {
+                // Hide User Management and User Activity tabs for non-admin users (elevated and basic)
+                const usersTab = document.getElementById('usersTab');
+                const userActivityTab = document.getElementById('userActivityTab');
+                if (usersTab) usersTab.style.display = 'none';
+                if (userActivityTab) userActivityTab.style.display = 'none';
+
+                // Hide Config Defaults sub-tab for non-admin users
+                const defaultsSubTab = document.getElementById('configGenDefaultsSubTab');
+                if (defaultsSubTab) defaultsSubTab.style.display = 'none';
+
+                // Hide the config sub-tab navigation for non-admin users (since there's only one option)
+                const configSubTabNav = document.querySelector('#configGenSection .sub-tab-navigation');
+                if (configSubTabNav) configSubTabNav.style.display = 'none';
+            }
+        }
+
+        // Show password change dialog
+        function showPasswordChangeDialog() {
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            dialog.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password Required</h2>
+                    <p style="margin: 0 0 20px 0; color: #666;">You must change your password before continuing.</p>
+                    <div id="pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 12 characters)</label>
+                        <input type="password" id="new-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                        <div class="password-strength-container" id="dialog-strength-container" style="display: none; margin-top: 8px;">
+                            <div class="password-strength-bar">
+                                <div class="password-strength-fill" id="dialog-strength-bar"></div>
+                            </div>
+                            <div class="password-strength-text" id="dialog-strength-text"></div>
+                        </div>
+                        <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                            <strong>Password Requirements:</strong>
+                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                <li id="dialog-req-length" class="req-unmet">At least 12 characters</li>
+                                <li id="dialog-req-uppercase" class="req-unmet">One uppercase letter</li>
+                                <li id="dialog-req-lowercase" class="req-unmet">One lowercase letter</li>
+                                <li id="dialog-req-digit" class="req-unmet">One digit</li>
+                                <li id="dialog-req-special" class="req-unmet">One special character (!@#$%^&*(),.?\":{}|<>)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Confirm Password</label>
+                        <input type="password" id="confirm-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                    </div>
+                    <button id="change-pwd-btn" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+
+            // Setup password strength meter for dialog
+            setupPasswordStrengthMeter('new-password', 'dialog');
+
+            document.getElementById('change-pwd-btn').addEventListener('click', async () => {
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                const errorDiv = document.getElementById('pwd-error');
+
+                errorDiv.style.display = 'none';
+
+                // Check if password meets all requirements
+                const meetsRequirements = checkPasswordRequirements(newPassword, 'dialog');
+                if (!meetsRequirements) {
+                    errorDiv.textContent = 'Password does not meet all requirements';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    errorDiv.textContent = 'Passwords do not match';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/auth/change_own_password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            new_password: newPassword
+                        }),
+                        credentials: 'same-origin'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.body.removeChild(dialog);
+                        showMessage('Password changed successfully!', 'success');
+                    } else {
+                        errorDiv.textContent = data.error || 'Failed to change password';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                }
+            });
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Remove active class from all tab content sections
+            document.querySelectorAll('.tab-content').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab and activate its button
+            if (tabName === 'apiKeys') {
+                document.getElementById('apiKeysSection').classList.add('active');
+                document.getElementById('apiKeysTab').classList.add('active');
+            } else if (tabName === 'users') {
+                document.getElementById('usersSection').classList.add('active');
+                document.getElementById('usersTab').classList.add('active');
+                loadUsers();
+            } else if (tabName === 'userActivity') {
+                document.getElementById('userActivitySection').classList.add('active');
+                document.getElementById('userActivityTab').classList.add('active');
+                loadUserActivity();
+            } else if (tabName === 'clientLogs') {
+                document.getElementById('clientLogsSection').classList.add('active');
+                document.getElementById('clientLogsTab').classList.add('active');
+                loadClientLogs();
+            } else if (tabName === 'configGen') {
+                document.getElementById('configGenSection').classList.add('active');
+                document.getElementById('configGenTab').classList.add('active');
+                // Show the generator sub-tab by default
+                showConfigSubTab('generator');
+                // Load defaults and apply to generator
+                loadAndApplyDefaults();
+            } else if (tabName === 'dataManagement') {
+                document.getElementById('dataManagementSection').classList.add('active');
+                document.getElementById('dataManagementTab').classList.add('active');
+                // Initialize Data Management tab
+                initDataManagement();
+            }
+        }
+
+        // Config Generator Sub-tab switching
+        function showConfigSubTab(subTabName) {
+            // Hide all sub-tab content sections
+            document.getElementById('configGenGeneratorSection').classList.remove('active');
+            document.getElementById('configGenDefaultsSection').classList.remove('active');
+
+            // Remove active class from all sub-tab buttons
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected sub-tab and activate its button
+            if (subTabName === 'generator') {
+                document.getElementById('configGenGeneratorSection').classList.add('active');
+                document.getElementById('configGenGeneratorSubTab').classList.add('active');
+                updateConfigPreview();
+            } else if (subTabName === 'defaults') {
+                document.getElementById('configGenDefaultsSection').classList.add('active');
+                document.getElementById('configGenDefaultsSubTab').classList.add('active');
+                loadConfigDefaults();
+            }
+        }
+
+        // Load keys on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+
+            // Setup logout buttons (desktop and mobile)
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('logoutBtnMobile').addEventListener('click', () => {
+                closeMobileMenu();
+                logout();
+            });
+
+            // Setup viewer buttons (desktop and mobile)
+            document.getElementById('viewerBtn').addEventListener('click', () => {
+                window.location.href = '/viewer';
+            });
+            document.getElementById('viewerBtnMobile').addEventListener('click', () => {
+                closeMobileMenu();
+                window.location.href = '/viewer';
+            });
+
+            // Debug: Check if zxcvbn loaded
+            console.log('zxcvbn loaded:', typeof zxcvbn !== 'undefined');
+
+            // Setup password strength meters
+            setupPasswordStrengthMeter('newPassword', 'newPassword');
+
+            // Show Config Generator tab by default
+            showTab('configGen');
+
+            loadKeys();
+        });
+
+        function showMessage(text, type = 'info') {
+            const container = document.getElementById('toast-container');
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            // Icon based on type
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type] || icons.info}</span>
+                <span class="toast-message">${escapeHtml(text)}</span>
+                <span class="toast-close">×</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Auto-dismiss after 5 seconds
+            const autoDismiss = setTimeout(() => dismissToast(toast), 5000);
+
+            // Click to dismiss
+            toast.addEventListener('click', () => {
+                clearTimeout(autoDismiss);
+                dismissToast(toast);
+            });
+        }
+
+        function dismissToast(toast) {
+            toast.classList.add('hiding');
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        async function loadKeys() {
+            try {
+                const response = await fetch(`${API_BASE}/api_keys`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load keys');
+                }
+
+                displayKeys(data.api_keys);
+            } catch (error) {
+                document.getElementById('keysContainer').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading API keys: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayKeys(keys) {
+            const container = document.getElementById('keysContainer');
+
+            if (keys.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No API keys found. Create one above to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Name</th>
+                            <th>Created</th>
+                            <th>Last Used</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            keys.forEach(key => {
+                const createdDate = new Date(key.created_at).toLocaleString();
+                const lastUsed = key.last_used
+                    ? new Date(key.last_used).toLocaleString()
+                    : 'Never';
+                const statusClass = key.is_active ? 'status-active' : 'status-inactive';
+                const statusText = key.is_active ? 'Active' : 'Inactive';
+
+                // Enable/disable button - available to both admin and elevated
+                const toggleButtonClass = key.is_active ? 'btn-warning' : 'btn-secondary';
+                const toggleButtonText = key.is_active ? 'Disable' : 'Enable';
+                const toggleButton = `<button class="btn ${toggleButtonClass} btn-small" onclick='toggleActive("${key.api_key_preview}", "${escapeHtml(key.name)}", ${key.is_active})'>${toggleButtonText}</button>`;
+
+                // Delete button - only for admins
+                const deleteButton = currentUserRole === 'admin'
+                    ? `<button class="btn btn-danger btn-small" onclick='deleteKey("${key.api_key_preview}", "${escapeHtml(key.name)}")'>Delete</button>`
+                    : '';
+
+                html += `
+                    <tr>
+                        <td><span class="key-preview">${key.api_key_preview}</span></td>
+                        <td>${escapeHtml(key.name)}</td>
+                        <td>${createdDate}</td>
+                        <td>${lastUsed}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <button class="btn btn-secondary btn-small" onclick='copyKey("${key.api_key_preview}")'>Copy Key</button>
+                            ${toggleButton}
+                            ${deleteButton}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        async function createKey() {
+            const name = document.getElementById('keyName').value.trim();
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api_keys`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        name: name
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to create key');
+                }
+
+                // Show the new key in a modal
+                newKeyValue = data.api_key;
+                document.getElementById('newKeyDisplay').textContent = data.api_key;
+                document.getElementById('newKeyModal').classList.add('show');
+
+                // Clear the input
+                document.getElementById('keyName').value = '';
+
+                // Reload keys
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function copyNewKey() {
+            copyToClipboard(newKeyValue);
+            showMessage('API key copied to clipboard!', 'success');
+        }
+
+        function closeNewKeyModal() {
+            document.getElementById('newKeyModal').classList.remove('show');
+            newKeyValue = null;
+        }
+
+        function editKey(key) {
+            currentEditKey = key.full_key;
+            document.getElementById('editKeyName').value = key.name;
+            document.getElementById('editKeyActive').checked = key.active;
+            document.getElementById('editKeyModal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editKeyModal').classList.remove('show');
+            currentEditKey = null;
+        }
+
+        async function saveKeyEdit() {
+            const name = document.getElementById('editKeyName').value.trim();
+            const active = document.getElementById('editKeyActive').checked;
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'update',
+                        key: currentEditKey,
+                        name: name,
+                        active: active
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to update key');
+                }
+
+                showMessage('API key updated successfully', 'success');
+                closeEditModal();
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function toggleActive(key, name, currentStatus) {
+            const newStatus = !currentStatus;
+            const action = newStatus ? 'enable' : 'disable';
+
+            if (!confirm(`Are you sure you want to ${action} the API key "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api_keys/toggle`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        api_key_preview: key,
+                        is_active: newStatus
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || `Failed to ${action} key`);
+                }
+
+                showMessage(`API key ${action}d successfully`, 'success');
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteKey(key, name) {
+            if (!confirm(`Are you sure you want to delete the API key "${name}"?\n\nThis action cannot be undone and any devices using this key will stop working.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api_keys`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        api_key_preview: key
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete key');
+                }
+
+                showMessage('API key deleted successfully', 'success');
+                loadKeys();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function copyKey(keyPreview) {
+            try {
+                // Fetch the full API key from the server
+                const response = await fetch(`${API_BASE}/api_keys/reveal/${encodeURIComponent(keyPreview)}`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (data.success && data.api_key) {
+                    copyToClipboard(data.api_key);
+                    showMessage('API key copied to clipboard!', 'success');
+                } else {
+                    showMessage('Failed to retrieve API key', 'error');
+                }
+            } catch (error) {
+                console.error('Error copying key:', error);
+                showMessage('Error copying API key', 'error');
+            }
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text);
+            } else {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                }
+                textArea.remove();
+            }
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // User Management Functions
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${USER_API_BASE}`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load users');
+                }
+
+                displayUsers(data.users);
+            } catch (error) {
+                document.getElementById('usersContainer').innerHTML = `
+                    <div class="empty-state">
+                        <p>Error loading users: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersContainer');
+
+            if (!users || users.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No users found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const userTable = `
+                <table class="keys-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Must Change Password</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => {
+                            const isAdminAccount = user.username === 'admin';
+                            const roleSelectDisabled = isAdminAccount ? 'disabled' : '';
+                            const deleteButtonHtml = isAdminAccount
+                                ? '<button class="btn btn-secondary btn-small" disabled title="Cannot delete admin account">Delete</button>'
+                                : `<button class="btn btn-danger btn-small" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>`;
+
+                            // Only show admin option if current user is admin
+                            const adminRoleOption = currentUserRole === 'admin'
+                                ? `<option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>`
+                                : '';
+
+                            return `
+                            <tr>
+                                <td><strong>${escapeHtml(user.username)}</strong></td>
+                                <td>
+                                    <select class="role-select" data-username="${escapeHtml(user.username)}" data-current-role="${user.role}" onchange="handleRoleChange(event)" ${roleSelectDisabled}>
+                                        <option value="basic" ${user.role === 'basic' ? 'selected' : ''}>Basic</option>
+                                        <option value="elevated" ${user.role === 'elevated' ? 'selected' : ''}>Elevated</option>
+                                        ${adminRoleOption}
+                                    </select>
+                                </td>
+                                <td>${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</td>
+                                <td>${user.must_change_password ? 'Yes' : 'No'}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-small" onclick="changePassword('${escapeHtml(user.username)}')">Change Password</button>
+                                    <button class="btn btn-warning btn-small" onclick="logoutUser('${escapeHtml(user.username)}')">Logout User</button>
+                                    ${deleteButtonHtml}
+                                </td>
+                            </tr>
+                        `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = userTable;
+        }
+
+        async function handleRoleChange(event) {
+            const select = event.target;
+            const username = select.dataset.username;
+            const oldRole = select.dataset.currentRole;
+            const newRole = select.value;
+            
+            // Revert selection temporarily
+            select.value = oldRole;
+            
+            if (!confirm(`Change ${username}'s role from ${oldRole} to ${newRole}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${USER_API_BASE}/change_role`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        username: username,
+                        new_role: newRole
+                    })
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error(`Server returned invalid response (HTTP ${response.status})`);
+                }
+
+                // Handle HTTP errors
+                if (!response.ok) {
+                    let errorMsg = 'Unknown error';
+                    if (data.detail) {
+                        // FastAPI validation errors
+                        if (Array.isArray(data.detail)) {
+                            errorMsg = data.detail.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
+                        } else if (typeof data.detail === 'string') {
+                            errorMsg = data.detail;
+                        } else {
+                            errorMsg = JSON.stringify(data.detail);
+                        }
+                    } else if (data.message || data.error) {
+                        errorMsg = data.message || data.error;
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                if (data.success) {
+                    showMessage(`Successfully changed ${username}'s role to ${newRole}`, 'success');
+                    select.dataset.currentRole = newRole;
+                    select.value = newRole;
+
+                    // Reload user activity log if visible
+                    const userActivitySection = document.getElementById('userActivitySection');
+                    if (userActivitySection.style.display !== 'none') {
+                        loadUserActivity();
+                    }
+                } else {
+                    showMessage('Failed to change role: ' + escapeHtml(data.error || data.message || 'Unknown error'), 'error');
+                    select.value = oldRole;
+                }
+            } catch (error) {
+                console.error('Role change error:', error);
+                const errorMessage = error.message || String(error) || 'Unknown error';
+                showMessage('Error changing role: ' + escapeHtml(errorMessage), 'error');
+                select.value = oldRole;
+            }
+        }
+
+        async function createUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newUserRole').value;
+
+            if (!username || !password) {
+                showMessage('Please enter username and password', 'error');
+                return;
+            }
+
+            if (password.length < 12) {
+                showMessage('Password must be at least 12 characters', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(USER_API_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        role: role
+                    })
+                });
+
+                const data = await response.json();
+
+                // Handle both success/error format and HTTP error format
+                if (!response.ok) {
+                    throw new Error(data.detail || data.message || data.error || `HTTP ${response.status}`);
+                }
+
+                if (!data.success) {
+                    throw new Error(data.message || data.detail || data.error || 'Failed to create user');
+                }
+
+                showMessage('User created successfully', 'success');
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newUserRole').value = 'basic';
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function changePassword(username) {
+            // Create modal dialog for password change
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            dialog.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password for ${username}</h2>
+                    <p style="margin: 0 0 20px 0; color: #666;">Enter new password for this user</p>
+                    <div id="admin-pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 12 characters)</label>
+                        <input type="password" id="admin-change-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                        <div class="password-strength-container" id="adminChange-strength-container" style="display: none; margin-top: 8px;">
+                            <div class="password-strength-bar">
+                                <div class="password-strength-fill" id="adminChange-strength-bar"></div>
+                            </div>
+                            <div class="password-strength-text" id="adminChange-strength-text"></div>
+                        </div>
+                        <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                            <strong>Password Requirements:</strong>
+                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                <li id="adminChange-req-length" class="req-unmet">At least 12 characters</li>
+                                <li id="adminChange-req-uppercase" class="req-unmet">One uppercase letter</li>
+                                <li id="adminChange-req-lowercase" class="req-unmet">One lowercase letter</li>
+                                <li id="adminChange-req-digit" class="req-unmet">One digit</li>
+                                <li id="adminChange-req-special" class="req-unmet">One special character (!@#$%^&*(),.?\":{}|<>)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="admin-change-pwd-submit-btn" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
+                        <button id="admin-change-pwd-cancel-btn" style="flex: 1; padding: 12px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(dialog);
+
+            // Setup password strength meter
+            setupPasswordStrengthMeter('admin-change-password', 'adminChange');
+
+            // Handle cancel
+            document.getElementById('admin-change-pwd-cancel-btn').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+            });
+
+            // Handle submit
+            document.getElementById('admin-change-pwd-submit-btn').addEventListener('click', async () => {
+                const newPassword = document.getElementById('admin-change-password').value;
+                const errorDiv = document.getElementById('admin-pwd-error');
+
+                errorDiv.style.display = 'none';
+
+                // Check if password meets all requirements
+                const meetsRequirements = checkPasswordRequirements(newPassword, 'adminChange');
+                if (!meetsRequirements) {
+                    errorDiv.textContent = 'Password does not meet all requirements';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${USER_API_BASE}/reset_password`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            username: username,
+                            new_password: newPassword
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to change password');
+                    }
+
+                    document.body.removeChild(dialog);
+                    showMessage('Password changed successfully', 'success');
+                } catch (error) {
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                }
+            });
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(USER_API_BASE, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        username: username
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete user');
+                }
+
+                showMessage('User deleted successfully', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function logoutUser(username) {
+            if (!confirm(`Are you sure you want to logout user "${username}"?\n\nThis will end all active sessions for this user.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${USER_API_BASE}/force_logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        username: username
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to logout user');
+                }
+
+                showMessage(data.message || 'User logged out successfully', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // User Activity Audit Log Functions
+        async function loadUserActivity() {
+            const container = document.getElementById('userActivityContainer');
+            container.innerHTML = '<div class="loading">Loading activity log...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    limit: 10000
+                });
+
+                // Add filters if set
+                const username = document.getElementById('activityUsername').value.trim();
+                const actionType = document.getElementById('activityType').value;
+                const startDate = document.getElementById('activityStartDate').value;
+                const endDate = document.getElementById('activityEndDate').value;
+
+                if (username) params.append('username', username);
+                if (actionType) params.append('action_type', actionType);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`${API_BASE}/logs/user_activity?${params}`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load activity log');
+                }
+
+                // Update stats
+                if (data.stats) {
+                    document.getElementById('totalActions').textContent = data.stats.total_actions || 0;
+                    document.getElementById('failedActions').textContent = data.stats.failed_actions || 0;
+                    document.getElementById('uniqueUsers').textContent = data.stats.unique_users || 0;
+                }
+
+                document.getElementById('activityCount').textContent = data.count || 0;
+
+                if (!data.logs || data.logs.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No activity log entries found.</div>';
+                    return;
+                }
+
+                // Store logs for pagination
+                userActivityData.allLogs = data.logs;
+                userActivityData.currentPage = 1; // Reset to first page on new load
+
+                // Render paginated data
+                renderUserActivityPage();
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function renderUserActivityPage(pageOrSize, isPageSizeChange) {
+            const container = document.getElementById('userActivityContainer');
+
+            // Handle page size change
+            if (isPageSizeChange) {
+                userActivityData.pageSize = parseInt(pageOrSize);
+                userActivityData.currentPage = 1; // Reset to first page
+            } else if (pageOrSize) {
+                // Handle page change
+                userActivityData.currentPage = parseInt(pageOrSize);
+            }
+
+            // Calculate pagination
+            const startIdx = (userActivityData.currentPage - 1) * userActivityData.pageSize;
+            const endIdx = startIdx + userActivityData.pageSize;
+            const pageData = userActivityData.allLogs.slice(startIdx, endIdx);
+
+            // Render pagination controls at top
+            let html = renderPaginationControls(userActivityData, 'userActivityContainer', 'renderUserActivityPage');
+
+            // Create table
+            html += '<table class="keys-table"><thead><tr>';
+            html += '<th>Timestamp</th>';
+            html += '<th>Username</th>';
+            html += '<th>Role</th>';
+            html += '<th>Action</th>';
+            html += '<th>IP Address</th>';
+            html += '<th>Status</th>';
+            html += '<th>Details</th>';
+            html += '</tr></thead><tbody>';
+
+            pageData.forEach(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const statusText = log.success ? '✓ Success' : '✗ Failed';
+                const failureReason = log.failure_reason ? ` (${escapeHtml(log.failure_reason)})` : '';
+
+                html += '<tr>';
+                html += `<td>${escapeHtml(timestamp)}</td>`;
+                html += `<td><strong>${escapeHtml(log.username)}</strong></td>`;
+                html += `<td>${escapeHtml(log.user_role || '-')}</td>`;
+                html += `<td>${escapeHtml(log.action_type)}</td>`;
+                html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
+                html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}</span></td>`;
+                html += `<td style="font-size: 0.9em;">${escapeHtml(log.action_details || '-')}${failureReason}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            // Render pagination controls at bottom
+            html += renderPaginationControls(userActivityData, 'userActivityContainer', 'renderUserActivityPage');
+
+            container.innerHTML = html;
+        }
+
+        function clearActivityFilters() {
+            document.getElementById('activityUsername').value = '';
+            document.getElementById('activityType').value = '';
+            document.getElementById('activityStartDate').value = '';
+            document.getElementById('activityEndDate').value = '';
+            loadUserActivity();
+        }
+
+        // Pagination state for User Activity
+        let userActivityData = {
+            allLogs: [],
+            currentPage: 1,
+            pageSize: 20
+        };
+
+        // Pagination state for Client Logs
+        let clientLogsData = {
+            allLogs: [],
+            currentPage: 1,
+            pageSize: 20
+        };
+
+        // Helper function to render pagination controls
+        function renderPaginationControls(data, containerId, renderFunction) {
+            const totalPages = Math.ceil(data.allLogs.length / data.pageSize);
+
+            let html = '<div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
+
+            // Page size selector
+            html += '<div style="display: flex; align-items: center; gap: 10px;">';
+            html += '<span style="font-weight: 500; color: #4b5563;">Show:</span>';
+            html += `<select onchange="${renderFunction}(this.value, true)" style="padding: 6px 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; cursor: pointer;">`;
+            html += `<option value="20" ${data.pageSize === 20 ? 'selected' : ''}>20</option>`;
+            html += `<option value="50" ${data.pageSize === 50 ? 'selected' : ''}>50</option>`;
+            html += `<option value="100" ${data.pageSize === 100 ? 'selected' : ''}>100</option>`;
+            html += `<option value="200" ${data.pageSize === 200 ? 'selected' : ''}>200</option>`;
+            html += '</select>';
+            html += '<span style="color: #6b7280;">entries per page</span>';
+            html += '</div>';
+
+            // Pagination info and controls
+            html += '<div style="display: flex; align-items: center; gap: 15px;">';
+
+            // Info text
+            const startEntry = (data.currentPage - 1) * data.pageSize + 1;
+            const endEntry = Math.min(data.currentPage * data.pageSize, data.allLogs.length);
+            html += `<span style="color: #6b7280;">Showing ${startEntry}-${endEntry} of ${data.allLogs.length} entries</span>`;
+
+            // Navigation buttons
+            html += '<div style="display: flex; gap: 5px;">';
+
+            // First page
+            html += `<button onclick="${renderFunction}(1)" ${data.currentPage === 1 ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>«</button>`;
+
+            // Previous page
+            html += `<button onclick="${renderFunction}(${data.currentPage - 1})" ${data.currentPage === 1 ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>‹</button>`;
+
+            // Page numbers
+            const maxPageButtons = 5;
+            let startPage = Math.max(1, data.currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+
+            if (endPage - startPage < maxPageButtons - 1) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === data.currentPage;
+                html += `<button onclick="${renderFunction}(${i})"
+                    style="padding: 6px 12px; border: 2px solid ${isActive ? '#667eea' : '#e0e0e0'}; border-radius: 6px;
+                    background: ${isActive ? '#667eea' : 'white'}; color: ${isActive ? 'white' : '#4b5563'};
+                    cursor: pointer; font-weight: ${isActive ? '600' : '500'}; transition: all 0.2s;">${i}</button>`;
+            }
+
+            // Next page
+            html += `<button onclick="${renderFunction}(${data.currentPage + 1})" ${data.currentPage === totalPages ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>›</button>`;
+
+            // Last page
+            html += `<button onclick="${renderFunction}(${totalPages})" ${data.currentPage === totalPages ? 'disabled' : ''}
+                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>»</button>`;
+
+            html += '</div>'; // Close navigation buttons
+            html += '</div>'; // Close pagination info and controls
+            html += '</div>'; // Close main container
+
+            return html;
+        }
+
+        // Client Submission Audit Log Functions
+        async function loadClientLogs() {
+            const container = document.getElementById('clientLogsContainer');
+            container.innerHTML = '<div class="loading">Loading submission log...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    limit: 10000
+                });
+
+                // Add filters if set
+                const modemId = document.getElementById('clientModemId').value.trim();
+                const ip = document.getElementById('clientIp').value.trim();
+                const startDate = document.getElementById('clientStartDate').value;
+                const endDate = document.getElementById('clientEndDate').value;
+
+                if (modemId) params.append('modem_id', modemId);
+                if (ip) params.append('ip_address', ip);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`${API_BASE}/logs/client_submissions?${params}`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load submission log');
+                }
+
+                // Update stats
+                if (data.stats) {
+                    document.getElementById('totalSubmissions').textContent = data.stats.total_submissions || 0;
+                    document.getElementById('failedSubmissions').textContent = data.stats.failed_submissions || 0;
+                    document.getElementById('uniqueModems').textContent = data.stats.unique_modems || 0;
+                    document.getElementById('uniqueApiKeys').textContent = data.stats.unique_api_keys || 0;
+                }
+
+                document.getElementById('clientCount').textContent = data.count || 0;
+
+                if (!data.logs || data.logs.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No submission log entries found.</div>';
+                    return;
+                }
+
+                // Store logs for pagination
+                clientLogsData.allLogs = data.logs;
+                clientLogsData.currentPage = 1; // Reset to first page on new load
+
+                // Render paginated data
+                renderClientLogsPage();
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function renderClientLogsPage(pageOrSize, isPageSizeChange) {
+            const container = document.getElementById('clientLogsContainer');
+
+            // Handle page size change
+            if (isPageSizeChange) {
+                clientLogsData.pageSize = parseInt(pageOrSize);
+                clientLogsData.currentPage = 1; // Reset to first page
+            } else if (pageOrSize) {
+                // Handle page change
+                clientLogsData.currentPage = parseInt(pageOrSize);
+            }
+
+            // Calculate pagination
+            const startIdx = (clientLogsData.currentPage - 1) * clientLogsData.pageSize;
+            const endIdx = startIdx + clientLogsData.pageSize;
+            const pageData = clientLogsData.allLogs.slice(startIdx, endIdx);
+
+            // Render pagination controls at top
+            let html = renderPaginationControls(clientLogsData, 'clientLogsContainer', 'renderClientLogsPage');
+
+            // Create table
+            html += '<table class="keys-table"><thead><tr>';
+            html += '<th>Timestamp</th>';
+            html += '<th>Modem ID</th>';
+            html += '<th>Type</th>';
+            html += '<th>API Key</th>';
+            html += '<th>IP Address</th>';
+            html += '<th>File Size</th>';
+            html += '<th>Status</th>';
+            html += '<th>Processing Time</th>';
+            html += '</tr></thead><tbody>';
+
+            pageData.forEach(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const statusText = log.success ? '✓ Success' : '✗ Failed';
+                const fileSize = log.file_size ? (log.file_size / 1024).toFixed(1) + ' KB' : '-';
+                const procTime = log.processing_time_ms ? log.processing_time_ms + ' ms' : '-';
+                const failureReason = log.failure_reason ? `<br><small>(${escapeHtml(log.failure_reason)})</small>` : '';
+
+                html += '<tr>';
+                html += `<td>${escapeHtml(timestamp)}</td>`;
+                html += `<td><strong>${escapeHtml(log.modem_id)}</strong></td>`;
+                html += `<td>${escapeHtml(log.modem_type || '-')}</td>`;
+                html += `<td><small>${escapeHtml(log.api_key_name || 'Unknown')}</small><br><code style="font-size: 0.75em;">${escapeHtml(log.api_key_hash)}</code></td>`;
+                html += `<td><code>${escapeHtml(log.ip_address)}</code></td>`;
+                html += `<td>${fileSize}</td>`;
+                html += `<td><span style="color: ${log.success ? '#059669' : '#dc2626'};">${statusText}${failureReason}</span></td>`;
+                html += `<td>${procTime}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            // Render pagination controls at bottom
+            html += renderPaginationControls(clientLogsData, 'clientLogsContainer', 'renderClientLogsPage');
+
+            container.innerHTML = html;
+        }
+
+        function clearClientFilters() {
+            document.getElementById('clientModemId').value = '';
+            document.getElementById('clientIp').value = '';
+            document.getElementById('clientStartDate').value = '';
+            document.getElementById('clientEndDate').value = '';
+            loadClientLogs();
+        }
+
+        // Config Generator Functions
+        function toggleCloudFields() {
+            const enabled = document.getElementById('cfgEnableCloud').checked;
+            document.getElementById('cfgCloudHost').disabled = !enabled;
+            document.getElementById('cfgCloudPort').disabled = !enabled;
+            document.getElementById('cfgCloudPath').disabled = !enabled;
+            document.getElementById('cfgCloudAPIKey').disabled = !enabled;
+            document.getElementById('generateKeyBtn').disabled = !enabled;
+            document.getElementById('selectKeyBtn').disabled = !enabled;
+            updateConfigPreview();
+        }
+
+        function generateNewAPIKey() {
+            // Create modal for generating new API key
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Generate New API Key</h2>
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 15px;">Enter a descriptive name for this API key:</p>
+                        <div class="form-group">
+                            <label for="newKeyName">Key Name</label>
+                            <input type="text" id="newKeyName" placeholder="e.g., Home Router, Office Modem" autofocus>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeGenerateKeyModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="createAPIKeyForConfig()">Create API Key</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            window.currentGenerateKeyModal = modal;
+
+            // Focus the input field
+            setTimeout(() => {
+                document.getElementById('newKeyName')?.focus();
+            }, 100);
+        }
+
+        function closeGenerateKeyModal() {
+            if (window.currentGenerateKeyModal) {
+                document.body.removeChild(window.currentGenerateKeyModal);
+                window.currentGenerateKeyModal = null;
+            }
+        }
+
+        async function createAPIKeyForConfig() {
+            const nameInput = document.getElementById('newKeyName');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api_keys`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ name: name })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Set the API key in the hidden field
+                    document.getElementById('cfgCloudAPIKey').value = data.api_key;
+
+                    // Show the key name in the display field
+                    document.getElementById('selectedKeyName').textContent = name;
+                    document.getElementById('selectedKeyDisplay').style.display = 'block';
+
+                    // Update preview
+                    updateConfigPreview();
+
+                    // Close modal
+                    closeGenerateKeyModal();
+
+                    showMessage('API key generated successfully!', 'success');
+
+                    // Reload API keys list in the API Keys tab
+                    loadKeys();
+                } else {
+                    showMessage('Error: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error creating API key: ' + error.message, 'error');
+            }
+        }
+
+        //
+        function updateConfigPreview() {
+            const config = {
+                ModemAddress: document.getElementById('cfgModemAddress').value || "autodetect",
+                IgnitePassword: document.getElementById('cfgIgnitePassword').value || "password",
+                SpeedTestEnabled: document.getElementById('cfgSpeedTestEnabled').checked,
+                SpeedTestInterval: parseInt(document.getElementById('cfgSpeedTestInterval').value) || 1,
+                PingCount: parseInt(document.getElementById('cfgPingCount').value) || 25,
+                AutoUpdateEnabled: document.getElementById('cfgAutoUpdateEnabled').checked,
+                UpdateChannel: document.getElementById('cfgUpdateChannel').value || "stable",
+                Silent: document.getElementById('cfgSilent').checked,
+                NoLogs: document.getElementById('cfgNoLogs').checked,
+                LocalCleanupEnabled: document.getElementById('cfgLocalCleanupEnabled').checked,
+                LocalRetentionDays: parseInt(document.getElementById('cfgLocalRetentionDays').value) || 90,
+                EnableCloud: document.getElementById('cfgEnableCloud').checked,
+                CloudHost: document.getElementById('cfgCloudHost').value || "",
+                CloudPort: document.getElementById('cfgCloudPort').value || "443",
+                CloudPath: document.getElementById('cfgCloudPath').value || "",
+                CloudAPIKey: document.getElementById('cfgCloudAPIKey').value || ""
+            };
+
+            document.getElementById('configPreview').textContent = JSON.stringify(config, null, 2);
+        }
+
+        function downloadConfig() {
+            updateConfigPreview();
+            const configText = document.getElementById('configPreview').textContent;
+            
+            // Create blob and download
+            const blob = new Blob([configText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('config.json downloaded successfully!', 'success');
+        }
+
+        async function selectExistingAPIKey() {
+            try {
+                const response = await fetch(`${API_BASE}/api_keys`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!data.success || !data.api_keys || data.api_keys.length === 0) {
+                    showMessage('No API keys found. Please create one in the API Keys tab first.', 'error');
+                    return;
+                }
+
+                // Store key data for later use
+                window.availableAPIKeys = data.api_keys.map(key => ({
+                    key_preview: key.api_key_preview,
+                    name: key.name
+                }));
+
+                // Create a modal to select API key
+                const modal = document.createElement('div');
+                modal.className = 'modal show';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Select API Key</h2>
+                        </div>
+                        <div>
+                            <p style="margin-bottom: 15px;">Choose an API key to use for cloud upload:</p>
+                            <select id="apiKeySelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; margin-bottom: 15px;">
+                                ${data.api_keys.map((key, idx) => `<option value="${idx}">${escapeHtml(key.name)} (${key.api_key_preview})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeAPIKeySelectModal()">Cancel</button>
+                            <button class="btn btn-primary" onclick="applySelectedAPIKey()">Use This Key</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                window.currentAPIKeyModal = modal;
+            } catch (error) {
+                showMessage('Error loading API keys: ' + error.message, 'error');
+            }
+        }
+
+        function closeAPIKeySelectModal() {
+            if (window.currentAPIKeyModal) {
+                document.body.removeChild(window.currentAPIKeyModal);
+                window.currentAPIKeyModal = null;
+            }
+        }
+
+        async function applySelectedAPIKey() {
+            const select = document.getElementById('apiKeySelect');
+            if (select && window.availableAPIKeys) {
+                const selectedIndex = parseInt(select.value);
+                const selectedKey = window.availableAPIKeys[selectedIndex];
+
+                if (selectedKey) {
+                    try {
+                        // Fetch the full API key from the server
+                        const response = await fetch(`${API_BASE}/api_keys/reveal/${encodeURIComponent(selectedKey.key_preview)}`, {
+                            credentials: 'same-origin'
+                        });
+                        const data = await response.json();
+
+                        if (data.success && data.api_key) {
+                            // Set the full API key in the field
+                            document.getElementById('cfgCloudAPIKey').value = data.api_key;
+
+                            // Show the key name in the display field
+                            document.getElementById('selectedKeyName').textContent = selectedKey.name;
+                            document.getElementById('selectedKeyDisplay').style.display = 'block';
+
+                            showMessage('API key selected successfully!', 'success');
+                            updateConfigPreview();
+                        } else {
+                            showMessage('Failed to retrieve API key', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error retrieving API key:', error);
+                        showMessage('Error retrieving API key', 'error');
+                    }
+                }
+            }
+            closeAPIKeySelectModal();
+        }
+
+        // Config Defaults Functions
+        async function saveConfigDefaults() {
+            // Collect defaults from the form
+            const defaults = {
+                ModemAddress: document.getElementById('defaultModemAddress').value || 'autodetect',
+                IgnitePassword: document.getElementById('defaultIgnitePassword').value || 'password',
+                SpeedTestEnabled: document.getElementById('defaultSpeedTestEnabled').checked,
+                SpeedTestInterval: parseInt(document.getElementById('defaultSpeedTestInterval').value) || 1,
+                PingCount: parseInt(document.getElementById('defaultPingCount').value) || 25,
+                AutoUpdateEnabled: document.getElementById('defaultAutoUpdateEnabled').checked,
+                UpdateChannel: document.getElementById('defaultUpdateChannel').value || 'stable',
+                Silent: document.getElementById('defaultSilent').checked,
+                NoLogs: document.getElementById('defaultNoLogs').checked,
+                LocalCleanupEnabled: document.getElementById('defaultLocalCleanupEnabled').checked,
+                LocalRetentionDays: parseInt(document.getElementById('defaultLocalRetentionDays').value) || 90,
+                EnableCloud: document.getElementById('defaultEnableCloud').checked,
+                CloudHost: document.getElementById('defaultCloudHost').value || '',
+                CloudPort: document.getElementById('defaultCloudPort').value || '443',
+                CloudPath: document.getElementById('defaultCloudPath').value || ''
+            };
+
+            try {
+                const response = await fetch('/api/admin/config_defaults', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(defaults)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('Config defaults saved successfully! These will be available to all users.', 'success');
+                    // Also apply to the generator form
+                    applyDefaultsToGenerator();
+                } else {
+                    showMessage('Error: ' + (data.error || 'Failed to save defaults'), 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving defaults: ' + error.message, 'error');
+            }
+        }
+
+        async function loadConfigDefaults() {
+            // Load defaults from backend
+            try {
+                const response = await fetch('/api/admin/config_defaults', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.defaults && Object.keys(data.defaults).length > 0) {
+                    // Load saved defaults
+                    const defaults = data.defaults;
+                    document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
+                    document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || 'password';
+                    document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== undefined ? defaults.SpeedTestEnabled : true;
+                    document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                    document.getElementById('defaultPingCount').value = defaults.PingCount || 25;
+                    document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== undefined ? defaults.AutoUpdateEnabled : true;
+                    document.getElementById('defaultUpdateChannel').value = defaults.UpdateChannel || 'stable';
+                    document.getElementById('defaultSilent').checked = defaults.Silent || false;
+                    document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('defaultLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== undefined ? defaults.LocalCleanupEnabled : true;
+                    document.getElementById('defaultLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                    document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
+                    document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
+                    document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
+                    document.getElementById('defaultCloudPath').value = defaults.CloudPath || '';
+                } else {
+                    // Load default recommended values if no saved defaults
+                    document.getElementById('defaultModemAddress').value = 'autodetect';
+                    document.getElementById('defaultIgnitePassword').value = 'password';
+                    document.getElementById('defaultSpeedTestEnabled').checked = true;
+                    document.getElementById('defaultSpeedTestInterval').value = 1;
+                    document.getElementById('defaultPingCount').value = 25;
+                    document.getElementById('defaultAutoUpdateEnabled').checked = true;
+                    document.getElementById('defaultUpdateChannel').value = 'stable';
+                    document.getElementById('defaultSilent').checked = false;
+                    document.getElementById('defaultNoLogs').checked = false;
+                    document.getElementById('defaultLocalCleanupEnabled').checked = true;
+                    document.getElementById('defaultLocalRetentionDays').value = 90;
+                    document.getElementById('defaultEnableCloud').checked = false;
+                    document.getElementById('defaultCloudHost').value = '';
+                    document.getElementById('defaultCloudPort').value = '443';
+                    document.getElementById('defaultCloudPath').value = '';
+                }
+            } catch (error) {
+                console.error('Error loading config defaults:', error);
+                // Load default recommended values on error
+                document.getElementById('defaultModemAddress').value = 'autodetect';
+                document.getElementById('defaultIgnitePassword').value = 'password';
+                document.getElementById('defaultSpeedTestEnabled').checked = true;
+                document.getElementById('defaultSpeedTestInterval').value = 1;
+                document.getElementById('defaultPingCount').value = 25;
+                document.getElementById('defaultAutoUpdateEnabled').checked = true;
+                document.getElementById('defaultUpdateChannel').value = 'stable';
+                document.getElementById('defaultSilent').checked = false;
+                document.getElementById('defaultNoLogs').checked = false;
+                document.getElementById('defaultLocalCleanupEnabled').checked = true;
+                document.getElementById('defaultLocalRetentionDays').value = 90;
+                document.getElementById('defaultEnableCloud').checked = false;
+                document.getElementById('defaultCloudHost').value = '';
+                document.getElementById('defaultCloudPort').value = '443';
+                document.getElementById('defaultCloudPath').value = '';
+            }
+        }
+
+        async function loadAndApplyDefaults() {
+            // Load defaults from backend and apply to generator
+            try {
+                const response = await fetch('/api/admin/config_defaults', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.defaults && Object.keys(data.defaults).length > 0) {
+                    const defaults = data.defaults;
+
+                    // Apply to generator form
+                    document.getElementById('cfgModemAddress').value = defaults.ModemAddress || 'autodetect';
+                    document.getElementById('cfgIgnitePassword').value = defaults.IgnitePassword || 'password';
+                    document.getElementById('cfgSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== undefined ? defaults.SpeedTestEnabled : true;
+                    document.getElementById('cfgSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                    document.getElementById('cfgPingCount').value = defaults.PingCount || 25;
+                    document.getElementById('cfgAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== undefined ? defaults.AutoUpdateEnabled : true;
+                    document.getElementById('cfgUpdateChannel').value = defaults.UpdateChannel || 'stable';
+                    document.getElementById('cfgSilent').checked = defaults.Silent || false;
+                    document.getElementById('cfgNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('cfgLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== undefined ? defaults.LocalCleanupEnabled : true;
+                    document.getElementById('cfgLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                    document.getElementById('cfgEnableCloud').checked = defaults.EnableCloud || false;
+                    document.getElementById('cfgCloudHost').value = defaults.CloudHost || '';
+                    document.getElementById('cfgCloudPort').value = defaults.CloudPort || '443';
+                    document.getElementById('cfgCloudPath').value = defaults.CloudPath || '';
+
+                    // Trigger cloud fields update and preview
+                    toggleCloudFields();
+                    updateConfigPreview();
+                }
+            } catch (error) {
+                console.error('Error loading defaults:', error);
+                // Just update preview with current values on error
+                updateConfigPreview();
+            }
+        }
+
+        function applyDefaultsToGenerator() {
+            // Apply defaults from the defaults form to the generator form
+            document.getElementById('cfgModemAddress').value = document.getElementById('defaultModemAddress').value;
+            document.getElementById('cfgIgnitePassword').value = document.getElementById('defaultIgnitePassword').value;
+            document.getElementById('cfgSpeedTestEnabled').checked = document.getElementById('defaultSpeedTestEnabled').checked;
+            document.getElementById('cfgSpeedTestInterval').value = document.getElementById('defaultSpeedTestInterval').value;
+            document.getElementById('cfgPingCount').value = document.getElementById('defaultPingCount').value;
+            document.getElementById('cfgAutoUpdateEnabled').checked = document.getElementById('defaultAutoUpdateEnabled').checked;
+            document.getElementById('cfgUpdateChannel').value = document.getElementById('defaultUpdateChannel').value;
+            document.getElementById('cfgSilent').checked = document.getElementById('defaultSilent').checked;
+            document.getElementById('cfgNoLogs').checked = document.getElementById('defaultNoLogs').checked;
+            document.getElementById('cfgLocalCleanupEnabled').checked = document.getElementById('defaultLocalCleanupEnabled').checked;
+            document.getElementById('cfgLocalRetentionDays').value = document.getElementById('defaultLocalRetentionDays').value;
+            document.getElementById('cfgEnableCloud').checked = document.getElementById('defaultEnableCloud').checked;
+            document.getElementById('cfgCloudHost').value = document.getElementById('defaultCloudHost').value;
+            document.getElementById('cfgCloudPort').value = document.getElementById('defaultCloudPort').value;
+            document.getElementById('cfgCloudPath').value = document.getElementById('defaultCloudPath').value;
+
+            // Trigger cloud fields update
+            toggleCloudFields();
+            updateConfigPreview();
+        }
+
+        async function loadPersistedDefaultsToGenerator() {
+            // Load persisted defaults from backend and apply to generator form (for all users)
+            try {
+                const response = await fetch('/api/admin/config_defaults', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success && data.defaults) {
+                    const defaults = data.defaults;
+
+                    // Apply defaults directly to generator form
+                    document.getElementById('cfgModemAddress').value = defaults.ModemAddress || 'autodetect';
+                    document.getElementById('cfgIgnitePassword').value = defaults.IgnitePassword || 'password';
+                    document.getElementById('cfgSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                    document.getElementById('cfgSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                    document.getElementById('cfgPingCount').value = defaults.PingCount || 25;
+                    document.getElementById('cfgAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
+                    document.getElementById('cfgUpdateChannel').value = defaults.UpdateChannel || 'stable';
+                    document.getElementById('cfgSilent').checked = defaults.Silent || false;
+                    document.getElementById('cfgNoLogs').checked = defaults.NoLogs || false;
+                    document.getElementById('cfgLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
+                    document.getElementById('cfgLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                    document.getElementById('cfgEnableCloud').checked = defaults.EnableCloud || false;
+                    document.getElementById('cfgCloudHost').value = defaults.CloudHost || '';
+                    document.getElementById('cfgCloudPort').value = defaults.CloudPort || '443';
+                    document.getElementById('cfgCloudPath').value = defaults.CloudPath || '';
+
+                    // If admin, also update the defaults form
+                    if (currentUserRole === 'admin') {
+                        document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
+                        document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || 'password';
+                        document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
+                        document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
+                        document.getElementById('defaultPingCount').value = defaults.PingCount || 25;
+                        document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
+                        document.getElementById('defaultUpdateChannel').value = defaults.UpdateChannel || 'stable';
+                        document.getElementById('defaultSilent').checked = defaults.Silent || false;
+                        document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
+                        document.getElementById('defaultLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
+                        document.getElementById('defaultLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
+                        document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
+                        document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
+                        document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
+                        document.getElementById('defaultCloudPath').value = defaults.CloudPath || '';
+                    }
+
+                    // Trigger cloud fields update
+                    toggleCloudFields();
+                    updateConfigPreview();
+                }
+            } catch (error) {
+                console.error('Error loading persisted defaults:', error);
+                // Silently fail - use hardcoded defaults in the HTML
+            }
+        }
+
+        // Auto-update preview when any field changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const configInputs = [
+                'cfgModemAddress', 'cfgIgnitePassword', 'cfgSpeedTestEnabled', 'cfgSpeedTestInterval',
+                'cfgPingCount', 'cfgAutoUpdateEnabled', 'cfgUpdateChannel', 'cfgSilent', 'cfgNoLogs',
+                'cfgLocalCleanupEnabled', 'cfgLocalRetentionDays', 'cfgEnableCloud', 'cfgCloudHost',
+                'cfgCloudPort', 'cfgCloudPath', 'cfgCloudAPIKey'
+            ];
+
+            configInputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateConfigPreview);
+                    element.addEventListener('change', updateConfigPreview);
+                }
+            });
+
+            // Load defaults on page load and apply them to generator (all users)
+            loadPersistedDefaultsToGenerator();
+        });
+
+        // ========================================
+        // DATA MANAGEMENT FUNCTIONS
+        // ========================================
+
+        // Sub-tab switching for Data Management
+        function showDataManagementSubTab(subTabName) {
+            // Hide all sub-tab content sections
+            document.getElementById('bulkUploadContent').classList.remove('active');
+            document.getElementById('bulkDownloadContent').classList.remove('active');
+            document.getElementById('deleteChecksContent').classList.remove('active');
+
+            // Remove active class from all sub-tab buttons
+            document.querySelectorAll('#dataManagementSection .sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected sub-tab
+            if (subTabName === 'bulkUpload') {
+                document.getElementById('bulkUploadContent').classList.add('active');
+                document.getElementById('bulkUploadSubTab').classList.add('active');
+            } else if (subTabName === 'bulkDownload') {
+                document.getElementById('bulkDownloadContent').classList.add('active');
+                document.getElementById('bulkDownloadSubTab').classList.add('active');
+                loadModemsForDownload();
+            } else if (subTabName === 'deleteChecks') {
+                document.getElementById('deleteChecksContent').classList.add('active');
+                document.getElementById('deleteChecksSubTab').classList.add('active');
+                loadModemsForDeletion();
+            }
+        }
+
+        // Initialize Data Management tab
+        async function initDataManagement() {
+            // Show bulk upload sub-tab by default
+            showDataManagementSubTab('bulkUpload');
+        }
+
+        // Bulk Upload Functions
+        async function bulkUploadChecks() {
+            const fileInput = document.getElementById('bulkUploadFiles');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                showMessage('Please select at least one JSON file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+
+            // Add all selected files
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const progressDiv = document.getElementById('bulkUploadProgress');
+            const statusDiv = document.getElementById('bulkUploadStatus');
+            progressDiv.style.display = 'block';
+            statusDiv.innerHTML = '<div class="loading">Uploading files...</div>';
+
+            try {
+                const response = await fetch(`${DATA_MGMT_API}/bulk_upload`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || data.message || 'Upload failed');
+                }
+
+                // Display results
+                let resultsHtml = `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Upload Complete:</strong><br>
+                        Total: ${data.results.total} files<br>
+                        Success: <span style="color: #10b981;">${data.results.success}</span><br>
+                        Failed: <span style="color: #ef4444;">${data.results.failed}</span>
+                    </div>
+                `;
+
+                if (data.results.errors && data.results.errors.length > 0) {
+                    resultsHtml += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;"><strong>Errors:</strong>';
+                    data.results.errors.forEach(error => {
+                        resultsHtml += `
+                            <div style="padding: 8px; border-bottom: 1px solid #e5e7eb; color: #ef4444; font-size: 13px;">
+                                ${escapeHtml(error)}
+                            </div>
+                        `;
+                    });
+                    resultsHtml += '</div>';
+                }
+
+                statusDiv.innerHTML = resultsHtml;
+
+                if (data.success_count > 0) {
+                    showMessage(`Successfully uploaded ${data.success_count} of ${data.total} files`, 'success');
+                }
+
+                // Clear file input
+                fileInput.value = '';
+
+            } catch (error) {
+                statusDiv.innerHTML = `<div style="color: #ef4444;">Error: ${error.message}</div>`;
+                showMessage('Upload failed: ' + error.message, 'error');
+            }
+        }
+
+        // Bulk Download Functions
+        async function loadModemsForDownload() {
+            try {
+                const response = await fetch(`${DB_API}/list_modems`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                const select = document.getElementById('downloadModemId');
+                select.innerHTML = '<option value="">All Modems</option>';
+
+                if (data.modems && data.modems.length > 0) {
+                    data.modems.forEach(modem => {
+                        const option = document.createElement('option');
+                        option.value = modem.modem_id;
+                        option.textContent = `${modem.modem_id} (${modem.check_count} checks)`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading modems:', error);
+            }
+        }
+
+        async function bulkDownloadChecks() {
+            const modemId = document.getElementById('downloadModemId').value;
+            const startDate = document.getElementById('downloadStartDate').value;
+            const endDate = document.getElementById('downloadEndDate').value;
+
+            // Build query string
+            let queryParams = [];
+            if (modemId) queryParams.push(`modem_id=${encodeURIComponent(modemId)}`);
+            if (startDate) queryParams.push(`start_date=${encodeURIComponent(startDate)}T00:00:00Z`);
+            if (endDate) queryParams.push(`end_date=${encodeURIComponent(endDate)}T23:59:59Z`);
+
+            const url = `${DATA_MGMT_API}/bulk_download` + (queryParams.length ? '?' + queryParams.join('&') : '');
+
+            try {
+                showMessage('Preparing download...', 'success');
+
+                // Use fetch to download the file
+                const response = await fetch(url, {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Download failed');
+                }
+
+                // Get the blob from response
+                const blob = await response.blob();
+
+                // Create download link
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `modemcheck_bulk_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+                showMessage('Download started successfully', 'success');
+            } catch (error) {
+                showMessage('Download failed: ' + error.message, 'error');
+            }
+        }
+
+        // Delete Checks Functions
+        async function loadModemsForDeletion() {
+            try {
+                const response = await fetch(`${DB_API}/list_modems`, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                const select = document.getElementById('deleteModemIdFilter');
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select a modem...</option>';
+
+                if (data.modems && data.modems.length > 0) {
+                    data.modems.forEach(modem => {
+                        const option = document.createElement('option');
+                        option.value = modem.modem_id;
+                        option.textContent = `${modem.modem_id} (${modem.check_count} checks)`;
+                        select.appendChild(option);
+                    });
+
+                    // Restore previous selection if it exists
+                    if (currentValue) {
+                        select.value = currentValue;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading modems:', error);
+            }
+        }
+
+        async function loadChecksForDeletion() {
+            const modemId = document.getElementById('deleteModemIdFilter').value;
+
+            if (!modemId) {
+                document.getElementById('checksListContainer').innerHTML = '<div class="empty-state">Please select a modem</div>';
+                return;
+            }
+
+            let startDate = document.getElementById('deleteStartDate').value;
+            let endDate = document.getElementById('deleteEndDate').value;
+
+            // Default to last 90 days if not specified
+            if (!startDate || !endDate) {
+                const now = new Date();
+                const ninetyDaysAgo = new Date(now);
+                ninetyDaysAgo.setDate(now.getDate() - 90);
+
+                if (!startDate) startDate = ninetyDaysAgo.toISOString().split('T')[0];
+                if (!endDate) endDate = now.toISOString().split('T')[0];
+
+                // Update the form fields
+                document.getElementById('deleteStartDate').value = startDate;
+                document.getElementById('deleteEndDate').value = endDate;
+            }
+
+            // Build query string for new endpoint
+            const queryParams = new URLSearchParams({
+                modem_id: modemId,
+                start_date: startDate,
+                end_date: endDate,
+                limit: 1000
+            });
+
+            const url = `${DB_API}/list_checks?${queryParams}`;
+
+            try {
+                document.getElementById('checksListContainer').innerHTML = '<div class="loading">Loading checks...</div>';
+
+                const response = await fetch(url, {
+                    credentials: 'same-origin'
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || 'Failed to load checks');
+                }
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load checks');
+                }
+
+                const container = document.getElementById('checksListContainer');
+
+                if (data.checks.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No checks found</div>';
+                    return;
+                }
+
+                // Display checks in a table
+                let html = `
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Filename</th>
+                                <th>Timestamp</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.checks.forEach(check => {
+                    const timestamp = new Date(check.check_time).toLocaleString();
+                    html += `
+                        <tr>
+                            <td>${check.id}</td>
+                            <td>${check.filename || 'N/A'}</td>
+                            <td>${timestamp}</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deleteIndividualCheck(${check.id}, '${escapeHtml(check.filename || check.id)}')" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 6px 12px;">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 15px; color: #666;">
+                        Total: ${data.count} checks
+                    </div>
+                `;
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('checksListContainer').innerHTML = `<div class="error">${error.message}</div>`;
+                showMessage('Error loading checks: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteIndividualCheck(checkId, filename) {
+            if (!confirm(`Are you sure you want to delete check:\n\n${filename}\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${DATA_MGMT_API}/check`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        check_id: checkId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Delete failed');
+                }
+
+                showMessage('Check deleted successfully', 'success');
+                loadChecksForDeletion();
+
+            } catch (error) {
+                showMessage('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteAllChecksForModem() {
+            const modemId = document.getElementById('deleteModemIdFilter').value;
+
+            if (!modemId) {
+                showMessage('Please select a modem first', 'error');
+                return;
+            }
+
+            if (!confirm(`⚠️ WARNING ⚠️\n\nAre you sure you want to delete ALL checks for modem:\n\n${modemId}\n\nThis will permanently delete all check data for this modem and CANNOT be undone!\n\nType "DELETE" in the next prompt to confirm.`)) {
+                return;
+            }
+
+            const confirmText = prompt('Type "DELETE" to confirm deletion of ALL checks:');
+            if (confirmText !== 'DELETE') {
+                showMessage('Deletion cancelled', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${DATA_MGMT_API}/modem_checks`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        modem_id: modemId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Bulk delete failed');
+                }
+
+                showMessage(`Successfully deleted ${data.count} checks`, 'success');
+
+                // Reload the modem list and clear the checks display
+                loadModemsForDeletion();
+                document.getElementById('checksListContainer').innerHTML = '<div class="empty-state">Select a modem and click "Load Checks" to view checks</div>';
+
+            } catch (error) {
+                showMessage('Bulk delete failed: ' + error.message, 'error');
+            }
+        }
+
+        // Mobile menu toggle functions
+        function toggleMobileMenu() {
+            const menu = document.querySelector('.mobile-menu');
+            const overlay = document.querySelector('.menu-overlay');
+            const hamburger = document.querySelector('.hamburger');
+
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            const menu = document.querySelector('.mobile-menu');
+            const overlay = document.querySelector('.menu-overlay');
+            const hamburger = document.querySelector('.hamburger');
+
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            hamburger.classList.remove('active');
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
+        <title>ModemCheck Cloud Dashboard</title>
+        <script src="/static/chart.umd.min.js"></script>
+        <script src="/static/chartjs-adapter-date-fns.bundle.min.js"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+                color: #333;
+            }
+
+            .container {
+                max-width: 1600px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                display: none; /* Hidden until auth verified */
+            }
+
+            .container.authenticated {
+                display: block;
+            }
+
+            .header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                position: relative;
+                min-height: 140px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .header h1 {
+                font-size: 2.5em;
+                font-weight: 700;
+                margin: 0;
+            }
+
+            /* Header navigation buttons */
+            .header-nav {
+                position: absolute;
+                top: 30px;
+                right: 30px;
+                display: flex;
+                flex-direction: column-reverse;
+                gap: 10px;
+                align-items: flex-end;
+            }
+
+            .header-nav-btn {
+                padding: 10px 20px;
+                background: rgba(255,255,255,0.15);
+                border: 2px solid rgba(255,255,255,0.8);
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+            }
+
+            .header-nav-btn.admin {
+                background: rgba(239, 68, 68, 0.9);
+            }
+
+            .header-nav-btn:hover {
+                background: rgba(255,255,255,0.3);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+
+            .header-nav-btn.admin:hover {
+                background: rgba(220, 38, 38, 0.95);
+            }
+
+            /* Hamburger menu (mobile only) */
+            .hamburger {
+                display: none;
+                position: absolute;
+                top: 30px;
+                right: 30px;
+                flex-direction: column;
+                gap: 5px;
+                cursor: pointer;
+                z-index: 1001;
+                padding: 10px;
+            }
+
+            .hamburger span {
+                width: 25px;
+                height: 3px;
+                background: white;
+                border-radius: 3px;
+                transition: all 0.3s ease;
+            }
+
+            .hamburger.active span:nth-child(1) {
+                transform: rotate(45deg) translate(8px, 8px);
+            }
+
+            .hamburger.active span:nth-child(2) {
+                opacity: 0;
+            }
+
+            .hamburger.active span:nth-child(3) {
+                transform: rotate(-45deg) translate(7px, -7px);
+            }
+
+            /* Mobile menu */
+            .mobile-menu {
+                display: none;
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 250px;
+                height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+                z-index: 1000;
+                padding: 80px 20px 20px 20px;
+                transition: right 0.3s ease;
+            }
+
+            .mobile-menu.active {
+                right: 0;
+            }
+
+            .mobile-menu button {
+                width: 100%;
+                margin-bottom: 10px;
+                padding: 15px 20px;
+                background: rgba(255,255,255,0.15);
+                border: 2px solid rgba(255,255,255,0.8);
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 16px;
+                transition: all 0.3s ease;
+            }
+
+            .mobile-menu button.admin {
+                background: rgba(239, 68, 68, 0.9);
+            }
+
+            .mobile-menu button:hover {
+                background: rgba(255,255,255,0.3);
+                transform: translateX(-5px);
+            }
+
+            .mobile-menu button.admin:hover {
+                background: rgba(220, 38, 38, 0.95);
+            }
+
+            /* Mobile overlay */
+            .menu-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .menu-overlay.active {
+                display: block;
+            }
+
+            .filter-section {
+                padding: 30px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .filter-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+
+            .filter-group {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .filter-group label {
+                font-weight: 600;
+                color: #555;
+                font-size: 0.95em;
+            }
+
+            select, input[type="date"] {
+                padding: 10px 15px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 1em;
+                background: white;
+                transition: border-color 0.3s ease;
+            }
+
+            select:focus, input[type="date"]:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            /* Searchable dropdown styles */
+            .searchable-select {
+                position: relative;
+                width: 100%;
+            }
+
+            .searchable-select input[type="text"] {
+                width: 100%;
+                padding: 10px 35px 10px 15px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 1em;
+                background: white;
+                transition: border-color 0.3s ease;
+                cursor: pointer;
+            }
+
+            .searchable-select input[type="text"]:focus {
+                outline: none;
+                border-color: #667eea;
+                cursor: text;
+            }
+
+            .searchable-select::after {
+                content: '▼';
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                color: #666;
+                font-size: 0.8em;
+            }
+
+            .searchable-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                max-height: 300px;
+                overflow-y: auto;
+                background: white;
+                border: 2px solid #667eea;
+                border-top: none;
+                border-radius: 0 0 8px 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                display: none;
+                z-index: 1000;
+                margin-top: -2px;
+            }
+
+            .searchable-dropdown.show {
+                display: block;
+            }
+
+            .searchable-option {
+                padding: 10px 15px;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .searchable-option:hover {
+                background-color: #f0f2ff;
+            }
+
+            .searchable-option.selected {
+                background-color: #667eea;
+                color: white;
+            }
+
+            .searchable-option.hidden {
+                display: none;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+
+            .searchable-dropdown::-webkit-scrollbar-thumb {
+                background: #667eea;
+                border-radius: 4px;
+            }
+
+            .load-btn {
+                padding: 12px 30px;
+                border: none;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                cursor: pointer;
+                font-size: 1em;
+                font-weight: 600;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .load-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            }
+
+            .load-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .view-switcher {
+                padding: 20px 30px;
+                background: #fff;
+                border-bottom: 2px solid #e0e0e0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .view-btn {
+                padding: 10px 25px;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                background: white;
+                color: #667eea;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 1em;
+                font-weight: 600;
+            }
+
+            .view-btn:hover {
+                background: #f0f2ff;
+            }
+
+            .view-btn.active {
+                background: #667eea;
+                color: white;
+            }
+
+            .timeline-nav {
+                padding: 20px 30px;
+                background: #fff;
+                border-bottom: 2px solid #e0e0e0;
+                display: none;
+            }
+
+            .timeline-nav.active {
+                display: block;
+            }
+
+            .timeline-controls {
+                display: flex;
+                gap: 15px;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+
+            .nav-btn {
+                padding: 10px 20px;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                background: white;
+                color: #667eea;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 1em;
+                font-weight: 600;
+            }
+
+            .nav-btn:hover:not(:disabled) {
+                background: #667eea;
+                color: white;
+            }
+
+            .nav-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .timeline-slider {
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+            }
+
+            .timeline-slider input[type="range"] {
+                width: 100%;
+                height: 8px;
+                border-radius: 4px;
+                background: #e0e0e0;
+                outline: none;
+                -webkit-appearance: none;
+            }
+
+            .timeline-slider input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #667eea;
+                cursor: pointer;
+            }
+
+            .timeline-slider input[type="range"]::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #667eea;
+                cursor: pointer;
+            }
+
+            .timeline-info {
+                text-align: center;
+                margin-top: 10px;
+                color: #555;
+                font-weight: 600;
+            }
+
+            .content {
+                padding: 30px;
+            }
+
+            .view-mode {
+                display: none;
+            }
+
+            .view-mode.active {
+                display: block;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .info-card {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .info-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .info-card label {
+                display: block;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: #555;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 8px;
+            }
+
+            .info-card .value {
+                font-size: 1.2em;
+                font-weight: 600;
+                color: #2d3748;
+                word-break: break-word;
+            }
+
+            .speed-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .speed-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 12px;
+                padding: 25px;
+                text-align: center;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .speed-card label {
+                display: block;
+                font-size: 0.9em;
+                opacity: 0.9;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .speed-card .value {
+                font-size: 1.8em;
+                font-weight: 700;
+            }
+
+            .chart-section {
+                margin-bottom: 40px;
+            }
+
+            .chart-section h2 {
+                font-size: 1.6em;
+                color: #2d3748;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+                display: inline-block;
+            }
+
+            .chart-wrapper {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+
+            .chart-container {
+                position: relative;
+                height: 300px;
+            }
+
+            .table-section {
+                margin-bottom: 40px;
+            }
+
+            .table-section h2 {
+                font-size: 1.6em;
+                color: #2d3748;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+                display: inline-block;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: white;
+                min-width: 600px;
+            }
+
+            thead {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            th {
+                padding: 15px 12px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 0.9em;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                white-space: nowrap;
+            }
+
+            td {
+                padding: 12px;
+                border-bottom: 1px solid #e0e0e0;
+                font-size: 0.95em;
+            }
+
+            tbody tr {
+                transition: background-color 0.2s ease;
+            }
+
+            tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            tbody tr:nth-child(even) {
+                background-color: #fafbfc;
+            }
+
+            tbody tr:nth-child(even):hover {
+                background-color: #f0f2f5;
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 40px;
+                color: #999;
+                font-style: italic;
+            }
+
+            .loading {
+                text-align: center;
+                padding: 40px;
+                color: #667eea;
+                font-size: 1.2em;
+            }
+
+            .error {
+                text-align: center;
+                padding: 40px;
+                color: #f56565;
+                font-size: 1.1em;
+            }
+
+            @media (max-width: 1024px) {
+                .header h1 {
+                    font-size: 2em;
+                    padding-right: 50px; /* Make room for hamburger */
+                }
+
+                /* Hide desktop nav, show hamburger and mobile menu */
+                .header-nav {
+                    display: none;
+                }
+
+                .hamburger {
+                    display: flex;
+                }
+
+                .mobile-menu {
+                    display: block;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .header h1 {
+                    font-size: 1.8em;
+                }
+
+                .filter-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .info-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .speed-cards {
+                    grid-template-columns: 1fr;
+                }
+
+                th, td {
+                    padding: 8px 6px;
+                    font-size: 0.85em;
+                }
+
+                .chart-container {
+                    height: 250px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>☁️ ModemCheck Cloud Dashboard</h1>
+
+                <!-- Desktop navigation -->
+                <div class="header-nav">
+                    <button id="adminBtn" class="header-nav-btn admin" style="display: none;">🔒 Admin</button>
+                    <button id="logoutBtn" class="header-nav-btn">Logout</button>
+                </div>
+
+                <!-- Mobile hamburger -->
+                <div class="hamburger" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Mobile menu overlay -->
+            <div class="menu-overlay" onclick="closeMobileMenu()"></div>
+
+            <!-- Mobile slide-out menu -->
+            <div class="mobile-menu">
+                <button id="adminBtnMobile" class="admin" style="display: none;">🔒 Admin</button>
+                <button id="logoutBtnMobile">Logout</button>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label for="modemSearchInput">📡 Select Modem:</label>
+                        <div class="searchable-select">
+                            <input type="text" id="modemSearchInput" placeholder="Select a modem or start typing to filter" autocomplete="off" readonly>
+                            <div class="searchable-dropdown" id="modemDropdown"></div>
+                        </div>
+                        <input type="hidden" id="modemSelect" value="">
+                    </div>
+                    <div class="filter-group">
+                        <label for="startDate">📅 Start Date:</label>
+                        <input type="date" id="startDate" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="endDate">📅 End Date:</label>
+                        <input type="date" id="endDate" />
+                    </div>
+                    <div class="filter-group" style="justify-content: flex-end;">
+                        <label>&nbsp;</label>
+                        <button class="load-btn" onclick="loadData()" id="loadBtn">Load Data</button>
+                    </div>
+                </div>
+                <div id="statusMessage" style="margin-top: 15px; text-align: center; color: #555;"></div>
+            </div>
+
+            <div class="view-switcher">
+                <button class="view-btn active" onclick="showSingleView()">📊 Single View</button>
+                <button class="view-btn" onclick="showTrendsView()">📈 Trend View</button>
+            </div>
+
+            <div class="timeline-nav" id="timelineNav">
+                <div class="timeline-controls">
+                    <button class="nav-btn" id="firstBtn" onclick="navigateToFirst()">⏮️ First</button>
+                    <button class="nav-btn" id="prevBtn" onclick="navigatePrevious()">⏪ Previous</button>
+                    <button class="nav-btn" id="nextBtn" onclick="navigateNext()">Next ⏩</button>
+                    <button class="nav-btn" id="lastBtn" onclick="navigateToLast()">Last ⏭️</button>
+                </div>
+                <div class="timeline-slider">
+                    <input 
+                        type="range" 
+                        id="timelineSlider" 
+                        min="0" 
+                        max="0" 
+                        value="0"
+                        oninput="navigateToIndex(this.value)"
+                    />
+                    <div class="timeline-info" id="timelineInfo">No data loaded</div>
+                </div>
+            </div>
+
+            <div class="content" id="contentArea">
+                <div class="empty-state" id="welcomeMessage">
+                    <h2>Welcome to ModemCheck Cloud Dashboard</h2>
+                    <p>Select a modem and date range (optional), then click "Load Data" to view diagnostics.</p>
+                </div>
+
+                <!-- Single Check View -->
+                <div class="view-mode" id="singleView">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <label>⏰ Time of Check</label>
+                            <div id="checktime" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>📟 Modem Model</label>
+                            <div id="modemtype" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🔢 Modem MAC</label>
+                            <div id="modemmac" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>💾 Firmware Version</label>
+                            <div id="firmware" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>⏱️ Time Since Reboot</label>
+                            <div id="uptime" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🕐 Modem Time</label>
+                            <div id="systime" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🖥️ Client Version</label>
+                            <div id="clientinfo" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>✅ Detection Status</label>
+                            <div id="detection_status" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🌍 Public IP</label>
+                            <div id="public_ip" class="value">-</div>
+                        </div>
+                        <div class="info-card">
+                            <label>🏢 ISP / ASN</label>
+                            <div id="isp_info" class="value">-</div>
+                        </div>
+                    </div>
+
+                    <div class="speed-cards">
+                        <div class="speed-card">
+                            <label>🌐 Speed Test Info</label>
+                            <div id="speedtest_status" class="value">-</div>
+                            <div id="speedtest_server" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>📡 Speed Test Ping</label>
+                            <div id="speedtest_ping" class="value">-</div>
+                            <div id="speedtest_ping_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>⬇️ Download Speed</label>
+                            <div id="iperf3_dl" class="value">-</div>
+                            <div id="iperf3_dl_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>⬆️ Upload Speed</label>
+                            <div id="iperf3_ul" class="value">-</div>
+                            <div id="iperf3_ul_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>🌐 Ping Google</label>
+                            <div id="ping_google" class="value">-</div>
+                            <div id="ping_google_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                        <div class="speed-card">
+                            <label>☁️ Ping Cloudflare</label>
+                            <div id="ping_cloudflare" class="value">-</div>
+                            <div id="ping_cloudflare_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📥 RX Data (Downstream SC-QAM)</h2>
+                        <div class="table-wrapper">
+                            <table id="rxTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Frequency (MHz)</th>
+                                        <th>Power (dBmV)</th>
+                                        <th>SNR (dB)</th>
+                                        <th>Octets</th>
+                                        <th>Correctables</th>
+                                        <th>Uncorrectables</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📥 RX OFDM Data (Downstream OFDM)</h2>
+                        <div class="table-wrapper">
+                            <table id="rxofdmTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Subcarrier 0 Freq</th>
+                                        <th>PLC Lock</th>
+                                        <th>NCP Lock</th>
+                                        <th>MDC1 Lock</th>
+                                        <th>PLC Power</th>
+                                        <th>PLC SNR</th>
+                                        <th>Octets</th>
+                                        <th>Correctables</th>
+                                        <th>Uncorrectables</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📤 TX Data (Upstream SC-QAM)</h2>
+                        <div class="table-wrapper">
+                            <table id="txTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>Frequency (MHz)</th>
+                                        <th>Power (dBmV)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📤 TX OFDMA Data (Upstream OFDMA)</h2>
+                        <div class="table-wrapper">
+                            <table id="txofdmTable">
+                                <thead>
+                                    <tr>
+                                        <th>Port ID</th>
+                                        <th>State</th>
+                                        <th>Subcarrier 0 Freq</th>
+                                        <th>Power</th>
+                                        <th>Active SCs</th>
+                                        <th>Excluded SCs</th>
+                                        <th>Not Used SCs</th>
+                                        <th>Minislots</th>
+                                        <th>Interface Speed</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="table-section">
+                        <h2>📋 DOCSIS Event Logs</h2>
+                        <div class="table-wrapper">
+                            <table id="eventlogTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>ID</th>
+                                        <th>Event</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trends View -->
+                <div class="view-mode" id="trendsView">
+                    <div class="chart-section">
+                        <h2>📊 Speed Trends</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="speedChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>🌐 Ping Latency & Packet Loss</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="pingChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>⏱️ Modem Uptime (Time Since Reboot)</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="uptimeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>📶 Downstream Power Levels</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="rxPowerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>📡 Downstream SNR</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="rxSnrChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>⚠️ Codeword Error Rates (BER & Corrected)</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="berChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>📤 Upstream Channels & Power</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="txPowerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>console.log("DEBUG: Page loaded, about to load db-viewer.js"); window.debugMode = true;</script>
+        <script src="/static/api-config.js"></script>
+        <script src="/static/db-viewer.js"></script>
+    </body>
+</html>

@@ -49,46 +49,55 @@ type UpdateLock struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// parseSemanticVersion parses a semantic version string (e.g., "1.2.3") into major, minor, patch integers.
+// parseSemanticVersion parses a semantic version string (e.g., "1.2.3" or "7.0.0-test.1")
+// into major, minor, patch integers and optional pre-release suffix.
 // Returns an error if the version string is not valid semver format.
-func parseSemanticVersion(version string) (major, minor, patch int, err error) {
+func parseSemanticVersion(version string) (major, minor, patch int, prerelease string, err error) {
 	// Remove any 'v' prefix
 	version = strings.TrimPrefix(version, "v")
+
+	// Check for pre-release suffix (e.g., "-test.1", "-beta.2")
+	if idx := strings.Index(version, "-"); idx != -1 {
+		prerelease = version[idx+1:]
+		version = version[:idx]
+	}
 
 	// Split by dots
 	parts := strings.Split(version, ".")
 	if len(parts) != 3 {
-		return 0, 0, 0, fmt.Errorf("invalid version format: expected X.Y.Z, got %s", version)
+		return 0, 0, 0, "", fmt.Errorf("invalid version format: expected X.Y.Z, got %s", version)
 	}
 
 	// Parse each component
 	major, err = strconv.Atoi(parts[0])
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid major version: %w", err)
+		return 0, 0, 0, "", fmt.Errorf("invalid major version: %w", err)
 	}
 
 	minor, err = strconv.Atoi(parts[1])
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid minor version: %w", err)
+		return 0, 0, 0, "", fmt.Errorf("invalid minor version: %w", err)
 	}
 
 	patch, err = strconv.Atoi(parts[2])
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid patch version: %w", err)
+		return 0, 0, 0, "", fmt.Errorf("invalid patch version: %w", err)
 	}
 
-	return major, minor, patch, nil
+	return major, minor, patch, prerelease, nil
 }
 
 // shouldUpdateVersion returns true if latestVersion is newer than currentVersion using proper semver comparison.
-// This fixes the lexicographic comparison bug where "5.10.0" would be incorrectly considered older than "5.9.0".
+// Handles pre-release versions (e.g., "7.0.0-test.1"):
+// - 7.0.0 is newer than 7.0.0-test.1 (stable > pre-release)
+// - 7.0.0-test.2 is newer than 7.0.0-test.1 (compare pre-release numbers)
 func shouldUpdateVersion(currentVersion, latestVersion string) (bool, error) {
-	curMajor, curMinor, curPatch, err := parseSemanticVersion(currentVersion)
+	curMajor, curMinor, curPatch, curPrerelease, err := parseSemanticVersion(currentVersion)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse current version: %w", err)
 	}
 
-	latMajor, latMinor, latPatch, err := parseSemanticVersion(latestVersion)
+	latMajor, latMinor, latPatch, latPrerelease, err := parseSemanticVersion(latestVersion)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse latest version: %w", err)
 	}
@@ -110,10 +119,48 @@ func shouldUpdateVersion(currentVersion, latestVersion string) (bool, error) {
 	// Major and minor equal, compare patch
 	if latPatch > curPatch {
 		return true, nil
+	} else if latPatch < curPatch {
+		return false, nil
+	}
+
+	// Major, minor, and patch all equal - check pre-release status
+	// Stable version (no prerelease) is newer than pre-release of same version
+	if curPrerelease != "" && latPrerelease == "" {
+		// Current is pre-release, latest is stable - upgrade to stable
+		return true, nil
+	} else if curPrerelease == "" && latPrerelease != "" {
+		// Current is stable, latest is pre-release - don't downgrade
+		return false, nil
+	} else if curPrerelease != "" && latPrerelease != "" {
+		// Both are pre-releases - compare pre-release versions
+		// Try to extract numbers from pre-release (e.g., "test.1" -> 1)
+		curPrereleaseNum := extractPrereleaseNumber(curPrerelease)
+		latPrereleaseNum := extractPrereleaseNumber(latPrerelease)
+
+		if latPrereleaseNum > curPrereleaseNum {
+			return true, nil
+		}
 	}
 
 	// Latest version is equal or older
 	return false, nil
+}
+
+// extractPrereleaseNumber extracts the numeric part from a pre-release string.
+// E.g., "test.1" -> 1, "beta.12" -> 12, "alpha" -> 0
+func extractPrereleaseNumber(prerelease string) int {
+	// Find the last dot and get everything after it
+	parts := strings.Split(prerelease, ".")
+	if len(parts) < 2 {
+		return 0
+	}
+
+	lastPart := parts[len(parts)-1]
+	num, err := strconv.Atoi(lastPart)
+	if err != nil {
+		return 0
+	}
+	return num
 }
 
 // checkUpdateLock checks if an update was recently attempted and failed.
@@ -458,6 +505,19 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 		return fmt.Errorf("signature verification failed: %w", err)
 	}
 	m.Log("✓ Signature verification passed")
+
+	// STEP 3.5: Verify signature timestamp freshness (prevents rollback attacks)
+	// An attacker with GitHub access could serve an old vulnerable binary with valid signature
+	sigInfo, err := os.Stat(sigFile)
+	if err == nil {
+		sigAge := time.Since(sigInfo.ModTime())
+		const maxSignatureAge = 90 * 24 * time.Hour // 90 days
+		if sigAge > maxSignatureAge {
+			cleanup()
+			return fmt.Errorf("signature file too old (%d days), possible rollback attack (max age: 90 days)", int(sigAge.Hours()/24))
+		}
+		m.Log(fmt.Sprintf("✓ Signature freshness verified (age: %d days)", int(sigAge.Hours()/24)))
+	}
 
 	// STEP 4: Make the new binary executable (Unix systems)
 	if runtime.GOOS != "windows" {

@@ -395,23 +395,41 @@ modemcheck/
 │   ├── test_env_setup.sh       # Test environment orchestration
 │   ├── test_cloud_api.py       # Python integration tests
 │   └── init_test_data.py       # Test data initialization
-└── cloudserver/                # Docker-based cloud server
-    ├── Dockerfile              # Alpine-based container
-    ├── docker-compose.yml      # Service definition
-    ├── nginx.conf              # Web server configuration
-    ├── admin.html              # Admin dashboard with Config Generator
-    ├── admin-login.html        # Admin login page
-    ├── login.html              # Viewer login page
-    ├── db-viewer.html          # Cloud data viewer interface
-    ├── db-viewer.js            # Data viewer JavaScript
-    └── cgi-bin/                # Python CGI backend
-        ├── upload.py           # Upload handler with direct DB insertion
-        ├── db-api.py           # Database query API
-        ├── auth.py             # Authentication and session management
-        ├── admin-api.py        # Admin operations and role management
-        ├── user-management.py  # User CRUD operations
-        ├── db_schema.py        # Main database schema
-        └── audit_schema.py     # Audit logging schema
+└── cloudserver/                # Docker-based cloud server (FastAPI v2)
+    ├── Dockerfile              # Multi-stage Python container
+    ├── docker-compose.yml      # Production service definitions
+    ├── docker-compose.test.yml # Test environment isolation
+    ├── .env.example            # Environment configuration template
+    ├── README.md               # Complete deployment documentation
+    ├── OPERATIONS.md           # Backup, monitoring, maintenance guide
+    ├── TESTING-SUMMARY.md      # Comprehensive test documentation
+    ├── app/                    # FastAPI application
+    │   ├── main.py             # Application entry point
+    │   ├── core/               # Core functionality
+    │   │   ├── auth.py         # Password hashing, sessions
+    │   │   ├── security.py     # CSRF, rate limiting, validation
+    │   │   ├── database.py     # PostgreSQL connection
+    │   │   ├── enhanced_limiter.py    # Per-user rate limiting
+    │   │   ├── session_security.py    # Device fingerprinting
+    │   │   ├── audit_retention.py     # Automated log cleanup
+    │   │   └── metric_extraction.py   # Extract metrics from JSON
+    │   ├── routers/            # API endpoints
+    │   │   ├── auth.py         # Login, logout, sessions
+    │   │   ├── upload.py       # Client data uploads
+    │   │   ├── database.py     # Query modem checks
+    │   │   ├── admin.py        # API keys, logs, config
+    │   │   ├── users.py        # User management
+    │   │   └── data_management.py  # Bulk operations
+    │   └── models/             # SQLAlchemy ORM models
+    ├── static/                 # Frontend assets
+    │   ├── admin.html          # Admin dashboard with Config Generator
+    │   ├── db-viewer.html      # Data viewer interface
+    │   └── login.html          # Authentication pages
+    ├── tests/                  # Comprehensive test suite (192+ tests)
+    │   ├── api/                # API endpoint tests
+    │   ├── security/           # Security tests
+    │   └── ui/                 # Playwright UI tests
+    └── backup-*.sh             # Automated backup scripts
 ```
 
 ## Contributing
@@ -425,27 +443,27 @@ Contributions are welcome! Please ensure:
 
 Modem-Check uses the following open-source libraries:
 
-- **[speedtest-go](https://github.com/showwin/speedtest-go)** by ITO Shogo (MIT License)
-  - Provides native Go speed testing using Ookla speedtest.net servers
-  - Enables single-binary deployment without external iperf3 dependencies
+**Go Client:**
+- **[speedtest-go](https://github.com/showwin/speedtest-go)** by ITO Shogo (MIT License) - Native Go speed testing using Ookla speedtest.net servers
+- **[go-ping](https://github.com/go-ping/ping)** by Cameron Sparr and contributors (MIT License) - ICMP ping functionality in pure Go
+- **[Minisign](https://jedisct1.github.io/minisign/)** by Frank Denis (ISC License) - Secure file signing and signature verification
+- **[go-minisign](https://github.com/jedisct1/go-minisign)** by Frank Denis (BSD-2-Clause) - Go implementation for signature verification
+- **[google/uuid](https://github.com/google/uuid)** by Google Inc. (BSD-3-Clause) - UUID generation library
+- **golang.org/x packages** by The Go Authors (BSD-3-Clause) - Official Go supplementary libraries
 
-- **[go-ping](https://github.com/go-ping/ping)** by Cameron Sparr and contributors (MIT License)
-  - Provides ICMP ping functionality in pure Go
-  - Enables cross-platform network latency testing
+**Python Backend (FastAPI v2):**
+- **[FastAPI](https://github.com/fastapi/fastapi)** by Sebastián Ramírez (MIT License) - Modern async web framework with automatic API documentation
+- **[Uvicorn](https://github.com/encode/uvicorn)** by Encode OSS Ltd (BSD-3-Clause) - Lightning-fast ASGI server implementation
+- **[Gunicorn](https://github.com/benoitc/gunicorn)** by Benoît Chesneau & Paul J. Davis (MIT License) - Production WSGI/ASGI HTTP server
+- **[SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy)** by SQLAlchemy authors (MIT License) - Python SQL toolkit and async ORM
+- **[Pydantic](https://github.com/pydantic/pydantic)** by Pydantic Services Inc. (MIT License) - Data validation using Python type annotations
+- **[redis-py](https://github.com/redis/redis-py)** by Redis Contributors (MIT License) - Python Redis client for session management
+- **[argon2-cffi](https://github.com/hynek/argon2-cffi)** by Hynek Schlawack (MIT License) - Secure Argon2 password hashing
 
-- **[Minisign](https://jedisct1.github.io/minisign/)** by Frank Denis (ISC License)
-  - Dead simple tool to sign files and verify digital signatures
-  - Used for secure auto-update signature verification
-
-- **[go-minisign](https://github.com/jedisct1/go-minisign)** by Frank Denis (BSD-2-Clause License)
-  - Go implementation of Minisign signature verification
-  - Enables cryptographic verification of binary updates
-
-- **[google/uuid](https://github.com/google/uuid)** by Google Inc. (BSD-3-Clause License)
-  - UUID generation library
-
-- **golang.org/x packages** by The Go Authors (BSD-3-Clause License)
-  - Official Go supplementary libraries (net, sync, sys, crypto)
+**JavaScript Frontend:**
+- **[Chart.js](https://github.com/chartjs/Chart.js)** by Chart.js Contributors (MIT License) - Flexible charting library for interactive data visualization
+- **[chartjs-adapter-date-fns](https://github.com/chartjs/chartjs-adapter-date-fns)** by Chart.js Contributors (MIT License) - Date adapter for time-series charts
+- **[zxcvbn](https://github.com/dropbox/zxcvbn)** by Dan Wheeler and Dropbox (MIT License) - Realistic password strength estimation
 
 Full license texts and detailed attribution information can be found in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 

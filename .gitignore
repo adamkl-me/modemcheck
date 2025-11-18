@@ -1,5 +1,6 @@
 # Python
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -7,15 +8,20 @@ __pycache__/
 .Python
 .pytest_cache/
 
-# Test data, logs, and personal notes
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Test data, logs, test scripts, and personal notes
 ModemWebUIDataExamples/
 Playground/
+Playground-Test/
 .upload_queue.json
 rebuild-docker.sh
-
-# Test environment scripts
-cloudserver/start-test-env.sh
-cloudserver/stop-test-env.sh   
+commandstuff.md
 
 # Go build artifacts
 modem-check
@@ -36,3 +42,24 @@ config.json
 
 # Claude AI
 .claude/
+
+# CloudServer specific
+cloudserver/.env
+cloudserver/test-data/
+
+# Test artifacts
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+playwright-report/
+test-results/
+test-report.html
+test_output.log
+*.log
+
+# Screenshots and temporary files
+Screenshot*.png
+*.tmp
+*~
+.DS_Store
