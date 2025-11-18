@@ -1,0 +1,29 @@
+[Unit]
+Description=ModemCheck Cloud Server Backup
+Documentation=https://github.com/adamkl-me/modemcheck
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=adamkl
+Group=docker
+WorkingDirectory=/home/adamkl/projects/modemcheck/cloudserver
+
+# Run backup with verification
+ExecStart=/home/adamkl/projects/modemcheck/cloudserver/backup-all.sh --verify
+
+# Logging (logs directory must exist before starting service)
+StandardOutput=append:/home/adamkl/projects/modemcheck/cloudserver/logs/backup.log
+StandardError=append:/home/adamkl/projects/modemcheck/cloudserver/logs/backup.log
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+CPUQuota=50%
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
