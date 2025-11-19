@@ -306,8 +306,8 @@ class TestInputValidationEdgeCases:
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
 
-        # Modem ID with special characters
-        modem_id = "XB8-<script>alert('xss')</script>"
+        # Modem ID with special characters (testing XSS in modem_id)
+        modem_id = "XB8-<script>alert('xss')</script>"  # Will be rejected by validation
         filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
@@ -403,7 +403,7 @@ class TestResourceLimits:
         # Create data near size limit (9.5MB)
         large_data = {"data": "x" * (9 * 1024 * 1024)}
         json_data = json.dumps(large_data).encode()
-        modem_id = "XB8-LARGE"
+        modem_id = "XB8-AA:BB:CC:DD:EE:10"  # Valid MAC address format
         filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
@@ -483,7 +483,7 @@ class TestErrorRecovery:
 
         # Send invalid JSON
         invalid_data = b"{invalid json}"
-        modem_id = "XB8-INVALID"
+        modem_id = "XB8-AA:BB:CC:DD:EE:11"  # Valid MAC address format
         filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(invalid_data).hexdigest()
 

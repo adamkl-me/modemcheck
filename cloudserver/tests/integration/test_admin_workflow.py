@@ -168,7 +168,7 @@ class TestAPIKeyLifecycle:
         # Use key for upload
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-LIFECYCLE"
+        modem_id = "XB8-AA:BB:CC:DD:EE:01"  # Valid MAC address format
         filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
@@ -250,7 +250,7 @@ class TestAPIKeyLifecycle:
         # Old key should not work
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-ROTATION"
+        modem_id = "XB8-AA:BB:CC:DD:EE:02"  # Valid MAC address format
         filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
