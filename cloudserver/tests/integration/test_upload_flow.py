@@ -18,6 +18,68 @@ from sqlalchemy import select
 pytestmark = pytest.mark.integration
 
 
+def create_valid_modem_data():
+    """Create valid modem check data matching actual client format."""
+    return {
+        "sysinfo": {
+            "checktime": int(time.time()),
+            "modemmac": "AA:BB:CC:DD:EE:FF",
+            "modemtype": "XB8",
+            "firmware": "v1.2.3",
+            "uptime": "2 days 3:45:12",
+            "systemtime": "2024-01-01 12:00:00",
+            "clientversion": "6.0.0",
+            "clientos": "linux",
+            "clientarch": "amd64"
+        },
+        "downstream": [
+            {
+                "channel_id": 1,
+                "frequency": 591000000,
+                "power_dbmv": 5.5,
+                "snr_db": 40.5,
+                "modulation": "256-QAM",
+                "corrected": 0,
+                "uncorrected": 0
+            }
+        ],
+        "upstream": [
+            {
+                "channel_id": 1,
+                "frequency": 36000000,
+                "power_dbmv": 45.5,
+                "modulation": "ATDMA",
+                "symbol_rate": 5120
+            }
+        ],
+        "diagnostics": {
+            "speedtest": {
+                "download_mbps": 950.5,
+                "upload_mbps": 40.2,
+                "latency_ms": 12.3
+            },
+            "ping_google": {
+                "avg_latency_ms": "5.2",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.5",
+                "max_latency_ms": "8.1"
+            },
+            "ping_cloudflare": {
+                "avg_latency_ms": "3.1",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.3",
+                "max_latency_ms": "5.2"
+            },
+            "public_ip": "1.2.3.4",
+            "isp": "Test ISP",
+            "asn": "AS12345",
+            "city": "Test City",
+            "country": "US",
+            "detection_status": "success"
+        }
+    }
+
+
 class TestCompleteUploadFlow:
     """Test the complete upload workflow."""
 
@@ -29,37 +91,8 @@ class TestCompleteUploadFlow:
         db_session
     ):
         """Test complete upload flow with valid authentication."""
-        # Prepare test data
-        modem_data = {
-            "check_time": int(time.time()),
-            "modem_type": "XB8",
-            "mac_address": "AA:BB:CC:DD:EE:FF",
-            "firmware": "v1.2.3",
-            "uptime": "2 days 3:45:12",
-            "downstream": [
-                {"channel": 1, "frequency": 591000000, "power": 5.5, "snr": 40.5}
-            ],
-            "upstream": [
-                {"channel": 1, "frequency": 36000000, "power": 45.5}
-            ],
-            "speed_test": {
-                "download": 950.5,
-                "upload": 40.2,
-                "latency": 12.3
-            },
-            "ping_tests": {
-                "google": {"avg_latency": "5.2", "packet_loss": "0"},
-                "cloudflare": {"avg_latency": "3.1", "packet_loss": "0"}
-            },
-            "public_ip": {
-                "ip": "1.2.3.4",
-                "isp": "Test ISP",
-                "asn": "AS12345"
-            },
-            "client_version": "6.0.0",
-            "client_os": "linux",
-            "client_arch": "amd64"
-        }
+        # Prepare test data using correct format
+        modem_data = create_valid_modem_data()
 
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
@@ -120,14 +153,7 @@ class TestCompleteUploadFlow:
         db_session
     ):
         """Test that metrics are extracted during upload."""
-        modem_data = {
-            "check_time": int(time.time()),
-            "firmware": "v2.0.0",
-            "uptime": "5 days",
-            "speed_test": {
-                "download": 850.5,
-                "upload": 35.0
-            },
+        modem_data = create_valid_modem_data()
             "public_ip": {
                 "ip": "2.3.4.5",
                 "isp": "Metric Test ISP",
@@ -137,7 +163,7 @@ class TestCompleteUploadFlow:
         }
 
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-METRICS"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
@@ -192,7 +218,7 @@ class TestCompleteUploadFlow:
         active_api_key
     ):
         """Test that uploads with invalid signatures are rejected."""
-        modem_data = {"check_time": int(time.time())}
+        modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-INVALID"
         checksum = hashlib.sha256(json_data).hexdigest()
@@ -230,7 +256,7 @@ class TestCompleteUploadFlow:
         db_session
     ):
         """Test that uploads are logged in audit trail."""
-        modem_data = {"check_time": int(time.time())}
+        modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-AUDIT"
         checksum = hashlib.sha256(json_data).hexdigest()
@@ -284,7 +310,7 @@ class TestUploadValidation:
     @pytest.mark.asyncio
     async def test_reject_missing_api_key(self, http_client: httpx.AsyncClient):
         """Test that uploads without API key are rejected."""
-        modem_data = {"check_time": int(time.time())}
+        modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
 
         files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
@@ -304,7 +330,7 @@ class TestUploadValidation:
         active_api_key
     ):
         """Test that uploads with mismatched checksums are rejected."""
-        modem_data = {"check_time": int(time.time())}
+        modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-CHECKSUM"
 
@@ -347,7 +373,7 @@ class TestUploadValidation:
         active_api_key
     ):
         """Test that old timestamps are rejected."""
-        modem_data = {"check_time": int(time.time())}
+        modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-TIMESTAMP"
         checksum = hashlib.sha256(json_data).hexdigest()
@@ -482,10 +508,7 @@ class TestConcurrentUploads:
         import asyncio
 
         async def upload_check(index):
-            modem_data = {
-                "check_time": int(time.time()) + index,
-                "firmware": f"v1.{index}.0"
-            }
+            modem_data = create_valid_modem_data()
             json_data = json.dumps(modem_data).encode()
             modem_id = "XB8-CONCURRENT"
             checksum = hashlib.sha256(json_data).hexdigest()
@@ -539,7 +562,7 @@ class TestConcurrentUploads:
         import asyncio
 
         async def upload_modem(modem_num):
-            modem_data = {"check_time": int(time.time())}
+            modem_data = create_valid_modem_data()
             json_data = json.dumps(modem_data).encode()
             modem_id = f"XB8-MODEM{modem_num:03d}"
             checksum = hashlib.sha256(json_data).hexdigest()

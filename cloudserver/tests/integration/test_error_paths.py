@@ -15,6 +15,65 @@ from unittest.mock import patch, AsyncMock
 pytestmark = pytest.mark.integration
 
 
+def create_valid_modem_data():
+    """Create valid modem check data matching actual client format."""
+    return {
+        "sysinfo": {
+            "checktime": int(time.time()),
+            "modemmac": "AA:BB:CC:DD:EE:FF",
+            "modemtype": "XB8",
+            "firmware": "v1.2.3",
+            "uptime": "2 days 3:45:12",
+            "systemtime": "2024-01-01 12:00:00",
+            "clientversion": "6.0.0",
+            "clientos": "linux",
+            "clientarch": "amd64"
+        },
+        "downstream": [{
+            "channel_id": 1,
+            "frequency": 591000000,
+            "power_dbmv": 5.5,
+            "snr_db": 40.5,
+            "modulation": "256-QAM",
+            "corrected": 0,
+            "uncorrected": 0
+        }],
+        "upstream": [{
+            "channel_id": 1,
+            "frequency": 36000000,
+            "power_dbmv": 45.5,
+            "modulation": "ATDMA",
+            "symbol_rate": 5120
+        }],
+        "diagnostics": {
+            "speedtest": {
+                "download_mbps": 950.5,
+                "upload_mbps": 40.2,
+                "latency_ms": 12.3
+            },
+            "ping_google": {
+                "avg_latency_ms": "5.2",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.5",
+                "max_latency_ms": "8.1"
+            },
+            "ping_cloudflare": {
+                "avg_latency_ms": "3.1",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.3",
+                "max_latency_ms": "5.2"
+            },
+            "public_ip": "1.2.3.4",
+            "isp": "Test ISP",
+            "asn": "AS12345",
+            "city": "Test City",
+            "country": "US",
+            "detection_status": "success"
+        }
+    }
+
+
+
 class TestNetworkErrors:
     """Test handling of network-related errors."""
 
