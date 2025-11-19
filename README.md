@@ -21,6 +21,7 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [License](#license)
+- [Documentation](#documentation)
 
 ## Features
 
@@ -471,6 +472,29 @@ Special thanks to **Ookla** for the speedtest.net infrastructure and to all the 
 ## License
 
 This project is provided as-is for personal and educational use.
+
+## Documentation
+
+### Comprehensive Guides
+
+- **[TESTING.md](TESTING.md)** - Complete test suite documentation (450+ tests, coverage reports, CI/CD)
+- **[SECURITY.md](SECURITY.md)** - Security features, auto-update system, threat model, and best practices
+- **[CLAUDE.md](CLAUDE.md)** - Detailed technical implementation guide for developers and AI assistants
+
+### Cloud Server Documentation
+
+- **[cloudserver/README.md](cloudserver/README.md)** - FastAPI cloud server setup, API reference, and configuration
+- **[cloudserver/OPERATIONS.md](cloudserver/OPERATIONS.md)** - Operations guide: backups, monitoring, disaster recovery, maintenance
+- **[cloudserver/systemd/README.md](cloudserver/systemd/README.md)** - Systemd service/timer for automated backups
+
+### Client Documentation
+
+- **[modemcheck-client/README.md](modemcheck-client/README.md)** - Client architecture and modem scraper design
+- **[modemcheck-client/UPDATER.md](modemcheck-client/UPDATER.md)** - Auto-update system: channels, security, troubleshooting
+
+### Additional Resources
+
+- **[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md)** - Complete attribution and license information for dependencies
 
 ## Support
 
