@@ -223,6 +223,22 @@ def is_common_password(password: str) -> bool:
     return password.lower() in common
 
 
+def contains_null_byte(text: str) -> bool:
+    """
+    Check if string contains null bytes (\x00).
+
+    Null bytes can cause security issues with C-based libraries,
+    SQL injection, and path traversal attacks.
+
+    Args:
+        text: String to check
+
+    Returns:
+        True if null byte found, False otherwise
+    """
+    return '\x00' in text if text else False
+
+
 def validate_password(password: str) -> Tuple[bool, str]:
     """
     Validate password against security policy.
@@ -234,6 +250,7 @@ def validate_password(password: str) -> Tuple[bool, str]:
     - At least 1 digit
     - At least 1 special character
     - Not in common password list
+    - No null bytes
 
     Args:
         password: Password to validate
@@ -243,6 +260,9 @@ def validate_password(password: str) -> Tuple[bool, str]:
     """
     if not password:
         return (False, "Password is required")
+
+    if contains_null_byte(password):
+        return (False, "Password contains invalid characters")
 
     if len(password) < settings.min_password_length:
         return (False, f"Password must be at least {settings.min_password_length} characters long")

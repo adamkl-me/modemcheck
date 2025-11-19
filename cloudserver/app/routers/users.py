@@ -9,7 +9,7 @@ from sqlalchemy import select, delete, update
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.config import settings
-from app.core.security import hash_password, validate_password, delete_user_sessions
+from app.core.security import hash_password, validate_password, delete_user_sessions, contains_null_byte
 from app.core.audit import log_user_activity
 from app.models import User
 from app.schemas.user import (
@@ -50,6 +50,13 @@ async def create_user(
 
     Requires: admin role
     """
+    # Check for null bytes in username (security check)
+    if contains_null_byte(user_data.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username contains invalid characters"
+        )
+
     # Check if user already exists
     result = await db.execute(
         select(User).where(User.username == user_data.username)
@@ -323,4 +330,115 @@ async def force_user_logout(
         success=True,
         message=f"Logged out user '{logout_data.username}'",
         sessions_deleted=sessions_deleted
+    )
+
+
+@router.delete("/{username}", response_model=SuccessResponse)
+@limiter.limit(lambda: settings.api_admin_rate_limit)
+async def delete_user_by_username(
+    username: str,
+    request: Request,
+    session_data: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete a user by username (RESTful path-based endpoint).
+
+    Requires: admin role
+    Cannot delete yourself.
+    """
+    # Prevent self-deletion
+    if username == session_data["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+
+    # Delete user
+    result = await db.execute(
+        delete(User).where(User.username == username)
+    )
+    await db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Delete all sessions for this user
+    await delete_user_sessions(username)
+
+    # Log action
+    await log_user_activity(
+        db=db,
+        username=session_data["username"],
+        action_type="delete_user",
+        ip_address=get_client_ip(request),
+        success=True,
+        user_role=session_data.get("role"),
+        action_details={"deleted_username": username},
+        user_agent=get_user_agent(request)
+    )
+
+    return SuccessResponse(
+        success=True,
+        message=f"User '{username}' deleted successfully"
+    )
+
+
+@router.put("/{username}/role", response_model=SuccessResponse)
+@limiter.limit(lambda: settings.api_admin_rate_limit)
+async def change_user_role_by_username(
+    username: str,
+    role_data: dict,
+    request: Request,
+    session_data: dict = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Change a user's role by username (RESTful path-based endpoint).
+
+    Requires: admin role
+    """
+    from app.schemas.user import UserRole
+
+    # Validate role
+    try:
+        new_role = UserRole(role_data.get("role"))
+    except (ValueError, KeyError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role specified"
+        )
+
+    # Update role
+    result = await db.execute(
+        update(User)
+        .where(User.username == username)
+        .values(role=new_role)
+    )
+    await db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Log action
+    await log_user_activity(
+        db=db,
+        username=session_data["username"],
+        action_type="change_user_role",
+        ip_address=get_client_ip(request),
+        success=True,
+        user_role=session_data.get("role"),
+        action_details={"target_username": username, "new_role": new_role.value},
+        user_agent=get_user_agent(request)
+    )
+
+    return SuccessResponse(
+        success=True,
+        message=f"User role changed to '{new_role.value}'"
     )

@@ -168,22 +168,23 @@ class TestAPIKeyLifecycle:
         # Use key for upload
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-LIFECYCLE"
+        modem_id = "XB8-AA:BB:CC:DD:EE:01"  # Valid MAC address format
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
             api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": api_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -201,7 +202,7 @@ class TestAPIKeyLifecycle:
         assert upload_response.status_code == 200
 
         # Verify upload stored
-        check_id = upload_response.json()["id"]
+        check_id = upload_response.json()["database_id"]
         db_result = await db_session.execute(
             select(ModemCheck).where(ModemCheck.id == check_id)
         )
@@ -249,22 +250,23 @@ class TestAPIKeyLifecycle:
         # Old key should not work
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-ROTATION"
+        modem_id = "XB8-AA:BB:CC:DD:EE:02"  # Valid MAC address format
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         old_signature = hmac.new(
             old_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": old_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -409,7 +411,7 @@ class TestAuditTrail:
                 UserActivityLog.action_type == "create_user"
             )
         )
-        log = db_result.scalar_one_or_none()
+        log = db_result.scalars().first()
 
         # May or may not be logged depending on implementation
         # Verify if audit logging is enabled
@@ -439,7 +441,7 @@ class TestAuditTrail:
                 UserActivityLog.action_type == "create_api_key"
             )
         )
-        log = db_result.scalar_one_or_none()
+        log = db_result.scalars().first()
 
         # Verify audit logging if enabled
 

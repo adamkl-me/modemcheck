@@ -17,6 +17,65 @@ from statistics import mean, median
 pytestmark = pytest.mark.performance
 
 
+def create_valid_modem_data():
+    """Create valid modem check data matching actual client format."""
+    return {
+        "sysinfo": {
+            "checktime": int(time.time()),
+            "modemmac": "AA:BB:CC:DD:EE:FF",
+            "modemtype": "XB8",
+            "firmware": "v1.2.3",
+            "uptime": "2 days 3:45:12",
+            "systemtime": "2024-01-01 12:00:00",
+            "client_version": "6.0.0",
+            "client_os": "linux",
+            "client_arch": "amd64",
+            "public_ip": "1.2.3.4",
+            "isp_name": "Test ISP",
+            "asn": "AS12345",
+            "ip_city": "Test City",
+            "ip_country": "US",
+            "detection_status": "success"
+        },
+        "rx": [{
+            "channel_id": 1,
+            "frequency": 591000000,
+            "power": 5.5,
+            "snr": 40.5,
+            "modulation": "256-QAM",
+            "correcteds": 0,
+            "uncorrectables": 0
+        }],
+        "tx": [{
+            "channel_id": 1,
+            "frequency": 36000000,
+            "power": 45.5,
+            "modulation": "ATDMA",
+            "symbol_rate": 5120
+        }],
+        "diagnostics": {
+            "speedtest": {
+                "download_mbps": 950.5,
+                "upload_mbps": 40.2,
+                "latency_ms": 12.3
+            },
+            "ping_google": {
+                "avg_latency_ms": "5.2",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.5",
+                "max_latency_ms": "8.1"
+            },
+            "ping_cloudflare": {
+                "avg_latency_ms": "3.1",
+                "packet_loss_pct": "0",
+                "jitter_ms": "0.3",
+                "max_latency_ms": "5.2"
+            },
+        }
+    }
+
+
+
 class TestUploadPerformance:
     """Test upload endpoint performance."""
 
@@ -35,22 +94,24 @@ class TestUploadPerformance:
         for i in range(10):
             modem_data = {"check_time": int(time.time()) + i}
             json_data = json.dumps(modem_data).encode()
-            modem_id = f"XB8-PERF{i:03d}"
+            # Use valid MAC address format
+            modem_id = f"XB8-AA:BB:CC:DD:FF:{i:02X}"
+            filename = f"2024-01-01_12-00-{i:02d}.json"
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
                 active_api_key.api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("test.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "test.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
@@ -97,22 +158,24 @@ class TestUploadPerformance:
         async def upload_check(index):
             modem_data = {"check_time": int(time.time()) + index}
             json_data = json.dumps(modem_data).encode()
-            modem_id = f"XB8-CONCURRENT{index:03d}"
+            # Use valid MAC address format
+            modem_id = f"XB8-AA:BB:CC:DD:EE:{index:02X}"
+            filename = f"2024-01-01_12-01-{index:02d}.json"
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
                 active_api_key.api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("test.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "test.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
@@ -226,11 +289,11 @@ class TestQueryPerformance:
             f"{active_api_key.api_key}{message}".encode()
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": "2024-01-01_12-00-00.json",
             "checksum": checksum
         }
         headers = {
@@ -365,20 +428,24 @@ class TestStressTest:
                 try:
                     modem_data = {"check_time": int(time.time())}
                     json_data = json.dumps(modem_data).encode()
-                    modem_id = f"XB8-STRESS{upload_count:05d}"
+                    # Use valid MAC address format (cycle through last 2 octets)
+                    modem_id = f"XB8-AA:BB:CC:DD:{(upload_count // 256):02X}:{(upload_count % 256):02X}"
+                    filename = f"2024-01-01_12-02-{upload_count % 100:02d}.json"
                     checksum = hashlib.sha256(json_data).hexdigest()
 
                     timestamp = str(int(time.time()))
-                    message = f"{timestamp}|{modem_id}|test.json|{checksum}"
-                    signature = hashlib.sha256(
-                        f"{active_api_key.api_key}{message}".encode()
+                    message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+                    signature = hmac.new(
+                        active_api_key.api_key.encode('utf-8'),
+                        message.encode('utf-8'),
+                        hashlib.sha256
                     ).hexdigest()
 
-                    files = {"file": ("test.json", json_data, "application/json")}
+                    files = {"file": (filename, json_data, "application/json")}
                     data = {
                         "api_key": active_api_key.api_key,
                         "modem_id": modem_id,
-                        "filename": "test.json",
+                        "filename": filename,
                         "checksum": checksum
                     }
                     headers = {

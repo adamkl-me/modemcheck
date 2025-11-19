@@ -81,6 +81,7 @@ async def db_session(async_db_engine) -> AsyncGenerator[AsyncSession, None]:
 
     async with async_session_maker() as session:
         yield session
+        await session.close()  # Explicitly close session
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -113,8 +114,13 @@ async def clear_redis():
 
 @pytest.fixture(scope="function")
 async def http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Create async HTTP client for API testing."""
-    async with httpx.AsyncClient(base_url=TEST_BASE_URL, timeout=30.0) as client:
+    """Create async HTTP client for API testing with cookie tracking enabled."""
+    async with httpx.AsyncClient(
+        base_url=TEST_BASE_URL,
+        timeout=30.0,
+        follow_redirects=True,
+        cookies=httpx.Cookies()  # Enable cookie jar for session tracking
+    ) as client:
         yield client
 
 

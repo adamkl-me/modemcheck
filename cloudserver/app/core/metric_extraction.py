@@ -94,32 +94,32 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         metrics['system_time'] = None
 
-    # Extract signal quality metrics
-    downstream = json_data.get('downstream', {})
-    upstream = json_data.get('upstream', {})
+    # Extract signal quality metrics from rx/tx arrays (matching Go client format)
+    rx_channels = json_data.get('rx', [])
+    tx_channels = json_data.get('tx', [])
 
-    # Calculate average downstream power and SNR
-    if 'channels' in downstream and isinstance(downstream['channels'], list):
-        powers = [safe_float(ch.get('power')) for ch in downstream['channels'] if ch.get('power') is not None]
-        snrs = [safe_float(ch.get('snr')) for ch in downstream['channels'] if ch.get('snr') is not None]
+    # Calculate average downstream power and SNR from rx channels
+    if isinstance(rx_channels, list):
+        powers = [safe_float(ch.get('power')) for ch in rx_channels if ch.get('power') is not None]
+        snrs = [safe_float(ch.get('snr')) for ch in rx_channels if ch.get('snr') is not None]
 
         if powers:
             metrics['avg_downstream_power'] = sum(powers) / len(powers)
         if snrs:
             metrics['avg_downstream_snr'] = sum(snrs) / len(snrs)
 
-    # Calculate average upstream power
-    if 'channels' in upstream and isinstance(upstream['channels'], list):
-        powers = [safe_float(ch.get('power')) for ch in upstream['channels'] if ch.get('power') is not None]
+    # Calculate average upstream power from tx channels
+    if isinstance(tx_channels, list):
+        powers = [safe_float(ch.get('power')) for ch in tx_channels if ch.get('power') is not None]
         if powers:
             metrics['avg_upstream_power'] = sum(powers) / len(powers)
 
-    # Calculate total errors (corrected and uncorrected)
+    # Calculate total errors (corrected and uncorrected) from rx channels
     total_corrected = 0
     total_uncorrected = 0
 
-    if 'channels' in downstream and isinstance(downstream['channels'], list):
-        for ch in downstream['channels']:
+    if isinstance(rx_channels, list):
+        for ch in rx_channels:
             total_corrected += safe_int(ch.get('correcteds')) or 0
             total_uncorrected += safe_int(ch.get('uncorrectables')) or 0
 
@@ -170,13 +170,12 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     metrics['client_os'] = sysinfo.get('client_os')
     metrics['client_arch'] = sysinfo.get('client_arch')
 
-    # Extract network information
-    network_info = json_data.get('network_info', {})
+    # Extract network information (from sysinfo section)
     metrics['detection_status'] = sysinfo.get('detection_status')
-    metrics['public_ip'] = network_info.get('public_ip')
-    metrics['asn'] = network_info.get('asn')
-    metrics['isp_name'] = network_info.get('isp_name')
-    metrics['ip_city'] = network_info.get('city')
-    metrics['ip_country'] = network_info.get('country')
+    metrics['public_ip'] = sysinfo.get('public_ip')
+    metrics['asn'] = sysinfo.get('asn')
+    metrics['isp_name'] = sysinfo.get('isp_name')
+    metrics['ip_city'] = sysinfo.get('ip_city')
+    metrics['ip_country'] = sysinfo.get('ip_country')
 
     return metrics
