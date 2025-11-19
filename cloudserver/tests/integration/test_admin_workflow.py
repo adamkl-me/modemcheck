@@ -452,31 +452,21 @@ class TestRBACIntegration:
     @pytest.mark.asyncio
     async def test_basic_user_cannot_create_users(
         self,
-        http_client: httpx.AsyncClient,
-        csrf_token: str
+        basic_client_with_token: httpx.AsyncClient,
+        csrf_token_basic: str
     ):
         """Test that basic users cannot create other users."""
-        # Login as basic user
-        login_response = await http_client.post(
-            "/api/auth/login",
-            json={"username": "test_basic", "password": "TestPass123!"}
-        )
-
-        if login_response.status_code != 200:
-            # User doesn't exist, create it first
-            pytest.skip("Basic user fixture not available")
-
-        # Try to create user
+        # Try to create user (basic_client_with_token is already authenticated)
         user_data = {
             "username": "unauthorized_user",
             "password": "TestPass123!",
             "role": "basic"
         }
 
-        response = await http_client.post(
+        response = await basic_client_with_token.post(
             "/api/users",
             json=user_data,
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token_basic}
         )
 
         # Should be forbidden
@@ -485,24 +475,15 @@ class TestRBACIntegration:
     @pytest.mark.asyncio
     async def test_elevated_user_can_create_api_keys(
         self,
-        http_client: httpx.AsyncClient,
-        csrf_token: str
+        elevated_client_with_token: httpx.AsyncClient,
+        csrf_token_elevated: str
     ):
         """Test that elevated users can create API keys."""
-        # Login as elevated user
-        login_response = await http_client.post(
-            "/api/auth/login",
-            json={"username": "test_elevated", "password": "TestPass123!"}
-        )
-
-        if login_response.status_code != 200:
-            pytest.skip("Elevated user fixture not available")
-
-        # Create API key
-        response = await http_client.post(
+        # Create API key (elevated_client_with_token is already authenticated)
+        response = await elevated_client_with_token.post(
             "/api/admin/api_keys",
             json={"name": "elevated_key"},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token_elevated}
         )
 
         # Should succeed

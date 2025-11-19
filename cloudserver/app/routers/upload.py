@@ -138,12 +138,25 @@ async def upload_check(
     client_ip = get_client_ip(request)
     user_agent = get_user_agent(request)
 
+    # Check if IP is locked out due to failed API key attempts
+    from app.core.security import check_api_key_lockout, record_failed_api_key, clear_failed_api_keys
+
+    is_locked, remaining_seconds = await check_api_key_lockout(client_ip)
+    if is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed API key attempts. Try again in {remaining_seconds} seconds."
+        )
+
     # Create API key hash for logging
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
 
     # Validate API key
     is_valid, key_name = await validate_and_get_api_key(api_key, db)
     if not is_valid:
+        # Record failed API key attempt
+        await record_failed_api_key(client_ip)
+
         await log_client_submission(
             db=db,
             ip_address=client_ip,
@@ -159,6 +172,9 @@ async def upload_check(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or inactive API key"
         )
+
+    # Clear failed attempts on successful API key validation
+    await clear_failed_api_keys(client_ip)
 
     # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
     if not x_request_timestamp or not x_request_signature:

@@ -171,9 +171,6 @@ class TestRateLimitDocumentation:
 
     def test_env_example_coverage(self):
         """Verify that .env.example documents all rate limit settings."""
-        # This test would check that .env.example file contains rate limit examples
-        # Skipped if .env.example doesn't exist
-
         import os
         env_example_path = "cloudserver/.env.example"
 
@@ -183,16 +180,21 @@ class TestRateLimitDocumentation:
         with open(env_example_path) as f:
             content = f.read()
 
-        # Should document the main rate limits
+        # Should document all configurable rate limits
         expected_vars = [
             "UPLOAD_RATE_LIMIT",
             "AUTH_RATE_LIMIT",
-            "API_QUERY_RATE_LIMIT"
+            "API_QUERY_RATE_LIMIT",
+            "API_ADMIN_RATE_LIMIT",
+            "API_DATA_MGMT_RATE_LIMIT"
         ]
 
+        missing_vars = []
         for var in expected_vars:
-            # Just verify they can be set - example file may not have all
-            assert True  # Placeholder
+            if var not in content:
+                missing_vars.append(var)
+
+        assert not missing_vars, f"Missing rate limit variables in .env.example: {missing_vars}"
 
 
 class TestRateLimitMigration:

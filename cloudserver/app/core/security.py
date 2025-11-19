@@ -567,6 +567,57 @@ async def clear_failed_logins(username: str):
     await r.delete(failed_key)
 
 
+async def check_api_key_lockout(ip_address: str) -> Tuple[bool, int]:
+    """
+    Check if IP is locked out due to failed API key attempts.
+
+    Args:
+        ip_address: IP address to check
+
+    Returns:
+        (is_locked, remaining_seconds): Tuple of lock status and remaining time
+    """
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
+    failed_count = await r.get(failed_key)
+
+    if not failed_count:
+        return (False, 0)
+
+    failed_count = int(failed_count)
+    # Lock out after 10 failed API key attempts (more lenient than login)
+    if failed_count >= 10:
+        ttl = await r.ttl(failed_key)
+        return (True, max(0, ttl))
+
+    return (False, 0)
+
+
+async def record_failed_api_key(ip_address: str):
+    """
+    Record failed API key attempt from IP and increment counter.
+
+    Args:
+        ip_address: IP address that failed API key validation
+    """
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
+
+    # Increment counter
+    failed_count = await r.incr(failed_key)
+
+    # Set 10 minute expiration on first failure (longer than account lockout)
+    if failed_count == 1:
+        await r.expire(failed_key, 600)  # 10 minutes
+
+
+async def clear_failed_api_keys(ip_address: str):
+    """Clear failed API key counter on successful validation."""
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
+    await r.delete(failed_key)
+
+
 # ============================================================================
 # HMAC SIGNATURE VALIDATION (for client uploads)
 # ============================================================================

@@ -10,6 +10,7 @@ Tests for:
 import pytest
 import time
 import hashlib
+import hmac
 import secrets
 import asyncio
 from typing import List
@@ -22,27 +23,42 @@ class TestAPIKeyBruteForce:
     """Test API key brute force prevention."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rate limiting not yet implemented")
     async def test_api_key_brute_force_prevention(self, http_client: httpx.AsyncClient):
         """Test that API key brute forcing is rate limited."""
         # Generate a bunch of random API keys to try
-        fake_keys = [secrets.token_hex(32) for _ in range(50)]
+        fake_keys = [secrets.token_hex(32) for _ in range(15)]
 
         # Try to brute force with fake keys
         failed_attempts = 0
         rate_limited = False
 
         for fake_key in fake_keys:
-            # Prepare upload request with fake key
+            # Prepare upload request with fake key (no signature headers to avoid signature errors)
+            # We want to test API key validation lockout, not signature validation
+            timestamp = str(int(time.time()))
+            checksum = hashlib.sha256(b'{"test": "data"}').hexdigest()
+
+            # Create valid signature with the fake key (signature will be valid but key won't exist)
+            message = f"{timestamp}|XB8-AA:BB:CC:DD:EE:FF|2024-01-01_12-00-00.json|{checksum}"
+            signature = hmac.new(
+                fake_key.encode('utf-8'),
+                message.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+
             files = {"file": ("test.json", b'{"test": "data"}', "application/json")}
             data = {
                 "api_key": fake_key,
                 "modem_id": "XB8-AA:BB:CC:DD:EE:FF",
-                "filename": "test.json",
-                "checksum": hashlib.sha256(b'{"test": "data"}').hexdigest()
+                "filename": "2024-01-01_12-00-00.json",
+                "checksum": checksum
+            }
+            headers = {
+                "X-Request-Timestamp": timestamp,
+                "X-Request-Signature": signature
             }
 
-            response = await http_client.post("/api/upload", files=files, data=data)
+            response = await http_client.post("/api/upload", files=files, data=data, headers=headers)
 
             if response.status_code == 429:  # Rate limited
                 rate_limited = True
@@ -50,8 +66,9 @@ class TestAPIKeyBruteForce:
             elif response.status_code in [401, 403]:  # Unauthorized
                 failed_attempts += 1
 
-        # Should be rate limited before trying all 50 keys
-        assert rate_limited or failed_attempts < 50, "Should implement rate limiting for API key attempts"
+        # Should be rate limited after 10 failed attempts
+        assert rate_limited, f"Should be rate limited after 10 attempts, but got {failed_attempts} failures without lockout"
+        assert failed_attempts >= 10, f"Should have at least 10 failed attempts before lockout, got {failed_attempts}"
 
     @pytest.mark.asyncio
     async def test_api_key_lockout_after_failures(self, http_client: httpx.AsyncClient):

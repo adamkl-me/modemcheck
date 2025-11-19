@@ -472,12 +472,36 @@ class TestTransactionHandling:
 class TestErrorHandling:
     """Test database error handling."""
 
-    @pytest.mark.skip(reason="Test is empty placeholder")
-    async def test_handle_connection_error(self, app):
-        """Test handling of connection errors."""
-        # This would test reconnection logic
-        # Implementation specific to actual error scenarios
-        pass
+    @pytest.mark.asyncio
+    async def test_handle_connection_error(self, db_session):
+        """
+        Test handling of connection errors.
+
+        Since we can't actually disconnect the database in tests without breaking
+        the test environment, this test validates that database error handling
+        is properly configured (pre-ping enabled, proper exception handling).
+        """
+        from sqlalchemy.exc import DBAPIError, OperationalError
+        from sqlalchemy import text
+
+        # Test 1: Verify that invalid SQL raises appropriate exception
+        with pytest.raises(DBAPIError):
+            await db_session.execute(text("SELECT * FROM nonexistent_table_12345"))
+
+        # Session should still be usable after error (rollback occurs)
+        await db_session.rollback()
+
+        # Test 2: Verify session can recover after error
+        result = await db_session.execute(text("SELECT 1 as test"))
+        assert result.scalar() == 1
+
+        # Test 3: Verify connection pool pre-ping is enabled (from config)
+        # This feature ensures stale connections are detected before use
+        from app.core.database import get_engine
+        engine = get_engine()
+
+        # Check that pool_pre_ping is enabled
+        assert engine.pool._pre_ping is True, "pool_pre_ping should be enabled to detect stale connections"
 
     async def test_handle_integrity_constraint(self, db_session, admin_user):
         """Test handling of integrity constraint violations."""
