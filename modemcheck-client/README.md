@@ -1,4 +1,4 @@
-# Modem Check Client v5.7.1
+# Modem Check Client v7.0.0
 
 This is the main application source code for modem-check, organized into a clean modular package structure for better maintainability and extensibility.
 
