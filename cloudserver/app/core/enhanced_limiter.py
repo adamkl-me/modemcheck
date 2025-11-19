@@ -59,9 +59,7 @@ async def check_user_rate_limit(
             - current_count: Current request count
             - remaining: Requests remaining in window
     """
-    if settings.is_test():
-        return (True, 0, limit)  # Always allow in test mode
-
+    # Don't skip in test mode - we want to test the actual functionality
     redis = await get_redis()
     key = f"user_rate_limit:{username}"
     tracking_key = f"user_rl_keys:{username}"  # Track all rate limit keys for this user
@@ -102,9 +100,7 @@ async def check_endpoint_user_limit(
     Returns:
         (allowed, current_count, remaining): Rate limit status
     """
-    if settings.is_test():
-        return (True, 0, limit)
-
+    # Don't skip in test mode - we want to test the actual functionality
     redis = await get_redis()
     key = f"endpoint_rate_limit:{username}:{endpoint}"
     tracking_key = f"user_rl_keys:{username}"  # Same tracking set as global limits
@@ -168,16 +164,18 @@ async def reset_user_rate_limits(username: str) -> int:
     """
     redis = await get_redis()
     tracking_key = f"user_rl_keys:{username}"
+    global_key = f"user_rate_limit:{username}"
 
     # Get all tracked rate limit keys for this user (O(1) lookup via SET)
     keys = await redis.smembers(tracking_key)
 
-    if not keys:
-        return 0
+    # Always include the global rate limit key
+    all_keys = list(keys) if keys else []
+    all_keys.append(global_key)
 
     # Delete all keys in a single pipeline for efficiency
     pipe = redis.pipeline()
-    for key in keys:
+    for key in all_keys:
         pipe.delete(key)
     pipe.delete(tracking_key)  # Also delete the tracking set
 

@@ -7,6 +7,7 @@ import json
 import hashlib
 import hmac
 import secrets
+import asyncio
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, File, UploadFile, Header
@@ -102,8 +103,9 @@ async def validate_and_get_api_key(
         else:
             api_key_cache_stats.record_miss()
 
-        # Update last_used timestamp asynchronously
-        await APIKeyCache.update_last_used(api_key, db)
+        # Update last_used timestamp in background (non-blocking)
+        # Performance: Avoids 10-50ms latency from waiting for DB commit
+        asyncio.create_task(APIKeyCache.update_last_used(api_key, db))
 
     return is_valid, key_name
 
@@ -225,6 +227,14 @@ async def upload_check(
 
     # Validate filename format (supports optional UUID suffix for uniqueness)
     # Examples: 2024-01-01_12-00-00.json, 2024-01-01_12-00-00_123.json, 2024-01-01_12-00-00_a1b2c3d4.json
+
+    # Security: Prevent path traversal attacks
+    if '..' in filename or '/' in filename or '\\' in filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename format (path traversal attempt detected)"
+        )
+
     if not re.match(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_[a-zA-Z0-9]+)?\.json$', filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

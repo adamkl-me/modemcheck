@@ -456,10 +456,12 @@ func (m *ModemCheck) Run() error {
 	// Save data
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
+		m.Log(fmt.Sprintf("ERROR: Failed to marshal modem data to JSON: %v", err))
 		return fmt.Errorf("failed to marshal modem data to JSON: %w", err)
 	}
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
-		return err
+		m.Log(fmt.Sprintf("ERROR: Failed to write modem data to file: %v", err))
+		return fmt.Errorf("failed to write modem data to file: %w", err)
 	}
 	m.Log(fmt.Sprintf("Modem data collected and saved to %s", m.checkFile))
 

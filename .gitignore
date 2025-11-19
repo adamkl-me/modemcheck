@@ -46,6 +46,7 @@ config.json
 # CloudServer specific
 cloudserver/.env
 cloudserver/test-data/
+cloudserver/backups/
 
 # Test artifacts
 htmlcov/

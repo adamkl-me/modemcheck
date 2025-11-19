@@ -253,6 +253,7 @@ type SpeedTestState struct {
 	LastSpeedTest   int    `json:"last_speed_test"`   // Run number of last speed test attempt
 	LastTestSuccess bool   `json:"last_test_success"` // Whether last speed test succeeded
 	StateFilePath   string `json:"-"`                 // Path to state file (not serialized)
+	previousHash    string // Hash of previous state for change detection (not serialized)
 }
 
 // LoadSpeedTestState loads the speed test state from a JSON file.
@@ -268,7 +269,8 @@ func LoadSpeedTestState(stateDir string) (*SpeedTestState, error) {
 	data, err := os.ReadFile(stateFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exist, return default state
+			// File doesn't exist, return default state with hash
+			state.previousHash = state.computeHash()
 			return state, nil
 		}
 		return nil, fmt.Errorf("failed to read state file: %w", err)
@@ -279,11 +281,26 @@ func LoadSpeedTestState(stateDir string) (*SpeedTestState, error) {
 	}
 
 	state.StateFilePath = stateFile
+	// Store hash of loaded state for change detection
+	state.previousHash = state.computeHash()
 	return state, nil
 }
 
+// computeHash computes a simple hash of the state for change detection.
+func (s *SpeedTestState) computeHash() string {
+	return fmt.Sprintf("%d:%d:%t", s.RunCount, s.LastSpeedTest, s.LastTestSuccess)
+}
+
 // SaveSpeedTestState saves the speed test state to a JSON file.
+// Performance: Only writes to disk if state has changed, avoiding unnecessary I/O.
 func (s *SpeedTestState) Save() error {
+	// Check if state has changed (avoid unnecessary disk I/O)
+	currentHash := s.computeHash()
+	if currentHash == s.previousHash {
+		// State unchanged, skip write
+		return nil
+	}
+
 	// Ensure directory exists
 	dir := filepath.Dir(s.StateFilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -299,5 +316,7 @@ func (s *SpeedTestState) Save() error {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}
 
+	// Update hash after successful write
+	s.previousHash = currentHash
 	return nil
 }

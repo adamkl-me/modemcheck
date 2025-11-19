@@ -25,6 +25,8 @@ Faker==20.1.0
 # Testing utilities
 responses==0.24.1
 freezegun==1.4.0  # Time mocking
+pytest-mock==3.12.0  # Enhanced mocking capabilities
+locust==2.17.0  # Load testing framework
 
 # Coverage and reporting
 coverage[toml]==7.3.4

@@ -24,24 +24,26 @@ from app.core.config import settings
 
 
 # ============================================================================
-# REDIS CONNECTION
+# REDIS CONNECTION WITH POOLING
 # ============================================================================
 
-_redis_client: Optional[aioredis.Redis] = None
+_redis_pool: Optional[aioredis.ConnectionPool] = None
 
 
 async def get_redis() -> aioredis.Redis:
     """
-    Get async Redis connection (singleton pattern).
+    Get async Redis connection from connection pool.
 
     In test mode, creates a new connection for each call to avoid
-    'Event loop is closed' errors with pytest-asyncio. The connection
-    should be closed by the caller using connection pooling via context manager.
+    'Event loop is closed' errors with pytest-asyncio.
+
+    In production mode, uses a connection pool for better scalability
+    under high load (prevents single connection bottleneck).
 
     Returns:
         Async Redis client
     """
-    global _redis_client
+    global _redis_pool
 
     # In test mode, always create fresh connection to avoid event loop issues
     # Each test function gets its own connection that doesn't outlive the test loop
@@ -57,25 +59,28 @@ async def get_redis() -> aioredis.Redis:
         )
         return client
 
-    if _redis_client is None:
-        _redis_client = await aioredis.from_url(
-            f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}",
+    # Production mode: Use connection pool
+    if _redis_pool is None:
+        redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+        _redis_pool = aioredis.ConnectionPool.from_url(
+            redis_url,
             password=settings.redis_password,
             encoding="utf-8",
             decode_responses=True,
+            max_connections=20,  # Allow up to 20 concurrent Redis connections
             socket_connect_timeout=5,
             socket_timeout=5,
         )
 
-    return _redis_client
+    return aioredis.Redis(connection_pool=_redis_pool)
 
 
 async def close_redis():
-    """Close Redis connection."""
-    global _redis_client
-    if _redis_client:
-        await _redis_client.close()
-        _redis_client = None
+    """Close Redis connection pool."""
+    global _redis_pool
+    if _redis_pool:
+        await _redis_pool.disconnect()
+        _redis_pool = None
 
 
 # ============================================================================
@@ -122,6 +127,16 @@ def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
                 is_valid = argon2.verify(password, stored_hash)
                 needs_upgrade = argon2.needs_update(stored_hash)
                 return (is_valid, needs_upgrade)
+            except Exception:
+                return (False, False)
+
+        elif stored_hash.startswith('$pbkdf2-sha256$'):
+            # Passlib PBKDF2 format (used in tests)
+            try:
+                from passlib.hash import pbkdf2_sha256
+                is_valid = pbkdf2_sha256.verify(password, stored_hash)
+                # PBKDF2 always needs upgrade to Argon2id
+                return (is_valid, True)
             except Exception:
                 return (False, False)
 
@@ -388,7 +403,10 @@ async def delete_session(session_id: str):
 
 async def delete_user_sessions(username: str) -> int:
     """
-    Delete all sessions for a specific user.
+    Delete all sessions for a specific user using efficient pipeline iteration.
+
+    Performance: Uses SSCAN iteration to avoid loading all session IDs into memory,
+    which is critical for users with many sessions (e.g., 100+ concurrent sessions).
 
     Args:
         username: Username whose sessions should be deleted
@@ -398,15 +416,20 @@ async def delete_user_sessions(username: str) -> int:
     """
     r = await get_redis()
     user_sessions_key = f"user_sessions:{username}"
-    session_ids = await r.smembers(user_sessions_key)
 
     count = 0
-    for session_id in session_ids:
-        await r.delete(f"session:{session_id}")
+    pipe = r.pipeline()
+
+    # Use SSCAN to iterate over session IDs without loading all into memory
+    async for session_id in r.sscan_iter(user_sessions_key):
+        pipe.delete(f"session:{session_id}")
         count += 1
 
     # Delete the user sessions set
-    await r.delete(user_sessions_key)
+    pipe.delete(user_sessions_key)
+
+    # Execute all deletions in a single pipeline for efficiency
+    await pipe.execute()
 
     return count
 

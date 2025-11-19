@@ -153,14 +153,25 @@ class TestFileUploadVulnerabilities:
         """Test uploading executable file disguised as JSON."""
         from io import BytesIO
         import hashlib
-        
+        import hmac
+        import time
+
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         filename = "2024-01-01_12-00-00.json"
-        
+
         # Malicious content
         file_content = b"#!/bin/bash\nrm -rf /"
         checksum = hashlib.sha256(file_content).hexdigest()
-        
+
+        # Add HMAC signature
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
             "api_key": active_api_key.api_key,
@@ -168,9 +179,13 @@ class TestFileUploadVulnerabilities:
             "filename": filename,
             "checksum": checksum
         }
-        
-        response = await http_client.post("/api/upload", files=files, data=data)
-        
+        headers = {
+            "X-Request-Timestamp": timestamp,
+            "X-Request-Signature": signature
+        }
+
+        response = await http_client.post("/api/upload", files=files, data=data, headers=headers)
+
         # Should fail JSON validation
         assert response.status_code == 400
 
@@ -457,7 +472,7 @@ class TestCookieSecurity:
             "/api/auth/login",
             json={
                 "username": admin_user.username,
-                "password": "AdminPass123!"
+                "password": "TestPass123!"  # Match admin_user fixture password
             },
             headers={"X-Forwarded-Proto": "https"}
         )
@@ -476,7 +491,7 @@ class TestCookieSecurity:
         """Test that cookies have HttpOnly flag."""
         response = await http_client.post("/api/auth/login", json={
             "username": admin_user.username,
-            "password": "AdminPass123!"
+            "password": "TestPass123!"  # Match admin_user fixture password
         })
 
         assert response.status_code == 200
@@ -492,7 +507,7 @@ class TestCookieSecurity:
         """Test that cookies have SameSite flag."""
         response = await http_client.post("/api/auth/login", json={
             "username": admin_user.username,
-            "password": "AdminPass123!"
+            "password": "TestPass123!"  # Match admin_user fixture password
         })
 
         assert response.status_code == 200

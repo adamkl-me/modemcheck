@@ -23,16 +23,16 @@ class TestUserActivityLogCleanup:
     """Test cleanup of old user activity logs."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_old_user_activity_logs_no_old_logs(self, test_db):
+    async def test_cleanup_old_user_activity_logs_no_old_logs(self, db_session):
         """Test cleanup when there are no old logs."""
-        deleted, total_before = await cleanup_old_user_activity_logs(test_db, retention_days=90)
+        deleted, total_before = await cleanup_old_user_activity_logs(db_session, retention_days=90)
 
         # No logs should be deleted (all are recent from fixtures)
         assert deleted == 0
         assert total_before >= 0
 
     @pytest.mark.asyncio
-    async def test_cleanup_old_user_activity_logs_with_old_logs(self, test_db):
+    async def test_cleanup_old_user_activity_logs_with_old_logs(self, db_session):
         """Test cleanup when there are old logs to delete."""
         # Create old log (100 days ago)
         old_timestamp = datetime.utcnow() - timedelta(days=100)
@@ -43,8 +43,8 @@ class TestUserActivityLogCleanup:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(old_log)
-        await test_db.commit()
+        db_session.add(old_log)
+        await db_session.commit()
 
         # Create recent log (10 days ago)
         recent_timestamp = datetime.utcnow() - timedelta(days=10)
@@ -55,18 +55,18 @@ class TestUserActivityLogCleanup:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(recent_log)
-        await test_db.commit()
+        db_session.add(recent_log)
+        await db_session.commit()
 
         # Cleanup with 90-day retention
-        deleted, total_before = await cleanup_old_user_activity_logs(test_db, retention_days=90)
+        deleted, total_before = await cleanup_old_user_activity_logs(db_session, retention_days=90)
 
         # Should delete at least the old log
         assert deleted >= 1
         assert total_before > deleted
 
         # Verify old log is gone
-        result = await test_db.execute(
+        result = await db_session.execute(
             select(UserActivityLog).where(
                 UserActivityLog.username == "test_cleanup_user"
             )
@@ -74,7 +74,7 @@ class TestUserActivityLogCleanup:
         assert result.scalar_one_or_none() is None
 
         # Verify recent log remains
-        result = await test_db.execute(
+        result = await db_session.execute(
             select(UserActivityLog).where(
                 UserActivityLog.username == "test_recent_user"
             )
@@ -82,7 +82,7 @@ class TestUserActivityLogCleanup:
         assert result.scalar_one_or_none() is not None
 
     @pytest.mark.asyncio
-    async def test_cleanup_custom_retention_period(self, test_db):
+    async def test_cleanup_custom_retention_period(self, db_session):
         """Test cleanup with custom retention period."""
         # Create log 45 days ago
         timestamp_45 = datetime.utcnow() - timedelta(days=45)
@@ -93,11 +93,11 @@ class TestUserActivityLogCleanup:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(log_45)
-        await test_db.commit()
+        db_session.add(log_45)
+        await db_session.commit()
 
         # Cleanup with 30-day retention (should delete 45-day-old log)
-        deleted, _ = await cleanup_old_user_activity_logs(test_db, retention_days=30)
+        deleted, _ = await cleanup_old_user_activity_logs(db_session, retention_days=30)
 
         assert deleted >= 1
 
@@ -110,13 +110,13 @@ class TestUserActivityLogCleanup:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(log_45_2)
-        await test_db.commit()
+        db_session.add(log_45_2)
+        await db_session.commit()
 
-        deleted, _ = await cleanup_old_user_activity_logs(test_db, retention_days=60)
+        deleted, _ = await cleanup_old_user_activity_logs(db_session, retention_days=60)
 
         # Should not delete the 45-day-old log
-        result = await test_db.execute(
+        result = await db_session.execute(
             select(UserActivityLog).where(
                 UserActivityLog.username == "test_45_day_user_2"
             )
@@ -128,7 +128,7 @@ class TestClientSubmissionLogCleanup:
     """Test cleanup of old client submission logs."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_old_client_submission_logs(self, test_db):
+    async def test_cleanup_old_client_submission_logs(self, db_session):
         """Test cleanup of old client submission logs."""
         # Create old log (100 days ago)
         old_timestamp = datetime.utcnow() - timedelta(days=100)
@@ -140,17 +140,17 @@ class TestClientSubmissionLogCleanup:
             filename="test_old.json",
             success=True
         )
-        test_db.add(old_log)
-        await test_db.commit()
+        db_session.add(old_log)
+        await db_session.commit()
 
         # Cleanup with 90-day retention
-        deleted, total_before = await cleanup_old_client_submission_logs(test_db, retention_days=90)
+        deleted, total_before = await cleanup_old_client_submission_logs(db_session, retention_days=90)
 
         # Should delete at least the old log
         assert deleted >= 1
 
         # Verify old log is gone
-        result = await test_db.execute(
+        result = await db_session.execute(
             select(ClientSubmissionLog).where(
                 ClientSubmissionLog.timestamp == old_timestamp
             )
@@ -162,7 +162,7 @@ class TestCleanupAllAuditLogs:
     """Test cleanup of all audit logs together."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_all_audit_logs(self, test_db):
+    async def test_cleanup_all_audit_logs(self, db_session):
         """Test cleanup of all audit log types."""
         # Create old logs for both types
         old_timestamp = datetime.utcnow() - timedelta(days=100)
@@ -174,7 +174,7 @@ class TestCleanupAllAuditLogs:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(user_log)
+        db_session.add(user_log)
 
         client_log = ClientSubmissionLog(
             timestamp=old_timestamp,
@@ -184,13 +184,13 @@ class TestCleanupAllAuditLogs:
             filename="test_all_cleanup.json",
             success=True
         )
-        test_db.add(client_log)
+        db_session.add(client_log)
 
-        await test_db.commit()
+        await db_session.commit()
 
         # Cleanup all logs
         result = await cleanup_all_audit_logs(
-            test_db,
+            db_session,
             user_retention_days=90,
             client_retention_days=90
         )
@@ -205,14 +205,14 @@ class TestAuditLogStatistics:
     """Test audit log statistics reporting."""
 
     @pytest.mark.asyncio
-    async def test_get_audit_log_statistics_empty(self, test_db):
+    async def test_get_audit_log_statistics_empty(self, db_session):
         """Test statistics with minimal logs."""
         # Clear all logs first
-        await test_db.execute("DELETE FROM user_activity_log")
-        await test_db.execute("DELETE FROM client_submission_log")
-        await test_db.commit()
+        await db_session.execute("DELETE FROM user_activity_log")
+        await db_session.execute("DELETE FROM client_submission_log")
+        await db_session.commit()
 
-        stats = await get_audit_log_statistics(test_db)
+        stats = await get_audit_log_statistics(db_session)
 
         assert "user_activity_logs" in stats
         assert "client_submission_logs" in stats
@@ -220,7 +220,7 @@ class TestAuditLogStatistics:
         assert stats["client_submission_logs"]["total_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_audit_log_statistics_with_logs(self, test_db):
+    async def test_get_audit_log_statistics_with_logs(self, db_session):
         """Test statistics with existing logs."""
         # Create some logs with known timestamps
         old_timestamp = datetime.utcnow() - timedelta(days=50)
@@ -234,7 +234,7 @@ class TestAuditLogStatistics:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(user_log)
+        db_session.add(user_log)
 
         # Add client submission log
         client_log = ClientSubmissionLog(
@@ -245,12 +245,12 @@ class TestAuditLogStatistics:
             filename="stats_test.json",
             success=True
         )
-        test_db.add(client_log)
+        db_session.add(client_log)
 
-        await test_db.commit()
+        await db_session.commit()
 
         # Get statistics
-        stats = await get_audit_log_statistics(test_db)
+        stats = await get_audit_log_statistics(db_session)
 
         # Verify statistics structure
         assert stats["user_activity_logs"]["total_count"] >= 1
@@ -269,7 +269,7 @@ class TestCleanupEdgeCases:
     """Test edge cases in cleanup functionality."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_with_zero_retention(self, test_db):
+    async def test_cleanup_with_zero_retention(self, db_session):
         """Test cleanup with zero retention (delete all)."""
         # Create recent log
         recent_log = UserActivityLog(
@@ -279,17 +279,17 @@ class TestCleanupEdgeCases:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(recent_log)
-        await test_db.commit()
+        db_session.add(recent_log)
+        await db_session.commit()
 
         # Cleanup with 0-day retention should delete everything
-        deleted, _ = await cleanup_old_user_activity_logs(test_db, retention_days=0)
+        deleted, _ = await cleanup_old_user_activity_logs(db_session, retention_days=0)
 
         # All logs should be deleted
         assert deleted >= 1
 
     @pytest.mark.asyncio
-    async def test_cleanup_with_large_retention(self, test_db):
+    async def test_cleanup_with_large_retention(self, db_session):
         """Test cleanup with very large retention period."""
         # Create old log
         old_log = UserActivityLog(
@@ -299,14 +299,14 @@ class TestCleanupEdgeCases:
             ip_address="192.168.1.100",
             success=True
         )
-        test_db.add(old_log)
-        await test_db.commit()
+        db_session.add(old_log)
+        await db_session.commit()
 
         # Cleanup with 365-day retention should keep 100-day-old log
-        deleted, total_before = await cleanup_old_user_activity_logs(test_db, retention_days=365)
+        deleted, total_before = await cleanup_old_user_activity_logs(db_session, retention_days=365)
 
         # Should not delete the 100-day-old log
-        result = await test_db.execute(
+        result = await db_session.execute(
             select(UserActivityLog).where(
                 UserActivityLog.username == "test_large_retention"
             )
@@ -318,9 +318,9 @@ class TestCleanupScriptOutput:
     """Test cleanup script output format."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_returns_statistics(self, test_db):
+    async def test_cleanup_returns_statistics(self, db_session):
         """Test that cleanup returns proper statistics."""
-        result = await cleanup_all_audit_logs(test_db)
+        result = await cleanup_all_audit_logs(db_session)
 
         # Verify result structure
         assert "user_activity_logs" in result

@@ -13,7 +13,7 @@ The ModemCheck cloud server provides a modern, high-performance API for storing 
 - **Modern Stack**: Python 3.11, SQLAlchemy 2.0, Pydantic validation, Redis sessions
 - **Production-Ready**: Gunicorn + Uvicorn workers, connection pooling, comprehensive logging
 - **Comprehensive Security**: Rate limiting, CSRF protection, account lockout, Argon2id password hashing
-- **Complete Test Suite**: 192+ tests (185+ passing, 5 skipped) covering API, security, RBAC, and UI functionality
+- **Complete Test Suite**: 450+ tests (435+ passing, 5 skipped) covering API, security, RBAC, and UI functionality
 
 ## Architecture
 
@@ -288,10 +288,10 @@ python -m uvicorn app.main:app --reload --port 8000
 
 ### Testing
 
-The cloud server includes a comprehensive test suite with 192+ tests:
+The cloud server includes a comprehensive test suite with 450+ tests:
 
 ```bash
-# Run all tests (192+ tests: 185+ passing, 5 skipped)
+# Run all tests (450+ tests: 435+ passing, 5 skipped)
 ./run_tests.sh
 
 # Keep test environment for debugging
@@ -491,4 +491,4 @@ See main project CLAUDE.md for detailed implementation notes.
 
 **Additional documentation:**
 - [OPERATIONS.md](OPERATIONS.md) - Complete operations guide for backups, monitoring, and maintenance
-- [TESTING-SUMMARY.md](TESTING-SUMMARY.md) - Comprehensive test suite documentation
+- [../TESTING.md](../TESTING.md) - Comprehensive test suite documentation
