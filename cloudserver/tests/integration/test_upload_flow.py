@@ -96,7 +96,8 @@ class TestCompleteUploadFlow:
 
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
-        filename = "2024-01-01_12-00-00.json"
+        # Use unique filename to avoid conflicts between tests
+        filename = f"2024-01-01_12-00-00_auth.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         # Generate HMAC signature
@@ -162,18 +163,18 @@ class TestCompleteUploadFlow:
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-01_metrics.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-01_metrics.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-01_metrics.json",
             "checksum": checksum
         }
         headers = {
@@ -225,11 +226,11 @@ class TestCompleteUploadFlow:
         # Invalid signature
         signature = "invalid_signature_123456"
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-02_invsig.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-02_invsig.json",
             "checksum": checksum
         }
         headers = {
@@ -260,18 +261,18 @@ class TestCompleteUploadFlow:
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-03_audit.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-03_audit.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-03_audit.json",
             "checksum": checksum
         }
         headers = {
@@ -311,10 +312,10 @@ class TestUploadValidation:
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-04_nokey.json", json_data, "application/json")}
         data = {
             "modem_id": "XB8-TEST",
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-04_nokey.json",
             "checksum": hashlib.sha256(json_data).hexdigest()
         }
 
@@ -336,18 +337,18 @@ class TestUploadValidation:
         wrong_checksum = "0" * 64
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{wrong_checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-05_badsum.json|{wrong_checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-05_badsum.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-05_badsum.json",
             "checksum": wrong_checksum
         }
         headers = {
@@ -378,18 +379,18 @@ class TestUploadValidation:
 
         # Old timestamp (1 hour ago)
         old_timestamp = str(int(time.time()) - 3600)
-        message = f"{old_timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
+        message = f"{old_timestamp}|{modem_id}|2024-01-01_12-00-06_oldts.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-06_oldts.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-06_oldts.json",
             "checksum": checksum
         }
         headers = {
@@ -420,18 +421,18 @@ class TestUploadValidation:
         checksum = hashlib.sha256(malformed_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-07_badjson.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", malformed_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-07_badjson.json", malformed_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-07_badjson.json",
             "checksum": checksum
         }
         headers = {
@@ -462,18 +463,18 @@ class TestUploadValidation:
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-08_bigfile.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-08_bigfile.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": "2024-01-01_12-00-08_bigfile.json",
             "checksum": checksum
         }
         headers = {
@@ -512,16 +513,20 @@ class TestConcurrentUploads:
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test_{index}.json|{checksum}"
-            signature = hashlib.sha256(
-                f"{active_api_key.api_key}{message}".encode()
+            # Use formatted filename matching validation regex
+            filename = f"2024-01-01_12-00-{index:02d}_same.json"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+            signature = hmac.new(
+                active_api_key.api_key.encode('utf-8'),
+                message.encode('utf-8'),
+                hashlib.sha256
             ).hexdigest()
 
-            files = {"file": (f"test_{index}.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": f"test_{index}.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
@@ -545,7 +550,7 @@ class TestConcurrentUploads:
 
         # Verify all stored
         db_result = await db_session.execute(
-            select(ModemCheck).where(ModemCheck.modem_id == "XB8-CONCURRENT")
+            select(ModemCheck).where(ModemCheck.modem_id == "XB8-AA:BB:CC:DD:EE:FF")
         )
         checks = db_result.scalars().all()
         assert len(checks) >= 5
@@ -566,16 +571,20 @@ class TestConcurrentUploads:
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
-            signature = hashlib.sha256(
-                f"{active_api_key.api_key}{message}".encode()
+            # Use unique filename per modem
+            filename = f"2024-01-01_12-00-{modem_num:02d}_diff.json"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+            signature = hmac.new(
+                active_api_key.api_key.encode('utf-8'),
+                message.encode('utf-8'),
+                hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "2024-01-01_12-00-00.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
