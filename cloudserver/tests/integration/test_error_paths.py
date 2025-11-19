@@ -35,19 +35,19 @@ def create_valid_modem_data():
             "ip_country": "US",
             "detection_status": "success"
         },
-        "downstream": [{
+        "rx": [{
             "channel_id": 1,
             "frequency": 591000000,
-            "power_dbmv": 5.5,
-            "snr_db": 40.5,
+            "power": 5.5,
+            "snr": 40.5,
             "modulation": "256-QAM",
-            "corrected": 0,
-            "uncorrected": 0
+            "correcteds": 0,
+            "uncorrectables": 0
         }],
-        "upstream": [{
+        "tx": [{
             "channel_id": 1,
             "frequency": 36000000,
-            "power_dbmv": 45.5,
+            "power": 45.5,
             "modulation": "ATDMA",
             "symbol_rate": 5120
         }],
