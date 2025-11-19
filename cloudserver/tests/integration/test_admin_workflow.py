@@ -202,7 +202,7 @@ class TestAPIKeyLifecycle:
         assert upload_response.status_code == 200
 
         # Verify upload stored
-        check_id = upload_response.json()["id"]
+        check_id = upload_response.json()["database_id"]
         db_result = await db_session.execute(
             select(ModemCheck).where(ModemCheck.id == check_id)
         )
