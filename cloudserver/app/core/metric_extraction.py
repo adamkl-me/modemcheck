@@ -170,13 +170,12 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     metrics['client_os'] = sysinfo.get('client_os')
     metrics['client_arch'] = sysinfo.get('client_arch')
 
-    # Extract network information
-    network_info = json_data.get('network_info', {})
+    # Extract network information (from sysinfo section)
     metrics['detection_status'] = sysinfo.get('detection_status')
-    metrics['public_ip'] = network_info.get('public_ip')
-    metrics['asn'] = network_info.get('asn')
-    metrics['isp_name'] = network_info.get('isp_name')
-    metrics['ip_city'] = network_info.get('city')
-    metrics['ip_country'] = network_info.get('country')
+    metrics['public_ip'] = sysinfo.get('public_ip')
+    metrics['asn'] = sysinfo.get('asn')
+    metrics['isp_name'] = sysinfo.get('isp_name')
+    metrics['ip_city'] = sysinfo.get('ip_city')
+    metrics['ip_country'] = sysinfo.get('ip_country')
 
     return metrics

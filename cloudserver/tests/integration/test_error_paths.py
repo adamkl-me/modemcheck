@@ -27,7 +27,13 @@ def create_valid_modem_data():
             "systemtime": "2024-01-01 12:00:00",
             "client_version": "6.0.0",
             "client_os": "linux",
-            "client_arch": "amd64"
+            "client_arch": "amd64",
+            "public_ip": "1.2.3.4",
+            "isp_name": "Test ISP",
+            "asn": "AS12345",
+            "ip_city": "Test City",
+            "ip_country": "US",
+            "detection_status": "success"
         },
         "downstream": [{
             "channel_id": 1,
@@ -63,12 +69,6 @@ def create_valid_modem_data():
                 "jitter_ms": "0.3",
                 "max_latency_ms": "5.2"
             },
-            "public_ip": "1.2.3.4",
-            "isp": "Test ISP",
-            "asn": "AS12345",
-            "city": "Test City",
-            "country": "US",
-            "detection_status": "success"
         }
     }
 
