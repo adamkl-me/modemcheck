@@ -94,22 +94,24 @@ class TestUploadPerformance:
         for i in range(10):
             modem_data = {"check_time": int(time.time()) + i}
             json_data = json.dumps(modem_data).encode()
-            modem_id = f"XB8-PERF{i:03d}"
+            # Use valid MAC address format
+            modem_id = f"XB8-AA:BB:CC:DD:FF:{i:02X}"
+            filename = f"2024-01-01_12-00-{i:02d}.json"
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
                 active_api_key.api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "2024-01-01_12-00-00.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
@@ -156,22 +158,24 @@ class TestUploadPerformance:
         async def upload_check(index):
             modem_data = {"check_time": int(time.time()) + index}
             json_data = json.dumps(modem_data).encode()
-            modem_id = f"XB8-CONCURRENT{index:03d}"
+            # Use valid MAC address format
+            modem_id = f"XB8-AA:BB:CC:DD:EE:{index:02X}"
+            filename = f"2024-01-01_12-01-{index:02d}.json"
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+            message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
                 active_api_key.api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+            files = {"file": (filename, json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "2024-01-01_12-00-00.json",
+                "filename": filename,
                 "checksum": checksum
             }
             headers = {
@@ -424,8 +428,9 @@ class TestStressTest:
                 try:
                     modem_data = {"check_time": int(time.time())}
                     json_data = json.dumps(modem_data).encode()
-                    modem_id = f"XB8-STRESS{upload_count:05d}"
-                    filename = f"2024-01-01_12-00-{upload_count:02d}.json"
+                    # Use valid MAC address format (cycle through last 2 octets)
+                    modem_id = f"XB8-AA:BB:CC:DD:{(upload_count // 256):02X}:{(upload_count % 256):02X}"
+                    filename = f"2024-01-01_12-02-{upload_count % 100:02d}.json"
                     checksum = hashlib.sha256(json_data).hexdigest()
 
                     timestamp = str(int(time.time()))
