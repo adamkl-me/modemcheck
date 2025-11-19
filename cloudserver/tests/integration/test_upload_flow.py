@@ -257,7 +257,7 @@ class TestCompleteUploadFlow:
         """Test that uploads are logged in audit trail."""
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: AUDIT
+        modem_id = "XB8-AA:BB:CC:DD:EE:AA"  # Unique MAC for audit test
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
@@ -568,7 +568,8 @@ class TestConcurrentUploads:
         async def upload_modem(modem_num):
             modem_data = create_valid_modem_data()
             json_data = json.dumps(modem_data).encode()
-            modem_id = f"XB8-MODEM{modem_num:03d}"
+            # Use valid MAC address format (different last octet for each modem)
+            modem_id = f"XB8-AA:BB:CC:DD:EE:{modem_num:02X}"
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
