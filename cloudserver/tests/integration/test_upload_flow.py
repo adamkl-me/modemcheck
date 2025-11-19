@@ -220,7 +220,7 @@ class TestCompleteUploadFlow:
         """Test that uploads with invalid signatures are rejected."""
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-INVALID"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
