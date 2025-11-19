@@ -409,7 +409,7 @@ class TestAuditTrail:
                 UserActivityLog.action_type == "create_user"
             )
         )
-        log = db_result.scalar_one_or_none()
+        log = db_result.scalars().first()
 
         # May or may not be logged depending on implementation
         # Verify if audit logging is enabled
@@ -439,7 +439,7 @@ class TestAuditTrail:
                 UserActivityLog.action_type == "create_api_key"
             )
         )
-        log = db_result.scalar_one_or_none()
+        log = db_result.scalars().first()
 
         # Verify audit logging if enabled
 

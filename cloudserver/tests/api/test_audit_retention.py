@@ -9,7 +9,7 @@ Tests for:
 """
 import pytest
 from datetime import datetime, timedelta
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from app.models.audit import UserActivityLog, ClientSubmissionLog
 from app.core.audit_retention import (
     cleanup_old_user_activity_logs,
@@ -208,8 +208,8 @@ class TestAuditLogStatistics:
     async def test_get_audit_log_statistics_empty(self, db_session):
         """Test statistics with minimal logs."""
         # Clear all logs first
-        await db_session.execute("DELETE FROM user_activity_log")
-        await db_session.execute("DELETE FROM client_submission_log")
+        await db_session.execute(text("DELETE FROM user_activity_log"))
+        await db_session.execute(text("DELETE FROM client_submission_log"))
         await db_session.commit()
 
         stats = await get_audit_log_statistics(db_session)
