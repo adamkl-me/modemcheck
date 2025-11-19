@@ -308,21 +308,22 @@ class TestInputValidationEdgeCases:
 
         # Modem ID with special characters
         modem_id = "XB8-<script>alert('xss')</script>"
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -403,21 +404,22 @@ class TestResourceLimits:
         large_data = {"data": "x" * (9 * 1024 * 1024)}
         json_data = json.dumps(large_data).encode()
         modem_id = "XB8-LARGE"
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -482,21 +484,22 @@ class TestErrorRecovery:
         # Send invalid JSON
         invalid_data = b"{invalid json}"
         modem_id = "XB8-INVALID"
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(invalid_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("2024-01-01_12-00-00.json", invalid_data, "application/json")}
+        files = {"file": (filename, invalid_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "2024-01-01_12-00-00.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -515,19 +518,20 @@ class TestErrorRecovery:
         # Next request should work fine
         import json as json_module
         valid_data = json_module.dumps({"check_time": int(time.time())}).encode()
+        filename2 = "2024-01-01_12-00-01.json"
         checksum2 = hashlib.sha256(valid_data).hexdigest()
-        message2 = f"{timestamp}|{modem_id}|test2.json|{checksum2}"
+        message2 = f"{timestamp}|{modem_id}|{filename2}|{checksum2}"
         signature2 = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message2.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files2 = {"file": ("test2.json", valid_data, "application/json")}
+        files2 = {"file": (filename2, valid_data, "application/json")}
         data2 = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "test2.json",
+            "filename": filename2,
             "checksum": checksum2
         }
         headers2 = {

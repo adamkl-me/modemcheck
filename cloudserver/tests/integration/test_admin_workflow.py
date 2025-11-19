@@ -169,21 +169,22 @@ class TestAPIKeyLifecycle:
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-LIFECYCLE"
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
             api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": api_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
@@ -250,21 +251,22 @@ class TestAPIKeyLifecycle:
         modem_data = {"check_time": int(time.time())}
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-ROTATION"
+        filename = "2024-01-01_12-00-00.json"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         old_signature = hmac.new(
             old_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": (filename, json_data, "application/json")}
         data = {
             "api_key": old_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": filename,
             "checksum": checksum
         }
         headers = {
