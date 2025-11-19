@@ -48,7 +48,7 @@ class TestLoginUI:
 
         # Fill login form using ID selectors
         await browser_page.fill('#username', 'admin')
-        await browser_page.fill('#password', 'AdminPass123!')
+        await browser_page.fill('#password', 'TestPass123!')
 
         # Click submit button
         await browser_page.click('button[type="submit"]')
@@ -94,7 +94,7 @@ class TestViewerUI:
         # Login first
         await browser_page.goto(f"{BASE_URL}/login")
         await browser_page.fill('#username', 'admin')
-        await browser_page.fill('#password', 'AdminPass123!')
+        await browser_page.fill('#password', 'TestPass123!')
 
         # Click submit and wait for redirect
         await browser_page.click('button[type="submit"]')
@@ -155,7 +155,7 @@ class TestAdminUI:
         # Login as admin
         await browser_page.goto(f"{BASE_URL}/login")
         await browser_page.fill('#username', 'admin')
-        await browser_page.fill('#password', 'AdminPass123!')
+        await browser_page.fill('#password', 'TestPass123!')
 
         # Click submit and wait for redirect
         await browser_page.click('button[type="submit"]')

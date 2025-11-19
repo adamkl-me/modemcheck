@@ -402,7 +402,6 @@ modemcheck/
     ├── .env.example            # Environment configuration template
     ├── README.md               # Complete deployment documentation
     ├── OPERATIONS.md           # Backup, monitoring, maintenance guide
-    ├── TESTING-SUMMARY.md      # Comprehensive test documentation
     ├── app/                    # FastAPI application
     │   ├── main.py             # Application entry point
     │   ├── core/               # Core functionality
@@ -425,7 +424,7 @@ modemcheck/
     │   ├── admin.html          # Admin dashboard with Config Generator
     │   ├── db-viewer.html      # Data viewer interface
     │   └── login.html          # Authentication pages
-    ├── tests/                  # Comprehensive test suite (192+ tests)
+    ├── tests/                  # Comprehensive test suite (450+ tests)
     │   ├── api/                # API endpoint tests
     │   ├── security/           # Security tests
     │   └── ui/                 # Playwright UI tests

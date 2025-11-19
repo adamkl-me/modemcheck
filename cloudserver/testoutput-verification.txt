@@ -1,0 +1,1874 @@
+[0;32m✓ Docker is running[0m
+
+[0;34m========================================[0m
+[0;34mStarting Test Environment[0m
+[0;34m========================================[0m
+
+[0;34mℹ Stopping any existing test containers...[0m
+[0;34mℹ Building and starting test containers...[0m
+#1 [internal] load local bake definitions
+#1 reading from stdin 601B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.29kB done
+#2 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 2)
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.11-slim
+#3 DONE 0.4s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [ 1/10] FROM docker.io/library/python:3.11-slim@sha256:8ef21a26e7c342e978a68cf2d6b07627885930530064f572f432ea422a8c0907
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 3.61kB done
+#6 DONE 0.0s
+
+#7 [ 2/10] RUN apt-get update && apt-get install -y     curl     tzdata     && rm -rf /var/lib/apt/lists/*
+#7 CACHED
+
+#8 [ 6/10] RUN pip install --no-cache-dir -r requirements.txt
+#8 CACHED
+
+#9 [ 7/10] COPY ./app /app/app
+#9 CACHED
+
+#10 [ 8/10] COPY ./static /app/static
+#10 CACHED
+
+#11 [ 3/10] RUN groupadd -r appuser && useradd -r -g appuser appuser
+#11 CACHED
+
+#12 [ 5/10] COPY requirements.txt .
+#12 CACHED
+
+#13 [ 9/10] COPY ./common_passwords.txt /app/common_passwords.txt
+#13 CACHED
+
+#14 [ 4/10] WORKDIR /app
+#14 CACHED
+
+#15 [10/10] RUN chown -R appuser:appuser /app
+#15 CACHED
+
+#16 exporting to image
+#16 exporting layers done
+#16 writing image sha256:5e1442e8fbed46cbc929f5c51d4010587529369e2d36a5ae968bb1034e5147c6 done
+#16 naming to docker.io/library/modemcheck-cloud:test done
+#16 DONE 0.0s
+
+#17 resolving provenance for metadata file
+#17 DONE 0.0s
+ modemcheck-cloud:test  Built
+ Network modemcheck-test_modemcheck-test  Creating
+ Network modemcheck-test_modemcheck-test  Created
+ Volume modemcheck-test_postgres  Creating
+ Volume modemcheck-test_postgres  Created
+ Volume modemcheck-test_redis  Creating
+ Volume modemcheck-test_redis  Created
+ Container modemcheck-redis-test  Creating
+ Container modemcheck-postgres-test  Creating
+ Container modemcheck-redis-test  Created
+ Container modemcheck-postgres-test  Created
+ Container modemcheck-cloud-test  Creating
+ Container modemcheck-cloud-test  Created
+ Container modemcheck-redis-test  Starting
+ Container modemcheck-postgres-test  Starting
+ Container modemcheck-redis-test  Started
+ Container modemcheck-postgres-test  Started
+ Container modemcheck-redis-test  Waiting
+ Container modemcheck-postgres-test  Waiting
+ Container modemcheck-postgres-test  Healthy
+ Container modemcheck-redis-test  Healthy
+ Container modemcheck-cloud-test  Starting
+ Container modemcheck-cloud-test  Started
+[0;32m✓ Test containers started[0m
+
+[0;34m========================================[0m
+[0;34mWaiting for Services to be Ready[0m
+[0;34m========================================[0m
+
+.
+[0;32m✓ All services are healthy (took 2s)[0m
+
+[0;34m========================================[0m
+[0;34mRunning Test Suite[0m
+[0;34m========================================[0m
+
+[0;34mℹ Activating virtual environment...[0m
+[0;34mℹ Installing test dependencies...[0m
+[0;34mℹ Checking Playwright browser installation...[0m
+[0;32m✓ Playwright browsers already installed[0m
+[0;32m✓ Virtual environment ready[0m
+[0;34mℹ Executing tests: tests/[0m
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.3, pluggy-1.6.0 -- /home/adamkl/projects/modemcheck/cloudserver/.venv/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.12.3', 'Platform': 'Linux-6.8.0-87-generic-x86_64-with-glibc2.39', 'Packages': {'pytest': '7.4.3', 'pluggy': '1.6.0'}, 'Plugins': {'playwright': '0.4.3', 'asyncio': '0.21.1', 'html': '4.1.1', 'metadata': '3.1.1', 'anyio': '4.2.0', 'mock': '3.12.0', 'Faker': '20.1.0', 'xdist': '3.5.0', 'cov': '4.1.0', 'timeout': '2.2.0', 'httpx': '0.27.0', 'base-url': '2.1.0'}, 'Base URL': ''}
+rootdir: /home/adamkl/projects/modemcheck/cloudserver
+configfile: pytest.ini
+plugins: playwright-0.4.3, asyncio-0.21.1, html-4.1.1, metadata-3.1.1, anyio-4.2.0, mock-3.12.0, Faker-20.1.0, xdist-3.5.0, cov-4.1.0, timeout-2.2.0, httpx-0.27.0, base-url-2.1.0
+asyncio: mode=Mode.AUTO
+timeout: 300.0s
+timeout method: thread
+timeout func_only: False
+collecting ... collected 349 items
+
+tests/api/test_admin.py::TestAPIKeys::test_create_api_key PASSED         [  0%]
+tests/api/test_admin.py::TestAPIKeys::test_list_api_keys PASSED          [  0%]
+tests/api/test_admin.py::TestAPIKeys::test_delete_api_key PASSED         [  0%]
+tests/api/test_admin.py::TestLogs::test_get_user_activity_logs PASSED    [  1%]
+tests/api/test_admin.py::TestLogs::test_get_client_submission_logs PASSED [  1%]
+tests/api/test_audit_retention.py::TestUserActivityLogCleanup::test_cleanup_old_user_activity_logs_no_old_logs PASSED [  1%]
+tests/api/test_audit_retention.py::TestUserActivityLogCleanup::test_cleanup_old_user_activity_logs_with_old_logs PASSED [  2%]
+tests/api/test_audit_retention.py::TestUserActivityLogCleanup::test_cleanup_custom_retention_period PASSED [  2%]
+tests/api/test_audit_retention.py::TestClientSubmissionLogCleanup::test_cleanup_old_client_submission_logs PASSED [  2%]
+tests/api/test_audit_retention.py::TestCleanupAllAuditLogs::test_cleanup_all_audit_logs PASSED [  2%]
+tests/api/test_audit_retention.py::TestAuditLogStatistics::test_get_audit_log_statistics_empty FAILED [  3%]
+tests/api/test_audit_retention.py::TestAuditLogStatistics::test_get_audit_log_statistics_with_logs PASSED [  3%]
+tests/api/test_audit_retention.py::TestCleanupEdgeCases::test_cleanup_with_zero_retention PASSED [  3%]
+tests/api/test_audit_retention.py::TestCleanupEdgeCases::test_cleanup_with_large_retention PASSED [  4%]
+tests/api/test_audit_retention.py::TestCleanupScriptOutput::test_cleanup_returns_statistics PASSED [  4%]
+tests/api/test_auth.py::TestLogin::test_login_success PASSED             [  4%]
+tests/api/test_auth.py::TestLogin::test_login_invalid_username PASSED    [  4%]
+tests/api/test_auth.py::TestLogin::test_login_invalid_password PASSED    [  5%]
+tests/api/test_auth.py::TestLogin::test_login_account_lockout SKIPPED    [  5%]
+tests/api/test_auth.py::TestLogin::test_login_missing_fields PASSED      [  5%]
+tests/api/test_auth.py::TestLogout::test_logout_success PASSED           [  6%]
+tests/api/test_auth.py::TestLogout::test_logout_without_session PASSED   [  6%]
+tests/api/test_auth.py::TestSessionCheck::test_session_check_authenticated PASSED [  6%]
+tests/api/test_auth.py::TestSessionCheck::test_session_check_unauthenticated PASSED [  6%]
+tests/api/test_auth.py::TestChangePassword::test_change_password_success PASSED [  7%]
+tests/api/test_auth.py::TestChangePassword::test_change_password_wrong_current PASSED [  7%]
+tests/api/test_auth.py::TestChangePassword::test_change_password_weak_new_password PASSED [  7%]
+tests/api/test_auth.py::TestChangePassword::test_change_password_unauthenticated PASSED [  8%]
+tests/api/test_auth.py::TestChangeOwnPassword::test_change_own_password_success PASSED [  8%]
+tests/api/test_auth.py::TestChangeOwnPassword::test_change_own_password_weak PASSED [  8%]
+tests/api/test_auth.py::TestChangeOwnPassword::test_change_own_password_unauthenticated PASSED [  8%]
+tests/api/test_configurable_rate_limits.py::TestConfigurableRateLimits::test_default_rate_limit_values PASSED [  9%]
+tests/api/test_configurable_rate_limits.py::TestConfigurableRateLimits::test_custom_rate_limits_from_env PASSED [  9%]
+tests/api/test_configurable_rate_limits.py::TestConfigurableRateLimits::test_rate_limit_format_validation PASSED [  9%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitEnforcement::test_upload_endpoint_uses_configurable_limit PASSED [ 10%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitEnforcement::test_auth_endpoint_uses_configurable_limit PASSED [ 10%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitEnforcement::test_query_endpoint_uses_configurable_limit PASSED [ 10%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitScalability::test_development_rate_limits PASSED [ 10%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitScalability::test_production_rate_limits PASSED [ 11%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitScalability::test_burst_handling_with_per_second_limits PASSED [ 11%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitDocumentation::test_config_has_descriptions PASSED [ 11%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitDocumentation::test_env_example_coverage SKIPPED [ 12%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitMigration::test_backward_compatibility PASSED [ 12%]
+tests/api/test_configurable_rate_limits.py::TestRateLimitMigration::test_all_routers_use_lambda_functions PASSED [ 12%]
+tests/api/test_data_mgmt.py::TestDataManagement::test_delete_check PASSED [ 12%]
+tests/api/test_data_mgmt.py::TestDataManagement::test_bulk_upload PASSED [ 13%]
+tests/api/test_data_mgmt.py::TestDataManagement::test_bulk_download PASSED [ 13%]
+tests/api/test_data_mgmt_security.py::TestDataManagementAuthorization::test_bulk_upload_basic_user_blocked SKIPPED [ 13%]
+tests/api/test_data_mgmt_security.py::TestDataManagementAuthorization::test_bulk_upload_elevated_user_allowed SKIPPED [ 14%]
+tests/api/test_data_mgmt_security.py::TestFileEncodingValidation::test_bulk_upload_invalid_utf8_encoding PASSED [ 14%]
+tests/api/test_data_mgmt_security.py::TestFileEncodingValidation::test_bulk_upload_valid_utf8_encoding SKIPPED [ 14%]
+tests/api/test_data_mgmt_security.py::TestFileTypeValidation::test_bulk_upload_wrong_file_type PASSED [ 14%]
+tests/api/test_data_mgmt_security.py::TestFileTypeValidation::test_bulk_upload_corrupted_zip PASSED [ 15%]
+tests/api/test_data_mgmt_security.py::TestPathTraversalInZip::test_bulk_upload_path_traversal_absolute PASSED [ 15%]
+tests/api/test_data_mgmt_security.py::TestPathTraversalInZip::test_bulk_upload_path_traversal_relative PASSED [ 15%]
+tests/api/test_data_mgmt_security.py::TestZipBombProtection::test_bulk_upload_excessive_compression_ratio PASSED [ 16%]
+tests/api/test_data_mgmt_security.py::TestZipBombProtection::test_bulk_upload_too_many_files PASSED [ 16%]
+tests/api/test_data_mgmt_security.py::TestZipBombProtection::test_bulk_upload_nested_zip_files PASSED [ 16%]
+tests/api/test_database_pool.py::TestDatabasePoolConfiguration::test_pool_size_configuration FAILED [ 16%]
+tests/api/test_database_pool.py::TestDatabasePoolConfiguration::test_pool_timeout_configuration PASSED [ 17%]
+tests/api/test_database_pool.py::TestDatabasePoolConfiguration::test_statement_timeout_configuration PASSED [ 17%]
+tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_concurrent_connections FAILED [ 17%]
+tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_concurrent_connections ERROR [ 17%]
+tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_connection_recycling PASSED [ 18%]
+tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_pool_pre_ping PASSED [ 18%]
+tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_transaction_rollback PASSED [ 18%]
+tests/api/test_database_pool.py::TestStatementTimeout::test_statement_timeout_enforced SKIPPED [ 18%]
+tests/api/test_database_pool.py::TestPoolExhaustion::test_pool_exhaustion_timeout SKIPPED [ 19%]
+tests/api/test_db_api.py::TestListModems::test_list_modems_success PASSED [ 19%]
+tests/api/test_db_api.py::TestListModems::test_list_modems_unauthenticated PASSED [ 19%]
+tests/api/test_db_api.py::TestListChecks::test_list_checks_success PASSED [ 20%]
+tests/api/test_db_api.py::TestListChecks::test_list_checks_invalid_date PASSED [ 20%]
+tests/api/test_db_api.py::TestGetCheck::test_get_check_success PASSED    [ 20%]
+tests/api/test_db_api.py::TestGetCheck::test_get_check_not_found PASSED  [ 20%]
+tests/api/test_db_api.py::TestQueryPerformance::test_list_modems_no_n_plus_1 PASSED [ 21%]
+tests/api/test_db_api.py::TestQueryPerformance::test_list_checks_query_efficiency PASSED [ 21%]
+tests/api/test_error_handling.py::TestInvalidActions::test_auth_invalid_action PASSED [ 21%]
+tests/api/test_error_handling.py::TestInvalidActions::test_admin_api_invalid_action PASSED [ 22%]
+tests/api/test_error_handling.py::TestInvalidActions::test_user_mgmt_invalid_action PASSED [ 22%]
+tests/api/test_error_handling.py::TestContentTypeValidation::test_upload_wrong_content_type PASSED [ 22%]
+tests/api/test_error_handling.py::TestContentTypeValidation::test_json_endpoint_wrong_content_type PASSED [ 22%]
+tests/api/test_error_handling.py::TestHTTPMethodValidation::test_get_on_post_endpoint PASSED [ 23%]
+tests/api/test_error_handling.py::TestHTTPMethodValidation::test_post_on_get_endpoint PASSED [ 23%]
+tests/api/test_error_handling.py::TestHTTPMethodValidation::test_delete_without_permission PASSED [ 23%]
+tests/api/test_error_handling.py::TestUploadValidation::test_upload_invalid_filename_format FAILED [ 24%]
+tests/api/test_error_handling.py::TestUploadValidation::test_upload_invalid_modem_id_format FAILED [ 24%]
+tests/api/test_error_handling.py::TestUploadValidation::test_upload_missing_required_fields PASSED [ 24%]
+tests/api/test_error_handling.py::TestResponseHeaders::test_security_headers_present PASSED [ 24%]
+tests/api/test_error_handling.py::TestResponseHeaders::test_content_type_json_endpoints PASSED [ 25%]
+tests/api/test_error_handling.py::TestResponseHeaders::test_cors_headers_present PASSED [ 25%]
+tests/api/test_error_handling.py::TestErrorResponses::test_404_error_format PASSED [ 25%]
+tests/api/test_error_handling.py::TestErrorResponses::test_401_error_format PASSED [ 26%]
+tests/api/test_error_handling.py::TestErrorResponses::test_403_error_format PASSED [ 26%]
+tests/api/test_error_handling.py::TestErrorResponses::test_422_error_format PASSED [ 26%]
+tests/api/test_metric_extraction.py::TestSafeConversions::test_safe_float_valid PASSED [ 26%]
+tests/api/test_metric_extraction.py::TestSafeConversions::test_safe_float_invalid PASSED [ 27%]
+tests/api/test_metric_extraction.py::TestSafeConversions::test_safe_int_valid PASSED [ 27%]
+tests/api/test_metric_extraction.py::TestSafeConversions::test_safe_int_invalid PASSED [ 27%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_system_info PASSED [ 28%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_signal_quality PASSED [ 28%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_speedtest_results PASSED [ 28%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_ping_results PASSED [ 28%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_network_info PASSED [ 29%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_missing_data PASSED [ 29%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_malformed_data PASSED [ 29%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_zero_errors PASSED [ 30%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_speedtest_disabled PASSED [ 30%]
+tests/api/test_metric_extraction.py::TestMetricExtraction::test_extract_complete_check PASSED [ 30%]
+tests/api/test_upload.py::TestUpload::test_upload_success PASSED         [ 30%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_api_key PASSED [ 31%]
+tests/api/test_upload.py::TestUpload::test_upload_inactive_api_key PASSED [ 31%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_signature PASSED [ 31%]
+tests/api/test_upload.py::TestUpload::test_upload_expired_timestamp PASSED [ 32%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_checksum PASSED [ 32%]
+tests/api/test_upload.py::TestUpload::test_upload_missing_checksum PASSED [ 32%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_json PASSED    [ 32%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_modem_id_format PASSED [ 33%]
+tests/api/test_upload.py::TestUpload::test_upload_invalid_filename_format PASSED [ 33%]
+tests/api/test_upload.py::TestUpload::test_upload_file_too_large PASSED  [ 33%]
+tests/api/test_upload.py::TestUpload::test_upload_duplicate_check PASSED [ 34%]
+tests/api/test_users.py::TestUserManagement::test_list_users PASSED      [ 34%]
+tests/api/test_users.py::TestUserManagement::test_create_user PASSED     [ 34%]
+tests/api/test_users.py::TestUserManagement::test_delete_user PASSED     [ 34%]
+tests/api/test_users.py::TestUserManagement::test_cannot_delete_self PASSED [ 35%]
+tests/integration/test_admin_workflow.py::TestAdminUserManagement::test_create_user_workflow PASSED [ 35%]
+tests/integration/test_admin_workflow.py::TestAdminUserManagement::test_update_user_role_workflow FAILED [ 35%]
+tests/integration/test_admin_workflow.py::TestAdminUserManagement::test_delete_user_workflow FAILED [ 36%]
+tests/integration/test_admin_workflow.py::TestAPIKeyLifecycle::test_api_key_creation_and_usage FAILED [ 36%]
+tests/integration/test_admin_workflow.py::TestAPIKeyLifecycle::test_api_key_rotation FAILED [ 36%]
+tests/integration/test_admin_workflow.py::TestDataManagement::test_query_modem_checks FAILED [ 36%]
+tests/integration/test_admin_workflow.py::TestDataManagement::test_delete_old_checks FAILED [ 37%]
+tests/integration/test_admin_workflow.py::TestAuditTrail::test_user_creation_logged FAILED [ 37%]
+tests/integration/test_admin_workflow.py::TestAuditTrail::test_api_key_creation_logged FAILED [ 37%]
+tests/integration/test_admin_workflow.py::TestRBACIntegration::test_basic_user_cannot_create_users SKIPPED [ 38%]
+tests/integration/test_admin_workflow.py::TestRBACIntegration::test_elevated_user_can_create_api_keys SKIPPED [ 38%]
+tests/integration/test_error_paths.py::TestNetworkErrors::test_database_connection_failure ERROR [ 38%]
+tests/integration/test_error_paths.py::TestNetworkErrors::test_redis_connection_failure ERROR [ 38%]
+tests/integration/test_error_paths.py::TestNetworkErrors::test_timeout_handling PASSED [ 39%]
+tests/integration/test_error_paths.py::TestDatabaseErrors::test_duplicate_key_error PASSED [ 39%]
+tests/integration/test_error_paths.py::TestDatabaseErrors::test_foreign_key_constraint FAILED [ 39%]
+tests/integration/test_error_paths.py::TestDatabaseErrors::test_transaction_rollback_recovery FAILED [ 40%]
+tests/integration/test_error_paths.py::TestConcurrencyEdgeCases::test_concurrent_user_creation_same_username FAILED [ 40%]
+tests/integration/test_error_paths.py::TestConcurrencyEdgeCases::test_concurrent_api_key_deletion PASSED [ 40%]
+tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_extremely_long_username FAILED [ 40%]
+tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_special_characters_in_modem_id FAILED [ 41%]
+tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_null_bytes_in_input FAILED [ 41%]
+tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_unicode_edge_cases FAILED [ 41%]
+tests/integration/test_error_paths.py::TestResourceLimits::test_maximum_upload_size FAILED [ 42%]
+tests/integration/test_error_paths.py::TestResourceLimits::test_many_concurrent_connections ERROR [ 42%]
+tests/integration/test_error_paths.py::TestErrorRecovery::test_recovery_after_invalid_json FAILED [ 42%]
+tests/integration/test_error_paths.py::TestErrorRecovery::test_recovery_after_auth_failure PASSED [ 42%]
+tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_successful_upload_with_authentication FAILED [ 43%]
+tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_upload_with_metric_extraction FAILED [ 43%]
+tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_upload_rejection_invalid_signature PASSED [ 43%]
+tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_upload_with_audit_logging FAILED [ 44%]
+tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_missing_api_key FAILED [ 44%]
+tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_invalid_checksum PASSED [ 44%]
+tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_expired_timestamp FAILED [ 44%]
+tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_malformed_json PASSED [ 45%]
+tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_oversized_upload PASSED [ 45%]
+tests/integration/test_upload_flow.py::TestConcurrentUploads::test_concurrent_uploads_same_modem FAILED [ 45%]
+tests/integration/test_upload_flow.py::TestConcurrentUploads::test_concurrent_uploads_different_modems FAILED [ 46%]
+tests/performance/test_load.py::TestUploadPerformance::test_upload_latency FAILED [ 46%]
+tests/performance/test_load.py::TestUploadPerformance::test_concurrent_upload_performance FAILED [ 46%]
+tests/performance/test_load.py::TestQueryPerformance::test_modem_check_query_performance FAILED [ 46%]
+tests/performance/test_load.py::TestQueryPerformance::test_api_key_cache_performance PASSED [ 47%]
+tests/performance/test_load.py::TestDatabasePerformance::test_bulk_insert_performance FAILED [ 47%]
+tests/performance/test_load.py::TestDatabasePerformance::test_index_query_performance FAILED [ 47%]
+tests/performance/test_load.py::TestStressTest::test_sustained_load FAILED [ 48%]
+tests/rbac/test_rbac.py::TestBasicRole::test_basic_can_view_data PASSED  [ 48%]
+tests/rbac/test_rbac.py::TestBasicRole::test_basic_cannot_create_api_keys PASSED [ 48%]
+tests/rbac/test_rbac.py::TestBasicRole::test_basic_cannot_delete_checks PASSED [ 48%]
+tests/rbac/test_rbac.py::TestBasicRole::test_basic_cannot_manage_users PASSED [ 49%]
+tests/rbac/test_rbac.py::TestElevatedRole::test_elevated_can_create_api_keys PASSED [ 49%]
+tests/rbac/test_rbac.py::TestElevatedRole::test_elevated_can_bulk_upload PASSED [ 49%]
+tests/rbac/test_rbac.py::TestElevatedRole::test_elevated_cannot_delete_checks PASSED [ 50%]
+tests/rbac/test_rbac.py::TestElevatedRole::test_elevated_cannot_manage_users PASSED [ 50%]
+tests/rbac/test_rbac.py::TestAdminRole::test_admin_can_create_api_keys PASSED [ 50%]
+tests/rbac/test_rbac.py::TestAdminRole::test_admin_can_delete_checks PASSED [ 51%]
+tests/rbac/test_rbac.py::TestAdminRole::test_admin_can_manage_users PASSED [ 51%]
+tests/rbac/test_rbac.py::TestAdminRole::test_admin_can_view_logs PASSED  [ 51%]
+tests/security/test_api_key_security.py::TestAPIKeyBruteForce::test_api_key_brute_force_prevention FAILED [ 51%]
+tests/security/test_api_key_security.py::TestAPIKeyBruteForce::test_api_key_lockout_after_failures PASSED [ 52%]
+tests/security/test_api_key_security.py::TestAPIKeyTimingAttacks::test_api_key_timing_attack_resistance PASSED [ 52%]
+tests/security/test_api_key_security.py::TestAPIKeyTimingAttacks::test_api_key_comparison_constant_time PASSED [ 52%]
+tests/security/test_api_key_security.py::TestAPIKeyEnumeration::test_api_key_enumeration_prevention PASSED [ 53%]
+tests/security/test_api_key_security.py::TestAPIKeyEnumeration::test_api_key_preview_no_information_leak PASSED [ 53%]
+tests/security/test_api_key_security.py::TestAPIKeyRotation::test_api_key_rotation_invalidates_old_key FAILED [ 53%]
+tests/security/test_api_key_security.py::TestAPIKeyRotation::test_api_key_cache_invalidation PASSED [ 53%]
+tests/security/test_api_key_security.py::TestAPIKeyComplexity::test_api_key_entropy FAILED [ 54%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_session_limit_enforced PASSED [ 54%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_concurrent_login_race_condition PASSED [ 54%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_lua_script_atomicity PASSED [ 55%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_session_data_created_after_lua_check PASSED [ 55%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_custom_session_limit PASSED [ 55%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_session_set_expiration PASSED [ 55%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_multiple_users_independent_limits PASSED [ 56%]
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress PASSED [ 56%]
+tests/security/test_enhanced_rate_limiting.py::TestPerUserRateLimiting::test_check_user_rate_limit_under_limit PASSED [ 56%]
+tests/security/test_enhanced_rate_limiting.py::TestPerUserRateLimiting::test_check_user_rate_limit_multiple_requests PASSED [ 57%]
+tests/security/test_enhanced_rate_limiting.py::TestPerUserRateLimiting::test_check_user_rate_limit_at_limit PASSED [ 57%]
+tests/security/test_enhanced_rate_limiting.py::TestPerUserRateLimiting::test_check_user_rate_limit_test_mode FAILED [ 57%]
+tests/security/test_enhanced_rate_limiting.py::TestEndpointSpecificRateLimiting::test_check_endpoint_user_limit_separate_limits PASSED [ 57%]
+tests/security/test_enhanced_rate_limiting.py::TestEndpointSpecificRateLimiting::test_check_endpoint_user_limit_exceeded PASSED [ 58%]
+tests/security/test_enhanced_rate_limiting.py::TestUserRequestStatistics::test_get_user_request_stats_empty PASSED [ 58%]
+tests/security/test_enhanced_rate_limiting.py::TestUserRequestStatistics::test_get_user_request_stats_with_requests PASSED [ 58%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitReset::test_reset_user_rate_limits_clears_all PASSED [ 59%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitReset::test_reset_user_rate_limits_no_limits PASSED [ 59%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitingIntegration::test_login_per_user_rate_limit PASSED [ 59%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitingIntegration::test_rate_limit_prevents_multi_ip_abuse PASSED [ 59%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitRedisKeys::test_rate_limit_keys_expire PASSED [ 60%]
+tests/security/test_enhanced_rate_limiting.py::TestRateLimitRedisKeys::test_rate_limit_key_format PASSED [ 60%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_tracking_set_created_on_first_request PASSED [ 60%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_endpoint_keys_tracked_separately PASSED [ 61%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_reset_uses_tracking_set_not_scan PASSED [ 61%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_tracking_set_ttl_longer_than_rate_limit PASSED [ 61%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_performance_comparison_many_users FAILED [ 61%]
+tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_pipeline_efficiency PASSED [ 62%]
+tests/security/test_hmac_signature_security.py::TestHMACTampering::test_signature_tampering_detection PASSED [ 62%]
+tests/security/test_hmac_signature_security.py::TestHMACTampering::test_signature_parameter_tampering PASSED [ 62%]
+tests/security/test_hmac_signature_security.py::TestReplayAttackPrevention::test_timestamp_validation_window PASSED [ 63%]
+tests/security/test_hmac_signature_security.py::TestReplayAttackPrevention::test_replay_same_request_rejection PASSED [ 63%]
+tests/security/test_hmac_signature_security.py::TestSignatureMissingComponents::test_missing_timestamp_header PASSED [ 63%]
+tests/security/test_hmac_signature_security.py::TestSignatureMissingComponents::test_missing_signature_header PASSED [ 63%]
+tests/security/test_hmac_signature_security.py::TestSignatureMissingComponents::test_malformed_timestamp PASSED [ 64%]
+tests/security/test_hmac_signature_security.py::TestSignatureKeyRotation::test_signature_with_rotated_key FAILED [ 64%]
+tests/security/test_hmac_signature_security.py::TestChecksumValidation::test_checksum_mismatch_detection PASSED [ 64%]
+tests/security/test_hmac_signature_security.py::TestChecksumValidation::test_file_content_tampering PASSED [ 65%]
+tests/security/test_security.py::TestSQLInjection::test_sql_injection_login PASSED [ 65%]
+tests/security/test_security.py::TestSQLInjection::test_sql_injection_modem_id PASSED [ 65%]
+tests/security/test_security.py::TestXSS::test_xss_in_username PASSED    [ 65%]
+tests/security/test_security.py::TestCSRF::test_csrf_protected_endpoint_without_token PASSED [ 66%]
+tests/security/test_security.py::TestCSRF::test_csrf_with_invalid_token PASSED [ 66%]
+tests/security/test_security.py::TestPathTraversal::test_path_traversal_modem_id PASSED [ 66%]
+tests/security/test_security.py::TestAuthenticationBypass::test_bypass_with_fake_cookie PASSED [ 67%]
+tests/security/test_security.py::TestAuthenticationBypass::test_bypass_with_modified_role PASSED [ 67%]
+tests/security/test_security.py::TestFileUploadVulnerabilities::test_upload_executable_file FAILED [ 67%]
+tests/security/test_security.py::TestRateLimiting::test_login_rate_limiting SKIPPED [ 67%]
+tests/security/test_security.py::TestSessionSecurity::test_concurrent_sessions FAILED [ 68%]
+tests/security/test_security.py::TestSessionSecurity::test_session_expiration FAILED [ 68%]
+tests/security/test_security.py::TestSessionSecurity::test_session_hijacking_prevention FAILED [ 68%]
+tests/security/test_security.py::TestPasswordSecurity::test_password_validation_length PASSED [ 69%]
+tests/security/test_security.py::TestPasswordSecurity::test_password_validation_complexity PASSED [ 69%]
+tests/security/test_security.py::TestPasswordSecurity::test_password_validation_common_passwords PASSED [ 69%]
+tests/security/test_security.py::TestTimingAttacks::test_timing_attack_api_key_validation PASSED [ 69%]
+tests/security/test_security.py::TestCookieSecurity::test_cookie_secure_flag_https PASSED [ 70%]
+tests/security/test_security.py::TestCookieSecurity::test_cookie_httponly_flag PASSED [ 70%]
+tests/security/test_security.py::TestCookieSecurity::test_cookie_samesite_flag PASSED [ 70%]
+tests/security/test_security.py::TestXSSAdditional::test_xss_in_api_key_name PASSED [ 71%]
+tests/security/test_session_hijacking.py::TestSessionFixation::test_session_regeneration_on_login FAILED [ 71%]
+tests/security/test_session_hijacking.py::TestSessionFixation::test_reject_client_provided_session_id FAILED [ 71%]
+tests/security/test_session_hijacking.py::TestSessionFixation::test_session_invalidation_on_logout FAILED [ 71%]
+tests/security/test_session_hijacking.py::TestSessionTokenSecurity::test_session_token_entropy PASSED [ 72%]
+tests/security/test_session_hijacking.py::TestSessionTokenSecurity::test_session_cookie_security_flags FAILED [ 72%]
+tests/security/test_session_hijacking.py::TestSessionTokenSecurity::test_session_timeout PASSED [ 72%]
+tests/security/test_session_hijacking.py::TestCrossSiteAttacks::test_csrf_token_required PASSED [ 73%]
+tests/security/test_session_hijacking.py::TestCrossSiteAttacks::test_csrf_token_validation PASSED [ 73%]
+tests/security/test_session_hijacking.py::TestCrossSiteAttacks::test_origin_validation PASSED [ 73%]
+tests/security/test_session_hijacking.py::TestSessionHijacking::test_ip_address_binding FAILED [ 73%]
+tests/security/test_session_hijacking.py::TestSessionHijacking::test_user_agent_binding FAILED [ 74%]
+tests/security/test_session_hijacking.py::TestSessionHijacking::test_concurrent_session_detection PASSED [ 74%]
+tests/security/test_session_hijacking.py::TestSessionReplayAttacks::test_session_nonce_validation PASSED [ 74%]
+tests/security/test_session_hijacking.py::TestSessionReplayAttacks::test_timestamp_validation PASSED [ 75%]
+tests/security/test_session_hijacking.py::TestSessionReplayAttacks::test_session_token_rotation FAILED [ 75%]
+tests/security/test_session_hijacking.py::TestSessionAnomalyDetection::test_geographic_anomaly_detection PASSED [ 75%]
+tests/security/test_session_hijacking.py::TestSessionAnomalyDetection::test_behavioral_anomaly_detection PASSED [ 75%]
+tests/security/test_session_hijacking.py::TestSessionAnomalyDetection::test_session_correlation_analysis PASSED [ 76%]
+tests/security/test_session_security.py::TestDeviceFingerprinting::test_generate_fingerprint_same_device PASSED [ 76%]
+tests/security/test_session_security.py::TestDeviceFingerprinting::test_generate_fingerprint_different_user_agent PASSED [ 76%]
+tests/security/test_session_security.py::TestDeviceFingerprinting::test_generate_fingerprint_different_ip PASSED [ 77%]
+tests/security/test_session_security.py::TestDeviceFingerprinting::test_generate_fingerprint_missing_data PASSED [ 77%]
+tests/security/test_session_security.py::TestDeviceFingerprinting::test_extract_session_metadata PASSED [ 77%]
+tests/security/test_session_security.py::TestSessionFingerprinting::test_create_session_with_fingerprint PASSED [ 77%]
+tests/security/test_session_security.py::TestSessionFingerprinting::test_verify_session_fingerprint_match PASSED [ 78%]
+tests/security/test_session_security.py::TestSessionFingerprinting::test_verify_session_fingerprint_ip_change_lenient PASSED [ 78%]
+tests/security/test_session_security.py::TestSessionFingerprinting::test_verify_session_fingerprint_user_agent_mismatch PASSED [ 78%]
+tests/security/test_session_security.py::TestConcurrentSessionLimits::test_enforce_concurrent_session_limit_under_limit PASSED [ 79%]
+tests/security/test_session_security.py::TestConcurrentSessionLimits::test_enforce_concurrent_session_limit_at_limit PASSED [ 79%]
+tests/security/test_session_security.py::TestConcurrentSessionLimits::test_terminate_oldest_sessions PASSED [ 79%]
+tests/security/test_session_security.py::TestSessionAnomalyTracking::test_log_session_anomaly PASSED [ 79%]
+tests/security/test_session_security.py::TestSessionAnomalyTracking::test_get_session_anomalies PASSED [ 80%]
+tests/security/test_session_security.py::TestSessionSecurityIntegration::test_login_creates_fingerprint PASSED [ 80%]
+tests/security/test_session_security.py::TestSessionSecurityIntegration::test_concurrent_login_limit PASSED [ 80%]
+tests/security/test_session_security.py::TestAuditLogTrimming::test_anomaly_log_trimmed_to_100_entries PASSED [ 81%]
+tests/security/test_session_security.py::TestAuditLogTrimming::test_anomaly_log_expiration_7_days PASSED [ 81%]
+tests/security/test_session_security.py::TestAuditLogTrimming::test_get_anomalies_respects_retention PASSED [ 81%]
+tests/security/test_session_security.py::TestAuditLogTrimming::test_memory_efficiency_under_load PASSED [ 81%]
+tests/ui/test_playwright.py::TestLoginUI::test_login_page_loads PASSED   [ 82%]
+tests/ui/test_playwright.py::TestLoginUI::test_login_success PASSED      [ 82%]
+tests/ui/test_playwright.py::TestLoginUI::test_login_invalid_credentials PASSED [ 82%]
+tests/ui/test_playwright.py::TestViewerUI::test_viewer_requires_login PASSED [ 83%]
+tests/ui/test_playwright.py::TestViewerUI::test_viewer_displays_modems PASSED [ 83%]
+tests/ui/test_playwright.py::TestAdminUI::test_admin_requires_admin_role PASSED [ 83%]
+tests/ui/test_playwright.py::TestAdminUI::test_admin_page_accessible_to_admin PASSED [ 83%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_hash_password_argon2 PASSED [ 84%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_verify_password_correct PASSED [ 84%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_verify_password_incorrect PASSED [ 84%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_verify_password_timing_safe PASSED [ 85%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_hash_uniqueness PASSED [ 85%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_hash_empty_password PASSED [ 85%]
+tests/unit/test_authentication.py::TestPasswordHashing::test_hash_unicode_password PASSED [ 85%]
+tests/unit/test_authentication.py::TestPasswordMigration::test_verify_pbkdf2_hash PASSED [ 86%]
+tests/unit/test_authentication.py::TestPasswordMigration::test_upgrade_password_hash PASSED [ 86%]
+tests/unit/test_authentication.py::TestPasswordMigration::test_no_upgrade_if_already_argon2 PASSED [ 86%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_strong_password PASSED [ 87%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_weak_password_too_short PASSED [ 87%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_weak_password_no_uppercase PASSED [ 87%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_weak_password_no_lowercase PASSED [ 87%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_weak_password_no_digit PASSED [ 88%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_weak_password_no_special PASSED [ 88%]
+tests/unit/test_authentication.py::TestPasswordStrength::test_common_password_detection PASSED [ 88%]
+tests/unit/test_authentication.py::TestSessionManagement::test_generate_session_token PASSED [ 89%]
+tests/unit/test_authentication.py::TestSessionManagement::test_session_token_uniqueness PASSED [ 89%]
+tests/unit/test_authentication.py::TestSessionManagement::test_session_token_entropy PASSED [ 89%]
+tests/unit/test_authentication.py::TestCSRFProtection::test_generate_csrf_token PASSED [ 89%]
+tests/unit/test_authentication.py::TestCSRFProtection::test_validate_csrf_token_correct PASSED [ 90%]
+tests/unit/test_authentication.py::TestCSRFProtection::test_csrf_token_uniqueness PASSED [ 90%]
+tests/unit/test_authentication.py::TestAccountLockout::test_record_failed_login PASSED [ 90%]
+tests/unit/test_authentication.py::TestAccountLockout::test_account_lockout_threshold PASSED [ 91%]
+tests/unit/test_authentication.py::TestAccountLockout::test_reset_failed_logins PASSED [ 91%]
+tests/unit/test_authentication.py::TestAccountLockout::test_lockout_expiration PASSED [ 91%]
+tests/unit/test_authentication.py::TestPasswordHashParameters::test_argon2_parameters PASSED [ 91%]
+tests/unit/test_authentication.py::TestPasswordHashParameters::test_pbkdf2_parameters PASSED [ 92%]
+tests/unit/test_database_operations.py::TestDatabaseConnection::test_db_session_creation PASSED [ 92%]
+tests/unit/test_database_operations.py::TestDatabaseConnection::test_db_session_cleanup FAILED [ 92%]
+tests/unit/test_database_operations.py::TestDatabaseConnection::test_connection_pooling ERROR [ 93%]
+tests/unit/test_database_operations.py::TestDatabaseConnection::test_concurrent_connections ERROR [ 93%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_create_modem_check PASSED [ 93%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_read_modem_check PASSED [ 93%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_update_modem_check ERROR [ 94%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_delete_modem_check ERROR [ 94%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_query_by_modem_id PASSED [ 94%]
+tests/unit/test_database_operations.py::TestModemCheckOperations::test_query_by_time_range PASSED [ 95%]
+tests/unit/test_database_operations.py::TestUserOperations::test_create_user PASSED [ 95%]
+tests/unit/test_database_operations.py::TestUserOperations::test_unique_username_constraint PASSED [ 95%]
+tests/unit/test_database_operations.py::TestUserOperations::test_user_role_validation PASSED [ 95%]
+tests/unit/test_database_operations.py::TestAPIKeyOperations::test_create_api_key PASSED [ 96%]
+tests/unit/test_database_operations.py::TestAPIKeyOperations::test_api_key_user_relationship PASSED [ 96%]
+tests/unit/test_database_operations.py::TestAPIKeyOperations::test_deactivate_api_key PASSED [ 96%]
+tests/unit/test_database_operations.py::TestAPIKeyOperations::test_query_active_keys_only PASSED [ 97%]
+tests/unit/test_database_operations.py::TestAuditLogOperations::test_create_audit_log PASSED [ 97%]
+tests/unit/test_database_operations.py::TestAuditLogOperations::test_audit_log_timestamp PASSED [ 97%]
+tests/unit/test_database_operations.py::TestAuditLogOperations::test_query_logs_by_user PASSED [ 97%]
+tests/unit/test_database_operations.py::TestAuditLogOperations::test_query_logs_by_action PASSED [ 98%]
+tests/unit/test_database_operations.py::TestTransactionHandling::test_commit_transaction PASSED [ 98%]
+tests/unit/test_database_operations.py::TestTransactionHandling::test_rollback_transaction PASSED [ 98%]
+tests/unit/test_database_operations.py::TestTransactionHandling::test_nested_transactions PASSED [ 99%]
+tests/unit/test_database_operations.py::TestErrorHandling::test_handle_connection_error ERROR [ 99%]
+tests/unit/test_database_operations.py::TestErrorHandling::test_handle_integrity_constraint PASSED [ 99%]
+tests/unit/test_database_operations.py::TestErrorHandling::test_handle_sqlalchemy_error PASSED [100%]
+
+==================================== ERRORS ====================================
+__ ERROR at teardown of TestDatabasePoolBehavior.test_concurrent_connections ___
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:302: in finalizer
+    event_loop.run_until_complete(async_finalizer())
+/usr/lib/python3.12/asyncio/base_events.py:687: in run_until_complete
+    return future.result()
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:294: in async_finalizer
+    await gen_obj.__anext__()
+tests/conftest.py:82: in db_session
+    async with async_session_maker() as session:
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1082: in __aexit__
+    await asyncio.shield(task)
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1027: in close
+    await greenlet_spawn(self.sync_session.close)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:189: in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2468: in close
+    self._close_impl(invalidate=False)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2537: in _close_impl
+    transaction.close(invalidate)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:121: in _go
+    raise sa_exc.IllegalStateChangeError(
+E   sqlalchemy.exc.IllegalStateChangeError: Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5> (Background on this error at: https://sqlalche.me/e/20/isce)
+_____ ERROR at setup of TestNetworkErrors.test_database_connection_failure _____
+file /home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py, line 19
+      @pytest.mark.asyncio
+      async def test_database_connection_failure(self, app):
+          """Test handling when database connection fails."""
+          # This would test reconnection logic
+          # Implementation depends on database error handling
+          pass
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py:19
+______ ERROR at setup of TestNetworkErrors.test_redis_connection_failure _______
+file /home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py, line 26
+      @pytest.mark.asyncio
+      async def test_redis_connection_failure(self, app):
+          """Test handling when Redis connection fails."""
+          # Test graceful degradation when Redis unavailable
+          pass
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py:26
+____ ERROR at setup of TestResourceLimits.test_many_concurrent_connections _____
+file /home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py, line 363
+      @pytest.mark.asyncio
+      async def test_many_concurrent_connections(self, app):
+          """Test handling of many concurrent connections."""
+          async def make_request(client):
+              try:
+                  return await client.get("/health")
+              except Exception as e:
+                  return e
+
+          # Create many concurrent connections
+          clients = [
+              httpx.AsyncClient(base_url="http://localhost:22560")
+              for _ in range(50)
+          ]
+
+          try:
+              tasks = [make_request(client) for client in clients]
+              responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+              # Most should succeed
+              success_count = sum(
+                  1 for r in responses
+                  if not isinstance(r, Exception) and hasattr(r, 'status_code')
+              )
+              assert success_count >= 40  # At least 80% success
+          finally:
+              for client in clients:
+                  await client.aclose()
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/integration/test_error_paths.py:363
+_______ ERROR at setup of TestDatabaseConnection.test_connection_pooling _______
+file /home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py, line 48
+      async def test_connection_pooling(self, app):
+          """Test that connection pooling works correctly."""
+          sessions = []
+
+          # Create multiple sessions
+          for _ in range(5):
+              async for session in get_db():
+                  sessions.append(session)
+                  break
+
+          # All should be valid sessions
+          assert len(sessions) == 5
+          for session in sessions:
+              result = await session.execute(select(User))
+              assert result is not None
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py:48
+_____ ERROR at setup of TestDatabaseConnection.test_concurrent_connections _____
+file /home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py, line 64
+      async def test_concurrent_connections(self, app):
+          """Test concurrent database access."""
+          async def query_users(session_id):
+              async for session in get_db():
+                  result = await session.execute(select(User))
+                  users = result.scalars().all()
+                  return len(users)
+
+          # Run concurrent queries
+          tasks = [query_users(i) for i in range(10)]
+          results = await asyncio.gather(*tasks)
+
+          # All should succeed
+          assert len(results) == 10
+          for count in results:
+              assert isinstance(count, int)
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py:64
+______ ERROR at setup of TestModemCheckOperations.test_update_modem_check ______
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.UniqueViolationError: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_database_operations.py:514: in sample_modem_check
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1227: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upload, iperf3_download, speedtest_server_name, speedtest_server_id, speedtest_latency, speedtest_max_latency, speedtest_jitter, speedtest_packet_loss, speedtest_dl_latency, speedtest_ul_jitter, ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency, ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency, client_version, client_os, client_arch, detection_status, public_ip, asn, isp_name, ip_city, ip_country, full_data, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::TIMESTAMP WITHOUT TIME ZONE, $4::VARCHAR, $5::VARCHAR, $6::INTEGER, $7::TIMESTAMP WITHOUT TIME ZONE, $8::FLOAT, $9::FLOAT, $10::FLOAT, $11::INTEGER, $12::INTEGER, $13::INTEGER, $14::VARCHAR, $15::VARCHAR, $16::VARCHAR, $17::VARCHAR, $18::FLOAT, $19::FLOAT, $20::FLOAT, $21::FLOAT, $22::FLOAT, $23::FLOAT, $24::FLOAT, $25::FLOAT, $26::FLOAT, $27::FLOAT, $28::FLOAT, $29::FLOAT, $30::FLOAT, $31::FLOAT, $32::VARCHAR, $33::VARCHAR, $34::VARCHAR, $35::VARCHAR, $36::VARCHAR, $37::VARCHAR, $38::VARCHAR, $39::VARCHAR, $40::VARCHAR, $41::JSONB, $42::TIMESTAMP WITHOUT TIME ZONE) RETURNING modem_checks.id]
+E   [parameters: ('XB8-TESTCHECK', None, datetime.datetime(2023, 11, 13, 18, 26, 40), 'XB8-TESTCHECK_1699900000.json', None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"test": "data"}', datetime.datetime(2025, 11, 19, 1, 20, 49, 342768))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+______ ERROR at setup of TestModemCheckOperations.test_delete_modem_check ______
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.UniqueViolationError: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+
+The above exception was the direct cause of the following exception:
+tests/unit/test_database_operations.py:514: in sample_modem_check
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1227: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.UniqueViolationError'>: duplicate key value violates unique constraint "ix_modem_checks_filename"
+E   DETAIL:  Key (filename)=(XB8-TESTCHECK_1699900000.json) already exists.
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upload, iperf3_download, speedtest_server_name, speedtest_server_id, speedtest_latency, speedtest_max_latency, speedtest_jitter, speedtest_packet_loss, speedtest_dl_latency, speedtest_ul_jitter, ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency, ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency, client_version, client_os, client_arch, detection_status, public_ip, asn, isp_name, ip_city, ip_country, full_data, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::TIMESTAMP WITHOUT TIME ZONE, $4::VARCHAR, $5::VARCHAR, $6::INTEGER, $7::TIMESTAMP WITHOUT TIME ZONE, $8::FLOAT, $9::FLOAT, $10::FLOAT, $11::INTEGER, $12::INTEGER, $13::INTEGER, $14::VARCHAR, $15::VARCHAR, $16::VARCHAR, $17::VARCHAR, $18::FLOAT, $19::FLOAT, $20::FLOAT, $21::FLOAT, $22::FLOAT, $23::FLOAT, $24::FLOAT, $25::FLOAT, $26::FLOAT, $27::FLOAT, $28::FLOAT, $29::FLOAT, $30::FLOAT, $31::FLOAT, $32::VARCHAR, $33::VARCHAR, $34::VARCHAR, $35::VARCHAR, $36::VARCHAR, $37::VARCHAR, $38::VARCHAR, $39::VARCHAR, $40::VARCHAR, $41::JSONB, $42::TIMESTAMP WITHOUT TIME ZONE) RETURNING modem_checks.id]
+E   [parameters: ('XB8-TESTCHECK', None, datetime.datetime(2023, 11, 13, 18, 26, 40), 'XB8-TESTCHECK_1699900000.json', None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"test": "data"}', datetime.datetime(2025, 11, 19, 1, 20, 50, 274989))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+_______ ERROR at setup of TestErrorHandling.test_handle_connection_error _______
+file /home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py, line 471
+      async def test_handle_connection_error(self, app):
+          """Test handling of connection errors."""
+          # This would test reconnection logic
+          # Implementation specific to actual error scenarios
+          pass
+E       fixture 'app' not found
+>       available fixtures: _session_faker, _verify_url, active_api_key, admin_client_with_token, admin_session_token, admin_user, admin_user_credentials, anyio_backend, anyio_backend_name, anyio_backend_options, assert_all_responses_were_requested, async_db_engine, authenticated_client, base_url, basic_client_with_token, basic_session_token, basic_user, basic_user_credentials, browser, browser_channel, browser_context_args, browser_name, browser_type, browser_type_launch_args, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, clear_redis, context, cov, create_upload_signature, csrf_token, csrf_token_basic, csrf_token_elevated, database_url, db_session, delete_output_dir, device, doctest_namespace, elevated_client_with_token, elevated_session_token, elevated_user, elevated_user_credentials, ensure_ui_test_users, event_loop, extra, extras, faker, http_client, httpx_mock, inactive_api_key, include_metadata_in_junit_xml, is_chromium, is_firefox, is_webkit, launch_browser, metadata, mocker, module_mocker, monkeypatch, no_cover, non_mocked_hosts, package_mocker, page, playwright, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_modem_check, sample_modem_check_data, sample_modem_checks_in_db, session_mocker, setup_test_environment, test_api_key, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, upload_form_data, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/adamkl/projects/modemcheck/cloudserver/tests/unit/test_database_operations.py:471
+=================================== FAILURES ===================================
+__________ TestAuditLogStatistics.test_get_audit_log_statistics_empty __________
+tests/api/test_audit_retention.py:211: in test_get_audit_log_statistics_empty
+    await db_session.execute("DELETE FROM user_activity_log")
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:455: in execute
+    result = await greenlet_spawn(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:189: in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2308: in execute
+    return self._execute_internal(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2088: in _execute_internal
+    statement = coercions.expect(roles.StatementRole, statement)
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/coercions.py:413: in expect
+    resolved = impl._literal_coercion(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/coercions.py:638: in _literal_coercion
+    return self._text_coercion(element, argname, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/coercions.py:631: in _text_coercion
+    return _no_text_coercion(element, argname)
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/coercions.py:601: in _no_text_coercion
+    raise exc_cls(
+E   sqlalchemy.exc.ArgumentError: Textual SQL expression 'DELETE FROM user_activity...' should be explicitly declared as text('DELETE FROM user_activity...')
+__________ TestDatabasePoolConfiguration.test_pool_size_configuration __________
+tests/api/test_database_pool.py:23: in test_pool_size_configuration
+    assert engine.pool.size() == settings.db_pool_size
+E   AttributeError: 'NullPool' object has no attribute 'size'
+_____________ TestDatabasePoolBehavior.test_concurrent_connections _____________
+tests/api/test_database_pool.py:61: in test_concurrent_connections
+    results = await asyncio.gather(*tasks)
+tests/api/test_database_pool.py:56: in query_task
+    result = await db_session.execute(text("SELECT 1"))
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:455: in execute
+    result = await greenlet_spawn(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:189: in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2308: in execute
+    return self._execute_internal(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2180: in _execute_internal
+    conn = self._connection_for_bind(bind)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2047: in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+<string>:2: in _connection_for_bind
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:103: in _go
+    self._raise_for_prerequisite_state(fn.__name__, current_state)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:946: in _raise_for_prerequisite_state
+    raise sa_exc.InvalidRequestError(
+E   sqlalchemy.exc.InvalidRequestError: This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)
+___________ TestUploadValidation.test_upload_invalid_filename_format ___________
+tests/api/test_error_handling.py:163: in test_upload_invalid_filename_format
+    assert response.status_code in [400, 422], f"Invalid filename accepted: {filename}"
+E   AssertionError: Invalid filename accepted: invalid.txt
+E   assert 401 in [400, 422]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+___________ TestUploadValidation.test_upload_invalid_modem_id_format ___________
+tests/api/test_error_handling.py:196: in test_upload_invalid_modem_id_format
+    assert response.status_code in [400, 422], f"Invalid modem_id accepted: {modem_id}"
+E   AssertionError: Invalid modem_id accepted: invalid
+E   assert 401 in [400, 422]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+____________ TestAdminUserManagement.test_update_user_role_workflow ____________
+tests/integration/test_admin_workflow.py:93: in test_update_user_role_workflow
+    assert update_response.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+______________ TestAdminUserManagement.test_delete_user_workflow _______________
+tests/integration/test_admin_workflow.py:130: in test_delete_user_workflow
+    assert delete_response.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = <Response [404 Not Found]>.status_code
+_____________ TestAPIKeyLifecycle.test_api_key_creation_and_usage ______________
+tests/integration/test_admin_workflow.py:195: in test_api_key_creation_and_usage
+    assert upload_response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+__________________ TestAPIKeyLifecycle.test_api_key_rotation ___________________
+tests/integration/test_admin_workflow.py:284: in test_api_key_rotation
+    assert new_key_response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+__________________ TestDataManagement.test_query_modem_checks __________________
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.NotNullViolationError: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (21, XB8-QUERY, null, 2025-11-18 20:18:56, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:18:56.116384).
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (21, XB8-QUERY, null, 2025-11-18 20:18:56, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:18:56.116384).
+
+The above exception was the direct cause of the following exception:
+tests/integration/test_admin_workflow.py:307: in test_query_modem_checks
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1137: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1843: in _execute_context
+    return self._exec_insertmany_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2121: in _exec_insertmany_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (21, XB8-QUERY, null, 2025-11-18 20:18:56, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:18:56.116384).
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upl ... 4500 characters truncated ... p39, p40, p41, sen_counter) ORDER BY sen_counter RETURNING modem_checks.id, modem_checks.id AS id__1]
+E   [parameters: ('XB8-QUERY', None, datetime.datetime(2025, 11, 18, 20, 18, 56), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 0}', datetime.datetime(2025, 11, 19, 1, 18, 56, 116384), 'XB8-QUERY', None, datetime.datetime(2025, 11, 18, 20, 18, 57), None, None, None, None, None ... 110 parameters truncated ... None, None, None, None, None, None, '{"index": 3}', datetime.datetime(2025, 11, 19, 1, 18, 56, 116405), 'XB8-QUERY', None, datetime.datetime(2025, 11, 18, 20, 19), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 4}', datetime.datetime(2025, 11, 19, 1, 18, 56, 116412))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+__________________ TestDataManagement.test_delete_old_checks ___________________
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.NotNullViolationError: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (22, XB8-OLD, null, 2025-08-10 21:18:57, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:18:57.266851).
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (22, XB8-OLD, null, 2025-08-10 21:18:57, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:18:57.266851).
+
+The above exception was the direct cause of the following exception:
+tests/integration/test_admin_workflow.py:336: in test_delete_old_checks
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1227: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (22, XB8-OLD, null, 2025-08-10 21:18:57, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:18:57.266851).
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upload, iperf3_download, speedtest_server_name, speedtest_server_id, speedtest_latency, speedtest_max_latency, speedtest_jitter, speedtest_packet_loss, speedtest_dl_latency, speedtest_ul_jitter, ping_google_avg, ping_google_loss, ping_google_jitter, ping_google_max_latency, ping_cloudflare_avg, ping_cloudflare_loss, ping_cloudflare_jitter, ping_cloudflare_max_latency, client_version, client_os, client_arch, detection_status, public_ip, asn, isp_name, ip_city, ip_country, full_data, created_at) VALUES ($1::VARCHAR, $2::VARCHAR, $3::TIMESTAMP WITHOUT TIME ZONE, $4::VARCHAR, $5::VARCHAR, $6::INTEGER, $7::TIMESTAMP WITHOUT TIME ZONE, $8::FLOAT, $9::FLOAT, $10::FLOAT, $11::INTEGER, $12::INTEGER, $13::INTEGER, $14::VARCHAR, $15::VARCHAR, $16::VARCHAR, $17::VARCHAR, $18::FLOAT, $19::FLOAT, $20::FLOAT, $21::FLOAT, $22::FLOAT, $23::FLOAT, $24::FLOAT, $25::FLOAT, $26::FLOAT, $27::FLOAT, $28::FLOAT, $29::FLOAT, $30::FLOAT, $31::FLOAT, $32::VARCHAR, $33::VARCHAR, $34::VARCHAR, $35::VARCHAR, $36::VARCHAR, $37::VARCHAR, $38::VARCHAR, $39::VARCHAR, $40::VARCHAR, $41::JSONB, $42::TIMESTAMP WITHOUT TIME ZONE) RETURNING modem_checks.id]
+E   [parameters: ('XB8-OLD', None, datetime.datetime(2025, 8, 10, 21, 18, 57), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{}', datetime.datetime(2025, 11, 19, 1, 18, 57, 266851))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+___________________ TestAuditTrail.test_user_creation_logged ___________________
+tests/integration/test_admin_workflow.py:390: in test_user_creation_logged
+    log = db_result.scalar_one_or_none()
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1499: in scalar_one_or_none
+    return self._only_one_row(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:810: in _only_one_row
+    raise exc.MultipleResultsFound(
+E   sqlalchemy.exc.MultipleResultsFound: Multiple rows were found when one or none was required
+_________________ TestAuditTrail.test_api_key_creation_logged __________________
+tests/integration/test_admin_workflow.py:420: in test_api_key_creation_logged
+    log = db_result.scalar_one_or_none()
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:1499: in scalar_one_or_none
+    return self._only_one_row(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/result.py:810: in _only_one_row
+    raise exc.MultipleResultsFound(
+E   sqlalchemy.exc.MultipleResultsFound: Multiple rows were found when one or none was required
+________________ TestDatabaseErrors.test_foreign_key_constraint ________________
+tests/integration/test_error_paths.py:89: in test_foreign_key_constraint
+    api_key = APIKey(
+<string>:4: in __init__
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state.py:566: in _initialize_instance
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state.py:564: in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2142: in _declarative_constructor
+    raise TypeError(
+E   TypeError: 'user_id' is an invalid keyword argument for APIKey
+____________ TestDatabaseErrors.test_transaction_rollback_recovery _____________
+tests/integration/test_error_paths.py:127: in test_transaction_rollback_recovery
+    assert user2.id is not None
+E   AttributeError: 'User' object has no attribute 'id'
+_____ TestConcurrencyEdgeCases.test_concurrent_user_creation_same_username _____
+tests/integration/test_error_paths.py:161: in test_concurrent_user_creation_same_username
+    assert success_count == 1
+E   assert 0 == 1
+__________ TestInputValidationEdgeCases.test_extremely_long_username ___________
+tests/integration/test_error_paths.py:222: in test_extremely_long_username
+    assert response.status_code in [400, 422]
+E   assert 404 in [400, 422]
+E    +  where 404 = <Response [404 Not Found]>.status_code
+_______ TestInputValidationEdgeCases.test_special_characters_in_modem_id _______
+tests/integration/test_error_paths.py:268: in test_special_characters_in_modem_id
+    assert response.status_code in [200, 400]
+E   assert 401 in [200, 400]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+____________ TestInputValidationEdgeCases.test_null_bytes_in_input _____________
+tests/integration/test_error_paths.py:290: in test_null_bytes_in_input
+    assert response.status_code in [400, 422]
+E   assert 404 in [400, 422]
+E    +  where 404 = <Response [404 Not Found]>.status_code
+_____________ TestInputValidationEdgeCases.test_unicode_edge_cases _____________
+tests/integration/test_error_paths.py:312: in test_unicode_edge_cases
+    assert response.status_code in [200, 400]
+E   assert 404 in [200, 400]
+E    +  where 404 = <Response [404 Not Found]>.status_code
+_________________ TestResourceLimits.test_maximum_upload_size __________________
+tests/integration/test_error_paths.py:361: in test_maximum_upload_size
+    assert response.status_code in [200, 413]
+E   assert 401 in [200, 413]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+______________ TestErrorRecovery.test_recovery_after_invalid_json ______________
+tests/integration/test_error_paths.py:435: in test_recovery_after_invalid_json
+    assert response1.status_code in [400, 422]
+E   assert 401 in [400, 422]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+______ TestCompleteUploadFlow.test_successful_upload_with_authentication _______
+tests/integration/test_upload_flow.py:97: in test_successful_upload_with_authentication
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+__________ TestCompleteUploadFlow.test_upload_with_metric_extraction ___________
+tests/integration/test_upload_flow.py:169: in test_upload_with_metric_extraction
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+____________ TestCompleteUploadFlow.test_upload_with_audit_logging _____________
+tests/integration/test_upload_flow.py:264: in test_upload_with_audit_logging
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+_______________ TestUploadValidation.test_reject_missing_api_key _______________
+tests/integration/test_upload_flow.py:297: in test_reject_missing_api_key
+    assert response.status_code in [400, 401, 403]
+E   assert 422 in [400, 401, 403]
+E    +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+______________ TestUploadValidation.test_reject_expired_timestamp ______________
+tests/integration/test_upload_flow.py:384: in test_reject_expired_timestamp
+    assert response.status_code in [200, 400, 403]
+E   assert 401 in [200, 400, 403]
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+___________ TestConcurrentUploads.test_concurrent_uploads_same_modem ___________
+tests/integration/test_upload_flow.py:522: in test_concurrent_uploads_same_modem
+    assert all(r.status_code == 200 for r in responses)
+E   assert False
+E    +  where False = all(<generator object TestConcurrentUploads.test_concurrent_uploads_same_modem.<locals>.<genexpr> at 0x793a64c70c70>)
+________ TestConcurrentUploads.test_concurrent_uploads_different_modems ________
+tests/integration/test_upload_flow.py:577: in test_concurrent_uploads_different_modems
+    assert success_count >= 8  # Allow for some rate limiting
+E   assert 0 >= 8
+__________________ TestUploadPerformance.test_upload_latency ___________________
+tests/performance/test_load.py:66: in test_upload_latency
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+___________ TestUploadPerformance.test_concurrent_upload_performance ___________
+tests/performance/test_load.py:149: in test_concurrent_upload_performance
+    assert success_count >= 18  # At least 90% success
+E   assert 0 >= 18
+----------------------------- Captured stdout call -----------------------------
+
+Concurrent Upload Performance (20 concurrent):
+  Success rate: 0/20 (0.0%)
+  Total time: 0.33s
+  Average latency: 268.39ms
+  Throughput: 61.20 req/s
+___________ TestQueryPerformance.test_modem_check_query_performance ____________
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.NotNullViolationError: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (23, XB8-QUERYPERF, null, 2025-11-18 20:19:05, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:05.634836).
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (23, XB8-QUERYPERF, null, 2025-11-18 20:19:05, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:05.634836).
+
+The above exception was the direct cause of the following exception:
+tests/performance/test_load.py:174: in test_modem_check_query_performance
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1137: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1843: in _execute_context
+    return self._exec_insertmany_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2121: in _exec_insertmany_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (23, XB8-QUERYPERF, null, 2025-11-18 20:19:05, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:05.634836).
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upl ... 70396 characters truncated ... p39, p40, p41, sen_counter) ORDER BY sen_counter RETURNING modem_checks.id, modem_checks.id AS id__1]
+E   [parameters: ('XB8-QUERYPERF', None, datetime.datetime(2025, 11, 18, 20, 19, 5), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 0}', datetime.datetime(2025, 11, 19, 1, 19, 5, 634836), 'XB8-QUERYPERF', None, datetime.datetime(2025, 11, 18, 20, 19, 6), None, None, None, None, None ... 4100 parameters truncated ... None, None, None, None, None, None, '{"index": 98}', datetime.datetime(2025, 11, 19, 1, 19, 5, 635450), 'XB8-QUERYPERF', None, datetime.datetime(2025, 11, 18, 20, 20, 44), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 99}', datetime.datetime(2025, 11, 19, 1, 19, 5, 635457))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+_____________ TestDatabasePerformance.test_bulk_insert_performance _____________
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.NotNullViolationError: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (24, XB8-BULK000, null, 2025-11-18 20:19:06, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:06.7322).
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (24, XB8-BULK000, null, 2025-11-18 20:19:06, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:06.7322).
+
+The above exception was the direct cause of the following exception:
+tests/performance/test_load.py:280: in test_bulk_insert_performance
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1137: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1843: in _execute_context
+    return self._exec_insertmany_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2121: in _exec_insertmany_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (24, XB8-BULK000, null, 2025-11-18 20:19:06, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {"index": 0}, 2025-11-19 01:19:06.7322).
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upl ... 70396 characters truncated ... p39, p40, p41, sen_counter) ORDER BY sen_counter RETURNING modem_checks.id, modem_checks.id AS id__1]
+E   [parameters: ('XB8-BULK000', None, datetime.datetime(2025, 11, 18, 20, 19, 6), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 0}', datetime.datetime(2025, 11, 19, 1, 19, 6, 732200), 'XB8-BULK001', None, datetime.datetime(2025, 11, 18, 20, 19, 7), None, None, None, None, None ... 4100 parameters truncated ... None, None, None, None, None, None, '{"index": 98}', datetime.datetime(2025, 11, 19, 1, 19, 6, 732831), 'XB8-BULK099', None, datetime.datetime(2025, 11, 18, 20, 20, 45), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{"index": 99}', datetime.datetime(2025, 11, 19, 1, 19, 6, 732839))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+_____________ TestDatabasePerformance.test_index_query_performance _____________
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:546: in _prepare_and_execute
+    self._rows = await prepared_stmt.fetch(*parameters)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:176: in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:241: in __bind_execute
+    data, status, _ = await self.__do_execute(
+.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py:230: in __do_execute
+    return await executor(protocol)
+asyncpg/protocol/protocol.pyx:207: in bind_execute
+    ???
+E   asyncpg.exceptions.NotNullViolationError: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (25, XB8-INDEX, null, 2025-11-18 20:19:07, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:19:07.660102).
+
+The above exception was the direct cause of the following exception:
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.IntegrityError: <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (25, XB8-INDEX, null, 2025-11-18 20:19:07, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:19:07.660102).
+
+The above exception was the direct cause of the following exception:
+tests/performance/test_load.py:307: in test_index_query_performance
+    await db_session.commit()
+.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:1011: in commit
+    await greenlet_spawn(self.sync_session.commit)
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:202: in greenlet_spawn
+    result = context.switch(value)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1969: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1256: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1231: in _prepare_impl
+    self.session.flush()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4312: in flush
+    self._flush(objects)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4447: in _flush
+    with util.safe_reraise():
+.venv/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/session.py:4408: in _flush
+    flush_context.execute()
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:466: in execute
+    rec.execute(self)
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv/lib/python3.12/site-packages/sqlalchemy/orm/persistence.py:1137: in _emit_insert_statements
+    result = connection.execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1416: in execute
+    return meth(
+.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py:517: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1639: in _execute_clauseelement
+    ret = self._execute_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:1843: in _execute_context
+    return self._exec_insertmany_context(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2121: in _exec_insertmany_context
+    self._handle_dbapi_exception(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2344: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py:2113: in _exec_insertmany_context
+    dialect.do_execute(
+.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py:922: in do_execute
+    cursor.execute(statement, parameters)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:580: in execute
+    self._adapt_connection.await_(
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:130: in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:195: in greenlet_spawn
+    value = await result
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:558: in _prepare_and_execute
+    self._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:509: in _handle_exception
+    self._adapt_connection._handle_exception(error)
+.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:797: in _handle_exception
+    raise translated_error from error
+E   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.IntegrityError) <class 'asyncpg.exceptions.NotNullViolationError'>: null value in column "filename" of relation "modem_checks" violates not-null constraint
+E   DETAIL:  Failing row contains (25, XB8-INDEX, null, 2025-11-18 20:19:07, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, {}, 2025-11-19 01:19:07.660102).
+E   [SQL: INSERT INTO modem_checks (modem_id, modem_type, check_time, filename, firmware, uptime_seconds, system_time, avg_downstream_power, avg_downstream_snr, avg_upstream_power, total_corrected_errors, total_uncorrected_errors, speedtest_enabled, iperf3_upl ... 362597 characters truncated ... p39, p40, p41, sen_counter) ORDER BY sen_counter RETURNING modem_checks.id, modem_checks.id AS id__1]
+E   [parameters: ('XB8-INDEX', None, datetime.datetime(2025, 11, 18, 20, 19, 7), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{}', datetime.datetime(2025, 11, 19, 1, 19, 7, 660102), 'XB8-INDEX', None, datetime.datetime(2025, 11, 18, 20, 19, 8), None, None, None, None, None ... 20900 parameters truncated ... None, None, None, None, None, None, '{}', datetime.datetime(2025, 11, 19, 1, 19, 7, 663260), 'XB8-INDEX', None, datetime.datetime(2025, 11, 18, 20, 27, 26), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, '{}', datetime.datetime(2025, 11, 19, 1, 19, 7, 663267))]
+E   (Background on this error at: https://sqlalche.me/e/20/gkpj)
+______________________ TestStressTest.test_sustained_load ______________________
+tests/performance/test_load.py:407: in test_sustained_load
+    assert upload_count >= 100  # At least 100 successful uploads
+E   assert 0 >= 100
+----------------------------- Captured stdout call -----------------------------
+
+Stress Test (30s):
+  Successful uploads: 0
+  Errors: 204
+  Throughput: 0.00 req/s
+  Error rate: 100.00%
+___________ TestAPIKeyBruteForce.test_api_key_brute_force_prevention ___________
+tests/security/test_api_key_security.py:53: in test_api_key_brute_force_prevention
+    assert rate_limited or failed_attempts < 50, "Should implement rate limiting for API key attempts"
+E   AssertionError: Should implement rate limiting for API key attempts
+E   assert (False or 50 < 50)
+_________ TestAPIKeyRotation.test_api_key_rotation_invalidates_old_key _________
+tests/security/test_api_key_security.py:262: in test_api_key_rotation_invalidates_old_key
+    assert response.status_code != 401, "New key should work initially"
+E   AssertionError: New key should work initially
+E   assert 401 != 401
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+__________________ TestAPIKeyComplexity.test_api_key_entropy ___________________
+tests/security/test_api_key_security.py:392: in test_api_key_entropy
+    assert max_count < 10, f"Character distribution suggests low entropy (max count: {max_count})"
+E   AssertionError: Character distribution suggests low entropy (max count: 10)
+E   assert 10 < 10
+_________ TestPerUserRateLimiting.test_check_user_rate_limit_test_mode _________
+tests/security/test_enhanced_rate_limiting.py:113: in test_check_user_rate_limit_test_mode
+    assert current == 0
+E   assert 1 == 0
+___ TestRedisTrackingSetOptimization.test_performance_comparison_many_users ____
+tests/security/test_enhanced_rate_limiting.py:552: in test_performance_comparison_many_users
+    assert deleted == num_endpoints  # 5 endpoints
+E   assert 6 == 5
+___________ TestSignatureKeyRotation.test_signature_with_rotated_key ___________
+tests/security/test_hmac_signature_security.py:395: in test_signature_with_rotated_key
+    assert response.status_code != 401, "New key and signature should work"
+E   AssertionError: New key and signature should work
+E   assert 401 != 401
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+__________ TestFileUploadVulnerabilities.test_upload_executable_file ___________
+tests/security/test_security.py:175: in test_upload_executable_file
+    assert response.status_code == 400
+E   assert 401 == 400
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+_________________ TestSessionSecurity.test_concurrent_sessions _________________
+tests/security/test_security.py:226: in test_concurrent_sessions
+    assert response1.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+_________________ TestSessionSecurity.test_session_expiration __________________
+tests/security/test_security.py:261: in test_session_expiration
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+____________ TestSessionSecurity.test_session_hijacking_prevention _____________
+tests/security/test_security.py:282: in test_session_hijacking_prevention
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+____________ TestSessionFixation.test_session_regeneration_on_login ____________
+tests/security/test_session_hijacking.py:41: in test_session_regeneration_on_login
+    assert session_cookie is not None, "Should have session cookie after login"
+E   AssertionError: Should have session cookie after login
+E   assert None is not None
+__________ TestSessionFixation.test_reject_client_provided_session_id __________
+tests/security/test_session_hijacking.py:58: in test_reject_client_provided_session_id
+    assert response.status_code == 401, "Should reject fake session ID"
+E   AssertionError: Should reject fake session ID
+E   assert 404 == 401
+E    +  where 404 = <Response [404 Not Found]>.status_code
+___________ TestSessionFixation.test_session_invalidation_on_logout ____________
+tests/security/test_session_hijacking.py:76: in test_session_invalidation_on_logout
+    assert session_cookie is not None
+E   assert None is not None
+_________ TestSessionTokenSecurity.test_session_cookie_security_flags __________
+tests/security/test_session_hijacking.py:151: in test_session_cookie_security_flags
+    assert session_cookie_header is not None, "Should have session cookie header"
+E   AssertionError: Should have session cookie header
+E   assert None is not None
+_________________ TestSessionHijacking.test_ip_address_binding _________________
+tests/security/test_session_hijacking.py:251: in test_ip_address_binding
+    assert session_cookie is not None
+E   assert None is not None
+_________________ TestSessionHijacking.test_user_agent_binding _________________
+tests/security/test_session_hijacking.py:281: in test_user_agent_binding
+    assert session_cookie is not None
+E   assert None is not None
+_____________ TestSessionReplayAttacks.test_session_token_rotation _____________
+tests/security/test_session_hijacking.py:387: in test_session_token_rotation
+    assert current_session is not None
+E   assert None is not None
+________________ TestDatabaseConnection.test_db_session_cleanup ________________
+tests/unit/test_database_operations.py:46: in test_db_session_cleanup
+    assert db_session.is_active is False
+E   assert True is False
+E    +  where True = <sqlalchemy.ext.asyncio.session.AsyncSession object at 0x793a64f058b0>.is_active
+=============================== warnings summary ===============================
+tests/integration/test_error_paths.py::TestDatabaseErrors::test_duplicate_key_error
+  sys:1: SAWarning: New instance <User at 0x793a673043b0> with identity key (<class 'app.models.user.User'>, ('duplicate_test',), None) conflicts with persistent instance <User at 0x793a67304170>
+
+tests/security/test_atomic_session.py: 8 warnings
+tests/security/test_enhanced_rate_limiting.py: 18 warnings
+tests/security/test_session_security.py: 11 warnings
+tests/unit/test_authentication.py: 7 warnings
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=15 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=15 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py: 6 warnings
+tests/security/test_enhanced_rate_limiting.py: 4 warnings
+tests/security/test_session_security.py: 5 warnings
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=16 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=16 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_concurrent_login_race_condition
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+tests/security/test_session_security.py::TestConcurrentSessionLimits::test_terminate_oldest_sessions
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=20 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=20 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=35 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=35 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=37 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=37 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=39 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=39 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=40 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=40 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=41 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=41 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=42 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=42 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=43 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=43 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=44 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=44 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=45 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=45 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=46 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=46 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=21 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=21 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=28 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=28 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=29 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=29 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=30 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=30 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=32 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=32 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=33 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=33 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/security/test_atomic_session.py::TestAtomicSessionCreation::test_high_concurrency_stress
+  /usr/lib/python3.12/asyncio/streams.py:416: ResourceWarning: unclosed <StreamWriter transport=<_SelectorSocketTransport closing fd=34 read=idle write=<idle, bufsize=0>> reader=<StreamReader transport=<_SelectorSocketTransport closing fd=34 read=idle write=<idle, bufsize=0>>>>
+    warnings.warn(f"unclosed {self!r}", ResourceWarning)
+
+tests/unit/test_database_operations.py::TestUserOperations::test_unique_username_constraint
+  sys:1: SAWarning: New instance <User at 0x793a67058c20> with identity key (<class 'app.models.user.User'>, ('admin',), None) conflicts with persistent instance <User at 0x793a67058920>
+
+tests/unit/test_database_operations.py::TestErrorHandling::test_handle_integrity_constraint
+  sys:1: SAWarning: New instance <User at 0x793a64fd1850> with identity key (<class 'app.models.user.User'>, ('admin',), None) conflicts with persistent instance <User at 0x793a64fd0a10>
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform linux, python 3.12.3-final-0 -----------
+Name                                 Stmts   Miss  Cover   Missing
+------------------------------------------------------------------
+app/__init__.py                          0      0   100%
+app/core/__init__.py                     0      0   100%
+app/core/api_key_cache.py               81     81     0%   8-189
+app/core/audit.py                       13     13     0%   4-109
+app/core/audit_retention.py             42      0   100%
+app/core/config.py                      67      7    90%   93-95, 102, 116, 124, 128
+app/core/database.py                    48     29    40%   47, 68-69, 80-87, 92-93, 99-100, 112-120, 133-141
+app/core/enhanced_limiter.py            60      5    92%   30-40
+app/core/init_data.py                   35     35     0%   6-75
+app/core/limiter.py                      6      6     0%   6-17
+app/core/metric_extraction.py           85      2    98%   91-93
+app/core/security.py                   207     79    62%   63-75, 81-83, 130-131, 140-188, 208-212, 245, 263, 346-379, 385, 473, 480, 488-493, 575-588
+app/core/session_security.py            94     19    80%   110, 122, 129, 144-176, 220
+app/main.py                            115    115     0%   6-276
+app/middleware/__init__.py               0      0   100%
+app/middleware/auth.py                  46     46     0%   4-159
+app/middleware/csrf.py                  31     31     0%   4-80
+app/middleware/security_headers.py      23     23     0%   6-93
+app/models/__init__.py                   6      0   100%
+app/models/api_key.py                   14      2    86%   26, 30
+app/models/audit.py                     39      2    95%   37, 71
+app/models/config_defaults.py           10      1    90%   23
+app/models/modem_check.py               52      1    98%   86
+app/models/user.py                      26      4    85%   44, 48, 52, 56
+app/routers/__init__.py                  0      0   100%
+app/routers/admin.py                   187    187     0%   4-612
+app/routers/auth.py                    118    118     0%   4-466
+app/routers/data_mgmt.py               123    123     0%   4-342
+app/routers/db_api.py                   62     62     0%   4-230
+app/routers/upload.py                  124    124     0%   4-417
+app/routers/users.py                    78     78     0%   4-322
+app/schemas/__init__.py                  6      6     0%   4-44
+app/schemas/api_key.py                  29     29     0%   4-56
+app/schemas/auth.py                     33     33     0%   4-67
+app/schemas/common.py                   15     15     0%   4-28
+app/schemas/modem_check.py              63     63     0%   4-110
+app/schemas/user.py                     38     38     0%   4-75
+------------------------------------------------------------------
+TOTAL                                 1976   1377    30%
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ============================
+FAILED tests/api/test_audit_retention.py::TestAuditLogStatistics::test_get_audit_log_statistics_empty
+FAILED tests/api/test_database_pool.py::TestDatabasePoolConfiguration::test_pool_size_configuration
+FAILED tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_concurrent_connections
+FAILED tests/api/test_error_handling.py::TestUploadValidation::test_upload_invalid_filename_format
+FAILED tests/api/test_error_handling.py::TestUploadValidation::test_upload_invalid_modem_id_format
+FAILED tests/integration/test_admin_workflow.py::TestAdminUserManagement::test_update_user_role_workflow
+FAILED tests/integration/test_admin_workflow.py::TestAdminUserManagement::test_delete_user_workflow
+FAILED tests/integration/test_admin_workflow.py::TestAPIKeyLifecycle::test_api_key_creation_and_usage
+FAILED tests/integration/test_admin_workflow.py::TestAPIKeyLifecycle::test_api_key_rotation
+FAILED tests/integration/test_admin_workflow.py::TestDataManagement::test_query_modem_checks
+FAILED tests/integration/test_admin_workflow.py::TestDataManagement::test_delete_old_checks
+FAILED tests/integration/test_admin_workflow.py::TestAuditTrail::test_user_creation_logged
+FAILED tests/integration/test_admin_workflow.py::TestAuditTrail::test_api_key_creation_logged
+FAILED tests/integration/test_error_paths.py::TestDatabaseErrors::test_foreign_key_constraint
+FAILED tests/integration/test_error_paths.py::TestDatabaseErrors::test_transaction_rollback_recovery
+FAILED tests/integration/test_error_paths.py::TestConcurrencyEdgeCases::test_concurrent_user_creation_same_username
+FAILED tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_extremely_long_username
+FAILED tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_special_characters_in_modem_id
+FAILED tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_null_bytes_in_input
+FAILED tests/integration/test_error_paths.py::TestInputValidationEdgeCases::test_unicode_edge_cases
+FAILED tests/integration/test_error_paths.py::TestResourceLimits::test_maximum_upload_size
+FAILED tests/integration/test_error_paths.py::TestErrorRecovery::test_recovery_after_invalid_json
+FAILED tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_successful_upload_with_authentication
+FAILED tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_upload_with_metric_extraction
+FAILED tests/integration/test_upload_flow.py::TestCompleteUploadFlow::test_upload_with_audit_logging
+FAILED tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_missing_api_key
+FAILED tests/integration/test_upload_flow.py::TestUploadValidation::test_reject_expired_timestamp
+FAILED tests/integration/test_upload_flow.py::TestConcurrentUploads::test_concurrent_uploads_same_modem
+FAILED tests/integration/test_upload_flow.py::TestConcurrentUploads::test_concurrent_uploads_different_modems
+FAILED tests/performance/test_load.py::TestUploadPerformance::test_upload_latency
+FAILED tests/performance/test_load.py::TestUploadPerformance::test_concurrent_upload_performance
+FAILED tests/performance/test_load.py::TestQueryPerformance::test_modem_check_query_performance
+FAILED tests/performance/test_load.py::TestDatabasePerformance::test_bulk_insert_performance
+FAILED tests/performance/test_load.py::TestDatabasePerformance::test_index_query_performance
+FAILED tests/performance/test_load.py::TestStressTest::test_sustained_load - ...
+FAILED tests/security/test_api_key_security.py::TestAPIKeyBruteForce::test_api_key_brute_force_prevention
+FAILED tests/security/test_api_key_security.py::TestAPIKeyRotation::test_api_key_rotation_invalidates_old_key
+FAILED tests/security/test_api_key_security.py::TestAPIKeyComplexity::test_api_key_entropy
+FAILED tests/security/test_enhanced_rate_limiting.py::TestPerUserRateLimiting::test_check_user_rate_limit_test_mode
+FAILED tests/security/test_enhanced_rate_limiting.py::TestRedisTrackingSetOptimization::test_performance_comparison_many_users
+FAILED tests/security/test_hmac_signature_security.py::TestSignatureKeyRotation::test_signature_with_rotated_key
+FAILED tests/security/test_security.py::TestFileUploadVulnerabilities::test_upload_executable_file
+FAILED tests/security/test_security.py::TestSessionSecurity::test_concurrent_sessions
+FAILED tests/security/test_security.py::TestSessionSecurity::test_session_expiration
+FAILED tests/security/test_security.py::TestSessionSecurity::test_session_hijacking_prevention
+FAILED tests/security/test_session_hijacking.py::TestSessionFixation::test_session_regeneration_on_login
+FAILED tests/security/test_session_hijacking.py::TestSessionFixation::test_reject_client_provided_session_id
+FAILED tests/security/test_session_hijacking.py::TestSessionFixation::test_session_invalidation_on_logout
+FAILED tests/security/test_session_hijacking.py::TestSessionTokenSecurity::test_session_cookie_security_flags
+FAILED tests/security/test_session_hijacking.py::TestSessionHijacking::test_ip_address_binding
+FAILED tests/security/test_session_hijacking.py::TestSessionHijacking::test_user_agent_binding
+FAILED tests/security/test_session_hijacking.py::TestSessionReplayAttacks::test_session_token_rotation
+FAILED tests/unit/test_database_operations.py::TestDatabaseConnection::test_db_session_cleanup
+ERROR tests/api/test_database_pool.py::TestDatabasePoolBehavior::test_concurrent_connections
+ERROR tests/integration/test_error_paths.py::TestNetworkErrors::test_database_connection_failure
+ERROR tests/integration/test_error_paths.py::TestNetworkErrors::test_redis_connection_failure
+ERROR tests/integration/test_error_paths.py::TestResourceLimits::test_many_concurrent_connections
+ERROR tests/unit/test_database_operations.py::TestDatabaseConnection::test_connection_pooling
+ERROR tests/unit/test_database_operations.py::TestDatabaseConnection::test_concurrent_connections
+ERROR tests/unit/test_database_operations.py::TestModemCheckOperations::test_update_modem_check
+ERROR tests/unit/test_database_operations.py::TestModemCheckOperations::test_delete_modem_check
+ERROR tests/unit/test_database_operations.py::TestErrorHandling::test_handle_connection_error
+= 53 failed, 278 passed, 10 skipped, 82 warnings, 9 errors in 142.45s (0:02:22) =
+[0;31m✗ Some tests failed[0m
+
+[0;34m========================================[0m
+[0;34mTest Results Summary[0m
+[0;34m========================================[0m
+
+[0;32m✓ Coverage report: htmlcov/index.html[0m
+[0;32m✓ Coverage XML: coverage.xml[0m
+
+[0;34m========================================[0m
+[0;34mStopping Test Environment[0m
+[0;34m========================================[0m
+
+ Container modemcheck-cloud-test  Stopping
+ Container modemcheck-cloud-test  Stopped
+ Container modemcheck-cloud-test  Removing
+ Container modemcheck-cloud-test  Removed
+ Container modemcheck-redis-test  Stopping
+ Container modemcheck-postgres-test  Stopping
+ Container modemcheck-redis-test  Stopped
+ Container modemcheck-redis-test  Removing
+ Container modemcheck-redis-test  Removed
+ Container modemcheck-postgres-test  Stopped
+ Container modemcheck-postgres-test  Removing
+ Container modemcheck-postgres-test  Removed
+ Volume modemcheck-test_redis  Removing
+ Volume modemcheck-test_postgres  Removing
+ Network modemcheck-test_modemcheck-test  Removing
+ Volume modemcheck-test_redis  Removed
+ Volume modemcheck-test_postgres  Removed
+ Network modemcheck-test_modemcheck-test  Removed
+[0;32m✓ Test environment stopped and cleaned up[0m

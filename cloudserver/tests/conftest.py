@@ -138,7 +138,7 @@ def admin_user_credentials() -> Dict[str, str]:
     """Default admin user credentials."""
     return {
         "username": "admin",
-        "password": "AdminPass123!"
+        "password": "TestPass123!"
     }
 
 
@@ -518,21 +518,30 @@ async def csrf_token_basic(basic_client_with_token: httpx.AsyncClient) -> str:
 # ============================================================================
 
 @pytest.fixture(scope="function")
-def upload_form_data(sample_modem_check_data: Dict[str, Any], test_api_key: str) -> Dict[str, Any]:
+def create_upload_signature():
+    """Helper to create proper HMAC signatures for upload requests."""
+    def _create_signature(api_key: str, timestamp: str, modem_id: str, filename: str, checksum: str) -> str:
+        import hmac
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        return hmac.new(api_key.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
+    return _create_signature
+
+
+@pytest.fixture(scope="function")
+def upload_form_data(sample_modem_check_data: Dict[str, Any], test_api_key: str, create_upload_signature) -> Dict[str, Any]:
     """Generate upload form data with HMAC signature."""
     sysinfo = sample_modem_check_data["sysinfo"]
     modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
     filename = "2024-01-01_12-00-00.json"
-    
+
     # Calculate checksum
     file_content = json.dumps(sample_modem_check_data).encode('utf-8')
     checksum = hashlib.sha256(file_content).hexdigest()
-    
-    # Create HMAC signature
+
+    # Create HMAC signature using the helper
     timestamp = str(int(time.time()))
-    message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-    signature = hashlib.sha256(f"{test_api_key}{message}".encode()).hexdigest()
-    
+    signature = create_upload_signature(test_api_key, timestamp, modem_id, filename, checksum)
+
     return {
         "api_key": test_api_key,
         "modem_id": modem_id,

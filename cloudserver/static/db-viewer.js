@@ -1,4 +1,3 @@
-console.log("DEBUG: db-viewer.js file loaded - DATABASE MODE");
 
 // Utility functions for timestamp formatting
 function formatEpochTime(epoch) {
@@ -39,33 +38,25 @@ const API_BASE = window.API_CONFIG?.baseUrl || '';
 
 // Check authentication before initializing
 async function checkAuth() {
-    console.log("DEBUG: checkAuth called");
-    console.log("DEBUG: Current URL:", window.location.href);
 
     try {
-        console.log("DEBUG: Fetching auth status from /api/auth/session_check");
         const response = await fetch('/api/auth/session_check', {
             credentials: 'same-origin'
         });
-        console.log("DEBUG: Auth response status:", response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("DEBUG: Auth check failed with status", response.status, errorText);
             window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
             return false;
         }
 
         const data = await response.json();
-        console.log("DEBUG: Auth data:", data);
 
         if (!data.authenticated) {
-            console.log("DEBUG: User not authenticated, redirecting to login");
             window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
             return false;
         }
 
-        console.log("DEBUG: User authenticated, role:", data.role);
 
         // Show the page content now that auth is verified
         document.querySelector('.container').classList.add('authenticated');
@@ -91,8 +82,6 @@ async function checkAuth() {
 
         return true;
     } catch (error) {
-        console.error('DEBUG: Auth check exception:', error);
-        console.error('DEBUG: Error details:', error.message, error.stack);
         window.location.href = '/login?return=' + encodeURIComponent(window.location.pathname);
         return false;
     }
@@ -184,7 +173,6 @@ async function logout() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log("DEBUG: DOMContentLoaded fired");
 
     // Check authentication first
     const isAuthenticated = await checkAuth();
@@ -257,26 +245,18 @@ function setDefaultDateRange() {
 
 // Load list of available modems
 async function loadModemList() {
-    console.log("DEBUG: loadModemList called");
-    console.log("DEBUG: API_BASE is:", API_BASE);
-    console.log("DEBUG: Current URL:", window.location.href);
 
     try {
-        console.log("DEBUG: About to fetch modems from API");
         const response = await fetch(`/api/db/list_modems`, {
             credentials: 'same-origin'
         });
-        console.log("DEBUG: Fetch completed, status:", response.status);
-        console.log("DEBUG: Response headers:", response.headers);
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("DEBUG: API error response:", errorText);
             throw new Error(`API returned status ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
-        console.log("DEBUG: JSON parsed, modems:", data.modems);
 
         if (!data.modems || data.modems.length === 0) {
             console.warn("DEBUG: No modems found in response");
@@ -288,9 +268,7 @@ async function loadModemList() {
         const searchInput = document.getElementById('modemSearchInput');
         const hiddenSelect = document.getElementById('modemSelect');
         
-        console.log("DEBUG: Dropdown element found:", dropdown);
         dropdown.innerHTML = '';
-        console.log("DEBUG: Dropdown cleared");
 
         // Store modems for filtering
         window.allModems = data.modems;
@@ -305,13 +283,10 @@ async function loadModemList() {
             dropdown.appendChild(option);
         });
 
-        console.log("DEBUG: Successfully loaded", data.modems.length, "modems");
         
         // Setup searchable dropdown event listeners
         setupSearchableDropdown();
     } catch (error) {
-        console.error('DEBUG: Error loading modems:', error);
-        console.error('DEBUG: Error details:', error.message, error.stack);
         showStatus(`Error loading modem list: ${error.message}`, 'error');
     }
 }
@@ -433,9 +408,7 @@ async function loadData() {
             body: JSON.stringify(requestBody),
             credentials: 'same-origin'
         });
-        console.log("DEBUG: Fetch completed, status:", response.status);
         const data = await response.json();
-        console.log("DEBUG: JSON parsed, success:", data.success, "checks:", data.checks?.length);
 
         if (!data.success || !data.checks || data.checks.length === 0) {
             showStatus('No data found for the selected criteria', 'error');
@@ -447,7 +420,6 @@ async function loadData() {
 
         // Extract full_data from each check (single request now includes everything)
         allChecks = data.checks.map(check => check.full_data);
-        console.log("DEBUG: Loaded full data for", allChecks.length, "checks");
         
         if (allChecks.length === 0) {
             showStatus('Failed to load data', 'error');

@@ -38,7 +38,45 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dictionary with extracted metrics for database columns
     """
-    metrics = {}
+    # Initialize all metrics with None to ensure consistent output
+    metrics = {
+        'firmware': None,
+        'uptime_seconds': None,
+        'system_time': None,
+        'avg_downstream_power': None,
+        'avg_downstream_snr': None,
+        'avg_upstream_power': None,
+        'total_corrected_errors': None,
+        'total_uncorrected_errors': None,
+        'speedtest_enabled': None,
+        'iperf3_upload': None,
+        'iperf3_download': None,
+        'speedtest_server_name': None,
+        'speedtest_server_id': None,
+        'speedtest_latency': None,
+        'speedtest_max_latency': None,
+        'speedtest_jitter': None,
+        'speedtest_packet_loss': None,
+        'speedtest_dl_latency': None,
+        'speedtest_ul_jitter': None,
+        'ping_google_avg': None,
+        'ping_google_loss': None,
+        'ping_google_jitter': None,
+        'ping_google_max_latency': None,
+        'ping_cloudflare_avg': None,
+        'ping_cloudflare_loss': None,
+        'ping_cloudflare_jitter': None,
+        'ping_cloudflare_max_latency': None,
+        'client_version': None,
+        'client_os': None,
+        'client_arch': None,
+        'detection_status': None,
+        'public_ip': None,
+        'asn': None,
+        'isp_name': None,
+        'ip_city': None,
+        'ip_country': None,
+    }
 
     # Extract system info
     sysinfo = json_data.get('sysinfo', {})

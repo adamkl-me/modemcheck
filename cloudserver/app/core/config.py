@@ -84,6 +84,10 @@ class Settings(BaseSettings):
         description="Path to common passwords file"
     )
 
+    # Cache Settings
+    api_key_cache_ttl: int = Field(default=300, description="API key cache TTL in seconds (5 minutes)")
+    csrf_token_ttl: int = Field(default=3600, description="CSRF token TTL in seconds (1 hour)")
+
     def get_origins_list(self) -> List[str]:
         """Get CORS origins as a list."""
         if self.allowed_origins == "*":
@@ -95,6 +99,24 @@ class Settings(BaseSettings):
         """Parse debug flag from string."""
         if isinstance(v, str):
             return v.lower() in ("true", "1", "yes", "on")
+        return v
+
+    @validator("debug")
+    def validate_production_debug(cls, v, values):
+        """
+        Prevent debug mode in production environment.
+
+        Security: Debug mode exposes sensitive information:
+        - OpenAPI docs at /docs and /redoc show API structure
+        - Stack traces leak internal implementation details
+        - SQL query echoing may expose sensitive data
+        """
+        app_env = values.get("app_env", "production")
+        if app_env.lower() == "production" and v:
+            raise ValueError(
+                "Debug mode cannot be enabled in production environment. "
+                "Set DEBUG=false or APP_ENV=development"
+            )
         return v
 
     def is_production(self) -> bool:
