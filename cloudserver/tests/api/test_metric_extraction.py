@@ -70,20 +70,16 @@ class TestMetricExtraction:
     def test_extract_signal_quality(self):
         """Test extraction of signal quality metrics."""
         json_data = {
-            "downstream": {
-                "channels": [
-                    {"power": 5.0, "snr": 40.0, "correcteds": 100, "uncorrectables": 5},
-                    {"power": 4.5, "snr": 39.5, "correcteds": 150, "uncorrectables": 10},
-                    {"power": 5.5, "snr": 40.5, "correcteds": 120, "uncorrectables": 3}
-                ]
-            },
-            "upstream": {
-                "channels": [
-                    {"power": 35.0},
-                    {"power": 36.0},
-                    {"power": 35.5}
-                ]
-            }
+            "rx": [
+                {"power": 5.0, "snr": 40.0, "correcteds": 100, "uncorrectables": 5},
+                {"power": 4.5, "snr": 39.5, "correcteds": 150, "uncorrectables": 10},
+                {"power": 5.5, "snr": 40.5, "correcteds": 120, "uncorrectables": 3}
+            ],
+            "tx": [
+                {"power": 35.0},
+                {"power": 36.0},
+                {"power": 35.5}
+            ]
         }
 
         metrics = extract_metrics(json_data)
@@ -166,14 +162,12 @@ class TestMetricExtraction:
         """Test extraction of network information."""
         json_data = {
             "sysinfo": {
-                "detection_status": "success"
-            },
-            "network_info": {
+                "detection_status": "success",
                 "public_ip": "1.2.3.4",
                 "asn": "AS7922",
                 "isp_name": "Comcast Cable",
-                "city": "Philadelphia",
-                "country": "US"
+                "ip_city": "Philadelphia",
+                "ip_country": "US"
             }
         }
 
@@ -257,28 +251,22 @@ class TestMetricExtraction:
                 "client_version": "6.0.0",
                 "client_os": "linux",
                 "client_arch": "amd64",
-                "detection_status": "success"
+                "detection_status": "success",
+                "public_ip": "1.2.3.4",
+                "asn": "AS7922"
             },
-            "downstream": {
-                "channels": [
-                    {"power": 5.0, "snr": 40.0, "correcteds": 100, "uncorrectables": 5}
-                ]
-            },
-            "upstream": {
-                "channels": [
-                    {"power": 35.0}
-                ]
-            },
+            "rx": [
+                {"power": 5.0, "snr": 40.0, "correcteds": 100, "uncorrectables": 5}
+            ],
+            "tx": [
+                {"power": 35.0}
+            ],
             "speedtest": {
                 "enabled": 1,
                 "latency": 12.5
             },
             "ping_tests": {
                 "google": {"avg_latency": 15.2}
-            },
-            "network_info": {
-                "public_ip": "1.2.3.4",
-                "asn": "AS7922"
             }
         }
 
