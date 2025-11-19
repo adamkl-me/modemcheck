@@ -154,20 +154,13 @@ class TestCompleteUploadFlow:
     ):
         """Test that metrics are extracted during upload."""
         modem_data = create_valid_modem_data()
-            "public_ip": {
-                "ip": "2.3.4.5",
-                "isp": "Metric Test ISP",
-                "asn": "AS54321"
-            },
-            "client_version": "6.0.1"
-        }
 
         json_data = json.dumps(modem_data).encode()
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -258,11 +251,11 @@ class TestCompleteUploadFlow:
         """Test that uploads are logged in audit trail."""
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-AUDIT"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: AUDIT
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -332,13 +325,13 @@ class TestUploadValidation:
         """Test that uploads with mismatched checksums are rejected."""
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-CHECKSUM"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: CHECKSUM
 
         # Wrong checksum
         wrong_checksum = "0" * 64
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{wrong_checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{wrong_checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -375,12 +368,12 @@ class TestUploadValidation:
         """Test that old timestamps are rejected."""
         modem_data = create_valid_modem_data()
         json_data = json.dumps(modem_data).encode()
-        modem_id = "XB8-TIMESTAMP"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: TIMESTAMP
         checksum = hashlib.sha256(json_data).hexdigest()
 
         # Old timestamp (1 hour ago)
         old_timestamp = str(int(time.time()) - 3600)
-        message = f"{old_timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{old_timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -418,11 +411,11 @@ class TestUploadValidation:
     ):
         """Test that malformed JSON is rejected."""
         malformed_data = b"{invalid json}"
-        modem_id = "XB8-MALFORMED"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: MALFORMED
         checksum = hashlib.sha256(malformed_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -460,11 +453,11 @@ class TestUploadValidation:
         # Create large data (> 10MB)
         large_data = {"data": "x" * (11 * 1024 * 1024)}
         json_data = json.dumps(large_data).encode()
-        modem_id = "XB8-LARGE"
+        modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: LARGE
         checksum = hashlib.sha256(json_data).hexdigest()
 
         timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+        message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
         signature = hmac.new(
             active_api_key.api_key.encode('utf-8'),
             message.encode('utf-8'),
@@ -510,7 +503,7 @@ class TestConcurrentUploads:
         async def upload_check(index):
             modem_data = create_valid_modem_data()
             json_data = json.dumps(modem_data).encode()
-            modem_id = "XB8-CONCURRENT"
+            modem_id = "XB8-AA:BB:CC:DD:EE:FF"  # Was: CONCURRENT
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
@@ -568,7 +561,7 @@ class TestConcurrentUploads:
             checksum = hashlib.sha256(json_data).hexdigest()
 
             timestamp = str(int(time.time()))
-            message = f"{timestamp}|{modem_id}|test.json|{checksum}"
+            message = f"{timestamp}|{modem_id}|2024-01-01_12-00-00.json|{checksum}"
             signature = hashlib.sha256(
                 f"{active_api_key.api_key}{message}".encode()
             ).hexdigest()
