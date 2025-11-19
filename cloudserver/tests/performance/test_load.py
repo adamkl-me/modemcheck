@@ -27,9 +27,9 @@ def create_valid_modem_data():
             "firmware": "v1.2.3",
             "uptime": "2 days 3:45:12",
             "systemtime": "2024-01-01 12:00:00",
-            "clientversion": "6.0.0",
-            "clientos": "linux",
-            "clientarch": "amd64"
+            "client_version": "6.0.0",
+            "client_os": "linux",
+            "client_arch": "amd64"
         },
         "downstream": [{
             "channel_id": 1,

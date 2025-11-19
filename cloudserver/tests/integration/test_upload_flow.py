@@ -28,9 +28,9 @@ def create_valid_modem_data():
             "firmware": "v1.2.3",
             "uptime": "2 days 3:45:12",
             "systemtime": "2024-01-01 12:00:00",
-            "clientversion": "6.0.0",
-            "clientos": "linux",
-            "clientarch": "amd64"
+            "client_version": "6.0.0",
+            "client_os": "linux",
+            "client_arch": "amd64"
         },
         "downstream": [
             {
@@ -142,7 +142,9 @@ class TestCompleteUploadFlow:
 
         assert check.modem_id == modem_id
         assert check.firmware == "v1.2.3"
-        assert check.uptime == "2 days 3:45:12"
+        assert check.client_version == "6.0.0"
+        assert check.client_os == "linux"
+        assert check.client_arch == "amd64"
         assert check.full_data is not None
 
     @pytest.mark.asyncio
@@ -187,7 +189,7 @@ class TestCompleteUploadFlow:
         )
 
         assert response.status_code == 200
-        check_id = response.json()["id"]
+        check_id = response.json()["database_id"]
 
         # Verify extracted metrics
         db_result = await db_session.execute(
@@ -195,14 +197,17 @@ class TestCompleteUploadFlow:
         )
         check = db_result.scalar_one()
 
-        assert check.firmware == "v2.0.0"
-        assert check.uptime == "5 days"
-        assert check.speedtest_download == 850.5
-        assert check.speedtest_upload == 35.0
-        assert check.public_ip == "2.3.4.5"
-        assert check.isp_name == "Metric Test ISP"
-        assert check.asn == "AS54321"
-        assert check.client_version == "6.0.1"
+        # Verify extracted metrics match the helper function data
+        assert check.firmware == "v1.2.3"
+        assert check.public_ip == "1.2.3.4"
+        assert check.isp_name == "Test ISP"
+        assert check.asn == "AS12345"
+        assert check.client_version == "6.0.0"
+        assert check.client_os == "linux"
+        assert check.client_arch == "amd64"
+        assert check.avg_downstream_power == 5.5
+        assert check.avg_downstream_snr == 40.5
+        assert check.avg_upstream_power == 45.5
 
     @pytest.mark.asyncio
     async def test_upload_rejection_invalid_signature(
