@@ -46,11 +46,11 @@ class TestUploadPerformance:
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("test.json", json_data, "application/json")}
+            files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "test.json",
+                "filename": "2024-01-01_12-00-00.json",
                 "checksum": checksum
             }
             headers = {
@@ -108,11 +108,11 @@ class TestUploadPerformance:
                 hashlib.sha256
             ).hexdigest()
 
-            files = {"file": ("test.json", json_data, "application/json")}
+            files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
             data = {
                 "api_key": active_api_key.api_key,
                 "modem_id": modem_id,
-                "filename": "test.json",
+                "filename": "2024-01-01_12-00-00.json",
                 "checksum": checksum
             }
             headers = {
@@ -226,11 +226,11 @@ class TestQueryPerformance:
             f"{active_api_key.api_key}{message}".encode()
         ).hexdigest()
 
-        files = {"file": ("test.json", json_data, "application/json")}
+        files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
         data = {
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
-            "filename": "test.json",
+            "filename": "2024-01-01_12-00-00.json",
             "checksum": checksum
         }
         headers = {
@@ -374,11 +374,11 @@ class TestStressTest:
                         f"{active_api_key.api_key}{message}".encode()
                     ).hexdigest()
 
-                    files = {"file": ("test.json", json_data, "application/json")}
+                    files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
                     data = {
                         "api_key": active_api_key.api_key,
                         "modem_id": modem_id,
-                        "filename": "test.json",
+                        "filename": "2024-01-01_12-00-00.json",
                         "checksum": checksum
                     }
                     headers = {
