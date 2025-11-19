@@ -503,10 +503,15 @@ class TestErrorHandling:
 @pytest.fixture
 async def sample_modem_check(db_session):
     """Create a sample modem check for testing."""
+    import uuid
     from datetime import datetime
+
+    timestamp = int(datetime.utcnow().timestamp())
+    unique_id = uuid.uuid4().hex[:8]
+
     check = ModemCheck(
         modem_id="XB8-TESTCHECK",
-        filename="XB8-TESTCHECK_1699900000.json",
+        filename=f"XB8-TESTCHECK_{timestamp}_{unique_id}.json",
         check_time=datetime.utcfromtimestamp(1699900000),
         full_data={"test": "data"}
     )

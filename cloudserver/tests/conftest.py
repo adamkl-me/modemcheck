@@ -81,6 +81,7 @@ async def db_session(async_db_engine) -> AsyncGenerator[AsyncSession, None]:
 
     async with async_session_maker() as session:
         yield session
+        await session.close()  # Explicitly close session
 
 
 @pytest.fixture(scope="function", autouse=True)
