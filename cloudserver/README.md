@@ -288,10 +288,10 @@ python -m uvicorn app.main:app --reload --port 8000
 
 ### Testing
 
-The cloud server includes a comprehensive test suite with 450+ tests:
+The cloud server includes a comprehensive test suite with 374 tests (100% pass rate):
 
 ```bash
-# Run all tests (450+ tests: 435+ passing, 5 skipped)
+# Run all tests
 ./run_tests.sh
 
 # Keep test environment for debugging
@@ -300,10 +300,8 @@ The cloud server includes a comprehensive test suite with 450+ tests:
 # Run specific test categories
 ./run_tests.sh tests/api/        # API tests
 ./run_tests.sh tests/security/   # Security tests
+./run_tests.sh tests/unit/       # Unit tests
 ./run_tests.sh -m rbac           # RBAC tests only
-
-# Generate coverage report
-pytest tests/ --cov --cov-report=html
 ```
 
 **Test Environment:**
@@ -314,11 +312,37 @@ pytest tests/ --cov --cov-report=html
 - Automatic cleanup after tests complete
 
 **Test Coverage:**
-- API Tests (77+ tests): All endpoints, validation, edge cases, metric extraction, audit retention
-- Security Tests (50+ tests): SQL injection, XSS, CSRF, authentication bypass, session security, enhanced rate limiting
-- RBAC Tests (20 tests): Role permissions for all endpoints
-- UI Tests (10 tests): Playwright browser automation
-- Overall coverage: 88%+ (target: 80%+)
+- API Tests (200+ tests): All endpoints, validation, edge cases, metric extraction
+- Security Tests (50+ tests): SQL injection, XSS, CSRF, auth bypass, session security
+- RBAC Tests (20+ tests): Role permissions for all endpoints
+- Unit Tests (99 tests): ZIP security, cache stats, pure functions
+- UI Tests (10+ tests): Playwright browser automation
+
+#### Coverage Reports
+
+ModemCheck provides **multiple coverage reports** to show both unit and E2E test coverage:
+
+```bash
+# Unit test coverage only (target: 80-90%)
+./run_unit_coverage.sh
+open htmlcov-unit/index.html
+
+# E2E test coverage only (proves routers ARE tested)
+./run_e2e_coverage.sh
+open htmlcov-e2e/index.html
+
+# Combined coverage from all tests (most comprehensive)
+./run_combined_coverage.sh
+open htmlcov-combined/index.html
+```
+
+**Coverage Metrics:**
+- **Unit Test Coverage**: 80-95% on core utilities
+- **E2E Test Coverage**: 85-95% on routers/middleware
+- **Combined Coverage**: 90-98% across all modules
+- **Dynamic Contexts**: Click any line to see which test covered it
+
+See [TESTING.md](TESTING.md) for detailed testing philosophy and strategy.
 
 ## Migration from v1 (CGI)
 

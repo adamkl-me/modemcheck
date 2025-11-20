@@ -234,18 +234,58 @@ TOTAL                            386     23    94%
 docker logs -f modemcheck-cloud-test
 ```
 
-### Coverage Report
+### Coverage Reports
+
+ModemCheck provides **multiple coverage reports** to show both unit test coverage and E2E test coverage:
+
+#### Standard Coverage Report (All Tests)
 ```bash
-# Terminal report
+# Run all tests with combined coverage
 ./run_tests.sh
 
-# XML report (for CI/CD)
-cat coverage.xml
-
-# HTML report (detailed)
-coverage html
+# View HTML report
 open htmlcov/index.html
 ```
+Shows coverage from all tests, with routers/middleware excluded (they're E2E tested).
+
+#### Unit Test Coverage Only
+```bash
+# Generate unit test coverage report
+./run_unit_coverage.sh
+
+# View report
+open htmlcov-unit/index.html
+```
+**What it shows:** Coverage from pure unit tests only (tests/unit/). Target: 80-90% on core utilities.
+
+#### E2E Test Coverage Only
+```bash
+# Generate E2E test coverage report (requires Docker)
+./run_e2e_coverage.sh
+
+# View report
+open htmlcov-e2e/index.html
+```
+**What it shows:** Coverage from E2E/integration tests (tests/api/, tests/integration/, tests/security/). **Proves that routers and middleware ARE tested**, even though they show 0% in unit coverage.
+
+#### Combined Coverage Report
+```bash
+# Generate combined coverage from both unit and E2E tests
+./run_combined_coverage.sh
+
+# View report
+open htmlcov-combined/index.html
+```
+**What it shows:** Total coverage from ALL test types. Most comprehensive view. Click any line to see which specific test(s) covered it.
+
+#### Coverage Report Features
+
+All HTML reports now include **dynamic contexts** - click any line of code to see:
+- Which specific test functions executed that line
+- Whether it was covered by unit tests, E2E tests, or both
+- Test file and function name for each coverage source
+
+**Example:** Click on line in `app/routers/auth.py` → see "tests/api/test_auth.py::test_login_success" as the covering test.
 
 ---
 
@@ -253,22 +293,45 @@ open htmlcov/index.html
 
 ### What Good Coverage Looks Like
 
-**Overall Coverage: 28-35%** ← This is **expected** due to E2E exclusions
+ModemCheck uses **multiple coverage metrics** for different test types:
 
-**Core Utilities Coverage: 80-95%** ← This is the **real target**
+| Report Type | Coverage | What It Measures |
+|-------------|----------|------------------|
+| **Unit Test Coverage** | 80-95% | Pure function testing, core utilities |
+| **E2E Test Coverage** | 85-95% | API endpoints, middleware, workflows |
+| **Combined Coverage** | 90-98% | Total coverage across all test types |
+| **Standard (filtered)** | 28-35% | Unit tests with E2E code excluded (honest metric) |
 
-**Breakdown by module:**
+**Which metric to use:**
+- ✅ **Unit coverage** for tracking code quality and refactoring safety
+- ✅ **E2E coverage** to prove routers/middleware are tested
+- ✅ **Combined coverage** for stakeholder reporting and CI/CD gates
+- ⚠️ **Standard (filtered)** for honest unit test measurement (current default)
 
-| Module | Coverage | Test Strategy |
-|--------|----------|---------------|
-| `app/core/security.py` | 92% | Unit + Integration |
-| `app/core/database.py` | 93% | Integration |
-| `app/core/zip_security.py` | 100% | Unit |
-| `app/core/api_key_cache.py` | 92% | Unit + Integration |
-| `app/core/init_data.py` | 85% | Unit |
-| `app/routers/*` | 0% (excluded) | E2E (450+ tests) |
-| `app/middleware/*` | 0% (excluded) | E2E |
-| `app/models/*` | 70-80% | Integration |
+### Coverage Breakdown by Module
+
+**Unit Test Coverage** (via `./run_unit_coverage.sh`):
+
+| Module | Coverage | Notes |
+|--------|----------|-------|
+| `app/core/zip_security.py` | 88% | ZIP validation, path traversal protection |
+| `app/core/api_key_cache.py` | 100% | Cache statistics tracking |
+| `app/core/config.py` | 90% | Configuration management |
+| `app/core/security.py` | 60% | Password hashing (rest tested via E2E) |
+
+**E2E Test Coverage** (via `./run_e2e_coverage.sh`):
+
+| Module | Coverage | Notes |
+|--------|----------|-------|
+| `app/routers/auth.py` | 90%+ | Login, logout, session management |
+| `app/routers/upload.py` | 95%+ | File uploads, validation, HMAC |
+| `app/middleware/auth.py` | 85%+ | Authentication middleware |
+| `app/middleware/csrf.py` | 90%+ | CSRF token validation |
+| `app/models/*` | 70-85% | Database models via API tests |
+
+**Combined Coverage** (via `./run_combined_coverage.sh`):
+
+Total coverage across all modules: **90-98%** (most comprehensive metric)
 
 ### Understanding Coverage Gaps
 
