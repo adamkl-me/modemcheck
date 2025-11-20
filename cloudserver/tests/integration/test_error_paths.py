@@ -77,20 +77,72 @@ def create_valid_modem_data():
 class TestNetworkErrors:
     """Test handling of network-related errors."""
 
-    @pytest.mark.skip(reason="Test is empty placeholder - would require stopping database container")
     @pytest.mark.asyncio
-    async def test_database_connection_failure(self, app):
+    async def test_database_connection_failure(self, admin_client_with_token: httpx.AsyncClient):
         """Test handling when database connection fails."""
-        # This would test reconnection logic
-        # Implementation depends on database error handling
-        pass
+        from tests.helpers.docker_control import pause_postgres
+        import asyncio
 
-    @pytest.mark.skip(reason="Test is empty placeholder - would require stopping Redis container")
+        # Verify database is working first
+        response = await admin_client_with_token.get("/api/db/list_modems")
+        assert response.status_code == 200, "Database should work initially"
+
+        # Pause PostgreSQL container to simulate database failure
+        with pause_postgres():
+            # Wait for connection failure to be detected
+            await asyncio.sleep(2)
+
+            # Attempt database operation - should fail gracefully
+            response = await admin_client_with_token.get("/api/db/list_modems")
+
+            # Should return error status (500 or 503) rather than hanging
+            assert response.status_code in [500, 503, 504], \
+                f"Expected 500/503/504 during database failure but got {response.status_code}"
+
+        # After unpausing, wait for database to fully recover
+        await asyncio.sleep(3)
+
+        # Database operations should work again
+        response = await admin_client_with_token.get("/api/db/list_modems")
+        assert response.status_code == 200, "Database operations should work after recovery"
+
     @pytest.mark.asyncio
-    async def test_redis_connection_failure(self, app):
+    async def test_redis_connection_failure(self, http_client: httpx.AsyncClient):
         """Test handling when Redis connection fails."""
-        # Test graceful degradation when Redis unavailable
-        pass
+        from tests.helpers.docker_control import pause_redis
+        import asyncio
+
+        # First, verify Redis is working by making a successful login
+        login_response = await http_client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "TestPass123!"}
+        )
+        assert login_response.status_code == 200, "Initial login should succeed"
+
+        # Pause Redis container to simulate Redis failure
+        with pause_redis():
+            # Wait for connection failure to be detected
+            await asyncio.sleep(2)
+
+            # Attempt operation that requires Redis (login creates session)
+            response = await http_client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "TestPass123!"}
+            )
+
+            # Should fail gracefully (500 or 503) rather than hanging
+            assert response.status_code in [500, 503, 504], \
+                f"Expected 500/503/504 during Redis failure but got {response.status_code}"
+
+        # After unpausing, wait for Redis to fully recover
+        await asyncio.sleep(3)
+
+        # Redis operations should work again
+        login_response = await http_client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "TestPass123!"}
+        )
+        assert login_response.status_code == 200, "Login should work after Redis recovery"
 
     @pytest.mark.skip(reason="Timeout test is unreliable and may succeed or fail randomly")
     @pytest.mark.asyncio
