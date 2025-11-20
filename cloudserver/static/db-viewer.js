@@ -92,13 +92,29 @@ function showPasswordChangeDialog() {
     const dialog = document.createElement('div');
     dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
     dialog.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
+        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 450px; width: 90%;">
             <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password Required</h2>
             <p style="margin: 0 0 20px 0; color: #666;">You must change your password before continuing.</p>
             <div id="pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 6 characters)</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password</label>
                 <input type="password" id="new-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                <div id="pwd-strength-container" style="display: none; margin-top: 8px;">
+                    <div style="height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-bottom: 4px;">
+                        <div id="pwd-strength-bar" style="height: 100%; transition: width 0.3s, background-color 0.3s; width: 0%; background-color: #e0e0e0;"></div>
+                    </div>
+                    <div id="pwd-strength-text" style="font-size: 11px; text-align: right; margin-bottom: 8px; color: #999;"></div>
+                </div>
+                <div id="pwd-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                    <strong>Password Requirements:</strong>
+                    <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
+                        <li id="pwd-req-length" style="margin: 2px 0; color: #ef4444;">❌ At least 12 characters</li>
+                        <li id="pwd-req-uppercase" style="margin: 2px 0; color: #ef4444;">❌ One uppercase letter</li>
+                        <li id="pwd-req-lowercase" style="margin: 2px 0; color: #ef4444;">❌ One lowercase letter</li>
+                        <li id="pwd-req-digit" style="margin: 2px 0; color: #ef4444;">❌ One digit</li>
+                        <li id="pwd-req-special" style="margin: 2px 0; color: #ef4444;">❌ One special character (!@#$%^&*(),.?":{}|<>)</li>
+                    </ul>
+                </div>
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Confirm Password</label>
@@ -108,20 +124,133 @@ function showPasswordChangeDialog() {
         </div>
     `;
     document.body.appendChild(dialog);
-    
+
+    // Password strength checking functions
+    function checkPasswordRequirements(password) {
+        const requirements = {
+            length: password.length >= 12,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            digit: /\d/.test(password),
+            special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+        };
+
+        // Update requirement indicators with emoji icons
+        const lengthEl = document.getElementById('pwd-req-length');
+        const uppercaseEl = document.getElementById('pwd-req-uppercase');
+        const lowercaseEl = document.getElementById('pwd-req-lowercase');
+        const digitEl = document.getElementById('pwd-req-digit');
+        const specialEl = document.getElementById('pwd-req-special');
+
+        if (lengthEl) {
+            lengthEl.style.color = requirements.length ? '#10b981' : '#ef4444';
+            lengthEl.textContent = (requirements.length ? '✔️ ' : '❌ ') + 'At least 12 characters';
+        }
+        if (uppercaseEl) {
+            uppercaseEl.style.color = requirements.uppercase ? '#10b981' : '#ef4444';
+            uppercaseEl.textContent = (requirements.uppercase ? '✔️ ' : '❌ ') + 'One uppercase letter';
+        }
+        if (lowercaseEl) {
+            lowercaseEl.style.color = requirements.lowercase ? '#10b981' : '#ef4444';
+            lowercaseEl.textContent = (requirements.lowercase ? '✔️ ' : '❌ ') + 'One lowercase letter';
+        }
+        if (digitEl) {
+            digitEl.style.color = requirements.digit ? '#10b981' : '#ef4444';
+            digitEl.textContent = (requirements.digit ? '✔️ ' : '❌ ') + 'One digit';
+        }
+        if (specialEl) {
+            specialEl.style.color = requirements.special ? '#10b981' : '#ef4444';
+            specialEl.textContent = (requirements.special ? '✔️ ' : '❌ ') + 'One special character (!@#$%^&*(),.?":{}|<>)';
+        }
+
+        return Object.values(requirements).every(Boolean);
+    }
+
+    function calculateBasicStrength(password) {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (password.length >= 16) score++;
+
+        const hasLower = /[a-z]/.test(password);
+        const hasUpper = /[A-Z]/.test(password);
+        const hasDigit = /\d/.test(password);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        const varietyCount = [hasLower, hasUpper, hasDigit, hasSpecial].filter(Boolean).length;
+        if (varietyCount >= 3) score++;
+
+        return Math.min(score, 4);
+    }
+
+    function updatePasswordStrength(password) {
+        const strengthContainer = document.getElementById('pwd-strength-container');
+        const strengthBar = document.getElementById('pwd-strength-bar');
+        const strengthText = document.getElementById('pwd-strength-text');
+
+        if (!password || password.length === 0) {
+            if (strengthContainer) strengthContainer.style.display = 'none';
+            return;
+        }
+
+        if (strengthContainer) strengthContainer.style.display = 'block';
+
+        const meetsRequirements = checkPasswordRequirements(password);
+        const score = calculateBasicStrength(password);
+
+        // Update strength bar
+        const widths = ['0%', '25%', '50%', '75%', '100%'];
+        const colors = ['#e0e0e0', '#ef4444', '#f59e0b', '#10b981', '#059669'];
+        if (strengthBar) {
+            strengthBar.style.width = widths[score];
+            strengthBar.style.backgroundColor = colors[score];
+        }
+
+        // Update strength text
+        const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+        const textColors = ['#999', '#ef4444', '#f59e0b', '#10b981', '#059669'];
+        let strengthMessage = strengthLabels[score];
+
+        if (!meetsRequirements && score > 0) {
+            strengthMessage += ' (does not meet requirements)';
+        }
+
+        if (strengthText) {
+            strengthText.textContent = strengthMessage;
+            strengthText.style.color = textColors[score];
+            strengthText.style.fontWeight = score > 0 ? '600' : 'normal';
+        }
+    }
+
+    // Setup password strength meter
+    const newPasswordInput = document.getElementById('new-password');
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordStrength(this.value);
+        });
+    }
+
     document.getElementById('change-pwd-btn').addEventListener('click', async () => {
         const newPassword = document.getElementById('new-password').value;
         const confirmPassword = document.getElementById('confirm-password').value;
         const errorDiv = document.getElementById('pwd-error');
-        
+
         errorDiv.style.display = 'none';
-        
-        if (!newPassword || newPassword.length < 6) {
-            errorDiv.textContent = 'Password must be at least 6 characters';
+
+        if (!newPassword || newPassword.length < 12) {
+            errorDiv.textContent = 'Password must be at least 12 characters';
             errorDiv.style.display = 'block';
             return;
         }
-        
+
+        // Check if password meets all requirements
+        const meetsRequirements = checkPasswordRequirements(newPassword);
+        if (!meetsRequirements) {
+            errorDiv.textContent = 'Password does not meet all requirements';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
         if (newPassword !== confirmPassword) {
             errorDiv.textContent = 'Passwords do not match';
             errorDiv.style.display = 'block';

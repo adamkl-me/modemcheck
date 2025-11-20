@@ -816,8 +816,9 @@
         }
 
         .password-requirements ul {
-            margin: 5px 0 0 20px;
+            margin: 5px 0 0 0;
             padding: 0;
+            list-style: none;
         }
 
         .password-requirements li {
@@ -825,7 +826,9 @@
         }
 
         .req-met { color: #10b981; }
+        .req-met::before { content: '✔️ '; }
         .req-unmet { color: #ef4444; }
+        .req-unmet::before { content: '❌ '; }
     </style>
 
     <!-- Password Strength Library -->
@@ -1701,7 +1704,7 @@
                         </div>
                         <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
                             <strong>Password Requirements:</strong>
-                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                            <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
                                 <li id="dialog-req-length" class="req-unmet">At least 12 characters</li>
                                 <li id="dialog-req-uppercase" class="req-unmet">One uppercase letter</li>
                                 <li id="dialog-req-lowercase" class="req-unmet">One lowercase letter</li>
@@ -2469,7 +2472,7 @@
                         </div>
                         <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
                             <strong>Password Requirements:</strong>
-                            <ul style="margin: 5px 0 0 20px; padding: 0;">
+                            <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
                                 <li id="adminChange-req-length" class="req-unmet">At least 12 characters</li>
                                 <li id="adminChange-req-uppercase" class="req-unmet">One uppercase letter</li>
                                 <li id="adminChange-req-lowercase" class="req-unmet">One lowercase letter</li>
