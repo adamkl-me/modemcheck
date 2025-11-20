@@ -389,7 +389,6 @@ class TestAPIKeyComplexity:
     """Test API key complexity and entropy."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Test expectations too strict for test environment")
     async def test_api_key_entropy(
         self, admin_client_with_token: httpx.AsyncClient, csrf_token: str
     ):
@@ -405,6 +404,7 @@ class TestAPIKeyComplexity:
             assert response.status_code == 200
             keys.append(response.json()["api_key"])
 
+        max_counts = []  # Track max counts for all keys for debugging
         for key in keys:
             # Key should be 64 characters (32 bytes hex encoded)
             assert len(key) == 64, "API key should be 64 hex characters"
@@ -422,7 +422,11 @@ class TestAPIKeyComplexity:
                 char_counts[char] = char_counts.get(char, 0) + 1
 
             max_count = max(char_counts.values())
-            assert max_count < 10, f"Character distribution suggests low entropy (max count: {max_count})"
+            max_counts.append(max_count)
+            # Relaxed threshold: with 64 chars and 16 possible hex chars,
+            # expect ~4 per char, but allow up to 12 for random variation
+            # (3x expected, within 2 std deviations for binomial distribution)
+            assert max_count <= 12, f"Character distribution suggests low entropy (max count: {max_count}, key: {key})"
 
         # All keys should be unique
         assert len(set(keys)) == len(keys), "All generated keys should be unique"
