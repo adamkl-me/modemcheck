@@ -292,16 +292,16 @@ The cloud server includes a comprehensive test suite with 374 tests (100% pass r
 
 ```bash
 # Run all tests
-./run_tests.sh
+./run_all_tests.sh
 
 # Keep test environment for debugging
-./run_tests.sh --keep-env
+./run_all_tests.sh --keep-env
 
 # Run specific test categories
-./run_tests.sh tests/api/        # API tests
-./run_tests.sh tests/security/   # Security tests
-./run_tests.sh tests/unit/       # Unit tests
-./run_tests.sh -m rbac           # RBAC tests only
+./run_all_tests.sh tests/api/        # API tests
+./run_all_tests.sh tests/security/   # Security tests
+./run_all_tests.sh tests/unit/       # Unit tests
+./run_all_tests.sh -m rbac           # RBAC tests only
 ```
 
 **Test Environment:**

@@ -181,7 +181,7 @@ async def test_login_form(page):
 ### Full Test Suite
 ```bash
 cd cloudserver
-./run_tests.sh
+./run_all_tests.sh
 ```
 
 **Output:**
@@ -211,24 +211,24 @@ TOTAL                            386     23    94%
 ### Specific Test Categories
 ```bash
 # API tests only
-./run_tests.sh tests/api/
+./run_all_tests.sh tests/api/
 
 # Security tests only
-./run_tests.sh tests/security/
+./run_all_tests.sh tests/security/
 
 # Unit tests only
-./run_tests.sh tests/unit/
+./run_all_tests.sh tests/unit/
 
 # By marker
-./run_tests.sh -m rbac        # RBAC tests
-./run_tests.sh -m security    # Security tests
-./run_tests.sh -m unit        # Unit tests
+./run_all_tests.sh -m rbac        # RBAC tests
+./run_all_tests.sh -m security    # Security tests
+./run_all_tests.sh -m unit        # Unit tests
 ```
 
 ### Keep Environment Running
 ```bash
 # Keep containers running for debugging
-./run_tests.sh --keep-env
+./run_all_tests.sh --keep-env
 
 # Attach to logs
 docker logs -f modemcheck-cloud-test
@@ -241,7 +241,7 @@ ModemCheck provides **multiple coverage reports** to show both unit test coverag
 #### Standard Coverage Report (All Tests)
 ```bash
 # Run all tests with combined coverage
-./run_tests.sh
+./run_all_tests.sh
 
 # View HTML report
 open htmlcov/index.html
@@ -546,7 +546,7 @@ jobs:
       - name: Run test suite
         run: |
           cd cloudserver
-          ./run_tests.sh
+          ./run_all_tests.sh
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
@@ -582,13 +582,13 @@ jobs:
 
 ### Q: How do I debug a failing test?
 **A:**
-1. Run test in isolation: `./run_tests.sh tests/api/test_auth.py::test_login`
-2. Keep environment running: `./run_tests.sh --keep-env`
+1. Run test in isolation: `./run_all_tests.sh tests/api/test_auth.py::test_login`
+2. Keep environment running: `./run_all_tests.sh --keep-env`
 3. Check logs: `docker logs -f modemcheck-cloud-test`
 4. Add print statements or breakpoints
 
-### Q: What's the difference between `pytest` and `./run_tests.sh`?
-**A:** `run_tests.sh` handles Docker setup/teardown and environment configuration. Always use it for running tests.
+### Q: What's the difference between `pytest` and `./run_all_tests.sh`?
+**A:** `run_all_tests.sh` handles Docker setup/teardown and environment configuration. Always use it for running tests.
 
 ---
 

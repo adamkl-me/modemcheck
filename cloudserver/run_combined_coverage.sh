@@ -83,7 +83,7 @@ echo ""
 
 # Run E2E tests with the main script (handles Docker setup)
 if $KEEP_ENV; then
-    if ./run_tests.sh --keep-env tests/api/ tests/integration/ tests/security/; then
+    if ./run_all_tests.sh --keep-env tests/api/ tests/integration/ tests/security/; then
         echo -e "${GREEN}✓ E2E tests passed${NC}"
         E2E_PASSED=true
     else
@@ -91,7 +91,7 @@ if $KEEP_ENV; then
         E2E_PASSED=false
     fi
 else
-    if ./run_tests.sh tests/api/ tests/integration/ tests/security/; then
+    if ./run_all_tests.sh tests/api/ tests/integration/ tests/security/; then
         echo -e "${GREEN}✓ E2E tests passed${NC}"
         E2E_PASSED=true
     else

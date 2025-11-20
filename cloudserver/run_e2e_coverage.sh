@@ -38,7 +38,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Start test environment using main script's function
-# We'll use the main run_tests.sh but only run E2E tests
+# We'll use the main run_all_tests.sh but only run E2E tests
 echo -e "${BLUE}ℹ Starting test environment...${NC}"
 echo -e "${YELLOW}  This requires Docker and will start test containers${NC}"
 echo ""
@@ -49,13 +49,13 @@ rm -f .coverage
 # Run the main test script with E2E tests only
 # Pass through the --keep-env flag if set
 if $KEEP_ENV; then
-    if ./run_tests.sh --keep-env tests/api/ tests/integration/ tests/security/; then
+    if ./run_all_tests.sh --keep-env tests/api/ tests/integration/ tests/security/; then
         TEST_PASSED=true
     else
         TEST_PASSED=false
     fi
 else
-    if ./run_tests.sh tests/api/ tests/integration/ tests/security/; then
+    if ./run_all_tests.sh tests/api/ tests/integration/ tests/security/; then
         TEST_PASSED=true
     else
         TEST_PASSED=false

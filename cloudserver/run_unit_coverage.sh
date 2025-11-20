@@ -46,13 +46,13 @@ rm -f .coverage
 
 # Run unit tests via main test script (handles Docker setup)
 if $KEEP_ENV; then
-    if ./run_tests.sh --keep-env tests/unit/; then
+    if ./run_all_tests.sh --keep-env tests/unit/; then
         TEST_PASSED=true
     else
         TEST_PASSED=false
     fi
 else
-    if ./run_tests.sh tests/unit/; then
+    if ./run_all_tests.sh tests/unit/; then
         TEST_PASSED=true
     else
         TEST_PASSED=false
