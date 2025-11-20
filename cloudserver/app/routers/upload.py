@@ -161,9 +161,6 @@ async def upload_check(
             detail="Invalid or inactive API key"
         )
 
-    # Clear failed attempts on successful validation
-    await clear_failed_api_keys(client_ip)
-
     # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
     if not x_request_timestamp or not x_request_signature:
         raise HTTPException(
@@ -269,6 +266,9 @@ async def upload_check(
 
     # Extract metrics from JSON data for efficient querying
     extracted_metrics = extract_metrics(json_data)
+
+    # All validation passed - clear failed API key attempts
+    await clear_failed_api_keys(client_ip)
 
     # Insert into database with extracted metrics
     db_filename = f"{modem_id}/{filename}"
