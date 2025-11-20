@@ -220,6 +220,7 @@ class TestAPIKeyLifecycle:
         import hashlib
         import time
         import json
+        import asyncio
 
         # Create initial key
         create_response = await admin_client_with_token.post(
@@ -247,56 +248,79 @@ class TestAPIKeyLifecycle:
         )
         new_key = create_new_response.json()["api_key"]
 
-        # Old key should not work
-        modem_data = {"check_time": int(time.time())}
-        json_data = json.dumps(modem_data).encode()
+        # Test 1: Old key should not work
+        modem_data_1 = {"check_time": int(time.time())}
+        json_data_1 = json.dumps(modem_data_1).encode()
         modem_id = "XB8-AA:BB:CC:DD:EE:02"  # Valid MAC address format
-        filename = "2024-01-01_12-00-00.json"
-        checksum = hashlib.sha256(json_data).hexdigest()
+        filename_1 = f"2024-01-01_12-00-00_{int(time.time())}.json"  # Unique filename
+        checksum_1 = hashlib.sha256(json_data_1).hexdigest()
 
-        timestamp = str(int(time.time()))
-        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        timestamp_1 = str(int(time.time()))
+        message_1 = f"{timestamp_1}|{modem_id}|{filename_1}|{checksum_1}"
         old_signature = hmac.new(
             old_key.encode('utf-8'),
-            message.encode('utf-8'),
+            message_1.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
-        files = {"file": (filename, json_data, "application/json")}
-        data = {
+        files_1 = {"file": (filename_1, json_data_1, "application/json")}
+        data_1 = {
             "api_key": old_key,
             "modem_id": modem_id,
-            "filename": filename,
-            "checksum": checksum
+            "filename": filename_1,
+            "checksum": checksum_1
         }
-        headers = {
-            "X-Request-Timestamp": timestamp,
+        headers_1 = {
+            "X-Request-Timestamp": timestamp_1,
             "X-Request-Signature": old_signature
         }
 
         old_key_response = await http_client.post(
             "/api/upload",
-            files=files,
-            data=data,
-            headers=headers
+            files=files_1,
+            data=data_1,
+            headers=headers_1
         )
         assert old_key_response.status_code in [401, 403]
 
-        # New key should work
+        # Small delay to ensure clean separation between requests
+        await asyncio.sleep(0.1)
+
+        # Test 2: New key should work with a different upload
+        modem_data_2 = {"check_time": int(time.time())}
+        json_data_2 = json.dumps(modem_data_2).encode()
+        filename_2 = f"2024-01-01_12-01-00_{int(time.time())}.json"  # Different unique filename
+        checksum_2 = hashlib.sha256(json_data_2).hexdigest()
+
+        timestamp_2 = str(int(time.time()))
+        message_2 = f"{timestamp_2}|{modem_id}|{filename_2}|{checksum_2}"
         new_signature = hmac.new(
             new_key.encode('utf-8'),
-            message.encode('utf-8'),
+            message_2.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
-        data["api_key"] = new_key
-        headers["X-Request-Signature"] = new_signature
+
+        files_2 = {"file": (filename_2, json_data_2, "application/json")}
+        data_2 = {
+            "api_key": new_key,
+            "modem_id": modem_id,
+            "filename": filename_2,
+            "checksum": checksum_2
+        }
+        headers_2 = {
+            "X-Request-Timestamp": timestamp_2,
+            "X-Request-Signature": new_signature
+        }
 
         new_key_response = await http_client.post(
             "/api/upload",
-            files=files,
-            data=data,
-            headers=headers
+            files=files_2,
+            data=data_2,
+            headers=headers_2
         )
+        if new_key_response.status_code != 200:
+            print(f"Response status: {new_key_response.status_code}")
+            print(f"Response text: {new_key_response.text}")
         assert new_key_response.status_code == 200
 
 

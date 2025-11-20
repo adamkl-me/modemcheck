@@ -172,7 +172,7 @@ class TestRateLimitDocumentation:
     def test_env_example_coverage(self):
         """Verify that .env.example documents all rate limit settings."""
         import os
-        env_example_path = "cloudserver/.env.example"
+        env_example_path = ".env.example"
 
         if not os.path.exists(env_example_path):
             pytest.skip(".env.example not found")

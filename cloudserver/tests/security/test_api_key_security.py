@@ -70,6 +70,11 @@ class TestAPIKeyBruteForce:
         assert rate_limited, f"Should be rate limited after 10 attempts, but got {failed_attempts} failures without lockout"
         assert failed_attempts >= 10, f"Should have at least 10 failed attempts before lockout, got {failed_attempts}"
 
+        # Clean up: Clear lockouts for all common test IPs
+        from app.core.security import clear_failed_api_keys
+        for ip in ["127.0.0.1", "172.27.0.1", "::1", "localhost"]:
+            await clear_failed_api_keys(ip)
+
     @pytest.mark.asyncio
     async def test_api_key_lockout_after_failures(self, http_client: httpx.AsyncClient):
         """Test that repeated failures trigger lockout."""
@@ -95,6 +100,11 @@ class TestAPIKeyBruteForce:
                 break
 
         assert lockout_triggered or i < 10, "Should lockout after repeated failed attempts"
+
+        # Clean up: Clear lockouts for all common test IPs
+        from app.core.security import clear_failed_api_keys
+        for ip in ["127.0.0.1", "172.27.0.1", "::1", "localhost"]:
+            await clear_failed_api_keys(ip)
 
 
 class TestAPIKeyTimingAttacks:

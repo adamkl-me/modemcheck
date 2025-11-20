@@ -21,6 +21,7 @@ import httpx
 from faker import Faker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
+import redis.asyncio as aioredis
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -90,22 +91,33 @@ async def clear_redis():
     from redis.asyncio import Redis
     from app.core.config import settings
 
-    # Create Redis connection
-    redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-    redis = await Redis.from_url(
-        redis_url,
+    # Clear DB 0 (sessions, API keys, brute force tracking)
+    redis_url_db0 = f"redis://{settings.redis_host}:{settings.redis_port}/0"
+    redis_db0 = await Redis.from_url(
+        redis_url_db0,
+        encoding="utf-8",
+        decode_responses=True,
+    )
+
+    # Clear DB 1 (rate limiting - though disabled in tests)
+    redis_url_db1 = f"redis://{settings.redis_host}:{settings.redis_port}/1"
+    redis_db1 = await Redis.from_url(
+        redis_url_db1,
         encoding="utf-8",
         decode_responses=True,
     )
 
     # Clear all Redis data before test
-    await redis.flushdb()
+    await redis_db0.flushdb()
+    await redis_db1.flushdb()
 
     yield
 
     # Clear all Redis data after test
-    await redis.flushdb()
-    await redis.close()
+    await redis_db0.flushdb()
+    await redis_db1.flushdb()
+    await redis_db0.close()
+    await redis_db1.close()
 
 
 # ============================================================================

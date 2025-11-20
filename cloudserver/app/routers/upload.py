@@ -138,7 +138,10 @@ async def upload_check(
     client_ip = get_client_ip(request)
     user_agent = get_user_agent(request)
 
-    # Check if IP is locked out due to failed API key attempts
+    # Create API key hash for logging
+    api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
+
+    # API key brute force protection
     from app.core.security import check_api_key_lockout, record_failed_api_key, clear_failed_api_keys
 
     is_locked, remaining_seconds = await check_api_key_lockout(client_ip)
@@ -148,13 +151,10 @@ async def upload_check(
             detail=f"Too many failed API key attempts. Try again in {remaining_seconds} seconds."
         )
 
-    # Create API key hash for logging
-    api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
-
     # Validate API key
     is_valid, key_name = await validate_and_get_api_key(api_key, db)
     if not is_valid:
-        # Record failed API key attempt
+        # Record failed attempt in Redis (even in test mode, for brute force tests to verify)
         await record_failed_api_key(client_ip)
 
         await log_client_submission(
@@ -168,12 +168,13 @@ async def upload_check(
             failure_reason='Invalid or inactive API key',
             user_agent=user_agent
         )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or inactive API key"
         )
 
-    # Clear failed attempts on successful API key validation
+    # Clear failed attempts on successful validation
     await clear_failed_api_keys(client_ip)
 
     # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
@@ -189,6 +190,7 @@ async def upload_check(
             failure_reason='Missing HMAC signature headers (upgrade client to v6.0.0+)',
             user_agent=user_agent
         )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
@@ -210,6 +212,7 @@ async def upload_check(
             failure_reason=f'Signature validation failed: {sig_error}',
             user_agent=user_agent
         )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Signature validation failed: {sig_error}"
@@ -372,41 +375,11 @@ async def upload_check(
         await db.rollback()
         # Check if duplicate
         if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
-            await log_client_submission(
-                db=db,
-                ip_address=client_ip,
-                api_key_hash=api_key_hash,
-                api_key_name=key_name,
-                modem_id=modem_id,
-                modem_type=modem_type,
-                modem_mac=modem_mac,
-                filename=filename,
-                file_size=len(file_data),
-                check_time=check_time,
-                user_agent=user_agent,
-                success=False,
-                failure_reason='Duplicate check (already exists in database)'
-            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Check already exists"
             )
         else:
-            await log_client_submission(
-                db=db,
-                ip_address=client_ip,
-                api_key_hash=api_key_hash,
-                api_key_name=key_name,
-                modem_id=modem_id,
-                modem_type=modem_type,
-                modem_mac=modem_mac,
-                filename=filename,
-                file_size=len(file_data),
-                check_time=check_time,
-                user_agent=user_agent,
-                success=False,
-                failure_reason=f'Database error: {str(e)}'
-            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database error"
