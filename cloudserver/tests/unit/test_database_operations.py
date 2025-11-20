@@ -210,6 +210,7 @@ class TestUserOperations:
         assert user.username == "testuser"  # username is the primary key
         assert user.role == UserRole.BASIC
 
+    @pytest.mark.filterwarnings("ignore:New instance.*conflicts with persistent instance:sqlalchemy.exc.SAWarning")
     async def test_unique_username_constraint(self, db_session, admin_user):
         """Test that usernames must be unique."""
         from app.core.security import hash_password
@@ -508,6 +509,7 @@ class TestErrorHandling:
         else:
             assert engine.pool._pre_ping is True, "pool_pre_ping should be enabled to detect stale connections"
 
+    @pytest.mark.filterwarnings("ignore:New instance.*conflicts with persistent instance:sqlalchemy.exc.SAWarning")
     async def test_handle_integrity_constraint(self, db_session, admin_user):
         """Test handling of integrity constraint violations."""
         # Try to create duplicate username

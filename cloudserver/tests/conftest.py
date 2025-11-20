@@ -708,3 +708,12 @@ def ensure_ui_test_users():
     yield
 
     # No cleanup needed - users persist for all tests
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def cleanup_redis_connections():
+    """Cleanup Redis connections after each test to prevent ResourceWarnings."""
+    yield
+    # After test completes, close any Redis connections created during the test
+    from app.core.security import close_redis
+    await close_redis()

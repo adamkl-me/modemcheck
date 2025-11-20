@@ -116,6 +116,7 @@ class TestDatabaseErrors:
     """Test handling of database errors."""
 
     @pytest.mark.asyncio
+    @pytest.mark.filterwarnings("ignore:New instance.*conflicts with persistent instance:sqlalchemy.exc.SAWarning")
     async def test_duplicate_key_error(self, db_session):
         """Test handling of duplicate key violations."""
         from app.models.user import User
@@ -145,6 +146,7 @@ class TestDatabaseErrors:
         await db_session.rollback()
 
     @pytest.mark.asyncio
+    @pytest.mark.filterwarnings("ignore:New instance.*conflicts with persistent instance:sqlalchemy.exc.SAWarning")
     async def test_foreign_key_constraint(self, db_session):
         """Test handling of foreign key violations."""
         from app.models.api_key import APIKey

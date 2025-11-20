@@ -28,14 +28,15 @@ from app.core.config import settings
 # ============================================================================
 
 _redis_pool: Optional[aioredis.ConnectionPool] = None
+_test_redis_pool: Optional[aioredis.ConnectionPool] = None  # Separate pool for tests
 
 
 async def get_redis() -> aioredis.Redis:
     """
     Get async Redis connection from connection pool.
 
-    In test mode, creates a new connection for each call to avoid
-    'Event loop is closed' errors with pytest-asyncio.
+    In test mode, uses a separate connection pool with a smaller max_connections
+    limit to prevent "max number of clients reached" errors during tests.
 
     In production mode, uses a connection pool for better scalability
     under high load (prevents single connection bottleneck).
@@ -43,21 +44,22 @@ async def get_redis() -> aioredis.Redis:
     Returns:
         Async Redis client
     """
-    global _redis_pool
+    global _redis_pool, _test_redis_pool
 
-    # In test mode, always create fresh connection to avoid event loop issues
-    # Each test function gets its own connection that doesn't outlive the test loop
+    # Test mode: Use connection pool with reasonable max_connections
     if settings.is_test():
-        redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-        client = await aioredis.from_url(
-            redis_url,
-            password=settings.redis_password,
-            encoding="utf-8",
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-        )
-        return client
+        if _test_redis_pool is None:
+            redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+            _test_redis_pool = aioredis.ConnectionPool.from_url(
+                redis_url,
+                password=settings.redis_password,
+                encoding="utf-8",
+                decode_responses=True,
+                max_connections=25,  # Enough for concurrent test scenarios
+                socket_connect_timeout=5,
+                socket_timeout=5,
+            )
+        return aioredis.Redis(connection_pool=_test_redis_pool)
 
     # Production mode: Use connection pool
     if _redis_pool is None:
@@ -76,8 +78,15 @@ async def get_redis() -> aioredis.Redis:
 
 
 async def close_redis():
-    """Close Redis connection pool."""
-    global _redis_pool
+    """Close Redis connection pools."""
+    global _redis_pool, _test_redis_pool
+
+    # Close test pool
+    if _test_redis_pool:
+        await _test_redis_pool.disconnect()
+        _test_redis_pool = None
+
+    # Close production pool
     if _redis_pool:
         await _redis_pool.disconnect()
         _redis_pool = None
