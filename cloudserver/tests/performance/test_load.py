@@ -79,6 +79,13 @@ def create_valid_modem_data():
 class TestUploadPerformance:
     """Test upload endpoint performance."""
 
+    @pytest.fixture(autouse=True, scope="class")
+    async def cleanup_after_performance(self):
+        """Clean up after performance tests to prevent state pollution."""
+        yield
+        # Allow time for connections to close and resources to be released
+        await asyncio.sleep(2)
+
     @pytest.mark.asyncio
     async def test_upload_latency(
         self,
@@ -403,6 +410,13 @@ class TestDatabasePerformance:
 
 class TestStressTest:
     """Stress testing under heavy load."""
+
+    @pytest.fixture(autouse=True, scope="class")
+    async def cleanup_after_stress(self):
+        """Clean up after stress tests to prevent state pollution."""
+        yield
+        # Allow time for connections to close and resources to be released
+        await asyncio.sleep(2)
 
     @pytest.mark.asyncio
     @pytest.mark.slow
