@@ -115,15 +115,19 @@ class TestFileEncodingValidation:
         # Create a ZIP file with valid UTF-8 content including unicode
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Use unique timestamp to avoid collisions with other tests
+            timestamp = datetime.utcnow()
+            filename_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S-%f")
+
             check_data = {
                 "sysinfo": {
                     "modemtype": "XB8",
                     "modemmac": "AA:BB:CC:DD:EE:FF",
-                    "checktime": datetime.utcnow().isoformat(),
+                    "checktime": timestamp.isoformat(),
                     "note": "Unicode test: 你好, Привет, مرحبا"
                 }
             }
-            zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data, ensure_ascii=False))
+            zf.writestr(f"XB8-AA:BB:CC:DD:EE:FF/{filename_timestamp}.json", json.dumps(check_data, ensure_ascii=False))
 
         zip_buffer.seek(0)
 

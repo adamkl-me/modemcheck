@@ -37,12 +37,15 @@ class TestListModems:
     async def test_list_modems_success(self, admin_client_with_token: httpx.AsyncClient, sample_modem_check):
         """Test listing all modems."""
         response = await admin_client_with_token.get("/api/db/list_modems")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert len(data["modems"]) > 0
-        assert data["modems"][0]["modem_id"] == sample_modem_check.modem_id
+        # Check that our fixture modem exists in the list (order-independent)
+        modem_ids = [m["modem_id"] for m in data["modems"]]
+        assert sample_modem_check.modem_id in modem_ids, \
+            f"Expected {sample_modem_check.modem_id} in {modem_ids}"
     
     @pytest.mark.asyncio
     async def test_list_modems_unauthenticated(self, http_client: httpx.AsyncClient):
