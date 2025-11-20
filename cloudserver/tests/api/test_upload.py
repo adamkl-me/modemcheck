@@ -67,38 +67,61 @@ class TestUpload:
     
     @pytest.mark.asyncio
     async def test_upload_invalid_api_key(self, http_client: httpx.AsyncClient, sample_modem_check_data: Dict[str, Any]):
-        """Test upload with invalid API key."""
+        """Test upload with invalid API key (but valid signature format)."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
-        
+
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
-        
+
+        # Generate valid HMAC signature with the invalid key
+        invalid_api_key = "invalid_key_12345"
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        signature = hmac.new(
+            invalid_api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": "invalid_key_12345",
+            "api_key": invalid_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
         }
-        
-        response = await http_client.post("/api/upload", files=files, data=data)
-        
+        headers = {
+            "X-Request-Timestamp": timestamp,
+            "X-Request-Signature": signature
+        }
+
+        response = await http_client.post("/api/upload", files=files, data=data, headers=headers)
+
         assert response.status_code == 401
         result = response.json()
         assert "Invalid or inactive API key" in result["detail"]
     
     @pytest.mark.asyncio
     async def test_upload_inactive_api_key(self, http_client: httpx.AsyncClient, inactive_api_key, sample_modem_check_data: Dict[str, Any]):
-        """Test upload with inactive API key."""
+        """Test upload with inactive API key (but valid signature)."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
-        
+
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
-        
+
+        # Generate valid HMAC signature with the inactive key
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        signature = hmac.new(
+            inactive_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
             "api_key": inactive_api_key.api_key,
@@ -106,9 +129,13 @@ class TestUpload:
             "filename": filename,
             "checksum": checksum
         }
-        
-        response = await http_client.post("/api/upload", files=files, data=data)
-        
+        headers = {
+            "X-Request-Timestamp": timestamp,
+            "X-Request-Signature": signature
+        }
+
+        response = await http_client.post("/api/upload", files=files, data=data, headers=headers)
+
         assert response.status_code == 401
         result = response.json()
         assert "Invalid or inactive API key" in result["detail"]

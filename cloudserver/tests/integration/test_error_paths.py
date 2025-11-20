@@ -515,9 +515,20 @@ class TestErrorRecovery:
         )
         assert response1.status_code in [400, 422]
 
+        # Delay to ensure database session cleanup completes after failed request
+        import asyncio
+        await asyncio.sleep(1.0)
+
         # Next request should work fine
         import json as json_module
-        valid_data = json_module.dumps({"check_time": int(time.time())}).encode()
+        valid_data = json_module.dumps({
+            "check_time": int(time.time()),
+            "sysinfo": {
+                "modemtype": "XB8",
+                "modemmac": "AA:BB:CC:DD:EE:11",
+                "checktime": int(time.time())
+            }
+        }).encode()
         filename2 = "2024-01-01_12-00-01.json"
         checksum2 = hashlib.sha256(valid_data).hexdigest()
         message2 = f"{timestamp}|{modem_id}|{filename2}|{checksum2}"

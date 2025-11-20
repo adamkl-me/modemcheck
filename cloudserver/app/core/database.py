@@ -116,8 +116,6 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
 
 
 
@@ -134,9 +132,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+            # If we get here without exception, commit the transaction
             await session.commit()
         except Exception:
-            await session.rollback()
+            # Rollback on any exception, but handle the case where
+            # the session might be in an inconsistent state
+            try:
+                await session.rollback()
+            except Exception:
+                # If rollback fails, session cleanup will be handled by context manager
+                pass
             raise
-        finally:
-            await session.close()

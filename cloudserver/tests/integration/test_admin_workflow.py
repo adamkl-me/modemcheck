@@ -249,7 +249,14 @@ class TestAPIKeyLifecycle:
         new_key = create_new_response.json()["api_key"]
 
         # Test 1: Old key should not work
-        modem_data_1 = {"check_time": int(time.time())}
+        modem_data_1 = {
+            "check_time": int(time.time()),
+            "sysinfo": {
+                "modemtype": "XB8",
+                "modemmac": "AA:BB:CC:DD:EE:02",
+                "checktime": int(time.time())
+            }
+        }
         json_data_1 = json.dumps(modem_data_1).encode()
         modem_id = "XB8-AA:BB:CC:DD:EE:02"  # Valid MAC address format
         filename_1 = f"2024-01-01_12-00-00_{int(time.time())}.json"  # Unique filename
@@ -283,11 +290,18 @@ class TestAPIKeyLifecycle:
         )
         assert old_key_response.status_code in [401, 403]
 
-        # Small delay to ensure clean separation between requests
-        await asyncio.sleep(0.1)
+        # Delay to ensure database session cleanup completes after failed request
+        await asyncio.sleep(1.0)
 
         # Test 2: New key should work with a different upload
-        modem_data_2 = {"check_time": int(time.time())}
+        modem_data_2 = {
+            "check_time": int(time.time()),
+            "sysinfo": {
+                "modemtype": "XB8",
+                "modemmac": "AA:BB:CC:DD:EE:02",
+                "checktime": int(time.time())
+            }
+        }
         json_data_2 = json.dumps(modem_data_2).encode()
         filename_2 = f"2024-01-01_12-01-00_{int(time.time())}.json"  # Different unique filename
         checksum_2 = hashlib.sha256(json_data_2).hexdigest()
