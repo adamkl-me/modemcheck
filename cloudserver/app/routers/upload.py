@@ -156,19 +156,6 @@ async def upload_check(
     if not is_valid:
         # Record failed attempt in Redis (even in test mode, for brute force tests to verify)
         await record_failed_api_key(client_ip)
-
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name="unknown",
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Invalid or inactive API key',
-            user_agent=user_agent
-        )
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or inactive API key"
@@ -179,18 +166,6 @@ async def upload_check(
 
     # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
     if not x_request_timestamp or not x_request_signature:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Missing HMAC signature headers (upgrade client to v6.0.0+)',
-            user_agent=user_agent
-        )
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
@@ -201,18 +176,6 @@ async def upload_check(
         api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
     )
     if not is_valid_sig:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            success=False,
-            failure_reason=f'Signature validation failed: {sig_error}',
-            user_agent=user_agent
-        )
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Signature validation failed: {sig_error}"
@@ -220,17 +183,6 @@ async def upload_check(
 
     # Validate required fields
     if not modem_id or not filename:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Missing modem_id or filename',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing modem_id or filename"
@@ -271,18 +223,6 @@ async def upload_check(
 
     # Validate checksum
     if not checksum:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason='Missing checksum field (upgrade client to v6.0.0+)',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing checksum field (upgrade client to v6.0.0+)"
@@ -290,18 +230,6 @@ async def upload_check(
 
     server_checksum = hashlib.sha256(file_data).hexdigest()
     if not secrets.compare_digest(checksum.lower(), server_checksum.lower()):
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason='Checksum validation failed (data corruption or tampering)',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Checksum validation failed"
@@ -311,18 +239,6 @@ async def upload_check(
     try:
         json_data = json.loads(file_data.decode('utf-8'))
     except Exception as e:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason=f'Invalid JSON: {str(e)}',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid JSON data: {str(e)}"
