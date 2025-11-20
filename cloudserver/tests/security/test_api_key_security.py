@@ -221,7 +221,6 @@ class TestAPIKeyEnumeration:
         assert len(set(responses)) <= 2, "Different responses may allow enumeration"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key preview endpoint may not exist or has different behavior")
     async def test_api_key_preview_no_information_leak(
         self, admin_client_with_token: httpx.AsyncClient, csrf_token: str
     ):
@@ -250,7 +249,6 @@ class TestAPIKeyRotation:
     """Test API key rotation security."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rotation endpoint not yet implemented")
     async def test_api_key_rotation_invalidates_old_key(
         self, admin_client_with_token: httpx.AsyncClient,
         csrf_token: str,
@@ -278,7 +276,7 @@ class TestAPIKeyRotation:
         # Add proper HMAC signature
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-        signature = hashlib.sha256(f"{old_key}{message}".encode()).hexdigest()
+        signature = hmac.new(old_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
         response = await http_client.post(
             "/api/upload",
@@ -317,7 +315,6 @@ class TestAPIKeyRotation:
         assert response.status_code in [401, 403], "Old key should be immediately invalidated"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rotation endpoint not yet implemented")
     async def test_api_key_cache_invalidation(
         self, admin_client_with_token: httpx.AsyncClient,
         csrf_token: str,
@@ -345,7 +342,7 @@ class TestAPIKeyRotation:
             }
 
             message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-            signature = hashlib.sha256(f"{api_key}{message}".encode()).hexdigest()
+            signature = hmac.new(api_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
             await http_client.post(
                 "/api/upload",
@@ -370,7 +367,7 @@ class TestAPIKeyRotation:
         timestamp = str(int(time.time()))
         data["filename"] = f"test_after_delete_{timestamp}.json"
         message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-        signature = hashlib.sha256(f"{api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(api_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
         response = await http_client.post(
             "/api/upload",
