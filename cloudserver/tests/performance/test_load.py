@@ -79,7 +79,7 @@ def create_valid_modem_data():
 class TestUploadPerformance:
     """Test upload endpoint performance."""
 
-    @pytest.fixture(autouse=True, scope="class")
+    @pytest.fixture(autouse=True)
     async def cleanup_after_performance(self):
         """Clean up after performance tests to prevent state pollution."""
         yield
@@ -411,7 +411,7 @@ class TestDatabasePerformance:
 class TestStressTest:
     """Stress testing under heavy load."""
 
-    @pytest.fixture(autouse=True, scope="class")
+    @pytest.fixture(autouse=True)
     async def cleanup_after_stress(self):
         """Clean up after stress tests to prevent state pollution."""
         yield
