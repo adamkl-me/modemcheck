@@ -15,6 +15,12 @@ from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.audit import log_user_activity
 from app.core.config import settings
+from app.core.zip_security import (
+    validate_zip_file,
+    check_zip_bomb,
+    sanitize_zip_path,
+    validate_utf8
+)
 from app.models import ModemCheck
 from app.schemas.modem_check import DeleteCheckRequest, DeleteAllChecksRequest
 from app.schemas.common import SuccessResponse
@@ -138,98 +144,198 @@ async def delete_all_modem_checks(
     )
 
 
+async def _process_json_content(content: bytes, filename: str, db: AsyncSession, results: dict):
+    """
+    Helper function to process a single JSON file content.
+
+    Args:
+        content: File content as bytes
+        filename: Name of the file
+        db: Database session
+        results: Results dictionary to update
+    """
+    try:
+        # Parse JSON
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            results["failed"] += 1
+            results["errors"].append(f"{filename}: Invalid JSON - {str(e)}")
+            return
+
+        # Extract required fields
+        sysinfo = data.get('sysinfo', {})
+        modem_type = sysinfo.get('modemtype', 'unknown')
+        modem_mac = sysinfo.get('modemmac', 'unknown')
+        modem_id = f"{modem_type}-{modem_mac}"
+
+        # Get filename from data if not provided
+        if not filename or filename == 'unknown.json':
+            filename = sysinfo.get('filename', 'unknown.json')
+
+        # Parse check_time
+        check_time_raw = sysinfo.get('checktime')
+        check_time = None
+        if check_time_raw:
+            try:
+                if isinstance(check_time_raw, int):
+                    if check_time_raw > 0:
+                        check_time = datetime.utcfromtimestamp(check_time_raw)
+                else:
+                    check_time_str = str(check_time_raw).replace('Z', '+00:00')
+                    check_time = datetime.fromisoformat(check_time_str)
+            except Exception:
+                pass
+
+        # Check for duplicate
+        existing = await db.execute(
+            select(ModemCheck).where(
+                and_(
+                    ModemCheck.modem_id == modem_id,
+                    ModemCheck.filename == filename
+                )
+            )
+        )
+        if existing.scalars().first():
+            results["failed"] += 1
+            results["errors"].append(f"{filename}: Duplicate - already exists in database")
+            return
+
+        # Insert into database
+        db_filename = f"{modem_id}/{filename}"
+        new_check = ModemCheck(
+            modem_id=modem_id,
+            modem_type=modem_type,
+            filename=db_filename,
+            check_time=check_time or datetime.utcnow(),
+            full_data=data,
+            created_at=datetime.utcnow()
+        )
+        db.add(new_check)
+        results["success"] += 1
+
+    except Exception as e:
+        results["failed"] += 1
+        results["errors"].append(f"{filename}: {str(e)}")
+
+
 @router.post("/bulk_upload")
 @limiter.limit(lambda: settings.api_data_mgmt_rate_limit)
 async def bulk_upload_checks(
-    files: List[UploadFile] = File(...),
+    file: UploadFile = File(...),
     request: Request = None,
     session_data: dict = Depends(require_elevated_or_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Bulk upload multiple modem check JSON files.
+    Bulk upload modem check JSON files (individual file or ZIP archive).
+
+    Accepts:
+    - Single JSON file
+    - ZIP archive containing multiple JSON files
+
+    Security features:
+    - ZIP bomb detection (100:1 compression ratio limit)
+    - Path traversal protection
+    - UTF-8 encoding validation
+    - File count limits (1000 max)
+    - Size limits (100MB uncompressed max)
 
     Requires: elevated or admin role
     """
-    if len(files) > settings.max_bulk_upload_files:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Too many files. Maximum is {settings.max_bulk_upload_files}"
-        )
+    content = await file.read()
 
     results = {
-        "total": len(files),
+        "total": 0,
         "success": 0,
         "failed": 0,
         "errors": []
     }
 
-    for file in files:
-        try:
-            # Read file content
-            content = await file.read()
+    # Detect if this is a ZIP file
+    is_zip = (
+        file.content_type == "application/zip" or
+        file.content_type == "application/x-zip-compressed" or
+        (file.filename and file.filename.lower().endswith('.zip')) or
+        (len(content) >= 4 and content[0:4] == b'PK\x03\x04')
+    )
 
-            # Parse JSON
-            try:
-                data = json.loads(content)
-            except json.JSONDecodeError as e:
-                results["failed"] += 1
-                results["errors"].append(f"{file.filename}: Invalid JSON - {str(e)}")
-                continue
+    if is_zip:
+        # Validate ZIP file
+        is_valid, error = validate_zip_file(content)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid ZIP file: {error}"
+            )
 
-            # Extract required fields
-            sysinfo = data.get('sysinfo', {})
-            modem_type = sysinfo.get('modemtype', 'unknown')
-            modem_mac = sysinfo.get('modemmac', 'unknown')
-            modem_id = f"{modem_type}-{modem_mac}"
+        zip_buffer = BytesIO(content)
 
-            # Get filename
-            filename = file.filename or sysinfo.get('filename', 'unknown.json')
+        # Check for ZIP bombs
+        is_safe, error = check_zip_bomb(zip_buffer, max_ratio=100.0, max_uncompressed_size=100 * 1024 * 1024)
+        if not is_safe:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=error
+            )
 
-            # Parse check_time
-            check_time_raw = sysinfo.get('checktime')
-            check_time = None
-            if check_time_raw:
-                try:
-                    if isinstance(check_time_raw, int):
-                        if check_time_raw > 0:
-                            check_time = datetime.utcfromtimestamp(check_time_raw)
-                    else:
-                        check_time_str = str(check_time_raw).replace('Z', '+00:00')
-                        check_time = datetime.fromisoformat(check_time_str)
-                except Exception:
-                    pass
+        # Extract and process files from ZIP
+        zip_buffer.seek(0)
+        with zipfile.ZipFile(zip_buffer, 'r') as zf:
+            file_list = zf.infolist()
 
-            # Check for duplicate
-            existing = await db.execute(
-                select(ModemCheck).where(
-                    and_(
-                        ModemCheck.modem_id == modem_id,
-                        ModemCheck.filename == filename
-                    )
+            # Check file count
+            json_files = [f for f in file_list if not f.is_dir() and not f.filename.endswith('.zip')]
+            if len(json_files) > settings.max_bulk_upload_files:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Too many files in ZIP. Maximum is {settings.max_bulk_upload_files}"
                 )
-            )
-            if existing.scalars().first():
-                results["failed"] += 1
-                results["errors"].append(f"{file.filename}: Duplicate - already exists in database")
-                continue
 
-            # Insert into database
-            db_filename = f"{modem_id}/{filename}"
-            new_check = ModemCheck(
-                modem_id=modem_id,
-                modem_type=modem_type,
-                filename=db_filename,
-                check_time=check_time or datetime.utcnow(),
-                full_data=data,
-                created_at=datetime.utcnow()
-            )
-            db.add(new_check)
-            results["success"] += 1
+            for file_info in file_list:
+                # Skip directories
+                if file_info.is_dir():
+                    continue
 
-        except Exception as e:
-            results["failed"] += 1
-            results["errors"].append(f"{file.filename}: {str(e)}")
+                # Skip nested ZIPs
+                if file_info.filename.endswith('.zip'):
+                    results["failed"] += 1
+                    results["errors"].append(f"{file_info.filename}: Nested ZIP files not allowed")
+                    results["total"] += 1
+                    continue
+
+                # Sanitize path
+                safe_path = sanitize_zip_path(file_info.filename)
+                if safe_path is None:
+                    results["failed"] += 1
+                    results["errors"].append(f"{file_info.filename}: Path traversal detected")
+                    results["total"] += 1
+                    continue
+
+                # Extract file content
+                try:
+                    file_content = zf.read(file_info)
+                except Exception as e:
+                    results["failed"] += 1
+                    results["errors"].append(f"{file_info.filename}: Extraction failed - {str(e)}")
+                    results["total"] += 1
+                    continue
+
+                # Validate UTF-8 encoding
+                if not validate_utf8(file_content):
+                    results["failed"] += 1
+                    results["errors"].append(f"{file_info.filename}: Invalid UTF-8 encoding")
+                    results["total"] += 1
+                    continue
+
+                # Process JSON file
+                results["total"] += 1
+                await _process_json_content(file_content, file_info.filename, db, results)
+
+    else:
+        # Process single JSON file
+        results["total"] = 1
+        await _process_json_content(content, file.filename or 'uploaded.json', db, results)
 
     # Commit all successful inserts
     await db.commit()
