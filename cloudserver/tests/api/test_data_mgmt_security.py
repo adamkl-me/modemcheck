@@ -26,47 +26,44 @@ class TestDataManagementAuthorization:
     """Authorization tests for data management endpoints."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Bulk upload endpoint only supports individual JSON files, not ZIP archives - see app/routers/data_mgmt.py:140")
-    async def test_bulk_upload_basic_user_blocked(self, basic_client_with_token: httpx.AsyncClient, csrf_token: str):
+    async def test_bulk_upload_basic_user_blocked(self, basic_client_with_token: httpx.AsyncClient, csrf_token_basic: str):
         """Test that basic users cannot perform bulk uploads via ZIP file."""
         # Create a simple ZIP file with one check
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             check_data = {
-                "modem_id": "XB8-AA:BB:CC:DD:EE:FF",
-                "check_time": datetime.utcnow().isoformat(),
-                "test": "data"
+                "sysinfo": {
+                    "modemtype": "XB8",
+                    "modemmac": "AA:BB:CC:DD:EE:FF",
+                    "checktime": datetime.utcnow().isoformat()
+                }
             }
             zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data))
 
         zip_buffer.seek(0)
 
-        # Get CSRF token for basic user
-        session_check = await basic_client_with_token.get("/api/auth/session_check")
-        csrf = session_check.json().get("csrf_token")
-
         files = {"file": ("checks.zip", zip_buffer, "application/zip")}
         response = await basic_client_with_token.post(
             "/api/data/bulk_upload",
             files=files,
-            headers={"X-CSRF-Token": csrf}
+            headers={"X-CSRF-Token": csrf_token_basic}
         )
 
         # Basic users should be forbidden
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Bulk upload endpoint only supports individual JSON files, not ZIP archives - see app/routers/data_mgmt.py:140")
     async def test_bulk_upload_elevated_user_allowed(self, elevated_client_with_token: httpx.AsyncClient, csrf_token_elevated: str):
         """Test that elevated users can perform bulk uploads via ZIP file."""
         # Create a simple ZIP file with one check
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             check_data = {
-                "modem_id": "XB8-AA:BB:CC:DD:EE:FF",
-                "check_time": datetime.utcnow().isoformat(),
-                "modem_type": "XB8",
-                "test": "data"
+                "sysinfo": {
+                    "modemtype": "XB8",
+                    "modemmac": "AA:BB:CC:DD:EE:FF",
+                    "checktime": datetime.utcnow().isoformat()
+                }
             }
             zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data))
 
@@ -105,23 +102,32 @@ class TestFileEncodingValidation:
             headers={"X-CSRF-Token": csrf_token_elevated}
         )
 
-        # Should reject invalid encoding or handle gracefully
-        assert response.status_code in [400, 422]
+        # Should handle gracefully - return 200 but report errors
+        assert response.status_code == 200
+        data = response.json()
+        assert data["results"]["failed"] > 0
+        # Check that the file was rejected due to encoding (error message contains "encoding" or "UTF-8")
+        assert any("encoding" in error.lower() or "utf-8" in error.lower() for error in data["results"]["errors"])
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Bulk upload endpoint only supports individual JSON files, not ZIP archives - see app/routers/data_mgmt.py:140")
     async def test_bulk_upload_valid_utf8_encoding(self, elevated_client_with_token: httpx.AsyncClient, csrf_token_elevated: str):
         """Test acceptance of ZIP files with valid UTF-8 encoding."""
         # Create a ZIP file with valid UTF-8 content including unicode
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Use unique timestamp to avoid collisions with other tests
+            timestamp = datetime.utcnow()
+            filename_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S-%f")
+
             check_data = {
-                "modem_id": "XB8-AA:BB:CC:DD:EE:FF",
-                "check_time": datetime.utcnow().isoformat(),
-                "modem_type": "XB8",
-                "note": "Unicode test: 你好, Привет, مرحبا"
+                "sysinfo": {
+                    "modemtype": "XB8",
+                    "modemmac": "AA:BB:CC:DD:EE:FF",
+                    "checktime": timestamp.isoformat(),
+                    "note": "Unicode test: 你好, Привет, مرحبا"
+                }
             }
-            zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data))
+            zf.writestr(f"XB8-AA:BB:CC:DD:EE:FF/{filename_timestamp}.json", json.dumps(check_data, ensure_ascii=False))
 
         zip_buffer.seek(0)
 
@@ -141,7 +147,7 @@ class TestFileTypeValidation:
 
     @pytest.mark.asyncio
     async def test_bulk_upload_wrong_file_type(self, elevated_client_with_token: httpx.AsyncClient, csrf_token_elevated: str):
-        """Test rejection of non-ZIP files."""
+        """Test handling of non-JSON files."""
         # Try to upload a plain text file as bulk upload
         text_content = b"This is not a ZIP file"
 
@@ -152,8 +158,11 @@ class TestFileTypeValidation:
             headers={"X-CSRF-Token": csrf_token_elevated}
         )
 
-        # Should reject non-ZIP files
-        assert response.status_code in [400, 415, 422]
+        # Should handle gracefully - return 200 but report JSON parsing error
+        assert response.status_code == 200
+        data = response.json()
+        assert data["results"]["failed"] > 0
+        assert any("Invalid JSON" in error for error in data["results"]["errors"])
 
     @pytest.mark.asyncio
     async def test_bulk_upload_corrupted_zip(self, elevated_client_with_token: httpx.AsyncClient, csrf_token_elevated: str):

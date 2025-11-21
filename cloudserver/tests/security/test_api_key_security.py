@@ -10,6 +10,7 @@ Tests for:
 import pytest
 import time
 import hashlib
+import hmac
 import secrets
 import asyncio
 from typing import List
@@ -22,27 +23,42 @@ class TestAPIKeyBruteForce:
     """Test API key brute force prevention."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rate limiting not yet implemented")
     async def test_api_key_brute_force_prevention(self, http_client: httpx.AsyncClient):
         """Test that API key brute forcing is rate limited."""
         # Generate a bunch of random API keys to try
-        fake_keys = [secrets.token_hex(32) for _ in range(50)]
+        fake_keys = [secrets.token_hex(32) for _ in range(15)]
 
         # Try to brute force with fake keys
         failed_attempts = 0
         rate_limited = False
 
         for fake_key in fake_keys:
-            # Prepare upload request with fake key
+            # Prepare upload request with fake key (no signature headers to avoid signature errors)
+            # We want to test API key validation lockout, not signature validation
+            timestamp = str(int(time.time()))
+            checksum = hashlib.sha256(b'{"test": "data"}').hexdigest()
+
+            # Create valid signature with the fake key (signature will be valid but key won't exist)
+            message = f"{timestamp}|XB8-AA:BB:CC:DD:EE:FF|2024-01-01_12-00-00.json|{checksum}"
+            signature = hmac.new(
+                fake_key.encode('utf-8'),
+                message.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+
             files = {"file": ("test.json", b'{"test": "data"}', "application/json")}
             data = {
                 "api_key": fake_key,
                 "modem_id": "XB8-AA:BB:CC:DD:EE:FF",
-                "filename": "test.json",
-                "checksum": hashlib.sha256(b'{"test": "data"}').hexdigest()
+                "filename": "2024-01-01_12-00-00.json",
+                "checksum": checksum
+            }
+            headers = {
+                "X-Request-Timestamp": timestamp,
+                "X-Request-Signature": signature
             }
 
-            response = await http_client.post("/api/upload", files=files, data=data)
+            response = await http_client.post("/api/upload", files=files, data=data, headers=headers)
 
             if response.status_code == 429:  # Rate limited
                 rate_limited = True
@@ -50,8 +66,14 @@ class TestAPIKeyBruteForce:
             elif response.status_code in [401, 403]:  # Unauthorized
                 failed_attempts += 1
 
-        # Should be rate limited before trying all 50 keys
-        assert rate_limited or failed_attempts < 50, "Should implement rate limiting for API key attempts"
+        # Should be rate limited after 10 failed attempts
+        assert rate_limited, f"Should be rate limited after 10 attempts, but got {failed_attempts} failures without lockout"
+        assert failed_attempts >= 10, f"Should have at least 10 failed attempts before lockout, got {failed_attempts}"
+
+        # Clean up: Clear lockouts for all common test IPs
+        from app.core.security import clear_failed_api_keys
+        for ip in ["127.0.0.1", "172.27.0.1", "::1", "localhost"]:
+            await clear_failed_api_keys(ip)
 
     @pytest.mark.asyncio
     async def test_api_key_lockout_after_failures(self, http_client: httpx.AsyncClient):
@@ -78,6 +100,11 @@ class TestAPIKeyBruteForce:
                 break
 
         assert lockout_triggered or i < 10, "Should lockout after repeated failed attempts"
+
+        # Clean up: Clear lockouts for all common test IPs
+        from app.core.security import clear_failed_api_keys
+        for ip in ["127.0.0.1", "172.27.0.1", "::1", "localhost"]:
+            await clear_failed_api_keys(ip)
 
 
 class TestAPIKeyTimingAttacks:
@@ -194,7 +221,6 @@ class TestAPIKeyEnumeration:
         assert len(set(responses)) <= 2, "Different responses may allow enumeration"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key preview endpoint may not exist or has different behavior")
     async def test_api_key_preview_no_information_leak(
         self, admin_client_with_token: httpx.AsyncClient, csrf_token: str
     ):
@@ -223,7 +249,6 @@ class TestAPIKeyRotation:
     """Test API key rotation security."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rotation endpoint not yet implemented")
     async def test_api_key_rotation_invalidates_old_key(
         self, admin_client_with_token: httpx.AsyncClient,
         csrf_token: str,
@@ -251,7 +276,7 @@ class TestAPIKeyRotation:
         # Add proper HMAC signature
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-        signature = hashlib.sha256(f"{old_key}{message}".encode()).hexdigest()
+        signature = hmac.new(old_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
         response = await http_client.post(
             "/api/upload",
@@ -290,7 +315,6 @@ class TestAPIKeyRotation:
         assert response.status_code in [401, 403], "Old key should be immediately invalidated"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="API key rotation endpoint not yet implemented")
     async def test_api_key_cache_invalidation(
         self, admin_client_with_token: httpx.AsyncClient,
         csrf_token: str,
@@ -318,7 +342,7 @@ class TestAPIKeyRotation:
             }
 
             message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-            signature = hashlib.sha256(f"{api_key}{message}".encode()).hexdigest()
+            signature = hmac.new(api_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
             await http_client.post(
                 "/api/upload",
@@ -343,7 +367,7 @@ class TestAPIKeyRotation:
         timestamp = str(int(time.time()))
         data["filename"] = f"test_after_delete_{timestamp}.json"
         message = f"{timestamp}|{data['modem_id']}|{data['filename']}|{data['checksum']}"
-        signature = hashlib.sha256(f"{api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(api_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
         response = await http_client.post(
             "/api/upload",
@@ -362,7 +386,6 @@ class TestAPIKeyComplexity:
     """Test API key complexity and entropy."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Test expectations too strict for test environment")
     async def test_api_key_entropy(
         self, admin_client_with_token: httpx.AsyncClient, csrf_token: str
     ):
@@ -378,6 +401,7 @@ class TestAPIKeyComplexity:
             assert response.status_code == 200
             keys.append(response.json()["api_key"])
 
+        max_counts = []  # Track max counts for all keys for debugging
         for key in keys:
             # Key should be 64 characters (32 bytes hex encoded)
             assert len(key) == 64, "API key should be 64 hex characters"
@@ -395,7 +419,11 @@ class TestAPIKeyComplexity:
                 char_counts[char] = char_counts.get(char, 0) + 1
 
             max_count = max(char_counts.values())
-            assert max_count < 10, f"Character distribution suggests low entropy (max count: {max_count})"
+            max_counts.append(max_count)
+            # Relaxed threshold: with 64 chars and 16 possible hex chars,
+            # expect ~4 per char, but allow up to 12 for random variation
+            # (3x expected, within 2 std deviations for binomial distribution)
+            assert max_count <= 12, f"Character distribution suggests low entropy (max count: {max_count}, key: {key})"
 
         # All keys should be unique
         assert len(set(keys)) == len(keys), "All generated keys should be unique"

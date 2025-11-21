@@ -19,7 +19,7 @@ class TestDataManagement:
         session_check = await elevated_client_with_token.get("/api/auth/session_check")
         csrf = session_check.json().get("csrf_token")
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
-        files = {"files": ("test.json", BytesIO(file_content), "application/json")}
+        files = {"file": ("test.json", BytesIO(file_content), "application/json")}
         response = await elevated_client_with_token.post("/api/data/bulk_upload", files=files, headers={"X-CSRF-Token": csrf})
         assert response.status_code in [200, 400]
     

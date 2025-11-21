@@ -50,7 +50,9 @@ async def log_user_activity(
     )
 
     db.add(log_entry)
-    await db.commit()
+    # Note: Commit is handled by caller or FastAPI's get_db()
+    # For critical audit logs that must persist even on failure,
+    # caller should commit explicitly before raising exceptions
 
 
 async def log_client_submission(
@@ -106,4 +108,6 @@ async def log_client_submission(
     )
 
     db.add(log_entry)
-    await db.commit()
+    # Note: Commit is handled by caller or FastAPI's get_db()
+    # For critical audit logs that must persist even on failure,
+    # caller should commit explicitly before raising exceptions

@@ -70,15 +70,6 @@ async def login(
         is_locked, remaining_seconds = await check_account_locked(login_data.username)
         if is_locked:
             minutes_remaining = (remaining_seconds + 59) // 60  # Round up
-            await log_user_activity(
-                db=db,
-                username=login_data.username,
-                action_type="login",
-                ip_address=ip_address,
-                success=False,
-                user_agent=user_agent,
-                failure_reason=f"Account locked ({minutes_remaining} minutes remaining)"
-            )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Account locked due to too many failed login attempts. Try again in {minutes_remaining} minutes."
@@ -89,15 +80,6 @@ async def login(
     if not user:
         # Record failed login (user not found)
         await record_failed_login(login_data.username)
-        await log_user_activity(
-            db=db,
-            username=login_data.username,
-            action_type="login",
-            ip_address=ip_address,
-            success=False,
-            user_agent=user_agent,
-            failure_reason="User not found"
-        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
@@ -108,23 +90,10 @@ async def login(
     if not is_valid:
         # Record failed login (wrong password)
         await record_failed_login(login_data.username)
-        await log_user_activity(
-            db=db,
-            username=login_data.username,
-            action_type="login",
-            ip_address=ip_address,
-            success=False,
-            user_role=user.role.value,
-            user_agent=user_agent,
-            failure_reason="Invalid password"
-        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
         )
-
-    # Clear failed login attempts
-    await clear_failed_logins(login_data.username)
 
     # Check per-user rate limit (100 requests/hour across all IPs)
     allowed, current_count, remaining = await check_user_rate_limit(
@@ -133,20 +102,13 @@ async def login(
         window_seconds=3600
     )
     if not allowed:
-        await log_user_activity(
-            db=db,
-            username=login_data.username,
-            action_type="login",
-            ip_address=ip_address,
-            success=False,
-            user_role=user.role.value,
-            user_agent=user_agent,
-            failure_reason=f"User rate limit exceeded ({current_count} requests in last hour)"
-        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Too many requests from this account. {remaining} requests remaining."
         )
+
+    # All validation passed - clear failed login attempts
+    await clear_failed_logins(login_data.username)
 
     # Upgrade password hash if needed (PBKDF2 → Argon2id)
     if needs_upgrade:

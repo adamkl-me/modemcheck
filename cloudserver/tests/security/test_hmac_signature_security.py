@@ -10,6 +10,7 @@ Tests for:
 import pytest
 import time
 import hashlib
+import hmac
 import json
 import httpx
 from datetime import datetime, timedelta
@@ -31,7 +32,11 @@ class TestHMACTampering:
 
         # Generate correct signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        correct_signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        correct_signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         # Tamper with the signature
         tampered_signatures = [
@@ -74,7 +79,11 @@ class TestHMACTampering:
 
         # Generate signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         # Test tampering with each parameter
         tamper_tests = [
@@ -173,7 +182,11 @@ class TestReplayAttackPrevention:
 
         # Generate signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
@@ -283,7 +296,11 @@ class TestSignatureMissingComponents:
         for bad_timestamp in malformed_timestamps:
             # Generate signature with the malformed timestamp
             message = f"{bad_timestamp}|{modem_id}|{filename}|{checksum}"
-            signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+            signature = hmac.new(
+                active_api_key.api_key.encode('utf-8'),
+                message.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
 
             files = {"file": (filename, file_content, "application/json")}
             data = {
@@ -334,7 +351,11 @@ class TestSignatureKeyRotation:
         checksum = hashlib.sha256(file_content).hexdigest()
 
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        old_signature = hashlib.sha256(f"{old_key}{message}".encode()).hexdigest()
+        old_signature = hmac.new(
+            old_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         # Delete the old key (simulate rotation)
         preview = f"{old_key[:4]}...{old_key[-4:]}"
@@ -379,7 +400,11 @@ class TestSignatureKeyRotation:
         # Generate new signature with new key - should work
         new_timestamp = str(int(time.time()))
         new_message = f"{new_timestamp}|{modem_id}|{filename}|{checksum}"
-        new_signature = hashlib.sha256(f"{new_key}{new_message}".encode()).hexdigest()
+        new_signature = hmac.new(
+            new_key.encode('utf-8'),
+            new_message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         data["api_key"] = new_key
         response = await http_client.post(
@@ -420,7 +445,11 @@ class TestChecksumValidation:
 
         # Generate signature with wrong checksum
         message = f"{timestamp}|{modem_id}|{filename}|{wrong_checksum}"
-        signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
@@ -454,7 +483,11 @@ class TestChecksumValidation:
 
         # Generate signature with original content checksum
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        signature = hmac.new(
+            active_api_key.api_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
 
         # Send tampered content
         files = {"file": (filename, tampered_content, "application/json")}

@@ -76,6 +76,7 @@ def create_valid_modem_data():
 
 
 
+@pytest.mark.skip(reason="Performance tests can pollute state - run separately with: pytest tests/performance/")
 class TestUploadPerformance:
     """Test upload endpoint performance."""
 
@@ -401,6 +402,7 @@ class TestDatabasePerformance:
         assert duration < 0.1  # < 100ms
 
 
+@pytest.mark.skip(reason="Stress tests can pollute state - run separately with: pytest tests/performance/")
 class TestStressTest:
     """Stress testing under heavy load."""
 

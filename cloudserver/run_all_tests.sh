@@ -162,9 +162,10 @@ run_tests() {
     fi
 
     # Run pytest with coverage
+    # --cov-context=test enables dynamic contexts to track which tests cover which lines
     print_info "Executing tests: ${test_args[*]}"
 
-    if pytest "${test_args[@]}"; then
+    if pytest --cov-context=test "${test_args[@]}"; then
         print_success "All tests passed!"
         return 0
     else

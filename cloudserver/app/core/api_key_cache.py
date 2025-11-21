@@ -127,27 +127,30 @@ class APIKeyCache:
         return False, None
 
     @staticmethod
-    async def update_last_used(api_key: str, db) -> None:
+    async def update_last_used(api_key: str, db=None) -> None:
         """
         Update the last_used timestamp for an API key.
 
-        This is done asynchronously and does NOT await the commit,
-        making it non-blocking for the upload request.
+        This is done asynchronously using its own database session to avoid
+        conflicts with the request's session lifecycle.
 
         Performance: Reduces upload latency by 10-50ms by not waiting
         for the database commit to complete.
         """
         from sqlalchemy import update
         from app.models.api_key import APIKey
+        from app.core.database import get_db_context
 
         try:
-            await db.execute(
-                update(APIKey)
-                .where(APIKey.api_key == api_key)
-                .values(last_used=datetime.utcnow())
-            )
-            # Note: Commit happens in the background via session management
-            # We don't await it here to avoid blocking the upload response
+            # Create a new session for this background task
+            # This prevents IllegalStateChangeError when the request's session closes
+            async with get_db_context() as session:
+                await session.execute(
+                    update(APIKey)
+                    .where(APIKey.api_key == api_key)
+                    .values(last_used=datetime.utcnow())
+                )
+                # Commit is handled by the context manager
         except Exception:
             # Silently fail - last_used timestamp is not critical
             # Upload should succeed even if timestamp update fails

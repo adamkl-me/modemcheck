@@ -105,7 +105,8 @@ async def validate_and_get_api_key(
 
         # Update last_used timestamp in background (non-blocking)
         # Performance: Avoids 10-50ms latency from waiting for DB commit
-        asyncio.create_task(APIKeyCache.update_last_used(api_key, db))
+        # Note: Creates its own DB session to avoid session lifecycle conflicts
+        asyncio.create_task(APIKeyCache.update_last_used(api_key))
 
     return is_valid, key_name
 
@@ -141,82 +142,52 @@ async def upload_check(
     # Create API key hash for logging
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
 
-    # Validate API key
-    is_valid, key_name = await validate_and_get_api_key(api_key, db)
-    if not is_valid:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name="unknown",
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Invalid or inactive API key',
-            user_agent=user_agent
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or inactive API key"
-        )
-
-    # Validate HMAC signature (MANDATORY - v6.0.0+ clients always send signature)
-    if not x_request_timestamp or not x_request_signature:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Missing HMAC signature headers (upgrade client to v6.0.0+)',
-            user_agent=user_agent
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
-        )
-
-    # Validate the signature
-    is_valid_sig, sig_error = validate_request_signature(
-        api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
-    )
-    if not is_valid_sig:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            success=False,
-            failure_reason=f'Signature validation failed: {sig_error}',
-            user_agent=user_agent
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Signature validation failed: {sig_error}"
-        )
-
-    # Validate required fields
+    # Step 1: Check for required parameters FIRST (no DB operations)
     if not modem_id or not filename:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id or 'unknown',
-            filename=filename or 'unknown',
-            success=False,
-            failure_reason='Missing modem_id or filename',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing modem_id or filename"
         )
 
+    # Step 2: Validate HMAC signature BEFORE any database operations
+    # This rejects invalid requests early without expensive DB queries
+    if not x_request_timestamp or not x_request_signature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
+        )
+
+    # Validate the signature (no DB needed)
+    is_valid_sig, sig_error = validate_request_signature(
+        api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
+    )
+    if not is_valid_sig:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Signature validation failed: {sig_error}"
+        )
+
+    # Step 3: API key brute force protection (Redis only, no DB)
+    from app.core.security import check_api_key_lockout, record_failed_api_key, clear_failed_api_keys
+
+    is_locked, remaining_seconds = await check_api_key_lockout(client_ip)
+    if is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed API key attempts. Try again in {remaining_seconds} seconds."
+        )
+
+    # Step 4: Validate API key (FIRST DATABASE OPERATION - only after signature validated)
+    is_valid, key_name = await validate_and_get_api_key(api_key, db)
+    if not is_valid:
+        # Record failed attempt in Redis (even in test mode, for brute force tests to verify)
+        await record_failed_api_key(client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or inactive API key"
+        )
+
+    # Step 5: Validate input formats (no DB operations)
     # Validate modem_id format: MODEL-MACADDRESS (e.g., XB8-AA:BB:CC:DD:EE:FF)
     # Model can be alphanumeric with underscores, MAC address uses hex digits and colons
     if not re.match(r'^[a-zA-Z0-9_]+-[A-Fa-f0-9:]+$', modem_id):
@@ -252,18 +223,6 @@ async def upload_check(
 
     # Validate checksum
     if not checksum:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason='Missing checksum field (upgrade client to v6.0.0+)',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing checksum field (upgrade client to v6.0.0+)"
@@ -271,18 +230,6 @@ async def upload_check(
 
     server_checksum = hashlib.sha256(file_data).hexdigest()
     if not secrets.compare_digest(checksum.lower(), server_checksum.lower()):
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason='Checksum validation failed (data corruption or tampering)',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Checksum validation failed"
@@ -292,18 +239,6 @@ async def upload_check(
     try:
         json_data = json.loads(file_data.decode('utf-8'))
     except Exception as e:
-        await log_client_submission(
-            db=db,
-            ip_address=client_ip,
-            api_key_hash=api_key_hash,
-            api_key_name=key_name,
-            modem_id=modem_id,
-            filename=filename,
-            file_size=len(file_data),
-            success=False,
-            failure_reason=f'Invalid JSON: {str(e)}',
-            user_agent=user_agent
-        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid JSON data: {str(e)}"
@@ -335,6 +270,9 @@ async def upload_check(
     # Extract metrics from JSON data for efficient querying
     extracted_metrics = extract_metrics(json_data)
 
+    # All validation passed - clear failed API key attempts
+    await clear_failed_api_keys(client_ip)
+
     # Insert into database with extracted metrics
     db_filename = f"{modem_id}/{filename}"
     new_check = ModemCheck(
@@ -356,41 +294,11 @@ async def upload_check(
         await db.rollback()
         # Check if duplicate
         if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
-            await log_client_submission(
-                db=db,
-                ip_address=client_ip,
-                api_key_hash=api_key_hash,
-                api_key_name=key_name,
-                modem_id=modem_id,
-                modem_type=modem_type,
-                modem_mac=modem_mac,
-                filename=filename,
-                file_size=len(file_data),
-                check_time=check_time,
-                user_agent=user_agent,
-                success=False,
-                failure_reason='Duplicate check (already exists in database)'
-            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Check already exists"
             )
         else:
-            await log_client_submission(
-                db=db,
-                ip_address=client_ip,
-                api_key_hash=api_key_hash,
-                api_key_name=key_name,
-                modem_id=modem_id,
-                modem_type=modem_type,
-                modem_mac=modem_mac,
-                filename=filename,
-                file_size=len(file_data),
-                check_time=check_time,
-                user_agent=user_agent,
-                success=False,
-                failure_reason=f'Database error: {str(e)}'
-            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database error"

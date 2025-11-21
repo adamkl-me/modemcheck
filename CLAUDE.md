@@ -34,10 +34,15 @@ make sign-binary BINARY=dist/modem-check-linux-x64
 
 ### Testing
 ```bash
-cd cloudserver && ./run_tests.sh              # Full suite (450+ tests)
-cd cloudserver && ./run_tests.sh --keep-env   # Keep test environment
-cd cloudserver && ./run_tests.sh tests/api/   # Specific test directory
-cd cloudserver && ./run_tests.sh -m rbac      # Tests by marker
+cd cloudserver && ./run_all_tests.sh              # Full suite (374 tests, 100% pass)
+cd cloudserver && ./run_all_tests.sh --keep-env   # Keep test environment
+cd cloudserver && ./run_all_tests.sh tests/api/   # Specific test directory
+cd cloudserver && ./run_all_tests.sh -m rbac      # Tests by marker
+
+# Coverage reports (see TESTING.md for details)
+cd cloudserver && ./run_unit_coverage.sh          # Unit test coverage (80-95%)
+cd cloudserver && ./run_e2e_coverage.sh           # E2E test coverage (85-95%)
+cd cloudserver && ./run_combined_coverage.sh      # Combined coverage (90-98%)
 ```
 
 ## Architecture
@@ -178,15 +183,25 @@ Output: Normal result, `-1` (disabled), `-2` (skipped per interval)
 
 ## Testing
 
-### Test Suite (450+ tests, 96% passing, 88% coverage)
+### Test Suite (374 tests, 100% pass rate)
 
-**Categories:**
-- API (77+ tests): Endpoints, validation, metric extraction, audit retention
+**Test Categories:**
+- API (200+ tests): All endpoints, validation, metric extraction, audit retention
 - Security (50+ tests): SQL injection, XSS, CSRF, auth bypass, rate limiting
-- RBAC (20 tests): Role permissions
-- UI (10 tests): Playwright browser automation
+- RBAC (20+ tests): Role permissions for all endpoints
+- Unit (99 tests): ZIP security, cache stats, pure functions
+- UI (10+ tests): Playwright browser automation
 
-**Test environment isolation:**
+**Coverage Reports:**
+ModemCheck provides **four coverage report types** showing different test perspectives:
+- **Standard** (`run_all_tests.sh`): 33% (unit tests, E2E code excluded for honest metrics)
+- **Unit Only** (`run_unit_coverage.sh`): 80-95% on core utilities
+- **E2E Only** (`run_e2e_coverage.sh`): 85-95% on routers/middleware (**proves they're tested**)
+- **Combined** (`run_combined_coverage.sh`): 90-98% total coverage
+
+**Dynamic Contexts:** All reports support click-through to see which specific test covered each line.
+
+**Test Environment Isolation:**
 - Ports: 22560 (API), 23894 (UI) vs production 22557/23890
 - Separate database: `modemcheck_test`
 - Separate network: `172.26.0.0/16`

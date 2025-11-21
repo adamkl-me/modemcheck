@@ -28,14 +28,15 @@ from app.core.config import settings
 # ============================================================================
 
 _redis_pool: Optional[aioredis.ConnectionPool] = None
+_test_redis_pool: Optional[aioredis.ConnectionPool] = None  # Separate pool for tests
 
 
 async def get_redis() -> aioredis.Redis:
     """
     Get async Redis connection from connection pool.
 
-    In test mode, creates a new connection for each call to avoid
-    'Event loop is closed' errors with pytest-asyncio.
+    In test mode, uses a separate connection pool with a smaller max_connections
+    limit to prevent "max number of clients reached" errors during tests.
 
     In production mode, uses a connection pool for better scalability
     under high load (prevents single connection bottleneck).
@@ -43,21 +44,22 @@ async def get_redis() -> aioredis.Redis:
     Returns:
         Async Redis client
     """
-    global _redis_pool
+    global _redis_pool, _test_redis_pool
 
-    # In test mode, always create fresh connection to avoid event loop issues
-    # Each test function gets its own connection that doesn't outlive the test loop
+    # Test mode: Use connection pool with reasonable max_connections
     if settings.is_test():
-        redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-        client = await aioredis.from_url(
-            redis_url,
-            password=settings.redis_password,
-            encoding="utf-8",
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-        )
-        return client
+        if _test_redis_pool is None:
+            redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+            _test_redis_pool = aioredis.ConnectionPool.from_url(
+                redis_url,
+                password=settings.redis_password,
+                encoding="utf-8",
+                decode_responses=True,
+                max_connections=25,  # Enough for concurrent test scenarios
+                socket_connect_timeout=5,
+                socket_timeout=5,
+            )
+        return aioredis.Redis(connection_pool=_test_redis_pool)
 
     # Production mode: Use connection pool
     if _redis_pool is None:
@@ -76,8 +78,15 @@ async def get_redis() -> aioredis.Redis:
 
 
 async def close_redis():
-    """Close Redis connection pool."""
-    global _redis_pool
+    """Close Redis connection pools."""
+    global _redis_pool, _test_redis_pool
+
+    # Close test pool
+    if _test_redis_pool:
+        await _test_redis_pool.disconnect()
+        _test_redis_pool = None
+
+    # Close production pool
     if _redis_pool:
         await _redis_pool.disconnect()
         _redis_pool = None
@@ -564,6 +573,57 @@ async def clear_failed_logins(username: str):
     """Clear failed login counter on successful login."""
     r = await get_redis()
     failed_key = f"failed_logins:{username}"
+    await r.delete(failed_key)
+
+
+async def check_api_key_lockout(ip_address: str) -> Tuple[bool, int]:
+    """
+    Check if IP is locked out due to failed API key attempts.
+
+    Args:
+        ip_address: IP address to check
+
+    Returns:
+        (is_locked, remaining_seconds): Tuple of lock status and remaining time
+    """
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
+    failed_count = await r.get(failed_key)
+
+    if not failed_count:
+        return (False, 0)
+
+    failed_count = int(failed_count)
+    # Lock out after 10 failed API key attempts (more lenient than login)
+    if failed_count >= 10:
+        ttl = await r.ttl(failed_key)
+        return (True, max(0, ttl))
+
+    return (False, 0)
+
+
+async def record_failed_api_key(ip_address: str):
+    """
+    Record failed API key attempt from IP and increment counter.
+
+    Args:
+        ip_address: IP address that failed API key validation
+    """
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
+
+    # Increment counter
+    failed_count = await r.incr(failed_key)
+
+    # Set 10 minute expiration on first failure (longer than account lockout)
+    if failed_count == 1:
+        await r.expire(failed_key, 600)  # 10 minutes
+
+
+async def clear_failed_api_keys(ip_address: str):
+    """Clear failed API key counter on successful validation."""
+    r = await get_redis()
+    failed_key = f"failed_api_keys:{ip_address}"
     await r.delete(failed_key)
 
 
