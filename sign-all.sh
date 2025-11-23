@@ -2,12 +2,17 @@
 
 # sign-all.sh - Sign all binaries in dist/ directory with Minisign
 # This script prompts for the password once and uses it for all binaries
+# Embeds cryptographic timestamp to prevent signature replay attacks
 
 set -e
 
 VERSION="${VERSION:-5.8.0}"
 MINISIGN_SECRET_KEY=".signing-keys/minisign.key"
 DIST_DIR="dist"
+
+# Generate cryptographic timestamp (Unix epoch)
+TIMESTAMP=$(date -u +%s)
+BUILD_DATE=$(date -u +%Y-%m-%d)
 
 # Check if minisign is installed
 if ! command -v minisign > /dev/null 2>&1; then
@@ -64,9 +69,9 @@ set timeout 10
 set password [lindex $argv 0]
 set binary [lindex $argv 1]
 set secret_key [lindex $argv 2]
-set version [lindex $argv 3]
+set trusted_comment [lindex $argv 3]
 
-spawn minisign -Sm $binary -s $secret_key -t "modem-check v$version"
+spawn minisign -Sm $binary -s $secret_key -t $trusted_comment
 expect {
     "Password: " {
         send "$password\r"
@@ -83,7 +88,9 @@ EXPECT_EOF
         COUNT=$((COUNT + 1))
         echo "[$COUNT/$BINARY_COUNT] Signing $(basename "$BINARY")..."
 
-        "$EXPECT_SCRIPT" "$MINISIGN_PASSWORD" "$BINARY" "$MINISIGN_SECRET_KEY" "$VERSION" > /dev/null 2>&1
+        # Embed version, timestamp, and build date in trusted comment
+        TRUSTED_COMMENT="modem-check v${VERSION} timestamp:${TIMESTAMP} build_date:${BUILD_DATE}"
+        "$EXPECT_SCRIPT" "$MINISIGN_PASSWORD" "$BINARY" "$MINISIGN_SECRET_KEY" "$TRUSTED_COMMENT" > /dev/null 2>&1
 
         if [ -f "${BINARY}.minisig" ]; then
             echo "  ✓ Signature created: $(basename "$BINARY").minisig"
@@ -104,7 +111,9 @@ else
         COUNT=$((COUNT + 1))
         echo "[$COUNT/$BINARY_COUNT] Signing $(basename "$BINARY")..."
 
-        minisign -Sm "$BINARY" -s "$MINISIGN_SECRET_KEY" -t "modem-check v$VERSION"
+        # Embed version, timestamp, and build date in trusted comment
+        TRUSTED_COMMENT="modem-check v${VERSION} timestamp:${TIMESTAMP} build_date:${BUILD_DATE}"
+        minisign -Sm "$BINARY" -s "$MINISIGN_SECRET_KEY" -t "$TRUSTED_COMMENT"
 
         if [ -f "${BINARY}.minisig" ]; then
             echo "  ✓ Signature created: $(basename "$BINARY").minisig"

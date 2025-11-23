@@ -7,9 +7,9 @@ This document describes the comprehensive test suite for ModemCheck v2, covering
 ## Test Statistics
 
 ### Coverage Summary
-- **Go Client**: ~60% coverage (estimated)
-- **Python Server**: 88%+ coverage (target: 80%+)
-- **Total Tests**: 450+ test cases across all categories
+- **Go Client**: 169 unit tests covering config validation, upload queue, HMAC signatures, version comparison, update locks, and network diagnostics
+- **Python Server**: 374 tests with 90-98% combined coverage
+- **Total Tests**: 543 test cases across all categories (374 Python + 169 Go)
 - **API Tests**: 77+ tests (all endpoints, validation, edge cases, metric extraction, audit retention)
 - **Security Tests**: 100+ test cases (SQL injection, XSS, CSRF, authentication bypass, rate limiting, session security)
 - **Integration Tests**: 80+ test cases (complete workflows, concurrent operations)
@@ -18,13 +18,9 @@ This document describes the comprehensive test suite for ModemCheck v2, covering
 - **UI Tests**: 10+ tests (Playwright browser automation)
 
 ### Test Results (Latest Run)
-- **Passing**: 435+ tests (96%)
-- **Skipped**: 5 tests (4%)
-  - `test_login_rate_limiting` - Rate limiting disabled in test environment
-  - `test_external_api_unavailable` - Requires network isolation
-  - `test_database_connection_failure` - Requires database shutdown
-  - `test_redis_connection_failure` - Requires Redis shutdown
-  - `test_file_system_full` - Requires disk space manipulation
+- **Passing**: 543 tests (100%)
+- **Python Server**: 374 tests, 100% pass rate
+- **Go Client**: 169 tests, 100% pass rate
 
 ### Test Execution Time
 - **Unit Tests**: ~30 seconds
@@ -39,14 +35,11 @@ This document describes the comprehensive test suite for ModemCheck v2, covering
 
 ```
 modemcheck/
-├── modemcheck-client/
-│   ├── main_test.go                          # Core client tests
-│   ├── cloud_client_test.go                  # HMAC & upload tests
-│   ├── updater_test.go                       # Update system tests
-│   ├── diagnostics_comprehensive_test.go     # Network diagnostics
-│   └── scraper/
-│       ├── scraper_test.go                   # Scraper interface tests
-│       └── xfinity_test.go                   # Xfinity-specific tests
+├── modemcheck-client/                        # Go client tests (169 tests)
+│   ├── cloud_client_test.go                  # HMAC signatures, upload queue operations
+│   ├── config_test.go                        # Configuration validation and state management
+│   ├── updater_test.go                       # Version comparison, signature verification, update locks
+│   └── diagnostics_test.go                   # Network diagnostics and IP detection
 │
 └── cloudserver/
     ├── tests/

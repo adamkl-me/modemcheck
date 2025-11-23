@@ -51,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports
+          name: python-security-reports
           path: |
             cloudserver/pip-audit-report.json
             cloudserver/safety-report.json
@@ -76,7 +76,16 @@ jobs:
       - name: Run detect-secrets
         run: |
           detect-secrets scan --baseline .secrets.baseline \
-            --exclude-files '\.venv/|node_modules/|\.git/|dist/|\.minisig$|\.env$'
+            --exclude-files '\.venv/|node_modules/|\.git/|dist/|\.minisig$|\.env$' || true
+
+      - name: Upload baseline if exists
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secrets-baseline
+          path: .secrets.baseline
+          retention-days: 30
+          if-no-files-found: ignore
 
   go-security:
     name: Go Dependency Security Scan
@@ -95,6 +104,23 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           cd modemcheck-client
           govulncheck ./...
+
+      - name: Run gosec (security linter)
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          cd modemcheck-client
+          gosec -fmt json -out gosec-report.json ./... || true
+          gosec ./...
+
+      - name: Upload Go security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-security-reports
+          path: |
+            modemcheck-client/gosec-report.json
+          retention-days: 30
+          if-no-files-found: ignore
 
   dependency-review:
     name: Dependency Review

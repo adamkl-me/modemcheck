@@ -2,7 +2,7 @@
 API Key model for client authentication.
 """
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, DateTime, Index
 
 from app.core.database import Base
 
@@ -16,11 +16,17 @@ class APIKey(Base):
     """
     __tablename__ = "api_keys"
 
-    api_key = Column(String(255), primary_key=True, nullable=False, index=True)
+    api_key = Column(String(255), primary_key=True, nullable=False)
     name = Column(String(255), nullable=False, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_used = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    # Partial index for active keys (PostgreSQL-specific optimization)
+    # Only indexes rows where is_active = TRUE, making the index smaller and faster
+    __table_args__ = (
+        Index('idx_api_key_active', 'is_active', postgresql_where=(is_active == True)),
+    )
 
     def __repr__(self):
         return f"<APIKey(name='{self.name}', active={self.is_active})>"

@@ -4,7 +4,7 @@ CSRF protection middleware and dependencies.
 from typing import Optional
 from fastapi import Depends, HTTPException, status, Request, Cookie
 
-from app.core.security import validate_csrf_token
+from app.core.security import validate_csrf_token, generate_csrf_token
 
 
 async def get_csrf_token_from_request(request: Request) -> Optional[str]:
@@ -51,9 +51,10 @@ async def verify_csrf(
     csrf_token: Optional[str] = Depends(get_csrf_token_from_request)
 ) -> bool:
     """
-    Verify CSRF token matches session.
+    Verify CSRF token matches session (with automatic token rotation).
 
     Required for all state-changing operations (POST, PUT, DELETE).
+    After validation, a new CSRF token is generated to prevent reuse.
 
     Raises:
         403 if CSRF token is invalid
@@ -69,12 +70,17 @@ async def verify_csrf(
             detail="CSRF token required"
         )
 
-    # Validate CSRF token
+    # Validate CSRF token (one-time use - token is deleted during validation)
     is_valid = await validate_csrf_token(csrf_token, modemcheck_session)
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid CSRF token"
         )
+
+    # Generate new CSRF token for next request (token rotation)
+    # Store in request state so response can include it
+    new_csrf_token = await generate_csrf_token(modemcheck_session)
+    request.state.new_csrf_token = new_csrf_token
 
     return True

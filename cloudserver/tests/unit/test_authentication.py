@@ -270,7 +270,7 @@ class TestCSRFProtection:
     """Test CSRF token generation and validation."""
 
     @pytest.mark.asyncio
-    async def test_generate_csrf_token(self):
+    async def test_generate_csrf_token(self, test_cache):
         """Test CSRF token generation."""
         session_id = secrets.token_urlsafe(32)
         token = await generate_csrf_token(session_id)
@@ -279,7 +279,7 @@ class TestCSRFProtection:
         assert all(c.isalnum() or c in "-_" for c in token)
 
     @pytest.mark.asyncio
-    async def test_validate_csrf_token_correct(self):
+    async def test_validate_csrf_token_correct(self, test_cache):
         """Test CSRF token validation with correct token."""
         session_id = secrets.token_urlsafe(32)
         token = await generate_csrf_token(session_id)
@@ -289,7 +289,7 @@ class TestCSRFProtection:
         assert is_valid
 
     @pytest.mark.asyncio
-    async def test_csrf_token_uniqueness(self):
+    async def test_csrf_token_uniqueness(self, test_cache):
         """Test that CSRF tokens are unique."""
         tokens = set()
         session_id = secrets.token_urlsafe(32)
@@ -305,7 +305,7 @@ class TestAccountLockout:
     """Test account lockout functionality."""
 
     @pytest.mark.asyncio
-    async def test_record_failed_login(self):
+    async def test_record_failed_login(self, test_cache):
         """Test recording failed login attempts."""
         username = "test_user"
 
@@ -321,7 +321,7 @@ class TestAccountLockout:
         assert not is_locked
 
     @pytest.mark.asyncio
-    async def test_account_lockout_threshold(self):
+    async def test_account_lockout_threshold(self, test_cache):
         """Test that account locks after threshold."""
         username = "lockout_test"
 
@@ -338,7 +338,7 @@ class TestAccountLockout:
         assert remaining > 0  # Should have time remaining
 
     @pytest.mark.asyncio
-    async def test_reset_failed_logins(self):
+    async def test_reset_failed_logins(self, test_cache):
         """Test resetting failed login counter."""
         username = "reset_test"
 
@@ -354,7 +354,7 @@ class TestAccountLockout:
         assert not is_locked
 
     @pytest.mark.asyncio
-    async def test_lockout_expiration(self):
+    async def test_lockout_expiration(self, test_cache):
         """Test that lockout has expiration time."""
         username = "expiry_test"
 

@@ -90,6 +90,8 @@ async def clear_redis():
     """Clear Redis data between tests to ensure isolation."""
     from redis.asyncio import Redis
     from app.core.config import settings
+    from app.core.security import get_redis
+    from app.core.cache_provider import init_cache, close_cache
 
     # Clear DB 0 (sessions, API keys, brute force tracking)
     redis_url_db0 = f"redis://{settings.redis_host}:{settings.redis_port}/0"
@@ -111,7 +113,14 @@ async def clear_redis():
     await redis_db0.flushdb()
     await redis_db1.flushdb()
 
+    # Initialize cache provider for tests
+    redis_client = await get_redis()
+    await init_cache(redis_client, enable_fallback=True)
+
     yield
+
+    # Close cache
+    await close_cache()
 
     # Clear all Redis data after test
     await redis_db0.flushdb()
@@ -708,6 +717,52 @@ def ensure_ui_test_users():
     yield
 
     # No cleanup needed - users persist for all tests
+
+
+# ============================================================================
+# CACHE FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope="function")
+async def test_cache():
+    """
+    Provide in-memory cache for unit tests.
+
+    Uses in-memory backend to avoid Redis dependency in unit tests.
+    Automatically initializes and cleans up cache manager.
+    """
+    from app.core.cache import CacheManager, InMemoryBackend
+    import app.core.cache as cache_module
+
+    # Create cache manager with in-memory backend
+    manager = CacheManager()
+    manager.memory_backend = InMemoryBackend(max_size=1000)
+    manager.current_backend = manager.memory_backend
+    manager._redis_available = False
+
+    # Set as global instance for tests
+    original_manager = cache_module._cache_manager
+    cache_module._cache_manager = manager
+
+    yield manager
+
+    # Cleanup
+    cache_module._cache_manager = original_manager
+    await manager.current_backend.close()
+
+
+@pytest.fixture(scope="function")
+async def mock_redis():
+    """
+    Mock Redis backend for tests that need cache operations.
+
+    Returns in-memory cache backend that implements Redis interface.
+    """
+    from app.core.cache import InMemoryBackend
+
+    backend = InMemoryBackend(max_size=1000)
+    yield backend
+    await backend.close()
 
 
 @pytest.fixture(scope="function", autouse=True)

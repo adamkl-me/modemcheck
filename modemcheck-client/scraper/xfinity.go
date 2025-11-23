@@ -9,6 +9,27 @@ import (
 	"strings"
 )
 
+// Pre-compiled regex patterns for performance
+var (
+	xfinityMACValidationRe = regexp.MustCompile(`^[0-9A-F]{12}$`)
+	xfinityMACPatternRe    = regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}`)
+	xfinityFirmwareRe      = regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
+	xfinityDownstreamRe    = regexp.MustCompile(`(?s)<div class="netWidth">Downstream</div>.*?</table>`)
+	xfinityCodewordsRe     = regexp.MustCompile(`(?s)CM Error Codewords.*?</table>`)
+	xfinityUpstreamRe      = regexp.MustCompile(`(?s)<div class="netWidth">Upstream</div>.*?</table>`)
+	xfinityCellRe          = regexp.MustCompile(`<div class="netWidth">([^<]+)</div>`)
+	xfinityNumericRe       = regexp.MustCompile(`[^0-9.-]`)
+
+	// Pre-compiled MAC extraction patterns (tried in order)
+	xfinityMACExtractionPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`<span class="readonlyLabel">CM MAC:</span>.*?class="value">([^<]+)`),
+		regexp.MustCompile(`<span class="readonlyLabel">CM MAC:</span>.*?<span class="value">([^<]+)`),
+		regexp.MustCompile(`CM MAC:.*?class="value">([^<]+)`),
+		regexp.MustCompile(`CM MAC:.*?<span[^>]*>([0-9A-Fa-f:]+)</span>`),
+		regexp.MustCompile(`CM MAC:[^>]*>([0-9A-Fa-f:]+)<`),
+	}
+)
+
 // XfinityScraper handles Rogers Xfinity/XB7/XB8 cable modems.
 type XfinityScraper struct {
 	client       *http.Client
@@ -119,20 +140,8 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 		return "", fmt.Errorf("authentication failed or page structure unexpected")
 	}
 
-	// Try multiple regex patterns to extract MAC address
-	patterns := []string{
-		`<span class="readonlyLabel">CM MAC:</span>.*?class="value">([^<]+)`,
-		`<span class="readonlyLabel">CM MAC:</span>.*?<span class="value">([^<]+)`,
-		`CM MAC:.*?class="value">([^<]+)`,
-		`CM MAC:.*?<span[^>]*>([0-9A-Fa-f:]+)</span>`,
-		`CM MAC:[^>]*>([0-9A-Fa-f:]+)<`,
-	}
-
-	// Compile MAC validation regex once outside the loop
-	macValidationRe := regexp.MustCompile(`^[0-9A-F]{12}$`)
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
+	// Try multiple pre-compiled regex patterns to extract MAC address
+	for _, re := range xfinityMACExtractionPatterns {
 		matches := re.FindStringSubmatch(bodyStr)
 
 		if len(matches) > 1 {
@@ -140,7 +149,7 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 			mac = strings.ReplaceAll(mac, " ", "")
 			mac = strings.ToUpper(mac)
 
-			if macValidationRe.MatchString(mac) {
+			if xfinityMACValidationRe.MatchString(mac) {
 				s.logger.Log(fmt.Sprintf("Successfully retrieved modem CM MAC address: %s", mac))
 				return mac, nil
 			}
@@ -148,8 +157,6 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 	}
 
 	// If we still haven't found it, try a more general approach
-	macPattern := regexp.MustCompile(`([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}`)
-
 	// Find the position of "CM MAC:" in the body
 	cmMacIndex := strings.Index(bodyStr, "CM MAC:")
 	if cmMacIndex != -1 {
@@ -159,7 +166,7 @@ func (s *XfinityScraper) GetMAC() (string, error) {
 			endIndex = len(bodyStr)
 		}
 		searchWindow := bodyStr[cmMacIndex:endIndex]
-		if macMatch := macPattern.FindString(searchWindow); macMatch != "" {
+		if macMatch := xfinityMACPatternRe.FindString(searchWindow); macMatch != "" {
 			mac := strings.ReplaceAll(macMatch, ":", "")
 			mac = strings.ReplaceAll(mac, "-", "")
 			mac = strings.ToUpper(mac)
@@ -227,8 +234,7 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 		if err != nil {
 			s.logger.Log(fmt.Sprintf("Failed to read software version response: %v", err))
 		} else {
-			fwRe := regexp.MustCompile(`<span class="value" id="software_image">([^<]+)`)
-			if matches := fwRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
+			if matches := xfinityFirmwareRe.FindStringSubmatch(string(softwareBody)); len(matches) > 1 {
 				data.SysInfo.Firmware = strings.TrimSpace(matches[1])
 			}
 		}
@@ -270,12 +276,10 @@ func (s *XfinityScraper) parseXfinityDownstream(page string) ([]RXChannel, []RXO
 	rxofdmChannels := []RXOFDMChannel{}
 
 	// Extract downstream table (use (?s) for multiline matching)
-	dsTableRe := regexp.MustCompile(`(?s)<div class="netWidth">Downstream</div>.*?</table>`)
-	dsTable := dsTableRe.FindString(page)
+	dsTable := xfinityDownstreamRe.FindString(page)
 
 	// Extract codeword table
-	cwTableRe := regexp.MustCompile(`(?s)CM Error Codewords.*?</table>`)
-	cwTable := cwTableRe.FindString(page)
+	cwTable := xfinityCodewordsRe.FindString(page)
 
 	// Parse channel IDs, frequencies, SNR, power, modulation
 	channelIDs := s.extractTableRow(dsTable, "Channel ID")
@@ -348,8 +352,7 @@ func (s *XfinityScraper) parseXfinityUpstream(page string) ([]TXChannel, []TXOFD
 	txofdmaChannels := []TXOFDMAChannel{}
 
 	// Extract upstream table (use (?s) for multiline matching)
-	usTableRe := regexp.MustCompile(`(?s)<div class="netWidth">Upstream</div>.*?</table>`)
-	usTable := usTableRe.FindString(page)
+	usTable := xfinityUpstreamRe.FindString(page)
 
 	channelIDs := s.extractTableRow(usTable, "Channel ID")
 	lockStatus := s.extractTableRow(usTable, "Lock Status")
@@ -396,8 +399,7 @@ func (s *XfinityScraper) extractTableRow(table, rowLabel string) []string {
 	}
 
 	// Extract cell values from <div class="netWidth">
-	cellRe := regexp.MustCompile(`<div class="netWidth">([^<]+)</div>`)
-	cells := cellRe.FindAllStringSubmatch(rowMatch[1], -1)
+	cells := xfinityCellRe.FindAllStringSubmatch(rowMatch[1], -1)
 
 	for _, cell := range cells {
 		if len(cell) > 1 {
@@ -459,6 +461,5 @@ func getAtIndex(slice []string, index int) string {
 
 // cleanNumeric removes all non-numeric characters except decimal points and minus signs.
 func cleanNumeric(s string) string {
-	re := regexp.MustCompile(`[^0-9.-]`)
-	return re.ReplaceAllString(s, "")
+	return xfinityNumericRe.ReplaceAllString(s, "")
 }

@@ -3,7 +3,7 @@ Security utilities for authentication and authorization.
 
 Provides:
 - Argon2id password hashing (with PBKDF2 fallback)
-- Redis-based session management with sliding window
+- Cache-based session management with automatic Redis fallback
 - Password policy validation
 - CSRF token generation/validation
 - Account lockout after failed logins
@@ -21,6 +21,7 @@ from passlib.hash import argon2, pbkdf2_sha256
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.cache_provider import get_cache, ICacheProvider
 
 
 # ============================================================================
@@ -471,25 +472,32 @@ async def generate_csrf_token(session_id: str) -> str:
     """
     Generate CSRF token tied to session.
 
+    Uses cache abstraction with automatic Redis fallback.
+
     Args:
         session_id: Session ID to tie CSRF token to
 
     Returns:
         CSRF token (32-byte URL-safe)
     """
-    r = await get_redis()
+    cache = await get_cache()
     csrf_token = secrets.token_urlsafe(32)
     csrf_key = f"csrf:{csrf_token}"
 
-    # Store session_id in Redis with TTL matching session TTL
-    await r.setex(csrf_key, settings.session_ttl, session_id)
+    # Store session_id in cache with TTL matching session TTL
+    await cache.set(csrf_key, session_id, ttl=settings.session_ttl)
 
     return csrf_token
 
 
 async def validate_csrf_token(csrf_token: str, session_id: str) -> bool:
     """
-    Validate CSRF token matches session.
+    Validate CSRF token matches session (one-time use).
+
+    CSRF tokens are deleted after validation to prevent replay attacks.
+    This ensures each token can only be used once, even within the TTL window.
+
+    Uses cache abstraction with automatic Redis fallback.
 
     Args:
         csrf_token: CSRF token from request
@@ -501,25 +509,31 @@ async def validate_csrf_token(csrf_token: str, session_id: str) -> bool:
     if not csrf_token or not session_id:
         return False
 
-    r = await get_redis()
+    cache = await get_cache()
     csrf_key = f"csrf:{csrf_token}"
-    stored_session_id = await r.get(csrf_key)
+
+    # Get and delete CSRF token (one-time use)
+    # Note: Not atomic in fallback mode, but race window is negligible
+    stored_session_id = await cache.get(csrf_key)
 
     if not stored_session_id:
         return False
+
+    # Delete immediately after retrieval (one-time use)
+    await cache.delete(csrf_key)
 
     # Constant-time comparison
     return secrets.compare_digest(stored_session_id, session_id)
 
 
 async def delete_csrf_token(csrf_token: str):
-    """Delete CSRF token (one-time use)."""
+    """Delete CSRF token (one-time use). Uses cache abstraction."""
     if not csrf_token:
         return
 
-    r = await get_redis()
+    cache = await get_cache()
     csrf_key = f"csrf:{csrf_token}"
-    await r.delete(csrf_key)
+    await cache.delete(csrf_key)
 
 
 # ============================================================================
@@ -530,22 +544,24 @@ async def check_account_locked(username: str) -> Tuple[bool, int]:
     """
     Check if account is locked due to failed login attempts.
 
+    Uses cache abstraction with automatic Redis fallback.
+
     Args:
         username: Username to check
 
     Returns:
         (is_locked, remaining_seconds): Tuple of lock status and remaining time
     """
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_logins:{username}"
-    failed_count = await r.get(failed_key)
+    failed_count = await cache.get(failed_key)
 
     if not failed_count:
         return (False, 0)
 
     failed_count = int(failed_count)
     if failed_count >= settings.max_failed_logins:
-        ttl = await r.ttl(failed_key)
+        ttl = await cache.ttl(failed_key)
         return (True, max(0, ttl))
 
     return (False, 0)
@@ -558,22 +574,22 @@ async def record_failed_login(username: str):
     Args:
         username: Username that failed login
     """
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_logins:{username}"
 
     # Increment counter
-    failed_count = await r.incr(failed_key)
+    failed_count = await cache.incr(failed_key)
 
     # Set expiration on first failure
     if failed_count == 1:
-        await r.expire(failed_key, settings.account_lockout_duration)
+        await cache.expire(failed_key, settings.account_lockout_duration)
 
 
 async def clear_failed_logins(username: str):
     """Clear failed login counter on successful login."""
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_logins:{username}"
-    await r.delete(failed_key)
+    await cache.delete(failed_key)
 
 
 async def check_api_key_lockout(ip_address: str) -> Tuple[bool, int]:
@@ -586,9 +602,9 @@ async def check_api_key_lockout(ip_address: str) -> Tuple[bool, int]:
     Returns:
         (is_locked, remaining_seconds): Tuple of lock status and remaining time
     """
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_api_keys:{ip_address}"
-    failed_count = await r.get(failed_key)
+    failed_count = await cache.get(failed_key)
 
     if not failed_count:
         return (False, 0)
@@ -596,7 +612,7 @@ async def check_api_key_lockout(ip_address: str) -> Tuple[bool, int]:
     failed_count = int(failed_count)
     # Lock out after 10 failed API key attempts (more lenient than login)
     if failed_count >= 10:
-        ttl = await r.ttl(failed_key)
+        ttl = await cache.ttl(failed_key)
         return (True, max(0, ttl))
 
     return (False, 0)
@@ -609,22 +625,22 @@ async def record_failed_api_key(ip_address: str):
     Args:
         ip_address: IP address that failed API key validation
     """
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_api_keys:{ip_address}"
 
     # Increment counter
-    failed_count = await r.incr(failed_key)
+    failed_count = await cache.incr(failed_key)
 
     # Set 10 minute expiration on first failure (longer than account lockout)
     if failed_count == 1:
-        await r.expire(failed_key, 600)  # 10 minutes
+        await cache.expire(failed_key, 600)  # 10 minutes
 
 
 async def clear_failed_api_keys(ip_address: str):
     """Clear failed API key counter on successful validation."""
-    r = await get_redis()
+    cache = await get_cache()
     failed_key = f"failed_api_keys:{ip_address}"
-    await r.delete(failed_key)
+    await cache.delete(failed_key)
 
 
 # ============================================================================

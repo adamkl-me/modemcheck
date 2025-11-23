@@ -22,6 +22,7 @@ services:
   postgres-test:
     container_name: modemcheck-postgres-test
     image: postgres:16-alpine
+    command: postgres -c max_connections=200
     ports:
       - "5433:5432"  # Expose PostgreSQL on port 5433 to avoid conflicts with local PostgreSQL
     environment:
@@ -59,6 +60,7 @@ services:
       - REDIS_PORT=6379
       # Application
       - APP_ENV=test
+      - DEBUG=false
       - SECRET_KEY=test-secret-key-not-for-production
       - SESSION_TTL=3600
       - CSRF_SECRET_KEY=test-csrf-secret-key

@@ -61,6 +61,40 @@ cd cloudserver && ./run_combined_coverage.sh      # Combined coverage (90-98%)
 
 **Scalability:** v2 handles 1000+ clients vs v1's 100-200 (50-100ms upload latency vs 150-250ms)
 
+### API Error Responses (v6.0.1+)
+
+**Centralized error handling** with correlation IDs for debugging:
+
+**Error response format:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid parameter 'modem_id': must be alphanumeric",
+    "error_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "timestamp": "2025-01-15T12:34:56.789012",
+    "details": {
+      "parameter": "modem_id",
+      "value": "invalid@value",
+      "reason": "must be alphanumeric"
+    }
+  }
+}
+```
+
+**Error types:**
+- **400** - `VALIDATION_ERROR`, `INVALID_PARAMETER`, `MISSING_PARAMETER`
+- **401** - `AUTHENTICATION_ERROR`, `INVALID_CREDENTIALS`, `SESSION_EXPIRED`, `INVALID_API_KEY`
+- **403** - `AUTHORIZATION_ERROR`, `INSUFFICIENT_PERMISSIONS`
+- **404** - `NOT_FOUND`
+- **409** - `CONFLICT`, `DUPLICATE_RESOURCE`
+- **429** - `RATE_LIMIT_EXCEEDED`, `ACCOUNT_LOCKED` (includes `retry_after_seconds`)
+- **500** - `INTERNAL_SERVER_ERROR`, `DATABASE_ERROR`, `CACHE_ERROR`
+- **503** - `SERVICE_UNAVAILABLE`
+
+**Implementation:** `app/core/errors.py` - Base `ModemCheckError` class with typed subclasses
+
 ### Auto-Update Security
 
 **Protects against:** GitHub compromise, MITM attacks, CDN hijacking, tampered binaries
@@ -223,10 +257,12 @@ ModemCheck provides **four coverage report types** showing different test perspe
 ### .old File Accumulation
 Each update creates `.old` backup of previous binary (persists until manual deletion or next update)
 
-### Redis Failures
+### Redis Configuration
 **Critical dependency**: No fallback if Redis unavailable (breaks auth and rate limiting)
+- **Authentication**: Password-protected (via `REDIS_PASSWORD` env var)
 - **DB 0**: Sessions, CSRF tokens, failed login counters
 - **DB 1**: Rate limiting counters
+- **Security**: requirepass flag prevents unauthorized access from compromised containers
 - **Monitoring**: Check Redis health in production
 
 ### Version Management
@@ -297,6 +333,7 @@ nginx:           0.5 CPU / 512MB RAM
 - `cloudserver/.env` - Production credentials (chmod 600, NEVER commit)
 
 **Server modules:**
+- `app/core/errors.py` - Centralized exception hierarchy with correlation IDs (v6.0.1+)
 - `app/core/auth.py` - Password hashing, session management
 - `app/core/security.py` - CSRF, rate limiting, input validation
 - `app/core/passwords.py` - 10,000+ blocked weak passwords

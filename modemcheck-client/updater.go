@@ -220,7 +220,7 @@ func createUpdateLock(version string) {
 		return
 	}
 
-	os.WriteFile(lockPath, data, 0644)
+	os.WriteFile(lockPath, data, 0600)
 }
 
 // clearUpdateLock removes the update lock file.
@@ -270,6 +270,68 @@ func verifySignature(filePath, signaturePath string) error {
 	}
 
 	return nil
+}
+
+// extractTimestampFromSignature extracts the cryptographic timestamp from a Minisign signature file.
+// Returns the timestamp and build date embedded in the signature's trusted comment.
+// Returns an error if the signature format is invalid or timestamp is missing.
+func extractTimestampFromSignature(signaturePath string) (time.Time, string, error) {
+	// Read signature file
+	sigData, err := os.ReadFile(signaturePath)
+	if err != nil {
+		return time.Time{}, "", fmt.Errorf("failed to read signature file: %w", err)
+	}
+
+	// Parse signature lines
+	lines := strings.Split(string(sigData), "\n")
+	for _, line := range lines {
+		// Look for trusted comment line (starts with "trusted comment:")
+		if strings.HasPrefix(line, "trusted comment:") {
+			// Extract comment text after "trusted comment: "
+			comment := strings.TrimPrefix(line, "trusted comment:")
+			comment = strings.TrimSpace(comment)
+
+			// Parse timestamp from comment (format: "timestamp:1234567890")
+			timestampIdx := strings.Index(comment, "timestamp:")
+			if timestampIdx == -1 {
+				return time.Time{}, "", fmt.Errorf("timestamp not found in signature trusted comment")
+			}
+
+			// Extract timestamp value (between "timestamp:" and next space or end)
+			timestampStart := timestampIdx + len("timestamp:")
+			timestampEnd := strings.Index(comment[timestampStart:], " ")
+			var timestampStr string
+			if timestampEnd == -1 {
+				timestampStr = comment[timestampStart:]
+			} else {
+				timestampStr = comment[timestampStart : timestampStart+timestampEnd]
+			}
+
+			// Parse Unix timestamp
+			timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+			if err != nil {
+				return time.Time{}, "", fmt.Errorf("invalid timestamp format: %w", err)
+			}
+
+			// Extract build date (format: "build_date:2025-11-22")
+			buildDate := ""
+			buildDateIdx := strings.Index(comment, "build_date:")
+			if buildDateIdx != -1 {
+				buildDateStart := buildDateIdx + len("build_date:")
+				buildDateEnd := strings.Index(comment[buildDateStart:], " ")
+				if buildDateEnd == -1 {
+					buildDate = comment[buildDateStart:]
+				} else {
+					buildDate = comment[buildDateStart : buildDateStart+buildDateEnd]
+				}
+				buildDate = strings.TrimSpace(buildDate)
+			}
+
+			return time.Unix(timestamp, 0), buildDate, nil
+		}
+	}
+
+	return time.Time{}, "", fmt.Errorf("trusted comment not found in signature file")
 }
 
 // verifyBinaryExecutable verifies that a binary can execute by running it with --version flag.
@@ -540,15 +602,33 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 	m.Log("✓ Signature verification passed")
 
 	// STEP 3.5: Verify signature timestamp freshness (prevents rollback attacks)
-	// An attacker with GitHub access could serve an old vulnerable binary with valid signature
-	sigInfo, err := os.Stat(sigFile)
-	if err == nil {
-		sigAge := time.Since(sigInfo.ModTime())
-		const maxSignatureAge = 90 * 24 * time.Hour // 90 days
-		if sigAge > maxSignatureAge {
+	// Extract cryptographic timestamp from signature (can't be manipulated like file mtime)
+	// An attacker with GitHub access could serve an old vulnerable binary with valid signature,
+	// but they can't forge a new timestamp without the signing key
+	sigTimestamp, buildDate, err := extractTimestampFromSignature(sigFile)
+	if err != nil {
+		// Fallback to file mtime for backwards compatibility with old signatures
+		m.Log(fmt.Sprintf("Warning: Could not extract timestamp from signature (%v), using file mtime", err))
+		sigInfo, statErr := os.Stat(sigFile)
+		if statErr != nil {
 			cleanup()
-			return fmt.Errorf("signature file too old (%d days), possible rollback attack (max age: 90 days)", int(sigAge.Hours()/24))
+			return fmt.Errorf("failed to get signature file info: %w", statErr)
 		}
+		sigTimestamp = sigInfo.ModTime()
+		buildDate = ""
+	}
+
+	// Verify signature is not too old (prevents rollback attacks)
+	sigAge := time.Since(sigTimestamp)
+	const maxSignatureAge = 30 * 24 * time.Hour // 30 days
+	if sigAge > maxSignatureAge {
+		cleanup()
+		return fmt.Errorf("signature timestamp too old (%d days), possible rollback attack (max age: 30 days)", int(sigAge.Hours()/24))
+	}
+
+	if buildDate != "" {
+		m.Log(fmt.Sprintf("✓ Signature freshness verified (age: %d days, build date: %s)", int(sigAge.Hours()/24), buildDate))
+	} else {
 		m.Log(fmt.Sprintf("✓ Signature freshness verified (age: %d days)", int(sigAge.Hours()/24)))
 	}
 
@@ -643,8 +723,21 @@ func downloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	return err
+	// Limit download size to prevent downloading extremely large files
+	limitedReader := io.LimitReader(resp.Body, MaxBinaryDownloadSize)
+
+	written, err := io.Copy(out, limitedReader)
+	if err != nil {
+		return err
+	}
+
+	// Check if we hit the size limit
+	if written == MaxBinaryDownloadSize {
+		os.Remove(filepath)
+		return fmt.Errorf("download exceeded size limit of %d MB", MaxBinaryDownloadSize/(1024*1024))
+	}
+
+	return nil
 }
 
 // getPlatformBinaryName returns the platform-specific binary name pattern used in GitHub releases.

@@ -40,6 +40,11 @@ from app.middleware.auth import (
     get_user_agent,
     get_user_from_db,
 )
+from app.core.errors import (
+    InvalidCredentialsError,
+    AccountLockedError,
+    RateLimitError,
+)
 from sqlalchemy import select, update
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -69,31 +74,21 @@ async def login(
     if not settings.is_test():
         is_locked, remaining_seconds = await check_account_locked(login_data.username)
         if is_locked:
-            minutes_remaining = (remaining_seconds + 59) // 60  # Round up
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Account locked due to too many failed login attempts. Try again in {minutes_remaining} minutes."
-            )
+            raise AccountLockedError(remaining_seconds=remaining_seconds)
 
     # Get user from database
     user = await get_user_from_db(login_data.username, db)
     if not user:
         # Record failed login (user not found)
         await record_failed_login(login_data.username)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
-        )
+        raise InvalidCredentialsError()
 
     # Verify password
     is_valid, needs_upgrade = verify_password(login_data.password, user.password_hash)
     if not is_valid:
         # Record failed login (wrong password)
         await record_failed_login(login_data.username)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
-        )
+        raise InvalidCredentialsError()
 
     # Check per-user rate limit (100 requests/hour across all IPs)
     allowed, current_count, remaining = await check_user_rate_limit(
@@ -102,10 +97,7 @@ async def login(
         window_seconds=3600
     )
     if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Too many requests from this account. {remaining} requests remaining."
-        )
+        raise RateLimitError(retry_after=3600)
 
     # All validation passed - clear failed login attempts
     await clear_failed_logins(login_data.username)

@@ -37,10 +37,13 @@ class TestLogin:
             "username": "nonexistent_user",
             "password": "SomePassword123!"
         })
-        
+
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid username or password" in data["detail"]
+        assert data["success"] is False
+        assert data["error"]["code"] == "AUTHENTICATION_ERROR"
+        assert "Invalid username or password" in data["error"]["message"]
+        assert "error_id" in data["error"]  # Correlation ID present
     
     @pytest.mark.asyncio
     async def test_login_invalid_password(self, http_client: httpx.AsyncClient, admin_user, admin_user_credentials: Dict[str, str]):
@@ -49,10 +52,13 @@ class TestLogin:
             "username": admin_user_credentials["username"],
             "password": "WrongPassword123!"
         })
-        
+
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid username or password" in data["detail"]
+        assert data["success"] is False
+        assert data["error"]["code"] == "AUTHENTICATION_ERROR"
+        assert "Invalid username or password" in data["error"]["message"]
+        assert "error_id" in data["error"]
     
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="Account lockout disabled in test mode - would require server restart with different config")
@@ -85,8 +91,11 @@ class TestLogin:
 
         assert response.status_code == 429
         data = response.json()
-        assert "Account locked" in data["detail"]
-        assert "minutes" in data["detail"]
+        assert data["success"] is False
+        assert data["error"]["code"] == "ACCOUNT_LOCKED"
+        assert "locked" in data["error"]["message"].lower()
+        assert "remaining_seconds" in data["error"]["details"]
+        assert "retry_after_seconds" in data["error"]["details"]
 
         # Cleanup: Clear failed logins after test
         await clear_failed_logins(admin_user_credentials["username"])

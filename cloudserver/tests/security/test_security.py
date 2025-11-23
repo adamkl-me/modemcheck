@@ -324,11 +324,15 @@ class TestPasswordSecurity:
     """Password validation and security tests."""
 
     @pytest.mark.asyncio
-    async def test_password_validation_length(self, admin_client_with_token: httpx.AsyncClient, csrf_token: str):
+    async def test_password_validation_length(self, admin_client_with_token: httpx.AsyncClient):
         """Test password minimum length requirement."""
         short_passwords = ["Short1!", "Pass1!", "Abc123!"]
 
         for password in short_passwords:
+            # Get fresh CSRF token for each iteration (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             response = await admin_client_with_token.post(
                 "/api/users",
                 json={
@@ -342,7 +346,7 @@ class TestPasswordSecurity:
             assert response.status_code == 422, f"Short password accepted: {password}"
 
     @pytest.mark.asyncio
-    async def test_password_validation_complexity(self, admin_client_with_token: httpx.AsyncClient, csrf_token: str):
+    async def test_password_validation_complexity(self, admin_client_with_token: httpx.AsyncClient):
         """Test password complexity requirements."""
         weak_passwords = [
             "alllowercase1!",  # No uppercase
@@ -352,6 +356,10 @@ class TestPasswordSecurity:
         ]
 
         for password in weak_passwords:
+            # Get fresh CSRF token for each iteration (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             response = await admin_client_with_token.post(
                 "/api/users",
                 json={
@@ -365,7 +373,7 @@ class TestPasswordSecurity:
             assert response.status_code == 400, f"Weak password accepted: {password}"
 
     @pytest.mark.asyncio
-    async def test_password_validation_common_passwords(self, admin_client_with_token: httpx.AsyncClient, csrf_token: str):
+    async def test_password_validation_common_passwords(self, admin_client_with_token: httpx.AsyncClient):
         """Test rejection of common passwords."""
         import uuid
         common_passwords = [
@@ -375,6 +383,10 @@ class TestPasswordSecurity:
         ]
 
         for idx, password in enumerate(common_passwords):
+            # Get fresh CSRF token for each iteration (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             # Use unique username for each iteration to avoid conflicts
             unique_username = f"testuser_{uuid.uuid4().hex[:8]}"
             response = await admin_client_with_token.post(
@@ -390,12 +402,15 @@ class TestPasswordSecurity:
             # Note: This may pass if the password isn't in common_passwords.txt
             # The important thing is the check exists
             if response.status_code == 200:
-                # Clean up created user
+                # Clean up created user - need fresh token for delete
+                session_resp2 = await admin_client_with_token.get("/api/auth/session_check")
+                csrf_token2 = session_resp2.json()["csrf_token"]
+
                 data = response.json()
                 if data.get("success") and "user" in data and isinstance(data["user"], dict):
                     await admin_client_with_token.delete(
                         f"/api/users/{data['user']['id']}",
-                        params={"csrf_token": csrf_token}
+                        params={"csrf_token": csrf_token2}
                     )
             else:
                 # Password was rejected (expected behavior for common passwords)
@@ -526,7 +541,7 @@ class TestXSSAdditional:
     """Additional XSS attack tests."""
 
     @pytest.mark.asyncio
-    async def test_xss_in_api_key_name(self, admin_client_with_token: httpx.AsyncClient, csrf_token: str):
+    async def test_xss_in_api_key_name(self, admin_client_with_token: httpx.AsyncClient):
         """Test XSS in API key name field."""
         xss_payloads = [
             "<script>alert('XSS')</script>",
@@ -535,6 +550,10 @@ class TestXSSAdditional:
         ]
 
         for payload in xss_payloads:
+            # Get fresh CSRF token for each iteration (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             response = await admin_client_with_token.post(
                 "/api/admin/api_keys",
                 json={"name": payload},
@@ -548,12 +567,15 @@ class TestXSSAdditional:
                 assert isinstance(data, dict), "Response should be a dictionary"
                 assert data.get("success") is True
 
-                # Clean up
+                # Clean up - need fresh token for delete
+                session_resp2 = await admin_client_with_token.get("/api/auth/session_check")
+                csrf_token2 = session_resp2.json()["csrf_token"]
+
                 if "api_key" in data and isinstance(data["api_key"], dict):
                     key_id = data["api_key"]["id"]
                     await admin_client_with_token.delete(
                         f"/api/admin/api_keys/{key_id}",
-                        params={"csrf_token": csrf_token}
+                        headers={"X-CSRF-Token": csrf_token2}
                     )
             else:
                 # XSS payload rejected (also acceptable)

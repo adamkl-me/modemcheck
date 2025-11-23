@@ -46,8 +46,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(..., description="PostgreSQL database URL (REQUIRED)")
-    db_pool_size: int = Field(default=10, description="Database connection pool size per worker")
-    db_max_overflow: int = Field(default=5, description="Max connections beyond pool_size")
+    db_pool_size: int = Field(default=25, description="Database connection pool size per worker (25 × 4 workers = 100 connections)")
+    db_max_overflow: int = Field(default=10, description="Max connections beyond pool_size (allows bursts to 140 total)")
     db_pool_recycle: int = Field(default=3600, description="Connection recycle time in seconds")
     db_pool_timeout: int = Field(default=30, description="Timeout waiting for connection from pool")
     db_statement_timeout: int = Field(default=60000, description="Statement timeout in milliseconds")
@@ -62,8 +62,8 @@ class Settings(BaseSettings):
 
     # CORS
     allowed_origins: str = Field(
-        default="*",
-        description="Allowed CORS origins (comma-separated in env: ALLOWED_ORIGINS=http://localhost:3000,http://example.com)"
+        ...,
+        description="Allowed CORS origins (REQUIRED - comma-separated, e.g., ALLOWED_ORIGINS=http://localhost:3000,https://example.com)"
     )
 
     # Rate Limiting
@@ -116,6 +116,26 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Debug mode cannot be enabled in production environment. "
                 "Set DEBUG=false or APP_ENV=development"
+            )
+        return v
+
+    @validator("allowed_origins")
+    def validate_cors_wildcard(cls, v, values):
+        """
+        Prevent CORS wildcard (*) in production environment.
+
+        Security: CORS wildcard allows any origin to make requests:
+        - Exposes API to CSRF attacks from any website
+        - Allows data exfiltration from malicious sites
+        - Bypasses same-origin policy protections
+
+        Test environment is exempt to simplify testing.
+        """
+        app_env = values.get("app_env", "production")
+        if app_env.lower() == "production" and v == "*":
+            raise ValueError(
+                "CORS wildcard (*) is not allowed in production environment. "
+                "Set ALLOWED_ORIGINS to specific domains (e.g., https://example.com,https://admin.example.com)"
             )
         return v
 

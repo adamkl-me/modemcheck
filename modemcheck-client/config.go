@@ -25,8 +25,13 @@ const (
 	// Test configuration
 	DefaultPingCount = 25
 
+	// Network limits
+	MaxHostnameLength = 253 // RFC 1035 DNS hostname max length
+
 	// File size limits
-	MaxFileUploadSize = 10 * 1024 * 1024 // 10MB
+	MaxFileUploadSize      = 10 * 1024 * 1024  // 10MB
+	MaxResponseSize        = 2 * 1024 * 1024   // 2MB
+	MaxBinaryDownloadSize  = 100 * 1024 * 1024 // 100MB
 )
 
 // Configuration holds all user-configurable settings.

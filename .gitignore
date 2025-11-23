@@ -50,7 +50,11 @@ cloudserver/backups/
 
 # Test artifacts
 htmlcov/
+htmlcov-unit/
+htmlcov-e2e/
+htmlcov-combined/
 .coverage
+.coverage.*
 coverage.xml
 .pytest_cache/
 playwright-report/

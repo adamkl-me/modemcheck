@@ -1,8 +1,9 @@
 """
 API Key caching module for performance optimization.
 
-This module provides Redis-based caching for API keys to avoid
-repeated database queries during high-frequency upload operations.
+This module provides cache-based (with automatic Redis fallback) caching
+for API keys to avoid repeated database queries during high-frequency
+upload operations.
 """
 
 import json
@@ -11,19 +12,20 @@ import hashlib
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 
-from app.core.security import get_redis
+from app.core.cache_provider import get_cache
 from app.core.config import settings
 
 
 class APIKeyCache:
     """
-    Redis-based API key cache for optimizing upload endpoint performance.
+    Cache-based API key cache for optimizing upload endpoint performance.
 
     Cache strategy:
-    - Active API keys are cached in Redis with configurable TTL (default: 5 minutes)
+    - Active API keys are cached with configurable TTL (default: 5 minutes)
     - Keys are stored as a JSON list with their names
     - Timing-safe comparison used for key validation
     - Cache invalidated when keys are created/modified/deleted
+    - Automatic fallback to in-memory cache if Redis unavailable
     """
 
     CACHE_KEY = "api_keys:active"
@@ -31,17 +33,14 @@ class APIKeyCache:
     @staticmethod
     async def get_cached_keys() -> Optional[List[Dict[str, str]]]:
         """
-        Get cached API keys from Redis.
+        Get cached API keys from cache (with automatic fallback).
 
         Returns:
             List of dicts with 'api_key' and 'name' fields, or None if not cached
         """
-        redis = await get_redis()
-        if not redis:
-            return None
-
         try:
-            cached_data = await redis.get(APIKeyCache.CACHE_KEY)
+            cache = await get_cache()
+            cached_data = await cache.get(APIKeyCache.CACHE_KEY)
             if cached_data:
                 return json.loads(cached_data)
         except Exception:
@@ -53,20 +52,17 @@ class APIKeyCache:
     @staticmethod
     async def set_cached_keys(keys: List[Dict[str, str]]) -> None:
         """
-        Cache API keys in Redis.
+        Cache API keys in cache (with automatic fallback).
 
         Args:
             keys: List of dicts with 'api_key' and 'name' fields
         """
-        redis = await get_redis()
-        if not redis:
-            return
-
         try:
-            await redis.setex(
+            cache = await get_cache()
+            await cache.set(
                 APIKeyCache.CACHE_KEY,
-                settings.api_key_cache_ttl,
-                json.dumps(keys)
+                json.dumps(keys),
+                ttl=settings.api_key_cache_ttl
             )
         except Exception:
             # If cache write fails, continue without caching
@@ -75,12 +71,11 @@ class APIKeyCache:
     @staticmethod
     async def invalidate_cache() -> None:
         """Invalidate the API key cache."""
-        redis = await get_redis()
-        if redis:
-            try:
-                await redis.delete(APIKeyCache.CACHE_KEY)
-            except Exception:
-                pass
+        try:
+            cache = await get_cache()
+            await cache.delete(APIKeyCache.CACHE_KEY)
+        except Exception:
+            pass
 
     @staticmethod
     async def validate_api_key_cached(

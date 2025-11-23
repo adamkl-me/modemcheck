@@ -2,7 +2,7 @@
 Modem Check model for storing cable modem diagnostic data.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Index
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Index, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
@@ -80,6 +80,7 @@ class ModemCheck(Base):
     __table_args__ = (
         Index('idx_modem_check_modem_time', 'modem_id', 'check_time'),
         Index('idx_modem_check_type', 'modem_type'),
+        Index('idx_modem_check_time', desc('check_time')),
     )
 
     def __repr__(self):

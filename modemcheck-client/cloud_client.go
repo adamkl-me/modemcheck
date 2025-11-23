@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,9 +29,11 @@ type UploadQueueEntry struct {
 	FirstFailure time.Time `json:"first_failure"`
 }
 
-// UploadQueue manages failed uploads.
+// UploadQueue manages failed uploads with O(1) lookups.
 type UploadQueue struct {
-	FailedUploads []UploadQueueEntry `json:"failed_uploads"`
+	FailedUploads []UploadQueueEntry       `json:"failed_uploads"`
+	fileIndex     map[string]int           `json:"-"` // Maps file path to slice index for O(1) lookup
+	mu            sync.RWMutex             `json:"-"` // Protects concurrent access
 }
 
 // generateRequestSignature creates an HMAC-SHA256 signature for API request authentication.
@@ -50,10 +53,22 @@ func generateRequestSignature(apiKey, timestamp, modemID, filename, checksum str
 
 const queueFilePath = "ModemCheck-Results/.upload_queue.json"
 
+// buildIndex constructs the file path index for O(1) lookups.
+// Must be called after modifying FailedUploads slice directly or after unmarshaling.
+func (q *UploadQueue) buildIndex() {
+	q.fileIndex = make(map[string]int, len(q.FailedUploads))
+	for i, entry := range q.FailedUploads {
+		q.fileIndex[entry.FilePath] = i
+	}
+}
+
 // loadUploadQueue loads the upload queue from disk.
 // Returns an empty queue if the file doesn't exist.
 func loadUploadQueue() (*UploadQueue, error) {
-	queue := &UploadQueue{FailedUploads: []UploadQueueEntry{}}
+	queue := &UploadQueue{
+		FailedUploads: []UploadQueueEntry{},
+		fileIndex:     make(map[string]int),
+	}
 
 	data, err := os.ReadFile(queueFilePath)
 	if err != nil {
@@ -66,6 +81,9 @@ func loadUploadQueue() (*UploadQueue, error) {
 	if err := json.Unmarshal(data, queue); err != nil {
 		return nil, err
 	}
+
+	// Build index after unmarshaling
+	queue.buildIndex()
 
 	return queue, nil
 }
@@ -88,43 +106,65 @@ func saveUploadQueue(queue *UploadQueue) error {
 
 // addToUploadQueue adds a failed upload to the queue or updates an existing entry.
 // Enforces the maximum queue size by removing oldest entries when exceeded.
+// Uses map index for O(1) lookup instead of O(n) linear search.
 func addToUploadQueue(queue *UploadQueue, entry UploadQueueEntry) {
-	// Check if entry already exists
-	for i, existing := range queue.FailedUploads {
-		if existing.FilePath == entry.FilePath {
-			// Update existing entry
-			queue.FailedUploads[i].Attempts++
-			queue.FailedUploads[i].LastAttempt = time.Now()
-			queue.FailedUploads[i].LastError = entry.LastError
-			return
-		}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+
+	now := time.Now()
+
+	// Check if entry already exists using map index (O(1) instead of O(n))
+	if idx, exists := queue.fileIndex[entry.FilePath]; exists {
+		// Update existing entry
+		queue.FailedUploads[idx].Attempts++
+		queue.FailedUploads[idx].LastAttempt = now
+		queue.FailedUploads[idx].LastError = entry.LastError
+		return
 	}
 
 	// Add new entry
 	entry.Attempts = 1
-	entry.FirstFailure = time.Now()
-	entry.LastAttempt = time.Now()
+	entry.FirstFailure = now
+	entry.LastAttempt = now
 	queue.FailedUploads = append(queue.FailedUploads, entry)
+
+	// Update index with new entry's position
+	queue.fileIndex[entry.FilePath] = len(queue.FailedUploads) - 1
 
 	// Enforce max queue size (remove oldest entries)
 	if len(queue.FailedUploads) > MaxQueueSize {
-		queue.FailedUploads = queue.FailedUploads[len(queue.FailedUploads)-MaxQueueSize:]
+		// Remove oldest entries and rebuild index
+		removedCount := len(queue.FailedUploads) - MaxQueueSize
+		queue.FailedUploads = queue.FailedUploads[removedCount:]
+		queue.buildIndex() // Rebuild index after slice modification
 	}
 }
 
 // removeFromUploadQueue removes an entry from the queue by file path.
+// Uses map index for O(1) lookup instead of O(n) linear search.
 func removeFromUploadQueue(queue *UploadQueue, filePath string) {
-	for i, entry := range queue.FailedUploads {
-		if entry.FilePath == filePath {
-			queue.FailedUploads = append(queue.FailedUploads[:i], queue.FailedUploads[i+1:]...)
-			return
-		}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+
+	// Check if entry exists using map index (O(1) instead of O(n))
+	idx, exists := queue.fileIndex[filePath]
+	if !exists {
+		return // Entry not found
 	}
+
+	// Remove from slice
+	queue.FailedUploads = append(queue.FailedUploads[:idx], queue.FailedUploads[idx+1:]...)
+
+	// Rebuild index after slice modification (indices have shifted)
+	queue.buildIndex()
 }
 
 // cleanupUploadQueue removes entries older than QueueMaxAgeDays and entries
 // for files that no longer exist on disk.
 func cleanupUploadQueue(queue *UploadQueue) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+
 	cutoffDate := time.Now().AddDate(0, 0, -QueueMaxAgeDays)
 	cleaned := []UploadQueueEntry{}
 
@@ -143,6 +183,9 @@ func cleanupUploadQueue(queue *UploadQueue) {
 	}
 
 	queue.FailedUploads = cleaned
+
+	// Rebuild index after modifying slice
+	queue.buildIndex()
 }
 
 // uploadToCloudWithModemID uploads a file to the cloud server with a specific modem ID.
@@ -302,31 +345,38 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 	entries := make([]UploadQueueEntry, len(queue.FailedUploads))
 	copy(entries, queue.FailedUploads)
 
+	// Create a map index for O(1) lookups by FilePath
+	// This prevents O(n²) performance when updating entries after failed uploads
+	entryMap := make(map[string]int, len(queue.FailedUploads))
+	for i := range queue.FailedUploads {
+		entryMap[queue.FailedUploads[i].FilePath] = i
+	}
+
 	for _, entry := range entries {
 		// Check if file still exists
 		if _, err := os.Stat(entry.FilePath); os.IsNotExist(err) {
 			m.Log(fmt.Sprintf("  ✗ File no longer exists: %s", entry.FilePath))
 			removeFromUploadQueue(queue, entry.FilePath)
+			delete(entryMap, entry.FilePath) // Keep map in sync
 			missingCount++
 			continue
 		}
 
 		// Attempt upload using the modemID from the queue entry
+		attemptTime := time.Now() // Capture time at start of attempt for consistency
 		err := m.uploadToCloudWithModemID(entry.FilePath, entry.ModemID)
 		if err == nil {
 			m.Log(fmt.Sprintf("  ✓ Successfully uploaded: %s (was attempt #%d)", filepath.Base(entry.FilePath), entry.Attempts+1))
 			removeFromUploadQueue(queue, entry.FilePath)
+			delete(entryMap, entry.FilePath) // Keep map in sync
 			successCount++
 		} else {
 			m.Log(fmt.Sprintf("  ✗ Upload failed: %s - %v", filepath.Base(entry.FilePath), err))
-			// Update the entry with new attempt info
-			for i := range queue.FailedUploads {
-				if queue.FailedUploads[i].FilePath == entry.FilePath {
-					queue.FailedUploads[i].Attempts++
-					queue.FailedUploads[i].LastAttempt = time.Now()
-					queue.FailedUploads[i].LastError = err.Error()
-					break
-				}
+			// Update the entry with new attempt info using O(1) map lookup
+			if idx, exists := entryMap[entry.FilePath]; exists {
+				queue.FailedUploads[idx].Attempts++
+				queue.FailedUploads[idx].LastAttempt = attemptTime
+				queue.FailedUploads[idx].LastError = err.Error()
 			}
 			failCount++
 		}

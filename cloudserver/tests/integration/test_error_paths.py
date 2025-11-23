@@ -304,11 +304,14 @@ class TestConcurrencyEdgeCases:
         preview = f"{api_key[:4]}...{api_key[-4:]}"
 
         async def delete_key():
+            # Get fresh CSRF token for each concurrent request (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            token = session_resp.json()["csrf_token"]
             return await admin_client_with_token.request(
                 "DELETE",
                 "/api/admin/api_keys",
                 json={"api_key_preview": preview},
-                headers={"X-CSRF-Token": csrf_token}
+                headers={"X-CSRF-Token": token}
             )
 
         # Try to delete concurrently

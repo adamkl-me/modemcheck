@@ -336,8 +336,8 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss string, jitter string, maxLatency string) {
 	// Validate host parameter to prevent command injection and invalid inputs
 	// DNS hostname max length is 253 characters per RFC 1035
-	if len(host) == 0 || len(host) > 253 {
-		m.Log(fmt.Sprintf("Invalid host length for ping: %d characters (must be 1-253)", len(host)))
+	if len(host) == 0 || len(host) > MaxHostnameLength {
+		m.Log(fmt.Sprintf("Invalid host length for ping: %d characters (must be 1-%d)", len(host), MaxHostnameLength))
 		return "", "", "", ""
 	}
 

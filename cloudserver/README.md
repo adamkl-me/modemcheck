@@ -13,7 +13,7 @@ The ModemCheck cloud server provides a modern, high-performance API for storing 
 - **Modern Stack**: Python 3.11, SQLAlchemy 2.0, Pydantic validation, Redis sessions
 - **Production-Ready**: Gunicorn + Uvicorn workers, connection pooling, comprehensive logging
 - **Comprehensive Security**: Rate limiting, CSRF protection, account lockout, Argon2id password hashing
-- **Complete Test Suite**: 450+ tests (435+ passing, 5 skipped) covering API, security, RBAC, and UI functionality
+- **Complete Test Suite**: 545+ tests (520+ passing) covering API, security, RBAC, service layer, and UI functionality
 
 ## Architecture
 
@@ -50,6 +50,7 @@ cp .env.example .env
 python3 -c "import secrets; print('POSTGRES_DB_PASSWORD=' + secrets.token_urlsafe(32))"
 python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(48))"
 python3 -c "import secrets; print('CSRF_SECRET_KEY=' + secrets.token_urlsafe(48))"
+python3 -c "import secrets; print('REDIS_PASSWORD=' + secrets.token_urlsafe(32))"
 
 # Edit .env and replace CHANGE_THIS_REQUIRED with generated values
 # Also configure ALLOWED_ORIGINS (see Security Configuration below)
@@ -65,6 +66,7 @@ chmod 600 .env
 - `POSTGRES_DB_PASSWORD` - Database password (32+ chars)
 - `SECRET_KEY` - Session encryption key (48+ chars)
 - `CSRF_SECRET_KEY` - CSRF token encryption key (48+ chars)
+- `REDIS_PASSWORD` - Redis authentication password (32+ chars, REQUIRED for security)
 - `ALLOWED_ORIGINS` - Comma-separated allowed domains (e.g., `https://example.com`)
 
 ### 2. Start Services
@@ -80,12 +82,23 @@ docker compose logs -f modemcheck-cloud
 ### 3. Verify Health
 
 ```bash
-# Health check
+# Overall health
 curl http://localhost:22557/health
+
+# Database connection pool status
+curl http://localhost:22557/health/db
+
+# Cache backend status (Redis vs in-memory fallback)
+curl http://localhost:22557/health/cache
 
 # API documentation
 open http://localhost:22557/docs
 ```
+
+**Health Endpoints:**
+- `/health` - Overall application status
+- `/health/db` - Database pool utilization and connection stats
+- `/health/cache` - Cache backend status (Redis/memory), degraded mode warnings
 
 ### 4. First Login & Password Change
 
@@ -264,6 +277,34 @@ docker compose down && docker compose up -d
 - All active sessions become invalid
 - All users must log in again
 - Consider forcing password changes for all users
+
+### Docker Secrets (Production)
+
+For enhanced security in production, use Docker Secrets instead of environment variables:
+
+```bash
+# Initialize Docker Swarm and create secrets
+./scripts/setup-docker-secrets.sh
+
+# Deploy with secrets
+docker stack deploy -c docker-compose.yml -c docker-compose.secrets.yml modemcheck
+
+# Verify secrets are mounted
+docker exec $(docker ps -q -f name=modemcheck_api) ls -la /run/secrets/
+```
+
+**Benefits:**
+- Secrets encrypted at rest and in transit
+- Not visible in `docker inspect` or process listings
+- Mounted as read-only files at `/run/secrets/`
+- Only accessible to services that explicitly declare them
+
+**When to use:**
+- ✅ Production environments with compliance requirements
+- ✅ Multi-service deployments with shared secrets
+- ❌ Development/testing (overkill for non-production)
+
+See [DOCKER_SECRETS.md](DOCKER_SECRETS.md) for complete implementation guide.
 
 ## Development
 

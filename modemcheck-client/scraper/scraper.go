@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+// Pre-compiled regex patterns for performance
+var (
+	uptimeCodaRe   = regexp.MustCompile(`(\d+)h:(\d+)m:(\d+)s`)
+	uptimeXB8Re    = regexp.MustCompile(`(?:(\d+)\s*days?\s*)?(?:(\d+)h:\s*)?(?:(\d+)m:\s*)?(?:(\d+)s)?`)
+	uptimeDM1000Re = regexp.MustCompile(`(?:(\d+)\s*d:\s*)?(?:(\d+)\s*h:\s*)?(?:(\d+)\s*m)?`)
+)
+
 // SysInfo represents system information from the modem.
 type SysInfo struct {
 	SysTime          int64  `json:"systime"`                    // Unix epoch timestamp
@@ -198,8 +205,7 @@ func parseUptimeToSeconds(uptimeStr string) int64 {
 	var totalSeconds int64
 
 	// CODA56 format: "00h:04m:41s"
-	codaRe := regexp.MustCompile(`(\d+)h:(\d+)m:(\d+)s`)
-	if matches := codaRe.FindStringSubmatch(uptimeStr); matches != nil {
+	if matches := uptimeCodaRe.FindStringSubmatch(uptimeStr); matches != nil {
 		hours, _ := strconv.ParseInt(matches[1], 10, 64)
 		minutes, _ := strconv.ParseInt(matches[2], 10, 64)
 		seconds, _ := strconv.ParseInt(matches[3], 10, 64)
@@ -207,8 +213,7 @@ func parseUptimeToSeconds(uptimeStr string) int64 {
 	}
 
 	// XB8 format: "6 days 13h: 18m: 59s"
-	xb8Re := regexp.MustCompile(`(?:(\d+)\s*days?\s*)?(?:(\d+)h:\s*)?(?:(\d+)m:\s*)?(?:(\d+)s)?`)
-	if matches := xb8Re.FindStringSubmatch(uptimeStr); matches != nil {
+	if matches := uptimeXB8Re.FindStringSubmatch(uptimeStr); matches != nil {
 		days := int64(0)
 		hours := int64(0)
 		minutes := int64(0)
@@ -234,8 +239,7 @@ func parseUptimeToSeconds(uptimeStr string) int64 {
 	}
 
 	// DM1000 format: "2 d: 19 h: 2 m"
-	dm1000Re := regexp.MustCompile(`(?:(\d+)\s*d:\s*)?(?:(\d+)\s*h:\s*)?(?:(\d+)\s*m)?`)
-	if matches := dm1000Re.FindStringSubmatch(uptimeStr); matches != nil {
+	if matches := uptimeDM1000Re.FindStringSubmatch(uptimeStr); matches != nil {
 		days := int64(0)
 		hours := int64(0)
 		minutes := int64(0)

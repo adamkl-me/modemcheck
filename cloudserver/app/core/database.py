@@ -52,6 +52,7 @@ def get_engine() -> AsyncEngine:
         pool_recycle=settings.db_pool_recycle,
         pool_timeout=settings.db_pool_timeout,
         pool_pre_ping=True,  # Verify connections before using
+        pool_use_lifo=True,  # Use most recently used connections first (better performance)
         connect_args={
             "command_timeout": settings.db_statement_timeout / 1000,  # Convert ms to seconds
             "server_settings": {

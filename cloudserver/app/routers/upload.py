@@ -1,29 +1,32 @@
 """
 Upload router for client data uploads with HMAC signature validation.
+
+This router handles HTTP concerns (authentication, rate limiting, error handling)
+and delegates business logic to the service layer for better testability.
 """
 import time
-import re
-import json
 import hashlib
 import hmac
 import secrets
 import asyncio
-from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, File, UploadFile, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.audit import log_client_submission
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.core.metric_extraction import extract_metrics
-from app.models import APIKey, ModemCheck
+from app.models import APIKey
 from app.schemas.modem_check import ModemCheckUploadResponse
 from app.middleware.auth import get_client_ip, get_user_agent
+from app.services.upload_service import UploadService, UploadValidationError
 
 router = APIRouter(prefix="/api/upload", tags=["Upload"])
+
+# HMAC signature validation constants
+TIMESTAMP_WINDOW_SECONDS = 300  # 5 minutes - prevents replay attacks
 
 
 def validate_request_signature(
@@ -51,8 +54,8 @@ def validate_request_signature(
     # Check timestamp within 5 minutes to prevent replay attacks
     current_time = int(time.time())
     time_diff = abs(current_time - request_time)
-    if time_diff > 300:  # 5 minutes
-        return False, f"Request timestamp too old (difference: {time_diff}s, max: 300s)"
+    if time_diff > TIMESTAMP_WINDOW_SECONDS:
+        return False, f"Request timestamp too old (difference: {time_diff}s, max: {TIMESTAMP_WINDOW_SECONDS}s)"
 
     # Compute expected signature using HMAC-SHA256 (matches Go client)
     message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
@@ -127,6 +130,9 @@ async def upload_check(
     """
     Upload modem check data from Go clients.
 
+    This endpoint handles HTTP-level concerns (authentication, rate limiting)
+    and delegates business logic to the service layer for better testability.
+
     Security features:
     - API key validation (timing-safe)
     - HMAC-SHA256 signature verification
@@ -142,14 +148,7 @@ async def upload_check(
     # Create API key hash for logging
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
 
-    # Step 1: Check for required parameters FIRST (no DB operations)
-    if not modem_id or not filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing modem_id or filename"
-        )
-
-    # Step 2: Validate HMAC signature BEFORE any database operations
+    # Step 1: Validate HMAC signature BEFORE any database operations
     # This rejects invalid requests early without expensive DB queries
     if not x_request_timestamp or not x_request_signature:
         raise HTTPException(
@@ -167,7 +166,7 @@ async def upload_check(
             detail=f"Signature validation failed: {sig_error}"
         )
 
-    # Step 3: API key brute force protection (Redis only, no DB)
+    # Step 2: API key brute force protection (Redis only, no DB)
     from app.core.security import check_api_key_lockout, record_failed_api_key, clear_failed_api_keys
 
     is_locked, remaining_seconds = await check_api_key_lockout(client_ip)
@@ -177,7 +176,7 @@ async def upload_check(
             detail=f"Too many failed API key attempts. Try again in {remaining_seconds} seconds."
         )
 
-    # Step 4: Validate API key (FIRST DATABASE OPERATION - only after signature validated)
+    # Step 3: Validate API key (FIRST DATABASE OPERATION - only after signature validated)
     is_valid, key_name = await validate_and_get_api_key(api_key, db)
     if not is_valid:
         # Record failed attempt in Redis (even in test mode, for brute force tests to verify)
@@ -187,124 +186,31 @@ async def upload_check(
             detail="Invalid or inactive API key"
         )
 
-    # Step 5: Validate input formats (no DB operations)
-    # Validate modem_id format: MODEL-MACADDRESS (e.g., XB8-AA:BB:CC:DD:EE:FF)
-    # Model can be alphanumeric with underscores, MAC address uses hex digits and colons
-    if not re.match(r'^[a-zA-Z0-9_]+-[A-Fa-f0-9:]+$', modem_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid modem_id format (expected: MODEL-MACADDRESS)"
-        )
-
-    # Validate filename format (supports optional UUID suffix for uniqueness)
-    # Examples: 2024-01-01_12-00-00.json, 2024-01-01_12-00-00_123.json, 2024-01-01_12-00-00_a1b2c3d4.json
-
-    # Security: Prevent path traversal attacks
-    if '..' in filename or '/' in filename or '\\' in filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename format (path traversal attempt detected)"
-        )
-
-    if not re.match(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_[a-zA-Z0-9]+)?\.json$', filename):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename format"
-        )
-
-    # Read file data
+    # Step 4: Read file data (before service layer processing)
     file_data = await file.read(settings.max_upload_size + 1)
 
-    if len(file_data) > settings.max_upload_size:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size exceeds {settings.max_upload_size // (1024*1024)}MB limit"
-        )
-
-    # Validate checksum
-    if not checksum:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing checksum field (upgrade client to v6.0.0+)"
-        )
-
-    server_checksum = hashlib.sha256(file_data).hexdigest()
-    if not secrets.compare_digest(checksum.lower(), server_checksum.lower()):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Checksum validation failed"
-        )
-
-    # Parse JSON data
+    # Step 5: Process upload using service layer
+    upload_service = UploadService()
     try:
-        json_data = json.loads(file_data.decode('utf-8'))
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid JSON data: {str(e)}"
+        saved_check, modem_type, modem_mac, original_filename, check_time_str = await upload_service.process_upload(
+            modem_id=modem_id,
+            filename=filename,
+            checksum=checksum,
+            file_data=file_data,
+            max_file_size=settings.max_upload_size,
+            db=db
         )
-
-    # Extract sysinfo
-    sysinfo = json_data.get('sysinfo', {})
-    modem_type = sysinfo.get('modemtype', 'unknown')
-    modem_mac = sysinfo.get('modemmac', 'unknown')
-    check_time_raw = sysinfo.get('checktime')
-
-    # Parse check_time (handle both Unix timestamp and ISO string formats)
-    check_time = None
-    check_time_str = None
-    if check_time_raw:
-        try:
-            # If it's a Unix timestamp (integer), convert to datetime and ISO string
-            if isinstance(check_time_raw, int):
-                check_time = datetime.utcfromtimestamp(check_time_raw)
-                check_time_str = check_time.isoformat() + 'Z'
-            else:
-                # If it's already an ISO string
-                check_time_str = str(check_time_raw)
-                check_time = datetime.fromisoformat(check_time_str.replace('Z', '+00:00'))
-        except Exception:
-            check_time = None
-            check_time_str = None
-
-    # Extract metrics from JSON data for efficient querying
-    extracted_metrics = extract_metrics(json_data)
+    except UploadValidationError as e:
+        # Convert service layer errors to HTTP exceptions
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=e.message
+        )
 
     # All validation passed - clear failed API key attempts
     await clear_failed_api_keys(client_ip)
 
-    # Insert into database with extracted metrics
-    db_filename = f"{modem_id}/{filename}"
-    new_check = ModemCheck(
-        modem_id=modem_id,
-        modem_type=modem_type,
-        check_time=check_time or datetime.utcnow(),
-        filename=db_filename,
-        full_data=json_data,
-        created_at=datetime.utcnow(),
-        # Extracted metrics for efficient querying
-        **extracted_metrics
-    )
-
-    try:
-        db.add(new_check)
-        await db.commit()
-        await db.refresh(new_check)
-    except Exception as e:
-        await db.rollback()
-        # Check if duplicate
-        if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Check already exists"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database error"
-            )
-
-    # Log successful submission
+    # Step 6: Log successful submission
     processing_time_ms = int((time.time() - start_time) * 1000)
     await log_client_submission(
         db=db,
@@ -314,9 +220,9 @@ async def upload_check(
         modem_id=modem_id,
         modem_type=modem_type,
         modem_mac=modem_mac,
-        filename=filename,
+        filename=original_filename,
         file_size=len(file_data),
-        check_time=check_time,
+        check_time=saved_check.check_time,
         user_agent=user_agent,
         success=True,
         processing_time_ms=processing_time_ms
@@ -325,7 +231,7 @@ async def upload_check(
     return ModemCheckUploadResponse(
         success=True,
         message="Check uploaded successfully",
-        database_id=new_check.id,
+        database_id=saved_check.id,
         modem_id=modem_id,
         check_time=check_time_str
     )

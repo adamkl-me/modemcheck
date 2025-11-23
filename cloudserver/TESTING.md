@@ -149,7 +149,33 @@ def test_zip_bomb_detection():
 - Deterministic and repeatable
 - High code coverage
 
-### 3. UI Tests (`tests/ui/`)
+### 3. Service Layer Tests (`tests/unit/test_upload_service.py`, `tests/unit/test_cache_fallback.py`)
+
+**What they test:**
+- Business logic validation (modem_id, filename formats)
+- File processing (checksum, JSON parsing, sysinfo extraction)
+- Database persistence (success, duplicate detection, error handling)
+- Cache operations (LRU eviction, expiration, pipeline atomicity)
+- Complete workflow integration
+
+**Example:**
+```python
+async def test_validate_modem_id_valid():
+    """Valid modem_id formats should pass validation."""
+    validator = InputValidator()
+    validator.validate_modem_id("XB8-AA:BB:CC:DD:EE:FF")  # Should not raise
+```
+
+**Characteristics:**
+- Tests pure business logic without HTTP concerns
+- No mocking of requests, forms, or HTTP headers needed
+- Fast execution (no Docker container overhead)
+- 97% coverage on service layer
+- Demonstrates improved testability from service extraction
+
+**Test count:** 73 tests (28 upload service + 45 cache fallback)
+
+### 4. UI Tests (`tests/ui/`)
 
 **What they test:**
 - Browser rendering and JavaScript

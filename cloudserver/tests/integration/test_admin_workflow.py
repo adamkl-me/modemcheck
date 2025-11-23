@@ -85,11 +85,15 @@ class TestAdminUserManagement:
         )
         assert create_response.status_code == 200
 
+        # Get fresh CSRF token (one-time use tokens)
+        session_resp = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token2 = session_resp.json()["csrf_token"]
+
         # Promote to elevated - use username instead of ID
         update_response = await admin_client_with_token.put(
             "/api/users/promote_user/role",
             json={"role": "elevated"},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token2}
         )
 
         assert update_response.status_code == 200
@@ -123,10 +127,14 @@ class TestAdminUserManagement:
         )
         assert create_response.status_code == 200
 
+        # Get fresh CSRF token (one-time use tokens)
+        session_resp = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token2 = session_resp.json()["csrf_token"]
+
         # Delete user - use username endpoint
         delete_response = await admin_client_with_token.delete(
             "/api/users/delete_user",
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token2}
         )
 
         assert delete_response.status_code == 200
@@ -230,21 +238,29 @@ class TestAPIKeyLifecycle:
         )
         old_key = create_response.json()["api_key"]
 
+        # Get fresh CSRF token for delete (one-time use tokens)
+        session_resp = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token2 = session_resp.json()["csrf_token"]
+
         # Delete old key
         preview = f"{old_key[:4]}...{old_key[-4:]}"
         delete_response = await admin_client_with_token.request(
             "DELETE",
             "/api/admin/api_keys",
             json={"api_key_preview": preview},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token2}
         )
         assert delete_response.status_code == 200
+
+        # Get fresh CSRF token for new key creation (one-time use tokens)
+        session_resp3 = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token3 = session_resp3.json()["csrf_token"]
 
         # Create new key
         create_new_response = await admin_client_with_token.post(
             "/api/admin/api_keys",
             json={"name": "rotation_key_new"},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token3}
         )
         new_key = create_new_response.json()["api_key"]
 

@@ -10,6 +10,14 @@ import (
 	"strings"
 )
 
+// Pre-compiled regex patterns for performance
+var (
+	dm1000MACRe           = regexp.MustCompile(`"name":"wan0".*?"mac":"([^"]+)"`)
+	dm1000TimeRe          = regexp.MustCompile(`<td  align="left" id ="time_date">([^<]+)`)
+	dm1000UptimeRe        = regexp.MustCompile(`(?s)str_status16.*?<td.*?align="left">([^<]+)</td>`)
+	dm1000MACValidationRe = regexp.MustCompile(`^[0-9A-F]{12}$`)
+)
+
 // DM1000Scraper handles Sercomm DM1000 cable modems.
 type DM1000Scraper struct{
 	client       *http.Client
@@ -82,12 +90,11 @@ func (s *DM1000Scraper) GetMAC() (string, error) {
 		s.logger.Log(fmt.Sprintf("Failed to read MAC address page: %v", err))
 		return "", fmt.Errorf("failed to read interface parameters: %w", err)
 	}
-	re := regexp.MustCompile(`"name":"wan0".*?"mac":"([^"]+)"`)
-	matches := re.FindStringSubmatch(string(body))
+	matches := dm1000MACRe.FindStringSubmatch(string(body))
 
 	if len(matches) > 1 {
 		mac := strings.ToUpper(strings.ReplaceAll(matches[1], ":", ""))
-		if matched, _ := regexp.MatchString(`^[0-9A-F]{12}$`, mac); matched {
+		if dm1000MACValidationRe.MatchString(mac) {
 			s.logger.Log(fmt.Sprintf("Successfully retrieved modem WAN MAC address: %s", mac))
 			return mac, nil
 		}
@@ -115,14 +122,12 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	// Extract system time
-	timeRe := regexp.MustCompile(`<td  align="left" id ="time_date">([^<]+)`)
-	if matches := timeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
+	if matches := dm1000TimeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
 		data.SysInfo.SysTime = parseModemTime("dm1000-system", strings.TrimSpace(matches[1]))
 	}
 
 	// Extract uptime - matches pattern: dw(str_status16) followed by <td> with uptime value
-	uptimeRe := regexp.MustCompile(`(?s)str_status16.*?<td.*?align="left">([^<]+)</td>`)
-	if matches := uptimeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
+	if matches := dm1000UptimeRe.FindStringSubmatch(string(statusBody)); len(matches) > 1 {
 		data.SysInfo.Uptime = parseUptimeToSeconds(strings.TrimSpace(matches[1]))
 	}
 

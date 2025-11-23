@@ -290,13 +290,16 @@ class TestAPIKeyRotation:
         # Should work (or fail for other reasons, not auth)
         assert response.status_code != 401, "New key should work initially"
 
-        # Delete the key (rotation scenario)
+        # Delete the key (rotation scenario) - need fresh CSRF token (one-time use)
+        session_resp = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token2 = session_resp.json()["csrf_token"]
+
         preview = f"{old_key[:4]}...{old_key[-4:]}"
         delete_response = await admin_client_with_token.request(
             "DELETE",
             "/api/admin/api_keys",
             json={"api_key_preview": preview},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token2}
         )
         assert delete_response.status_code == 200
 
@@ -354,13 +357,16 @@ class TestAPIKeyRotation:
                 }
             )
 
-        # Delete the key
+        # Delete the key - need fresh CSRF token (one-time use)
+        session_resp = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token2 = session_resp.json()["csrf_token"]
+
         preview = f"{api_key[:4]}...{api_key[-4:]}"
         await admin_client_with_token.request(
             "DELETE",
             "/api/admin/api_keys",
             json={"api_key_preview": preview},
-            headers={"X-CSRF-Token": csrf_token}
+            headers={"X-CSRF-Token": csrf_token2}
         )
 
         # Key should be invalid immediately (cache invalidated)
@@ -387,12 +393,16 @@ class TestAPIKeyComplexity:
 
     @pytest.mark.asyncio
     async def test_api_key_entropy(
-        self, admin_client_with_token: httpx.AsyncClient, csrf_token: str
+        self, admin_client_with_token: httpx.AsyncClient
     ):
         """Test that generated API keys have sufficient entropy."""
         # Create multiple API keys
         keys = []
         for i in range(10):
+            # Get fresh CSRF token for each iteration (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             response = await admin_client_with_token.post(
                 "/api/admin/api_keys",
                 json={"name": f"entropy_test_{i}"},
@@ -430,6 +440,10 @@ class TestAPIKeyComplexity:
 
         # Clean up created keys
         for key in keys:
+            # Get fresh CSRF token for each deletion (one-time use tokens)
+            session_resp = await admin_client_with_token.get("/api/auth/session_check")
+            csrf_token = session_resp.json()["csrf_token"]
+
             preview = f"{key[:4]}...{key[-4:]}"
             await admin_client_with_token.request(
                 "DELETE",
