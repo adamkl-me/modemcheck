@@ -39,6 +39,7 @@ coverage*.html
 # Configuration files (may contain passwords/API keys)
 config.json
 *.local.json
+.vscode/
 
 # Claude AI
 .claude/

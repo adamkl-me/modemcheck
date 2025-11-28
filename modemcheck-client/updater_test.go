@@ -76,6 +76,11 @@ func TestShouldUpdateVersion(t *testing.T) {
 		{name: "patch upgrade", currentVersion: "1.0.0", latestVersion: "1.0.1", wantUpdate: true, wantErr: false},
 		{name: "patch downgrade", currentVersion: "1.0.1", latestVersion: "1.0.0", wantUpdate: false, wantErr: false},
 
+		// Double-digit version components (ensures numeric, not lexicographic comparison)
+		{name: "double-digit minor upgrade", currentVersion: "5.9.0", latestVersion: "5.10.0", wantUpdate: true, wantErr: false},
+		{name: "double-digit minor downgrade", currentVersion: "5.10.0", latestVersion: "5.9.0", wantUpdate: false, wantErr: false},
+		{name: "double-digit patch upgrade", currentVersion: "5.0.9", latestVersion: "5.0.10", wantUpdate: true, wantErr: false},
+
 		// Same version
 		{name: "same version", currentVersion: "1.0.0", latestVersion: "1.0.0", wantUpdate: false, wantErr: false},
 

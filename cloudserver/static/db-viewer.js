@@ -34,7 +34,60 @@ function formatUptime(seconds) {
 let allChecks = [];
 let currentCheckIndex = 0;
 let charts = {};
+let csrfToken = null;
 const API_BASE = window.API_CONFIG?.baseUrl || '';
+
+// CSRF token helpers
+function updateCsrfFromResponse(response) {
+    const newToken = response.headers.get('X-New-CSRF-Token');
+    if (newToken) {
+        csrfToken = newToken;
+    }
+}
+
+async function refreshCsrfToken() {
+    const sessionResp = await fetch('/api/auth/session_check', { credentials: 'same-origin' });
+    const sessionData = await sessionResp.json();
+    csrfToken = sessionData.csrf_token;
+    return csrfToken;
+}
+
+/**
+ * Fetch wrapper that handles CSRF tokens automatically.
+ * - Adds CSRF token to request headers
+ * - Updates token from response headers
+ * - Automatically retries once on CSRF failure
+ */
+async function fetchWithCsrf(url, options = {}) {
+    if (!csrfToken) await refreshCsrfToken();
+
+    options.headers = {
+        ...options.headers,
+        'X-CSRF-Token': csrfToken
+    };
+    options.credentials = 'same-origin';
+
+    const response = await fetch(url, options);
+    updateCsrfFromResponse(response);
+
+    // If CSRF error and we got a new token, retry once
+    if (response.status === 403 && csrfToken) {
+        const clonedResponse = response.clone();
+        try {
+            const data = await clonedResponse.json();
+            if (data.detail && data.detail.includes('CSRF')) {
+                options.headers['X-CSRF-Token'] = csrfToken;
+                const retryResponse = await fetch(url, options);
+                updateCsrfFromResponse(retryResponse);
+                return retryResponse;
+            }
+        } catch (e) {
+            // JSON parse failed
+        }
+    }
+
+    return response;
+}
 
 // Check authentication before initializing
 async function checkAuth() {
@@ -57,6 +110,8 @@ async function checkAuth() {
             return false;
         }
 
+        // Store CSRF token for subsequent requests
+        csrfToken = data.csrf_token;
 
         // Show the page content now that auth is verified
         document.querySelector('.container').classList.add('authenticated');
@@ -89,6 +144,12 @@ async function checkAuth() {
 
 // Show password change dialog
 function showPasswordChangeDialog() {
+    // Hide any existing status/error messages while password change dialog is visible
+    const statusDiv = document.getElementById('statusMessage');
+    if (statusDiv) {
+        statusDiv.textContent = '';
+    }
+
     const dialog = document.createElement('div');
     dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
     dialog.innerHTML = `
@@ -273,7 +334,8 @@ function showPasswordChangeDialog() {
             
             if (data.success) {
                 document.body.removeChild(dialog);
-                alert('Password changed successfully!');
+                // Reload page to refresh auth state and clear any error messages
+                window.location.reload();
             } else {
                 errorDiv.textContent = data.error || 'Failed to change password';
                 errorDiv.style.display = 'block';
@@ -288,8 +350,14 @@ function showPasswordChangeDialog() {
 // Logout function
 async function logout() {
     try {
+        // Get fresh token if we don't have one
+        if (!csrfToken) await refreshCsrfToken();
+
         await fetch('/api/auth/logout', {
             method: 'POST',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            },
             credentials: 'same-origin'
         });
 

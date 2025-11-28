@@ -44,14 +44,19 @@ class Settings(BaseSettings):
     account_lockout_duration: int = Field(default=1800, description="Account lockout duration in seconds (30 min)")
     min_password_length: int = Field(default=12, description="Minimum password length")
 
-    # Database
+    # Database Connection Pool
+    # SCALING LIMITS: With default settings (25 pool + 10 overflow) × 4 workers = 140 max connections
+    # PostgreSQL default max_connections is typically 100-200. Before scaling horizontally:
+    # 1. Check PostgreSQL max_connections: SHOW max_connections;
+    # 2. Consider PgBouncer for connection pooling at scale (1000+ clients)
+    # 3. Each additional worker adds (pool_size + max_overflow) connections
     database_url: str = Field(..., description="PostgreSQL database URL (REQUIRED)")
-    db_pool_size: int = Field(default=25, description="Database connection pool size per worker (25 × 4 workers = 100 connections)")
-    db_max_overflow: int = Field(default=10, description="Max connections beyond pool_size (allows bursts to 140 total)")
-    db_pool_recycle: int = Field(default=3600, description="Connection recycle time in seconds")
-    db_pool_timeout: int = Field(default=30, description="Timeout waiting for connection from pool")
-    db_statement_timeout: int = Field(default=60000, description="Statement timeout in milliseconds")
-    db_echo: bool = Field(default=False, description="Echo SQL queries (debug)")
+    db_pool_size: int = Field(default=25, description="Connection pool size per worker. Total = pool_size × workers")
+    db_max_overflow: int = Field(default=10, description="Burst connections beyond pool_size. Total max = (pool_size + overflow) × workers")
+    db_pool_recycle: int = Field(default=3600, description="Connection recycle time in seconds (prevents stale connections)")
+    db_pool_timeout: int = Field(default=30, description="Timeout waiting for connection from pool (increase for high concurrency)")
+    db_statement_timeout: int = Field(default=60000, description="Statement timeout in milliseconds (prevents long-running queries)")
+    db_echo: bool = Field(default=False, description="Echo SQL queries (debug only, disable in production)")
 
     # Redis
     redis_host: str = Field(default="localhost", description="Redis host")
@@ -67,11 +72,18 @@ class Settings(BaseSettings):
     )
 
     # Rate Limiting
-    upload_rate_limit: str = Field(default="60/minute", description="Upload endpoint rate limit")
-    auth_rate_limit: str = Field(default="30/minute", description="Auth endpoint rate limit")
-    api_query_rate_limit: str = Field(default="300/second", description="API query endpoint rate limit")
+    # SCALING CONSIDERATIONS: Rate limits are per-IP. At scale (1000+ clients):
+    # - upload_rate_limit: 1000 clients × 60/min = 60k uploads/min capacity
+    # - config_sync_rate_limit: 1000 clients × 5/hr = 5000 syncs/hr - increase if clients retry frequently
+    # - During deployments or bulk config pushes, temporarily increase limits or disable rate limiting
+    # Format: "{count}/{period}" where period is: second, minute, hour, day
+    upload_rate_limit: str = Field(default="60/minute", description="Upload endpoint rate limit per IP")
+    auth_rate_limit: str = Field(default="30/minute", description="Auth endpoint rate limit (brute-force protection)")
+    api_query_rate_limit: str = Field(default="300/second", description="API query endpoint rate limit (high for dashboards)")
     api_admin_rate_limit: str = Field(default="100/minute", description="Admin endpoint rate limit")
-    api_data_mgmt_rate_limit: str = Field(default="50/minute", description="Data management endpoint rate limit")
+    api_data_mgmt_rate_limit: str = Field(default="50/minute", description="Data management endpoint rate limit (bulk ops)")
+    config_preflight_rate_limit: str = Field(default="10/hour", description="Config preflight check rate limit per client IP")
+    config_sync_rate_limit: str = Field(default="5/hour", description="Config sync endpoint rate limit per client IP")
 
     # File Upload Limits
     max_upload_size: int = Field(default=10 * 1024 * 1024, description="Max upload size in bytes (10MB)")

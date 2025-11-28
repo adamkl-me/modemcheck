@@ -88,7 +88,8 @@ func loadUploadQueue() (*UploadQueue, error) {
 	return queue, nil
 }
 
-// saveUploadQueue saves the upload queue to disk.
+// saveUploadQueue saves the upload queue to disk using atomic write.
+// Uses temp file + rename to prevent corruption if the process crashes during write.
 func saveUploadQueue(queue *UploadQueue) error {
 	// Ensure directory exists
 	dir := filepath.Dir(queueFilePath)
@@ -101,7 +102,20 @@ func saveUploadQueue(queue *UploadQueue) error {
 		return err
 	}
 
-	return os.WriteFile(queueFilePath, data, 0644)
+	// Write to temporary file first (atomic write pattern)
+	tmpFile := queueFilePath + ".tmp"
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+
+	// Atomic rename (on most filesystems, rename is atomic)
+	if err := os.Rename(tmpFile, queueFilePath); err != nil {
+		// Clean up temp file on failure
+		os.Remove(tmpFile)
+		return fmt.Errorf("failed to rename temp file: %w", err)
+	}
+
+	return nil
 }
 
 // addToUploadQueue adds a failed upload to the queue or updates an existing entry.
@@ -219,18 +233,13 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	remoteDirName := modemID
 	remoteFileName := filepath.Base(localFile)
 
-	// SECURITY: Cloud API key transmission uses HTTPS by default
-	// HTTP is ONLY allowed when ALL of these conditions are met:
-	// 1. EnforceHTTPS=false (not strictly enforcing HTTPS)
-	// 2. InsecureTLS=true (explicitly allowing insecure connections)
-	// 3. Host is on a private network (not public internet)
+	// SECURITY: Cloud API key transmission always uses HTTPS
+	// InsecureTLS only skips certificate validation (for self-signed certs)
+	// but still encrypts traffic to protect API keys
 	protocol := "https"
-	host := strings.ToLower(m.config.CloudHost)
 
-	// Only allow HTTP if user explicitly disabled HTTPS enforcement AND enabled insecure TLS for private networks
-	if !m.config.EnforceHTTPS && m.config.InsecureTLS && isPrivateNetwork(host) {
-		m.Log("WARNING: Using HTTP for API key transmission (InsecureTLS enabled for private network)")
-		protocol = "http"
+	if m.config.InsecureTLS {
+		m.Log("WARNING: InsecureTLS enabled - certificate validation disabled but HTTPS still enforced")
 	}
 
 	// Build upload URL

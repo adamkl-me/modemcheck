@@ -62,8 +62,10 @@ class TestCSRFTokenOneTimeUse:
         csrf_token = await generate_csrf_token(session_id)
         csrf_key = f"csrf:{csrf_token}"
 
-        # Verify token exists in cache
-        stored_value = await test_cache.current_backend.get(csrf_key)
+        # Verify token exists in cache by using the cache_provider (same as CSRF functions)
+        from app.core.cache_provider import get_cache
+        cache = await get_cache()
+        stored_value = await cache.get(csrf_key)
         assert stored_value is not None
         assert stored_value == session_id
 
@@ -71,7 +73,7 @@ class TestCSRFTokenOneTimeUse:
         await validate_csrf_token(csrf_token, session_id)
 
         # Verify token was deleted from cache
-        stored_value_after = await test_cache.current_backend.get(csrf_key)
+        stored_value_after = await cache.get(csrf_key)
         assert stored_value_after is None
 
     async def test_multiple_tokens_independent(self, test_cache):
@@ -233,7 +235,9 @@ class TestCSRFTokenAtomicity:
         is_valid = await validate_csrf_token(csrf_token, session_id)
         assert is_valid is True  # GET returned the session_id
 
-        # Token should be gone from cache
+        # Token should be gone from cache (use cache_provider same as CSRF functions)
+        from app.core.cache_provider import get_cache
+        cache = await get_cache()
         csrf_key = f"csrf:{csrf_token}"
-        stored_value = await test_cache.current_backend.get(csrf_key)
+        stored_value = await cache.get(csrf_key)
         assert stored_value is None  # DELETE executed

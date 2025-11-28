@@ -103,14 +103,18 @@ async def login(
     await clear_failed_logins(login_data.username)
 
     # Upgrade password hash if needed (PBKDF2 → Argon2id)
+    # Uses optimistic locking to handle concurrent login attempts safely
     if needs_upgrade:
         new_hash = hash_password(login_data.password)
-        await db.execute(
+        result = await db.execute(
             update(User)
             .where(User.username == login_data.username)
+            .where(User.password_hash == user.password_hash)  # Optimistic lock
             .values(password_hash=new_hash)
         )
-        await db.commit()
+        if result.rowcount > 0:
+            await db.commit()
+        # If rowcount == 0, another request already upgraded - that's fine
 
     # Update last login info
     await db.execute(

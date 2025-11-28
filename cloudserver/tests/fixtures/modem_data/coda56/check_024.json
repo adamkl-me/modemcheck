@@ -1,0 +1,484 @@
+{
+  "rx": [
+    {
+      "snr": "37.636",
+      "power": "0.900",
+      "octets": "13578059",
+      "portid": "1",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.900",
+      "octets": "13578221",
+      "portid": "2",
+      "frequency": "591000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.300",
+      "octets": "13578335",
+      "portid": "3",
+      "frequency": "597000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.258",
+      "power": "1.200",
+      "octets": "13578447",
+      "portid": "4",
+      "frequency": "603000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.600",
+      "octets": "13578569",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "13578735",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.800",
+      "octets": "13578868",
+      "portid": "7",
+      "frequency": "609000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "13578981",
+      "portid": "8",
+      "frequency": "615000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.400",
+      "octets": "13579111",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.700",
+      "octets": "13579230",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "13579340",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.400",
+      "octets": "13579450",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.100",
+      "octets": "13579598",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.400",
+      "octets": "13579719",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.800",
+      "octets": "13579851",
+      "portid": "15",
+      "frequency": "663000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "0.500",
+      "octets": "13579972",
+      "portid": "16",
+      "frequency": "279000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.936",
+      "power": "0.800",
+      "octets": "13580084",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.700",
+      "octets": "13580216",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.000",
+      "octets": "13580329",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.936",
+      "power": "1.200",
+      "octets": "13580491",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.500",
+      "octets": "13580612",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.000",
+      "octets": "13580747",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.700",
+      "octets": "13580887",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.400",
+      "octets": "13581018",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "13581132",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.100",
+      "octets": "13581243",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.600",
+      "octets": "13581703",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.900",
+      "octets": "13581832",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.800",
+      "octets": "13581945",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.700",
+      "octets": "13582066",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.800",
+      "octets": "13582178",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "2.700",
+      "octets": "13582376",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "40.750",
+      "portid": "1",
+      "frequency": "38700000"
+    },
+    {
+      "power": "44.250",
+      "portid": "2",
+      "frequency": "21100000"
+    },
+    {
+      "power": "40.500",
+      "portid": "3",
+      "frequency": "32300000"
+    },
+    {
+      "power": "41.000",
+      "portid": "4",
+      "frequency": "25900000"
+    }
+  ],
+  "asn": "AS64498",
+  "rxofdm": [
+    {
+      "octets": "13217123075",
+      "plcsnr": "40",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "1.000000",
+      "correcteds": "3420736370",
+      "uncorrectds": "55925",
+      "subcarr0freq": " 275600000"
+    },
+    {
+      "octets": "25440429318",
+      "plcsnr": "38",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "2.700001",
+      "correcteds": "5783485715",
+      "uncorrectds": "56619",
+      "subcarr0freq": " 827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "   41.0000",
+      "state": "   OPERATE",
+      "portid": "0",
+      "subcarr0freq": "42000000"
+    },
+    {
+      "power": "    0.0000",
+      "state": "  DISABLED",
+      "portid": "1",
+      "subcarr0freq": "0"
+    }
+  ],
+  "ip_city": "Example City",
+  "sysinfo": {
+    "uptime": 107721,
+    "systime": 1763615100,
+    "firmware": "7.2.4.7.1b7",
+    "modemmac": "AABBCC070809",
+    "checktime": 1763615101,
+    "modemtype": "CODA56",
+    "detection_status": "success"
+  },
+  "eventlog": [
+    {
+      "id": "74010100",
+      "time": 1763594933,
+      "event": "CM-STATUS message sent.  Event Type Code: 24; Chan ID: 33; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: 2.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763594553,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763594508,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593617,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593612,
+      "event": "CM-STATUS message sent.  Event Type Code: 2; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593610,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593610,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593608,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593506,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593505,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593505,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593504,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593504,
+      "event": "CM-STATUS message sent.  Event Type Code: 2; Chan ID: 16; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593503,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593503,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593501,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593501,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 21; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593499,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763593497,
+      "event": "CM-STATUS message sent.  Event Type Code: 2; Chan ID: 16; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763593496,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "isp_name": "Test ISP Gamma",
+  "client_os": "linux",
+  "public_ip": "203.0.113.30",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": -2,
+  "iperf3test_ul": -2,
+  "client_version": "7.0.0",
+  "ping_google_avg": "21.8",
+  "ping_google_loss": "0.0%",
+  "speedtest_enabled": true,
+  "ping_google_jitter": "1.8",
+  "ping_cloudflare_avg": "21.8",
+  "ping_cloudflare_loss": "0.0%",
+  "ping_cloudflare_jitter": "2.2",
+  "ping_google_max_latency": "30.0",
+  "ping_cloudflare_max_latency": "26.4"
+}

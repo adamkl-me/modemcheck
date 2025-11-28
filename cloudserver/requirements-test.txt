@@ -10,6 +10,7 @@ pytest-timeout==2.2.0  # Test timeouts
 # HTTP testing
 httpx==0.25.2
 pytest-httpx==0.27.0
+aiohttp==3.11.11  # For URL reachability testing (fixed CVE-2024-23334, CVE-2024-30251)
 
 # Playwright for UI testing
 playwright==1.40.0
@@ -32,6 +33,9 @@ locust==2.17.0  # Load testing framework
 coverage[toml]==7.3.4
 pytest-html==4.1.1
 
+# Mutation testing
+mutmut==2.4.4
+
 # Async testing support
 anyio==4.2.0
 trio==0.23.2
@@ -45,5 +49,6 @@ passlib[argon2]==1.7.4
 pydantic==2.5.3
 pydantic-settings==2.1.0
 python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
 uvicorn[standard]==0.25.0
 slowapi==0.1.9

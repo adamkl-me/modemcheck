@@ -618,9 +618,17 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 		buildDate = ""
 	}
 
-	// Verify signature is not too old (prevents rollback attacks)
+	// Verify signature timestamp is reasonable
 	sigAge := time.Since(sigTimestamp)
 	const maxSignatureAge = 30 * 24 * time.Hour // 30 days
+
+	// Check for clock skew (negative age means signature is in the future)
+	if sigAge < 0 {
+		cleanup()
+		return fmt.Errorf("signature timestamp is in the future (clock skew detected)")
+	}
+
+	// Check for rollback attacks (signature too old)
 	if sigAge > maxSignatureAge {
 		cleanup()
 		return fmt.Errorf("signature timestamp too old (%d days), possible rollback attack (max age: 30 days)", int(sigAge.Hours()/24))

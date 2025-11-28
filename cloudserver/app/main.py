@@ -23,7 +23,8 @@ from app.core.init_data import create_default_admin
 from app.core.limiter import limiter
 from app.core.errors import ModemCheckError
 from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.routers import auth, upload, db_api, admin, users, data_mgmt
+from app.middleware.csrf import CSRFResponseMiddleware
+from app.routers import auth, upload, db_api, admin, users, data_mgmt, config
 
 
 @asynccontextmanager
@@ -81,6 +82,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Security headers middleware (must be added before CORS)
 app.add_middleware(SecurityHeadersMiddleware)
 
+# CSRF response middleware - adds X-New-CSRF-Token header after token rotation
+app.add_middleware(CSRFResponseMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -88,6 +92,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-New-CSRF-Token"],  # Allow JS to read CSRF token from response
 )
 
 
@@ -308,6 +313,7 @@ app.include_router(db_api.router)
 app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(data_mgmt.router)
+app.include_router(config.router)
 
 # Root POST endpoint - proxy to upload (allows clients to skip /api/upload path)
 @app.post("/")
@@ -405,6 +411,17 @@ if static_path.exists():
 
         # Authorized - serve admin HTML
         return FileResponse(static_path / "admin.html")
+
+    @app.get("/config-management")
+    async def config_management_page(request: Request):
+        """
+        Configuration management dashboard - now redirects to admin panel.
+
+        Config management has been moved to a subtab in admin.html.
+        This route is kept for backward compatibility.
+        """
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/admin.html", status_code=302)
 
     @app.get("/forbidden")
     async def forbidden_page():

@@ -1,0 +1,443 @@
+{
+  "rx": [
+    {
+      "snr": "38.605377",
+      "power": "5.300003",
+      "octets": "-1561245636",
+      "portid": "1",
+      "frequency": "591000000",
+      "correcteds": "73047",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.800003",
+      "octets": "-1561245528",
+      "portid": "2",
+      "frequency": "597000000",
+      "correcteds": "55157",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.699997",
+      "octets": "-1561245421",
+      "portid": "3",
+      "frequency": "603000000",
+      "correcteds": "81496",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.000000",
+      "octets": "-1561245297",
+      "portid": "4",
+      "frequency": "609000000",
+      "correcteds": "57362",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "-1561245155",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "137896",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.099998",
+      "octets": "-1561245046",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "52082",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.300003",
+      "octets": "-1561244941",
+      "portid": "7",
+      "frequency": "279000000",
+      "correcteds": "95263",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.800003",
+      "octets": "-1561244797",
+      "portid": "8",
+      "frequency": "615000000",
+      "correcteds": "62761",
+      "uncorrectds": "931"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.699997",
+      "octets": "-1561244696",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "2338725",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.300003",
+      "octets": "-1561244596",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "50891",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.099998",
+      "octets": "-1561244454",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "74169",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.000000",
+      "octets": "-1561244347",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "1017428",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.599998",
+      "octets": "-1561244735",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.599998",
+      "octets": "-1561244634",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.800003",
+      "octets": "-1561244364",
+      "portid": "15",
+      "frequency": "663000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "-1561244254",
+      "portid": "16",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.300003",
+      "octets": "-1561244134",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.099998",
+      "octets": "-1561244037",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.400002",
+      "octets": "-1561243895",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "90125",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.699997",
+      "octets": "-1561243671",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "-1561243555",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "351966",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.900002",
+      "octets": "-1561243445",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "3",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "-1561242852",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.500000",
+      "octets": "-1561242744",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "-1561242564",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "4",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.599998",
+      "octets": "-1561242323",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.800003",
+      "octets": "-1561242213",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "6.900002",
+      "octets": "-1561242109",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "6.800003",
+      "octets": "-1561241993",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.400002",
+      "octets": "-1561241848",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.500000",
+      "octets": "-1561241735",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "7.300003",
+      "octets": "-1561241620",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "43.020599",
+      "portid": "0",
+      "frequency": "38.700001"
+    },
+    {
+      "power": "43.260300",
+      "portid": "1",
+      "frequency": "21.100000"
+    },
+    {
+      "power": "43.020599",
+      "portid": "2",
+      "frequency": "32.299999"
+    },
+    {
+      "power": "43.020599",
+      "portid": "3",
+      "frequency": "25.900000"
+    },
+    {
+      "power": "-inf",
+      "portid": "4",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "5",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "6",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "7",
+      "frequency": "9.961089"
+    }
+  ],
+  "rxofdm": [
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "4.800003",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "275600000"
+    },
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "6.900002",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "37.000000",
+      "state": " OPERATE",
+      "portid": "0",
+      "activescs": "786",
+      "minislots": "98",
+      "notusedscs": "2",
+      "excludedscs": "1262",
+      "subcarr0freq": "42.000000",
+      "interfacespeed": "311335024"
+    },
+    {
+      "power": "0.000000",
+      "state": "DISABLED",
+      "portid": "1",
+      "activescs": "0",
+      "minislots": "0",
+      "notusedscs": "0",
+      "excludedscs": "0",
+      "subcarr0freq": "0.000000",
+      "interfacespeed": "0"
+    }
+  ],
+  "sysinfo": {
+    "uptime": 68940,
+    "systime": 1762883516,
+    "firmware": "DM1000-V1.21.04.025",
+    "modemmac": "AABBCC040506",
+    "checktime": 1762883511,
+    "modemtype": "DM1000"
+  },
+  "eventlog": [
+    {
+      "id": "84020100",
+      "time": 67,
+      "event": "Missing Mandatory MDD TLV on primary DS Channel;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 99,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "90000000",
+      "time": 1762814625,
+      "event": "MIMO Event MIMO: Stored MIMO=-1 post cfg file MIMO=-1;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000700",
+      "time": 1762814630,
+      "event": "RCS Partial Service;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82001200",
+      "time": 1762814630,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762814638,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "client_os": "linux",
+  "client_arch": "amd64",
+  "iperf3test_dl": 1086.9,
+  "iperf3test_ul": 190.7,
+  "client_version": "5.4.0",
+  "ping_google_avg": "16.3",
+  "ping_google_loss": "0.0%",
+  "speedtest_jitter": 3,
+  "speedtest_enabled": true,
+  "speedtest_latency": 11.7,
+  "ping_google_jitter": "2.5",
+  "ping_cloudflare_avg": "16.1",
+  "speedtest_server_id": "47304",
+  "ping_cloudflare_loss": "0.0%",
+  "speedtest_max_latency": 18.1,
+  "speedtest_server_name": "Test Speedtest Server",
+  "ping_cloudflare_jitter": "3.4",
+  "ping_google_max_latency": "23.3",
+  "ping_cloudflare_max_latency": "26.7"
+}

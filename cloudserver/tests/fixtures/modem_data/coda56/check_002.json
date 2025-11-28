@@ -1,0 +1,484 @@
+{
+  "rx": [
+    {
+      "snr": "37.636",
+      "power": "0.700",
+      "octets": "81762029",
+      "portid": "1",
+      "frequency": "615000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.000",
+      "octets": "81762172",
+      "portid": "2",
+      "frequency": "591000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.500",
+      "octets": "81762284",
+      "portid": "3",
+      "frequency": "597000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.200",
+      "octets": "81762402",
+      "portid": "4",
+      "frequency": "603000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "81762563",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "81762710",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.900",
+      "octets": "81762843",
+      "portid": "7",
+      "frequency": "609000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.500",
+      "octets": "81762957",
+      "portid": "8",
+      "frequency": "279000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.500",
+      "octets": "81763094",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.800",
+      "octets": "81763206",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.600",
+      "octets": "81763319",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "81763463",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.300",
+      "octets": "81763575",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.500",
+      "octets": "81763688",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.900",
+      "octets": "81763800",
+      "portid": "15",
+      "frequency": "663000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.000",
+      "octets": "81763920",
+      "portid": "16",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.900",
+      "octets": "81764052",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.700",
+      "octets": "81764198",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.000",
+      "octets": "81764311",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.200",
+      "octets": "81764434",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.500",
+      "octets": "81764566",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.200",
+      "octets": "81764679",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.800",
+      "octets": "81764805",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.500",
+      "octets": "81764917",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.600",
+      "octets": "81765029",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.100",
+      "octets": "81765141",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.600",
+      "octets": "81765283",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.900",
+      "octets": "81765430",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.800",
+      "octets": "81765544",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.700",
+      "octets": "81765657",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.093",
+      "power": "1.800",
+      "octets": "81765779",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "2.700",
+      "octets": "81765891",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "40.500",
+      "portid": "1",
+      "frequency": "32300000"
+    },
+    {
+      "power": "40.250",
+      "portid": "2",
+      "frequency": "38700000"
+    },
+    {
+      "power": "44.000",
+      "portid": "3",
+      "frequency": "21100000"
+    },
+    {
+      "power": "40.750",
+      "portid": "4",
+      "frequency": "25900000"
+    }
+  ],
+  "asn": "AS64498",
+  "rxofdm": [
+    {
+      "octets": "32895584314",
+      "plcsnr": "40",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "1.000000",
+      "correcteds": "8309347871",
+      "uncorrectds": "46928",
+      "subcarr0freq": " 275600000"
+    },
+    {
+      "octets": "63644606970",
+      "plcsnr": "38",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "2.599998",
+      "correcteds": "13907523765",
+      "uncorrectds": "47071",
+      "subcarr0freq": " 827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "   40.2500",
+      "state": "   OPERATE",
+      "portid": "0",
+      "subcarr0freq": "42000000"
+    },
+    {
+      "power": "    0.0000",
+      "state": "  DISABLED",
+      "portid": "1",
+      "subcarr0freq": "0"
+    }
+  ],
+  "ip_city": "Example City",
+  "sysinfo": {
+    "uptime": 190079,
+    "systime": 1763004599,
+    "firmware": "7.2.4.7.1b7",
+    "modemmac": "AABBCC070809",
+    "checktime": 1763004601,
+    "modemtype": "CODA56",
+    "detection_status": "success"
+  },
+  "eventlog": [
+    {
+      "id": "74010100",
+      "time": 1762994032,
+      "event": "CM-STATUS message sent.  Event Type Code: 24; Chan ID: 33; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: 2.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1762987384,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762984335,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 17; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762951953,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762909996,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1762900984,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762897474,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762896733,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762890347,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 17; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82001200",
+      "time": 1762814590,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "90000000",
+      "time": 1762814585,
+      "event": "MIMO Event MIMO: Stored MIMO=-1 post cfg file MIMO=-1;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "90000006",
+      "time": 54,
+      "event": "CM Reboot Reason : POWER_ON;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:00:00:00:00:00;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762810428,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 27; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762722649,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762708537,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762706872,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762706695,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762675317,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762670814,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 18; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762667428,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "isp_name": "Test ISP Gamma",
+  "client_os": "linux",
+  "public_ip": "203.0.113.30",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": -2,
+  "iperf3test_ul": -2,
+  "client_version": "5.7.1",
+  "ping_google_avg": "23.1",
+  "ping_google_loss": "0.0%",
+  "speedtest_enabled": true,
+  "ping_google_jitter": "2.1",
+  "ping_cloudflare_avg": "22.4",
+  "ping_cloudflare_loss": "0.0%",
+  "ping_cloudflare_jitter": "1.0",
+  "ping_google_max_latency": "30.2",
+  "ping_cloudflare_max_latency": "24.0"
+}

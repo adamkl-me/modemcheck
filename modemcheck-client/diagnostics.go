@@ -32,6 +32,14 @@ var ipDetectionHTTPClient = &http.Client{
 	},
 }
 
+// Pre-compiled regexes for ping output parsing (compiled once at package init)
+var (
+	pingLossRe      = regexp.MustCompile(`([\d.]+)% (?:packet )?loss`)
+	pingAvgReWin    = regexp.MustCompile(`Average = (\d+)ms`)
+	pingMaxReWin    = regexp.MustCompile(`Maximum = (\d+)ms`)
+	pingStatsReUnix = regexp.MustCompile(`(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+)`)
+)
+
 // ShouldRunSpeedTest determines if a speed test should run based on interval and previous results.
 func (m *ModemCheck) ShouldRunSpeedTest(state *SpeedTestState) bool {
 	if !m.config.SpeedTestEnabled {
@@ -77,11 +85,16 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 		return true // Return true since skipping is not a failure
 	}
 
-	m.Log("Running speed test using public servers...")
+	m.Log(fmt.Sprintf("Running speed test using public servers (%d parallel connections)...", m.config.SpeedTestConnections))
 	state.LastSpeedTest = state.RunCount
 
-	// Fetch server list
-	serverList, err := speedtest.FetchServers()
+	// Create speedtest client with configured number of parallel connections
+	client := speedtest.New(speedtest.WithUserConfig(&speedtest.UserConfig{
+		MaxConnections: m.config.SpeedTestConnections,
+	}))
+
+	// Fetch server list using the configured client
+	serverList, err := client.FetchServers()
 	if err != nil {
 		m.Log(fmt.Sprintf("Failed to fetch server list: %v", err))
 		data.SpeedTestUpload = -1
@@ -353,6 +366,22 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 		}
 	}
 
+	// Validate per-label length (RFC 1035: max 63 chars per label)
+	// Skip for IPv6 addresses (contain colons)
+	if !strings.Contains(host, ":") {
+		labels := strings.Split(host, ".")
+		for _, label := range labels {
+			if len(label) > 63 {
+				m.Log(fmt.Sprintf("Invalid hostname label length: %d (max 63)", len(label)))
+				return "", "", "", ""
+			}
+			if len(label) == 0 {
+				m.Log("Invalid hostname: empty label")
+				return "", "", "", ""
+			}
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
 	defer cancel()
 
@@ -374,24 +403,21 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 
 	outputStr := string(output)
 
-	// Parse packet loss (rounded to 1 decimal)
-	lossRe := regexp.MustCompile(`([\d.]+)% (?:packet )?loss`)
-	if matches := lossRe.FindStringSubmatch(outputStr); len(matches) > 1 {
+	// Parse packet loss (rounded to 1 decimal) using pre-compiled regex
+	if matches := pingLossRe.FindStringSubmatch(outputStr); len(matches) > 1 {
 		lossVal, _ := strconv.ParseFloat(matches[1], 64)
 		loss = fmt.Sprintf("%.1f%%", lossVal)
 	}
 
-	// Parse average ping time and other stats
+	// Parse average ping time and other stats using pre-compiled regexes
 	if runtime.GOOS == "windows" {
 		// Windows format: Minimum = 12ms, Maximum = 34ms, Average = 23ms
-		avgRe := regexp.MustCompile(`Average = (\d+)ms`)
-		if matches := avgRe.FindStringSubmatch(outputStr); len(matches) > 1 {
+		if matches := pingAvgReWin.FindStringSubmatch(outputStr); len(matches) > 1 {
 			avgVal, _ := strconv.ParseFloat(matches[1], 64)
 			avg = fmt.Sprintf("%.1f", avgVal)
 		}
 
-		maxRe := regexp.MustCompile(`Maximum = (\d+)ms`)
-		if matches := maxRe.FindStringSubmatch(outputStr); len(matches) > 1 {
+		if matches := pingMaxReWin.FindStringSubmatch(outputStr); len(matches) > 1 {
 			maxVal, _ := strconv.ParseFloat(matches[1], 64)
 			maxLatency = fmt.Sprintf("%.1f", maxVal)
 		}
@@ -399,8 +425,7 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 	} else {
 		// Unix-like systems (Linux, macOS, FreeBSD)
 		// Format: rtt min/avg/max/mdev = 12.345/23.456/34.567/5.678 ms
-		statsRe := regexp.MustCompile(`(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+)`)
-		if matches := statsRe.FindStringSubmatch(outputStr); len(matches) > 4 {
+		if matches := pingStatsReUnix.FindStringSubmatch(outputStr); len(matches) > 4 {
 			avgVal, _ := strconv.ParseFloat(matches[2], 64)
 			avg = fmt.Sprintf("%.1f", avgVal)
 

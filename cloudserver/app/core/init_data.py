@@ -39,13 +39,14 @@ async def create_default_admin():
             # Determine password based on environment
             from app.core.config import settings
             if settings.is_test():
-                password = "AdminPass123!"  # Test password matches test fixtures
+                password = "TestPass123!"  # Test password matches test fixtures
                 must_change = False  # Don't force change in tests
             else:
                 password = "changeme"  # Production default
                 must_change = True  # Force change on first login
 
             # Create default admin user
+            # Use datetime.utcnow() for timezone-naive columns (consistent with model defaults)
             admin_user = User(
                 username="admin",
                 password_hash=hash_password(password),

@@ -195,7 +195,7 @@ class TestRateLimiting:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    @pytest.mark.skip(reason="Rate limiting disabled in test environment to prevent fixture failures")
+    @pytest.mark.requires_production_settings
     async def test_login_rate_limiting(self, http_client: httpx.AsyncClient):
         """Test rate limiting on login endpoint.
 
@@ -205,8 +205,8 @@ class TestRateLimiting:
         - Returns HTTP 429 after threshold exceeded
 
         NOTE: Rate limiting is disabled in test environment (TESTING=true) to prevent
-        test fixtures from hitting rate limits. This test is skipped in test mode.
-        To test rate limiting, run in production mode or with TESTING=false.
+        test fixtures from hitting rate limits. Run with ./scripts/run_security_tests.sh
+        to test with production settings (TESTING=false).
         """
         # Make 35 rapid login attempts to exceed the 30/minute limit
         rate_limited = False
@@ -231,93 +231,94 @@ class TestSessionSecurity:
     """Session management security tests."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Session security tests need session cookie handling investigation")
-    async def test_concurrent_sessions(self, http_client: httpx.AsyncClient, admin_user):
+    async def test_concurrent_sessions(self, http_client: httpx.AsyncClient, admin_user, admin_user_credentials):
         """Test that multiple concurrent sessions are allowed for same user."""
         # Login from "first device"
         response1 = await http_client.post("/api/auth/login", json={
-            "username": admin_user.username,
-            "password": "AdminPass123!"
+            "username": admin_user_credentials["username"],
+            "password": admin_user_credentials["password"]
         })
-        assert response1.status_code == 200
+        assert response1.status_code == 200, f"Login failed: {response1.text}"
         session1 = response1.cookies.get("modemcheck_session")
+        assert session1 is not None, "No session cookie from first login"
 
-        # Login from "second device" (new client)
-        client2 = httpx.AsyncClient(base_url=http_client.base_url)
-        response2 = await client2.post("/api/auth/login", json={
-            "username": admin_user.username,
-            "password": "AdminPass123!"
-        })
-        assert response2.status_code == 200
-        session2 = response2.cookies.get("modemcheck_session")
+        # Login from "second device" (new client with same config)
+        async with httpx.AsyncClient(
+            base_url=http_client.base_url,
+            timeout=30.0,
+            follow_redirects=True
+        ) as client2:
+            response2 = await client2.post("/api/auth/login", json={
+                "username": admin_user_credentials["username"],
+                "password": admin_user_credentials["password"]
+            })
+            assert response2.status_code == 200, f"Second login failed: {response2.text}"
+            session2 = response2.cookies.get("modemcheck_session")
+            assert session2 is not None, "No session cookie from second login"
 
-        # Both sessions should be different
-        assert session1 != session2
+            # Both sessions should be different
+            assert session1 != session2, "Sessions should be unique per login"
 
-        # Both sessions should work
-        check1 = await http_client.get("/api/auth/session_check")
-        check2 = await client2.get("/api/auth/session_check")
+            # Both sessions should work - check with cookies set
+            http_client.cookies.set("modemcheck_session", session1)
+            check1 = await http_client.get("/api/auth/session_check")
 
-        assert check1.status_code == 200
-        assert check2.status_code == 200
+            client2.cookies.set("modemcheck_session", session2)
+            check2 = await client2.get("/api/auth/session_check")
 
-        await client2.aclose()
+            assert check1.status_code == 200
+            assert check2.status_code == 200
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Session security tests need session cookie handling investigation")
-    async def test_session_expiration(self, http_client: httpx.AsyncClient, admin_user):
-        """Test that sessions expire after TTL."""
-        import time
-        from unittest.mock import patch
-
+    async def test_session_creation_and_validation(self, http_client: httpx.AsyncClient, admin_user_credentials):
+        """Test that sessions are created on login and can be validated."""
         # Login to get session
         response = await http_client.post("/api/auth/login", json={
-            "username": admin_user.username,
-            "password": "AdminPass123!"
+            "username": admin_user_credentials["username"],
+            "password": admin_user_credentials["password"]
         })
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Login failed: {response.text}"
         session_token = response.cookies.get("modemcheck_session")
+        assert session_token is not None, "No session cookie received"
+        assert len(session_token) > 20, "Session token too short"
 
-        # Verify session works
+        # Verify session works with the cookie
+        http_client.cookies.set("modemcheck_session", session_token)
         check = await http_client.get("/api/auth/session_check")
         assert check.status_code == 200
-
-        # Note: We can't easily test actual expiration without waiting 1 hour
-        # or mocking Redis. This test verifies the session is created with TTL.
-        # The actual expiration is tested by checking Redis TTL exists.
-        assert session_token is not None
-        assert len(session_token) > 0
+        data = check.json()
+        assert data.get("authenticated") is True, f"Session not authenticated: {data}"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Session security tests need session cookie handling investigation")
-    async def test_session_hijacking_prevention(self, http_client: httpx.AsyncClient, admin_user):
+    async def test_session_hijacking_prevention(self, http_client: httpx.AsyncClient, admin_user_credentials):
         """Test session hijacking prevention via session validation."""
         # Login to get valid session
         response = await http_client.post("/api/auth/login", json={
-            "username": admin_user.username,
-            "password": "AdminPass123!"
+            "username": admin_user_credentials["username"],
+            "password": admin_user_credentials["password"]
         })
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Login failed: {response.text}"
         valid_session = response.cookies.get("modemcheck_session")
+        assert valid_session is not None, "No session cookie received"
 
         # Try to use modified session token
         modified_sessions = [
             valid_session[:-5] + "XXXXX",  # Modified end
             "XXXXX" + valid_session[5:],   # Modified start
-            valid_session[:20] + "X" + valid_session[21:],  # Modified middle
+            valid_session[:20] + "X" + valid_session[21:] if len(valid_session) > 21 else "INVALID",  # Modified middle
         ]
 
         for modified in modified_sessions:
-            client = httpx.AsyncClient(base_url=http_client.base_url)
-            client.cookies.set("modemcheck_session", modified)
-
-            response = await client.get("/api/auth/session_check")
-            # Should reject modified session (authenticated should be false)
-            assert response.status_code == 200
-            data = response.json()
-            assert data.get("authenticated") is False, f"Modified session accepted: {modified[:10]}..."
-
-            await client.aclose()
+            async with httpx.AsyncClient(
+                base_url=http_client.base_url,
+                timeout=30.0
+            ) as client:
+                client.cookies.set("modemcheck_session", modified)
+                response = await client.get("/api/auth/session_check")
+                # Should reject modified session (authenticated should be false)
+                assert response.status_code == 200
+                data = response.json()
+                assert data.get("authenticated") is False, f"Modified session accepted: {modified[:10]}..."
 
 
 class TestPasswordSecurity:

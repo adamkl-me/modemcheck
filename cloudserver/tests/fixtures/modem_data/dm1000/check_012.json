@@ -1,0 +1,519 @@
+{
+  "rx": [
+    {
+      "snr": "38.605377",
+      "power": "4.699997",
+      "octets": "81692545",
+      "portid": "1",
+      "frequency": "663000000",
+      "correcteds": "346",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.300003",
+      "octets": "81692651",
+      "portid": "2",
+      "frequency": "591000000",
+      "correcteds": "234",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.366287",
+      "power": "5.800003",
+      "octets": "81692759",
+      "portid": "3",
+      "frequency": "597000000",
+      "correcteds": "348",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.699997",
+      "octets": "81692868",
+      "portid": "4",
+      "frequency": "603000000",
+      "correcteds": "335",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.000000",
+      "octets": "81693454",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "546",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "81693565",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "232",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "81693668",
+      "portid": "7",
+      "frequency": "609000000",
+      "correcteds": "302",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.800003",
+      "octets": "81693790",
+      "portid": "8",
+      "frequency": "615000000",
+      "correcteds": "270",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "81693903",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "12485",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.199997",
+      "octets": "81694012",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "211",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "81694123",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "279",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.000000",
+      "octets": "81694242",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "6549",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "81694003",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.500000",
+      "octets": "81694000",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.300003",
+      "octets": "81694577",
+      "portid": "15",
+      "frequency": "279000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "81694688",
+      "portid": "16",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.300003",
+      "octets": "81694795",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.099998",
+      "octets": "81694908",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.300003",
+      "octets": "81695023",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "26",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "81695135",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.199997",
+      "octets": "81695246",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "2000",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.900002",
+      "octets": "81695354",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "81695955",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.500000",
+      "octets": "81696060",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.500000",
+      "octets": "81696170",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.500000",
+      "octets": "81696298",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.800003",
+      "octets": "81696638",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.900002",
+      "octets": "81696761",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.800003",
+      "octets": "81696865",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.400002",
+      "octets": "81696974",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.500000",
+      "octets": "81697107",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "7.300003",
+      "octets": "81697214",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "43.020599",
+      "portid": "0",
+      "frequency": "32.299999"
+    },
+    {
+      "power": "43.020599",
+      "portid": "1",
+      "frequency": "38.700001"
+    },
+    {
+      "power": "43.260300",
+      "portid": "2",
+      "frequency": "21.100000"
+    },
+    {
+      "power": "43.270599",
+      "portid": "3",
+      "frequency": "25.900000"
+    },
+    {
+      "power": "-inf",
+      "portid": "4",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "5",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "6",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "7",
+      "frequency": "9.961089"
+    }
+  ],
+  "asn": "AS64497",
+  "rxofdm": [
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "4.800003",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "275600000"
+    },
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "6.900002",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "37.000000",
+      "state": " OPERATE",
+      "portid": "0",
+      "activescs": "786",
+      "minislots": "98",
+      "notusedscs": "2",
+      "excludedscs": "1262",
+      "subcarr0freq": "42.000000",
+      "interfacespeed": "311335024"
+    },
+    {
+      "power": "0.000000",
+      "state": "DISABLED",
+      "portid": "1",
+      "activescs": "0",
+      "minislots": "0",
+      "notusedscs": "0",
+      "excludedscs": "0",
+      "subcarr0freq": "0.000000",
+      "interfacespeed": "0"
+    }
+  ],
+  "ip_city": "Sample Town",
+  "sysinfo": {
+    "uptime": 307080,
+    "systime": 1763121606,
+    "firmware": "DM1000-V1.21.04.025",
+    "modemmac": "AABBCC040506",
+    "checktime": 1763121601,
+    "modemtype": "DM1000",
+    "detection_status": "success"
+  },
+  "eventlog": [
+    {
+      "id": "90000000",
+      "time": 1762814625,
+      "event": "MIMO Event MIMO: Stored MIMO=-1 post cfg file MIMO=-1;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000700",
+      "time": 1762814630,
+      "event": "RCS Partial Service;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82001200",
+      "time": 1762814630,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762814638,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762896731,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762993885,
+      "event": "CM-STATUS message sent.  Event Type Code: 21; Chan ID: 34; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1762993886,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1762993886,
+      "event": "CM-STATUS message sent.  Event Type Code: 2; Chan ID: 7; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84020200",
+      "time": 1762993889,
+      "event": "Lost MDD Timeout;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762994020,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000400",
+      "time": 1762994067,
+      "event": "Received Response to Broadcast Maintenance Request, But no Unicast Maintenance opportunities received - T4 time out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762994079,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000100",
+      "time": 1762994106,
+      "event": "No Maintenance Broadcasts for Ranging opportunities received - T2 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1762994107,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "90000000",
+      "time": 1762994120,
+      "event": "MIMO Event MIMO: Stored MIMO=-1 post cfg file MIMO=-1;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82001200",
+      "time": 1762994123,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763005722,
+      "event": "CM-STATUS message sent.  Event Type Code: 24; Chan ID: 33; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: 2.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763031602,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763080519,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763094711,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "isp_name": "Test ISP Beta",
+  "client_os": "linux",
+  "public_ip": "203.0.113.20",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": 1473.28,
+  "iperf3test_ul": 197.7,
+  "client_version": "5.8.0",
+  "ping_google_avg": "16.1",
+  "ping_google_loss": "0.0%",
+  "speedtest_jitter": 3.2,
+  "speedtest_enabled": true,
+  "speedtest_latency": 15.9,
+  "ping_google_jitter": "1.5",
+  "ping_cloudflare_avg": "15.8",
+  "speedtest_server_id": "46149",
+  "ping_cloudflare_loss": "0.0%",
+  "speedtest_max_latency": 24.2,
+  "speedtest_server_name": "Test Speedtest Server",
+  "ping_cloudflare_jitter": "1.7",
+  "ping_google_max_latency": "22.2",
+  "ping_cloudflare_max_latency": "23.0"
+}

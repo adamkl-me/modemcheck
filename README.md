@@ -313,34 +313,13 @@ Example: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
 ## Security
 
-**Auto-Update Security:**
-- Cryptographic signature verification with Minisign (Ed25519)
-- Pre-execution testing of binaries before installation
-- Automatic rollback on failed updates
-- TOCTOU attack prevention with atomic operations
-- See [SECURITY.md](SECURITY.md) for detailed threat model
+**Auto-Update:** Ed25519 signature verification, pre-execution testing, atomic updates with automatic rollback
 
-**Cloud Server Authentication:**
-- API keys: 32-byte cryptographically random tokens
-- Passwords: Argon2id memory-hard hashing (64MB, 3 iterations)
-- Automatic upgrade from legacy PBKDF2 hashes on login
-- Sessions: Redis-backed with HttpOnly, SameSite=Strict, Secure cookies (1-hour sliding window)
-- Account lockout: 5 failed attempts trigger 30-minute lockout
-- CSRF protection: Token-based validation for all state-changing operations
-- Common password prevention (10,000+ blocked passwords)
+**Cloud Authentication:** Argon2id password hashing, Redis sessions, CSRF protection, account lockout (5 attempts → 30 min)
 
-**Network:**
-- HTTPS enforcement for public deployments
-- Security headers enabled (CSP, X-Frame-Options, etc.)
+**Input Validation:** Path traversal, SQL injection, XSS protection, file size limits
 
-**Input Validation:**
-- Path traversal protection
-- SQL injection prevention
-- XSS protection
-- File size limits (10MB)
-- Sanitized error messages
-
-For cloud deployment security, see [cloudserver/README.md](cloudserver/README.md)
+For complete security documentation, see **[SECURITY.md](SECURITY.md)**
 
 ## Automated Execution
 
@@ -427,7 +406,7 @@ modemcheck/
     │   ├── admin.html          # Admin dashboard with Config Generator
     │   ├── db-viewer.html      # Data viewer interface
     │   └── login.html          # Authentication pages
-    ├── tests/                  # Comprehensive test suite (374 tests, 90-98% coverage)
+    ├── tests/                  # Comprehensive test suite
     │   ├── api/                # API endpoint tests
     │   ├── security/           # Security tests
     │   └── ui/                 # Playwright UI tests
@@ -477,26 +456,25 @@ This project is provided as-is for personal and educational use.
 
 ## Documentation
 
-### Comprehensive Guides
+### Core Guides
 
-- **[TESTING.md](TESTING.md)** - Complete test suite documentation (543 tests: 374 Python + 169 Go, 90-98% coverage)
-- **[SECURITY.md](SECURITY.md)** - Security features, auto-update system, threat model, and best practices
-- **[CLAUDE.md](CLAUDE.md)** - Detailed technical implementation guide for developers and AI assistants
-
-### Cloud Server Documentation
-
-- **[cloudserver/README.md](cloudserver/README.md)** - FastAPI cloud server setup, API reference, and configuration
-- **[cloudserver/OPERATIONS.md](cloudserver/OPERATIONS.md)** - Operations guide: backups, monitoring, disaster recovery, maintenance
-- **[cloudserver/systemd/README.md](cloudserver/systemd/README.md)** - Systemd service/timer for automated backups
+- **[SECURITY.md](SECURITY.md)** - Security features, auto-update system, threat model
+- **[CLAUDE.md](CLAUDE.md)** - Technical implementation guide for developers
 
 ### Client Documentation
 
-- **[modemcheck-client/README.md](modemcheck-client/README.md)** - Client architecture and modem scraper design
+- **[modemcheck-client/README.md](modemcheck-client/README.md)** - Client architecture, usage, and testing
 - **[modemcheck-client/UPDATER.md](modemcheck-client/UPDATER.md)** - Auto-update system: channels, security, troubleshooting
+
+### Cloud Server Documentation
+
+- **[cloudserver/README.md](cloudserver/README.md)** - Server setup, API reference, and configuration
+- **[cloudserver/TESTING.md](cloudserver/TESTING.md)** - Testing philosophy, running tests, coverage reports
+- **[cloudserver/OPERATIONS.md](cloudserver/OPERATIONS.md)** - Backups, monitoring, disaster recovery
 
 ### Additional Resources
 
-- **[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md)** - Complete attribution and license information for dependencies
+- **[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md)** - Attribution and license information for dependencies
 
 ## Support
 

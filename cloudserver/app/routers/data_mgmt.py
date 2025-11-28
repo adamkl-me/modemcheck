@@ -2,6 +2,8 @@
 Data management router for bulk operations and deletions.
 """
 import json
+import re
+import tempfile
 import zipfile
 from io import BytesIO
 from typing import List
@@ -9,6 +11,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, and_
 
 from app.core.database import get_db
@@ -144,9 +147,22 @@ async def delete_all_modem_checks(
     )
 
 
+def is_valid_mac_address(mac: str) -> bool:
+    """Validate MAC address format (12 hex chars, with or without separators)."""
+    if not mac:
+        return False
+    # Remove common separators and check for 12 hex characters
+    clean_mac = re.sub(r'[:\-\.]', '', mac.upper())
+    return bool(re.match(r'^[0-9A-F]{12}$', clean_mac))
+
+
 async def _process_json_content(content: bytes, filename: str, db: AsyncSession, results: dict):
     """
     Helper function to process a single JSON file content.
+
+    Validates that the file is a valid modem check with required fields:
+    - sysinfo object with modemtype, modemmac (valid format), checktime
+    - At least one of rx or tx arrays with data
 
     Args:
         content: File content as bytes
@@ -163,7 +179,39 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             results["errors"].append(f"{filename}: Invalid JSON - {str(e)}")
             return
 
-        # Extract required fields
+        # Validate required structure
+        validation_errors = []
+
+        # Must have sysinfo object
+        if 'sysinfo' not in data or not isinstance(data.get('sysinfo'), dict):
+            validation_errors.append("Missing 'sysinfo' object")
+        else:
+            sysinfo = data['sysinfo']
+            # Must have modem type
+            if not sysinfo.get('modemtype'):
+                validation_errors.append("Missing 'sysinfo.modemtype'")
+            # Must have valid MAC address
+            mac = sysinfo.get('modemmac')
+            if not mac:
+                validation_errors.append("Missing 'sysinfo.modemmac'")
+            elif not is_valid_mac_address(mac):
+                validation_errors.append(f"Invalid MAC address format: '{mac}'")
+            # Must have check time
+            if not sysinfo.get('checktime'):
+                validation_errors.append("Missing 'sysinfo.checktime'")
+
+        # Must have rx (downstream) or tx (upstream) data - at minimum one
+        has_rx = 'rx' in data and isinstance(data.get('rx'), list) and len(data['rx']) > 0
+        has_tx = 'tx' in data and isinstance(data.get('tx'), list) and len(data['tx']) > 0
+        if not has_rx and not has_tx:
+            validation_errors.append("Missing channel data (no 'rx' or 'tx' arrays)")
+
+        if validation_errors:
+            results["failed"] += 1
+            results["errors"].append(f"{filename}: {'; '.join(validation_errors)}")
+            return
+
+        # Extract required fields (now validated)
         sysinfo = data.get('sysinfo', {})
         modem_type = sysinfo.get('modemtype', 'unknown')
         modem_mac = sysinfo.get('modemmac', 'unknown')
@@ -187,21 +235,7 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             except Exception:
                 pass
 
-        # Check for duplicate
-        existing = await db.execute(
-            select(ModemCheck).where(
-                and_(
-                    ModemCheck.modem_id == modem_id,
-                    ModemCheck.filename == filename
-                )
-            )
-        )
-        if existing.scalars().first():
-            results["failed"] += 1
-            results["errors"].append(f"{filename}: Duplicate - already exists in database")
-            return
-
-        # Insert into database
+        # Insert into database - let database constraint handle duplicates
         db_filename = f"{modem_id}/{filename}"
         new_check = ModemCheck(
             modem_id=modem_id,
@@ -212,7 +246,15 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             created_at=datetime.utcnow()
         )
         db.add(new_check)
-        results["success"] += 1
+
+        # Flush to detect constraint violations immediately
+        try:
+            await db.flush()
+            results["success"] += 1
+        except IntegrityError:
+            await db.rollback()
+            results["failed"] += 1
+            results["errors"].append(f"{filename}: Duplicate - already exists in database")
 
     except Exception as e:
         results["failed"] += 1
@@ -412,9 +454,10 @@ async def bulk_download_checks(
             detail="No checks found matching criteria"
         )
 
-    # Create ZIP file in memory
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+    # Create ZIP using temp file (spills to disk automatically after 10MB)
+    # This prevents memory exhaustion with large downloads
+    tmp = tempfile.SpooledTemporaryFile(max_size=10*1024*1024)
+    with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for check in checks:
             # Use filename from database or generate one
             filename = check.filename or f"{check.modem_id}_{check.id}.json"
@@ -441,12 +484,12 @@ async def bulk_download_checks(
     )
 
     # Prepare response
-    zip_buffer.seek(0)
+    tmp.seek(0)
     filename_suffix = f"_{modem_id}" if modem_id else ""
     download_filename = f"modemcheck_data{filename_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
 
     return StreamingResponse(
-        zip_buffer,
+        tmp,
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{download_filename}"'}
     )

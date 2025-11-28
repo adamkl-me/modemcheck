@@ -1,0 +1,444 @@
+{
+  "rx": [
+    {
+      "snr": "38.983261",
+      "power": "5.199997",
+      "octets": "13464572",
+      "portid": "1",
+      "frequency": "591000000",
+      "correcteds": "1109",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.366287",
+      "power": "5.800003",
+      "octets": "13464678",
+      "portid": "2",
+      "frequency": "597000000",
+      "correcteds": "1255",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.699997",
+      "octets": "13464803",
+      "portid": "3",
+      "frequency": "603000000",
+      "correcteds": "1079",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.099998",
+      "octets": "13464914",
+      "portid": "4",
+      "frequency": "609000000",
+      "correcteds": "1665",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.099998",
+      "octets": "13465025",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "1878",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.000000",
+      "octets": "13465145",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "1920",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.400002",
+      "octets": "13465250",
+      "portid": "7",
+      "frequency": "279000000",
+      "correcteds": "1233",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.900002",
+      "octets": "13465360",
+      "portid": "8",
+      "frequency": "615000000",
+      "correcteds": "1444",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.699997",
+      "octets": "13465471",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "25852",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.400002",
+      "octets": "13465606",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "1403",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "5.199997",
+      "octets": "13465715",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "1179",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "5.000000",
+      "octets": "13465818",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "11442",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "13466026",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.500000",
+      "octets": "13466163",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.699997",
+      "octets": "13466302",
+      "portid": "15",
+      "frequency": "663000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.500000",
+      "octets": "13466454",
+      "portid": "16",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.300003",
+      "octets": "13466559",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.099998",
+      "octets": "13466667",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.300003",
+      "octets": "13467910",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "50",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "13468018",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.366287",
+      "power": "5.099998",
+      "octets": "13468121",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "7754",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.800003",
+      "octets": "13468230",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "1",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.599998",
+      "octets": "13468364",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "4.400002",
+      "octets": "13468474",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "4.599998",
+      "octets": "13468586",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.500000",
+      "octets": "13469165",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.366287",
+      "power": "6.800003",
+      "octets": "13469569",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "7.000000",
+      "octets": "13470181",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.699997",
+      "octets": "13470293",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.500000",
+      "octets": "13470430",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983261",
+      "power": "6.400002",
+      "octets": "13470649",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605377",
+      "power": "7.199997",
+      "octets": "13470780",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "44.010300",
+      "portid": "0",
+      "frequency": "21.100000"
+    },
+    {
+      "power": "43.020599",
+      "portid": "1",
+      "frequency": "38.700001"
+    },
+    {
+      "power": "43.020599",
+      "portid": "2",
+      "frequency": "32.299999"
+    },
+    {
+      "power": "43.020599",
+      "portid": "3",
+      "frequency": "25.900000"
+    },
+    {
+      "power": "-inf",
+      "portid": "4",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "5",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "6",
+      "frequency": "9.961089"
+    },
+    {
+      "power": "-inf",
+      "portid": "7",
+      "frequency": "9.961089"
+    }
+  ],
+  "asn": "AS64497",
+  "rxofdm": [
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "4.800003",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "275600000"
+    },
+    {
+      "octets": "n/a",
+      "plcsnr": "41",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "6.800003",
+      "correcteds": "n/a",
+      "uncorrectds": "n/a",
+      "subcarr0freq": "827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "37.250000",
+      "state": " OPERATE",
+      "portid": "0",
+      "activescs": "786",
+      "minislots": "98",
+      "notusedscs": "2",
+      "excludedscs": "1262",
+      "subcarr0freq": "42.000000",
+      "interfacespeed": "311335024"
+    },
+    {
+      "power": "0.000000",
+      "state": "DISABLED",
+      "portid": "1",
+      "activescs": "0",
+      "minislots": "0",
+      "notusedscs": "0",
+      "excludedscs": "0",
+      "subcarr0freq": "0.000000",
+      "interfacespeed": "0"
+    }
+  ],
+  "ip_city": "Sample Town",
+  "sysinfo": {
+    "uptime": 8820,
+    "systime": 1763178008,
+    "firmware": "DM1000-V1.21.04.025",
+    "modemmac": "AABBCC040506",
+    "checktime": 1763178001,
+    "modemtype": "DM1000",
+    "detection_status": "success"
+  },
+  "eventlog": [
+    {
+      "id": "84020100",
+      "time": 65,
+      "event": "Missing Mandatory MDD TLV on primary DS Channel;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 107,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "90000000",
+      "time": 1763169267,
+      "event": "MIMO Event MIMO: Stored MIMO=-1 post cfg file MIMO=-1;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000700",
+      "time": 1763169276,
+      "event": "RCS Partial Service;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82001200",
+      "time": 1763169276,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763169287,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=64:67:72:13:d5:6a;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "isp_name": "Test ISP Beta",
+  "client_os": "linux",
+  "public_ip": "203.0.113.20",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": -2,
+  "iperf3test_ul": -2,
+  "client_version": "5.8.0",
+  "ping_google_avg": "16.4",
+  "ping_google_loss": "0.0%",
+  "speedtest_enabled": true,
+  "ping_google_jitter": "1.2",
+  "ping_cloudflare_avg": "15.8",
+  "ping_cloudflare_loss": "0.0%",
+  "ping_cloudflare_jitter": "1.1",
+  "ping_google_max_latency": "19.6",
+  "ping_cloudflare_max_latency": "19.3"
+}

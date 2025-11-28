@@ -9,7 +9,7 @@ Provides:
 """
 import uuid
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ModemCheckError(Exception):
@@ -38,7 +38,7 @@ class ModemCheckError(Exception):
         self.status_code = status_code
         self.details = details or {}
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.utcnow().isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert error to standardized response format."""
@@ -285,4 +285,169 @@ class ServiceUnavailableError(ModemCheckError):
             message=f"{service} is temporarily unavailable",
             status_code=503,
             details={"service": service}
+        )
+
+
+# ============================================================================
+# Config Management Errors (CFG001-CFG012)
+# ============================================================================
+
+class ConfigEncryptionError(InternalServerError):
+    """CFG001: Configuration encryption/decryption failed."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=f"Encryption error: {message}",
+            details={"error_code": "CFG001", **(details or {})}
+        )
+
+
+class ConfigValidationError(ValidationError):
+    """CFG002: Configuration validation failed."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=f"Config validation failed: {message}",
+            details={"error_code": "CFG002", **(details or {})}
+        )
+
+
+class ConfigNotFoundError(NotFoundError):
+    """CFG003: Client configuration not found."""
+
+    def __init__(self, api_key: str, modem_id: str = None):
+        # v2.1: modem_id is optional (primary key is api_key only)
+        if modem_id:
+            identifier = f"{api_key[:8]}.../{modem_id}"
+        else:
+            identifier = f"{api_key[:8]}..."
+        super().__init__(
+            resource="Client configuration",
+            identifier=identifier
+        )
+        self.details["error_code"] = "CFG003"
+
+
+class ConfigVersionConflictError(ConflictError):
+    """CFG004: Configuration version conflict (optimistic locking)."""
+
+    def __init__(self, expected_version: int, actual_version: int):
+        super().__init__(
+            message="Configuration version conflict - another update occurred",
+            details={
+                "error_code": "CFG004",
+                "expected_version": expected_version,
+                "actual_version": actual_version,
+                "hint": "Reload configuration and retry"
+            }
+        )
+
+
+class ConfigNonceReplayError(AuthenticationError):
+    """CFG005: Nonce replay detected (potential attack)."""
+
+    def __init__(self, nonce: str):
+        super().__init__(
+            message="Request replay detected - nonce already used",
+            details={
+                "error_code": "CFG005",
+                "nonce_prefix": nonce[:16],
+                "hint": "Generate a new nonce and retry"
+            }
+        )
+
+
+class ConfigClockSkewError(AuthenticationError):
+    """CFG006: Request timestamp too far from server time."""
+
+    def __init__(self, client_time: str, server_time: str, max_skew_seconds: int):
+        super().__init__(
+            message=f"Clock skew too large (max {max_skew_seconds}s)",
+            details={
+                "error_code": "CFG006",
+                "client_timestamp": client_time,
+                "server_timestamp": server_time,
+                "max_skew_seconds": max_skew_seconds,
+                "hint": "Synchronize system clock (NTP) and retry"
+            }
+        )
+
+
+class ConfigHashMismatchError(ValidationError):
+    """CFG007: Configuration hash verification failed."""
+
+    def __init__(self, expected_hash: str, actual_hash: str):
+        super().__init__(
+            message="Configuration hash mismatch - integrity check failed",
+            details={
+                "error_code": "CFG007",
+                "expected_hash": expected_hash[:16],
+                "actual_hash": actual_hash[:16],
+                "hint": "Configuration may have been tampered with"
+            }
+        )
+
+
+class ConfigLockedError(AuthorizationError):
+    """CFG008: Configuration is locked - client cannot modify."""
+
+    def __init__(self, modem_id: str):
+        super().__init__(
+            message="Configuration is locked by server - client modification not allowed",
+            details={
+                "error_code": "CFG008",
+                "modem_id": modem_id,
+                "hint": "Contact administrator to unlock configuration"
+            }
+        )
+
+
+class ConfigBackupNotFoundError(NotFoundError):
+    """CFG009: Configuration backup not found for rollback."""
+
+    def __init__(self, api_key: str, version: str, modem_id: str = None):
+        # v2.1: modem_id is optional (primary key is api_key only)
+        if modem_id:
+            identifier = f"{api_key[:8]}.../{modem_id}/{version}"
+        else:
+            identifier = f"{api_key[:8]}.../{version}"
+        super().__init__(
+            resource="Configuration backup",
+            identifier=identifier
+        )
+        self.details["error_code"] = "CFG009"
+
+
+class ConfigCacheError(CacheError):
+    """CFG010: Configuration cache operation failed."""
+
+    def __init__(self, operation: str):
+        super().__init__(operation=f"config {operation}")
+        self.details["error_code"] = "CFG010"
+
+
+class ConfigSchemaVersionError(ModemCheckError):
+    """CFG011: Client schema version incompatible with server."""
+
+    def __init__(self, client_version: int, server_version: int, minimum_version: int):
+        super().__init__(
+            error_code="CFG011",
+            message="Client configuration schema version is incompatible",
+            status_code=426,  # Upgrade Required
+            details={
+                "client_version": client_version,
+                "server_version": server_version,
+                "minimum_required_version": minimum_version,
+                "hint": "Upgrade client to latest version"
+            }
+        )
+
+
+class ConfigRollbackError(InternalServerError):
+    """CFG012: Configuration rollback operation failed."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=f"Rollback failed: {reason}",
+            details={"error_code": "CFG012", **(details or {})}
         )

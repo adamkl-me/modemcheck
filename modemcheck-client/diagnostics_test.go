@@ -12,7 +12,7 @@ func TestHostnameValidation(t *testing.T) {
 		Silent: true,
 		NoLogs: true,
 	}
-	mc := NewModemCheck(config)
+	mc := NewModemCheck(config, "")
 
 	tests := []struct {
 		name          string
@@ -223,7 +223,7 @@ func TestHostnameValidationEdgeCases(t *testing.T) {
 		Silent: true,
 		NoLogs: true,
 	}
-	mc := NewModemCheck(config)
+	mc := NewModemCheck(config, "")
 
 	// Test exact boundary conditions
 	t.Run("Hostname at exact 253 character limit", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestHostnameValidationCharacterSet(t *testing.T) {
 		Silent: true,
 		NoLogs: true,
 	}
-	mc := NewModemCheck(config)
+	mc := NewModemCheck(config, "")
 
 	// Valid characters: a-z, A-Z, 0-9, dot, hyphen, colon
 	validChars := []rune{

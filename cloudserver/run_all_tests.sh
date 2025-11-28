@@ -152,6 +152,7 @@ run_tests() {
     export REDIS_PORT="6380"
     export APP_ENV="test"
     export DEBUG="true"
+    export ALLOWED_ORIGINS="*"
 
     # Parse command line arguments
     local test_args=("$@")

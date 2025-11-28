@@ -4,12 +4,15 @@ Upload router for client data uploads with HMAC signature validation.
 This router handles HTTP concerns (authentication, rate limiting, error handling)
 and delegates business logic to the service layer for better testability.
 """
+import logging
 import time
 import hashlib
 import hmac
 import secrets
 import asyncio
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, File, UploadFile, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -19,6 +22,7 @@ from app.core.audit import log_client_submission
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.models import APIKey
+from app.models.client_config import ClientConfig
 from app.schemas.modem_check import ModemCheckUploadResponse
 from app.middleware.auth import get_client_ip, get_user_agent
 from app.services.upload_service import UploadService, UploadValidationError
@@ -44,18 +48,21 @@ def validate_request_signature(
         (is_valid, error_message)
     """
     if not timestamp:
-        return False, "Missing request timestamp"
+        logger.warning("HMAC validation failed: missing timestamp")
+        return False, "Invalid request signature"
 
     try:
         request_time = int(timestamp)
     except (ValueError, TypeError):
-        return False, "Invalid timestamp format"
+        logger.warning("HMAC validation failed: invalid timestamp format")
+        return False, "Invalid request signature"
 
     # Check timestamp within 5 minutes to prevent replay attacks
     current_time = int(time.time())
     time_diff = abs(current_time - request_time)
     if time_diff > TIMESTAMP_WINDOW_SECONDS:
-        return False, f"Request timestamp too old (difference: {time_diff}s, max: {TIMESTAMP_WINDOW_SECONDS}s)"
+        logger.warning(f"HMAC validation failed: timestamp too old (diff={time_diff}s, max={TIMESTAMP_WINDOW_SECONDS}s)")
+        return False, "Invalid request signature"
 
     # Compute expected signature using HMAC-SHA256 (matches Go client)
     message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
@@ -209,6 +216,30 @@ async def upload_check(
 
     # All validation passed - clear failed API key attempts
     await clear_failed_api_keys(client_ip)
+
+    # Update last_seen_modem_id in ClientConfig if it exists for this API key
+    # This populates the "Modem ID" column in the Client Configurations table
+    # Also logs modem changes to audit log for history timeline
+    try:
+        config_result = await db.execute(
+            select(ClientConfig).where(ClientConfig.api_key == api_key)
+        )
+        client_config = config_result.scalar_one_or_none()
+        if client_config and client_config.last_seen_modem_id != modem_id:
+            # Log modem change to audit log before updating
+            from app.core.config_sync import _log_modem_change
+            await _log_modem_change(
+                db=db,
+                api_key=api_key,
+                old_modem_id=client_config.last_seen_modem_id,
+                new_modem_id=modem_id,
+                ip_address=client_ip
+            )
+            client_config.last_seen_modem_id = modem_id
+            await db.commit()
+    except Exception:
+        # Non-critical - don't fail upload if config update fails
+        pass
 
     # Step 6: Log successful submission
     processing_time_ms = int((time.time() - start_time) * 1000)

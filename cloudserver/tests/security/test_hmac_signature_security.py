@@ -324,16 +324,30 @@ class TestSignatureMissingComponents:
 
 
 class TestSignatureKeyRotation:
-    """Test signature security during key rotation."""
+    """
+    Test signature security during key rotation.
+
+    Key rotation process (manual):
+    1. Create new API key in admin dashboard
+    2. Update client configuration with new key
+    3. Delete old API key
+
+    Note: No automatic key versioning/overlap - rotation requires
+    brief downtime or careful client coordination.
+    """
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Key rotation functionality not yet implemented")
     async def test_signature_with_rotated_key(
         self, admin_client_with_token: httpx.AsyncClient,
         csrf_token: str,
         http_client: httpx.AsyncClient
     ):
-        """Test that signatures with old keys fail after rotation."""
+        """Test that signatures with old keys fail after rotation (delete + recreate)."""
+        # Helper to get fresh CSRF token (tokens are one-time use)
+        async def get_fresh_csrf_token():
+            resp = await admin_client_with_token.get("/api/auth/session_check")
+            return resp.json()["csrf_token"]
+
         # Create a new API key
         create_response = await admin_client_with_token.post(
             "/api/admin/api_keys",
@@ -357,7 +371,8 @@ class TestSignatureKeyRotation:
             hashlib.sha256
         ).hexdigest()
 
-        # Delete the old key (simulate rotation)
+        # Delete the old key (simulate rotation) - need fresh CSRF token
+        csrf_token = await get_fresh_csrf_token()
         preview = f"{old_key[:4]}...{old_key[-4:]}"
         delete_response = await admin_client_with_token.request(
             "DELETE",
@@ -367,7 +382,8 @@ class TestSignatureKeyRotation:
         )
         assert delete_response.status_code == 200
 
-        # Create a new key (rotation complete)
+        # Create a new key (rotation complete) - need fresh CSRF token
+        csrf_token = await get_fresh_csrf_token()
         create_response = await admin_client_with_token.post(
             "/api/admin/api_keys",
             json={"name": "rotation_sig_test_new"},
@@ -420,7 +436,8 @@ class TestSignatureKeyRotation:
         # Should work or fail for non-auth reasons
         assert response.status_code != 401, "New key and signature should work"
 
-        # Cleanup
+        # Cleanup - need fresh CSRF token
+        csrf_token = await get_fresh_csrf_token()
         preview = f"{new_key[:4]}...{new_key[-4:]}"
         await admin_client_with_token.request(
             "DELETE",

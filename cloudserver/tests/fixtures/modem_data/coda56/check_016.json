@@ -1,0 +1,484 @@
+{
+  "rx": [
+    {
+      "snr": "38.605",
+      "power": "0.800",
+      "octets": "13597671",
+      "portid": "1",
+      "frequency": "615000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.100",
+      "octets": "13597785",
+      "portid": "2",
+      "frequency": "591000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.500",
+      "octets": "13597916",
+      "portid": "3",
+      "frequency": "597000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.300",
+      "octets": "13598029",
+      "portid": "4",
+      "frequency": "603000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.600",
+      "octets": "13598150",
+      "portid": "5",
+      "frequency": "579000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.700",
+      "octets": "13598262",
+      "portid": "6",
+      "frequency": "585000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.000",
+      "octets": "13598374",
+      "portid": "7",
+      "frequency": "609000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "0.500",
+      "octets": "13598486",
+      "portid": "8",
+      "frequency": "279000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "13598609",
+      "portid": "9",
+      "frequency": "621000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.800",
+      "octets": "13598721",
+      "portid": "10",
+      "frequency": "633000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "13598835",
+      "portid": "11",
+      "frequency": "639000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "13598947",
+      "portid": "12",
+      "frequency": "645000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "0.300",
+      "octets": "13599067",
+      "portid": "13",
+      "frequency": "651000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.500",
+      "octets": "13599319",
+      "portid": "14",
+      "frequency": "657000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.900",
+      "octets": "13599440",
+      "portid": "15",
+      "frequency": "663000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.000",
+      "octets": "13599553",
+      "portid": "16",
+      "frequency": "669000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "0.800",
+      "octets": "13599665",
+      "portid": "17",
+      "frequency": "675000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "0.700",
+      "octets": "13599778",
+      "portid": "18",
+      "frequency": "681000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.000",
+      "octets": "13600058",
+      "portid": "19",
+      "frequency": "687000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.200",
+      "octets": "13600172",
+      "portid": "20",
+      "frequency": "693000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.500",
+      "octets": "13600284",
+      "portid": "21",
+      "frequency": "699000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.983",
+      "power": "1.100",
+      "octets": "13600415",
+      "portid": "22",
+      "frequency": "705000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.700",
+      "octets": "13600526",
+      "portid": "23",
+      "frequency": "711000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "0.500",
+      "octets": "13600636",
+      "portid": "24",
+      "frequency": "717000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "0.600",
+      "octets": "13600746",
+      "portid": "25",
+      "frequency": "723000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.100",
+      "octets": "13600867",
+      "portid": "26",
+      "frequency": "825000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.600",
+      "octets": "13600979",
+      "portid": "27",
+      "frequency": "831000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.900",
+      "octets": "13601092",
+      "portid": "28",
+      "frequency": "837000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.636",
+      "power": "1.800",
+      "octets": "13601204",
+      "portid": "29",
+      "frequency": "843000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "38.605",
+      "power": "1.700",
+      "octets": "13601324",
+      "portid": "30",
+      "frequency": "849000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "1.800",
+      "octets": "13601436",
+      "portid": "31",
+      "frequency": "855000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "37.356",
+      "power": "2.700",
+      "octets": "13601548",
+      "portid": "32",
+      "frequency": "861000000",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "40.500",
+      "portid": "1",
+      "frequency": "32300000"
+    },
+    {
+      "power": "40.500",
+      "portid": "2",
+      "frequency": "38700000"
+    },
+    {
+      "power": "44.250",
+      "portid": "3",
+      "frequency": "21100000"
+    },
+    {
+      "power": "40.750",
+      "portid": "4",
+      "frequency": "25900000"
+    }
+  ],
+  "asn": "AS64498",
+  "rxofdm": [
+    {
+      "octets": "27287635125",
+      "plcsnr": "40",
+      "portid": "0",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "1.000000",
+      "correcteds": "1174040",
+      "uncorrectds": "10942",
+      "subcarr0freq": " 275600000"
+    },
+    {
+      "octets": "29953069921",
+      "plcsnr": "39",
+      "portid": "1",
+      "ncplock": "YES",
+      "plclock": "YES",
+      "mdc1lock": "YES",
+      "plcpower": "2.900002",
+      "correcteds": "14063832",
+      "uncorrectds": "11624",
+      "subcarr0freq": " 827600000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "   41.2500",
+      "state": "   OPERATE",
+      "portid": "0",
+      "subcarr0freq": "42000000"
+    },
+    {
+      "power": "    0.0000",
+      "state": "  DISABLED",
+      "portid": "1",
+      "subcarr0freq": "0"
+    }
+  ],
+  "ip_city": "Example City",
+  "sysinfo": {
+    "uptime": 652976,
+    "systime": 1763467495,
+    "firmware": "7.2.4.7.1b7",
+    "modemmac": "AABBCC070809",
+    "checktime": 1763467501,
+    "modemtype": "CODA56",
+    "detection_status": "success"
+  },
+  "eventlog": [
+    {
+      "id": "82001200",
+      "time": 1763441180,
+      "event": "RNG-RSP CCAP Commanded Power in Excess of 6 dB Below the Value Corresponding to the Top of the DRW;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763441068,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 28; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763441065,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763441065,
+      "event": "CM-STATUS message sent.  Event Type Code: 21; Chan ID: 34; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "84000500",
+      "time": 1763441063,
+      "event": "SYNC Timing Synchronization failure - Loss of Sync;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763419385,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763417382,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763415364,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763332985,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763330858,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763267498,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763256650,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763246585,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763244558,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763164946,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763160184,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763153737,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "82000200",
+      "time": 1763141281,
+      "event": "No Ranging Response received - T3 time-out;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "74010100",
+      "time": 1763086317,
+      "event": "CM-STATUS message sent.  Event Type Code: 5; Chan ID: 8; DSID: N/A; MAC Addr: N/A; OFDM/OFDMA Profile ID: N/A.;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    },
+    {
+      "id": "68010300",
+      "time": 1763073784,
+      "event": "DHCP RENEW WARNING - Field invalid in response v4 option;CM-MAC=f8:34:5a:80:7d:94;CMTS-MAC=00:17:10:9f:59:08;CM-QOS=1.1;CM-VER=3.1;"
+    }
+  ],
+  "isp_name": "Test ISP Gamma",
+  "client_os": "linux",
+  "public_ip": "203.0.113.30",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": -2,
+  "iperf3test_ul": -2,
+  "client_version": "7.0.0",
+  "ping_google_avg": "22.0",
+  "ping_google_loss": "0.0%",
+  "speedtest_enabled": true,
+  "ping_google_jitter": "1.8",
+  "ping_cloudflare_avg": "22.1",
+  "ping_cloudflare_loss": "0.0%",
+  "ping_cloudflare_jitter": "2.6",
+  "ping_google_max_latency": "28.7",
+  "ping_cloudflare_max_latency": "29.8"
+}

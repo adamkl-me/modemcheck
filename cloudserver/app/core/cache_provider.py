@@ -437,6 +437,7 @@ class FallbackCache(ICacheProvider):
         self._last_health_check = 0.0
         self._failover_time: Optional[datetime] = None
         self._failure_count = 0
+        self._state_lock = asyncio.Lock()  # Protects failover state transitions
         logger.info("FallbackCache initialized with Redis primary and in-memory fallback")
 
     async def _check_and_recover(self) -> None:
@@ -445,6 +446,7 @@ class FallbackCache(ICacheProvider):
 
         If using fallback, attempts to reconnect to Redis.
         If using Redis, verifies it's still healthy.
+        Uses state lock to prevent race conditions during state transitions.
         """
         now = time.time()
 
@@ -454,24 +456,25 @@ class FallbackCache(ICacheProvider):
 
         self._last_health_check = now
 
-        if self.using_fallback:
-            # Attempt recovery
-            logger.info("FallbackCache: Attempting Redis recovery...")
-            if await self.primary.is_healthy():
-                logger.warning("FallbackCache: Redis recovered! Switching back to primary.")
-                self.using_fallback = False
-                self._failover_time = None
-                self._failure_count = 0
+        async with self._state_lock:
+            if self.using_fallback:
+                # Attempt recovery
+                logger.info("FallbackCache: Attempting Redis recovery...")
+                if await self.primary.is_healthy():
+                    logger.warning("FallbackCache: Redis recovered! Switching back to primary.")
+                    self.using_fallback = False
+                    self._failover_time = None
+                    self._failure_count = 0
+                else:
+                    logger.debug("FallbackCache: Redis still unavailable, continuing with fallback")
             else:
-                logger.debug("FallbackCache: Redis still unavailable, continuing with fallback")
-        else:
-            # Verify primary is still healthy
-            if not await self.primary.is_healthy():
-                logger.error("FallbackCache: Redis health check failed during normal operation!")
-                await self._activate_fallback()
+                # Verify primary is still healthy
+                if not await self.primary.is_healthy():
+                    logger.error("FallbackCache: Redis health check failed during normal operation!")
+                    await self._activate_fallback_locked()
 
-    async def _activate_fallback(self) -> None:
-        """Activate fallback cache mode."""
+    async def _activate_fallback_locked(self) -> None:
+        """Activate fallback cache mode. Must be called while holding _state_lock."""
         if not self.using_fallback:
             logger.error(
                 "FallbackCache: Switching to in-memory fallback! "
@@ -480,6 +483,11 @@ class FallbackCache(ICacheProvider):
             self.using_fallback = True
             self._failover_time = datetime.utcnow()
             self._failure_count = 0
+
+    async def _activate_fallback(self) -> None:
+        """Activate fallback cache mode with state lock protection."""
+        async with self._state_lock:
+            await self._activate_fallback_locked()
 
     async def _execute_with_fallback(self, operation_name: str, primary_fn, fallback_fn):
         """

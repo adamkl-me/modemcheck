@@ -1,388 +1,100 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with this repository.
+ModemCheck: cross-platform cable modem diagnostic tool with cloud storage.
 
-## Project Overview
+## Quick Reference
 
-ModemCheck is a cross-platform cable modem diagnostic tool with optional cloud storage:
-
-- **Go client** (`modemcheck-client/`): Cross-platform binary that scrapes modem data, runs network diagnostics, and uploads to cloud
-- **Cloud server** (`cloudserver/`): FastAPI-based platform with PostgreSQL storage and web UI
-
-## Quick Start
-
-### Build Commands
 ```bash
-make                    # Cross-compile all platforms + auto-sign binaries
-make build              # Build for current platform only
-make test               # Go compilation test
+# Build
+make                     # Cross-compile + sign all platforms
+make build               # Current platform only
 
-# Platform-specific (no signing)
-make linux linux-arm linux-arm64 linux-mipsle linux-mips windows macos
-```
+# Test (cloudserver/)
+./run_all_tests.sh       # Full suite (~700 tests)
+./run_all_tests.sh tests/api/  # Specific directory
 
-### Security & Signing
-```bash
-make setup-keys         # Generate Minisign keypair (one-time)
-make update-public-key  # Embed public key in updater.go
-make validate-public-key # Verify embedded key matches minisign.pub
-make sign-binary BINARY=dist/modem-check-linux-x64
-./sign-all.sh           # Batch-sign (requires 'expect' for automation)
-```
-
-**Note:** `validate-public-key` runs automatically during builds to detect key compromise or rotation issues.
-
-### Testing
-```bash
-cd cloudserver && ./run_all_tests.sh              # Full suite (374 tests, 100% pass)
-cd cloudserver && ./run_all_tests.sh --keep-env   # Keep test environment
-cd cloudserver && ./run_all_tests.sh tests/api/   # Specific test directory
-cd cloudserver && ./run_all_tests.sh -m rbac      # Tests by marker
-
-# Coverage reports (see TESTING.md for details)
-cd cloudserver && ./run_unit_coverage.sh          # Unit test coverage (80-95%)
-cd cloudserver && ./run_e2e_coverage.sh           # E2E test coverage (85-95%)
-cd cloudserver && ./run_combined_coverage.sh      # Combined coverage (90-98%)
+# Go client tests
+cd modemcheck-client && go test -v ./...
 ```
 
 ## Architecture
 
-### Cloud Server Stack (FastAPI v2)
+| Component | Stack | Key Files |
+|-----------|-------|-----------|
+| **Client** | Go | `main.go`, `cloud_client.go`, `updater.go`, `diagnostics.go` |
+| **Server** | FastAPI + PostgreSQL + Redis + nginx | `app/routers/`, `app/core/`, `app/models/` |
 
-**Technology:**
-- **FastAPI**: Async web framework with OpenAPI docs at `/docs`
-- **PostgreSQL 16**: JSONB storage for modem data
-- **SQLAlchemy 2.0**: Async ORM with type hints
-- **Redis 7**: Session storage and API key caching
-- **Gunicorn + Uvicorn**: Production ASGI server
-- **nginx**: Reverse proxy and static file serving
+**Client:** Implements `ModemScraper` interface (Login, GetMAC, GetData, ClearFEC, GetModemType). Auto-detects modem at 192.168.100.1, 192.168.0.1, 10.0.0.1, 172.20.0.1.
 
-**Upload flow:** Client POST → FastAPI endpoint → Pydantic validation → PostgreSQL JSONB insert → JSON response
-
-**Scalability:** v2 handles 1000+ clients vs v1's 100-200 (50-100ms upload latency vs 150-250ms)
-
-### API Error Responses (v6.0.1+)
-
-**Centralized error handling** with correlation IDs for debugging:
-
-**Error response format:**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid parameter 'modem_id': must be alphanumeric",
-    "error_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "timestamp": "2025-01-15T12:34:56.789012",
-    "details": {
-      "parameter": "modem_id",
-      "value": "invalid@value",
-      "reason": "must be alphanumeric"
-    }
-  }
-}
-```
-
-**Error types:**
-- **400** - `VALIDATION_ERROR`, `INVALID_PARAMETER`, `MISSING_PARAMETER`
-- **401** - `AUTHENTICATION_ERROR`, `INVALID_CREDENTIALS`, `SESSION_EXPIRED`, `INVALID_API_KEY`
-- **403** - `AUTHORIZATION_ERROR`, `INSUFFICIENT_PERMISSIONS`
-- **404** - `NOT_FOUND`
-- **409** - `CONFLICT`, `DUPLICATE_RESOURCE`
-- **429** - `RATE_LIMIT_EXCEEDED`, `ACCOUNT_LOCKED` (includes `retry_after_seconds`)
-- **500** - `INTERNAL_SERVER_ERROR`, `DATABASE_ERROR`, `CACHE_ERROR`
-- **503** - `SERVICE_UNAVAILABLE`
-
-**Implementation:** `app/core/errors.py` - Base `ModemCheckError` class with typed subclasses
-
-### Auto-Update Security
-
-**Protects against:** GitHub compromise, MITM attacks, CDN hijacking, tampered binaries
-
-**Verification process:**
-1. Public key hardcoded in `updater.go:31` (`MinisignPublicKey`)
-2. Download binary + `.minisig` signature to temp files
-3. Verify Ed25519 signature before execution
-4. Test binary with `--version` flag
-5. Atomic rename to prevent TOCTOU races
-6. Automatic rollback using `.old` backup on failure
-
-**Critical:** Signature file mtime must be ≥ binary mtime. The `sign-all.sh` script removes old `.minisig` files before re-signing.
-
-### Modem Scraper Interface
-
-Three modem implementations (Arris, Motorola, Xfinity) sharing common interface:
-
-```go
-type ModemScraper interface {
-    Login() error
-    GetMAC() (string, error)
-    GetData(checkTime int64) (*ModemData, error)
-    ClearFEC() error
-    GetModemType() string
-}
-```
-
-**Auto-detection:** Tries IPs 192.168.100.1, 192.168.0.1, 10.0.0.1, 172.20.0.1, matching HTML patterns to select implementation. Falls back to `last_successful_modem.json` on failure.
-
-### Update Channels
-
-- **stable** (default): Production releases via `/releases/latest`
-- **beta/test**: Pre-releases via `/releases` (prerelease: true)
-
-**Note:** Version comparison is lexicographic (works for `5.01.0` vs `5.02.0`, fails for `5.10.0` vs `5.9.0`)
+**Server Flow:** HTTP → FastAPI → Pydantic → PostgreSQL JSONB → JSON response
 
 ## Security
 
-### Upload Protection (v6.0.0+)
-- **HMAC signatures**: Mandatory `X-Request-Timestamp` and `X-Request-Signature` headers
-- **API key validation**: Timing-safe comparison with Redis caching (5min TTL, 10-100x faster)
-- **Replay protection**: Timestamp validation prevents replay attacks
-- **Implementation**: `app/routers/upload.py:158-195`
+| Feature | Implementation |
+|---------|----------------|
+| **Uploads** | HMAC-SHA256 (`X-Request-Timestamp`, `X-Request-Signature`), API key + Redis cache |
+| **Auth** | Argon2id (64MB/3iter), Redis sessions (1hr), device fingerprinting, lockout (5 fails→30min) |
+| **RBAC** | basic (view), elevated (+API keys, logs), admin (+users, delete, audit) |
+| **Rate limits** | IP: 30/min auth, 60/min upload, 300/sec API; User: 100/hr |
+| **Auto-update** | Ed25519/Minisign, atomic rename, auto-rollback. Channels: stable/beta/test |
 
-### Credential Management
-- **Rotation script**: `cloudserver/update-db-password.sh` (32-byte DB password, 48-byte secrets)
-- **File permissions**: `.env` restricted to chmod 600
-- **Password hashing**: Argon2id (64MB, 3 iterations) with PBKDF2 fallback + auto-upgrade
+## Client CLI
 
-### Session Management (Redis)
-- **Session ID**: 32-byte token with 1-hour TTL (sliding window refresh)
-- **Cookie flags**: HttpOnly, SameSite=Strict, Secure (HTTPS only)
-- **Device fingerprinting**: SHA256(user-agent + IP), lenient mode allows IP changes
-- **Concurrent sessions**: Max 5 per user, oldest auto-terminated
-- **Anomaly logging**: IP/user-agent changes logged to Redis (30-day retention)
+`-a` address, `-c` config, `-s` server, `-p` port, `-k` apikey, `-q` quiet, `-l` nologs, `-x` xfinitypassword, `-n` nospeedtest, `--version`
 
-### Access Control
-- **RBAC roles**:
-  - `basic`: View data, change password
-  - `elevated`: + create API keys, bulk upload, view logs
-  - `admin`: + user management, delete checks, audit logs
-- **CSRF protection**: 32-byte tokens (1hr TTL) required for state-changing operations
-- **Account lockout**: 5 failed attempts → 30min lockout
-- **Rate limiting**:
-  - IP-based: 30/min (auth), 60/min (upload), 300/sec (API)
-  - Per-user: 100/hr global across all IPs
+**Config:** `SpeedTestInterval` (N=every Nth check), upload queue at `.upload_queue.json` (max 100, FIFO, 14-day expiry)
 
-### Audit & Backup
-- **Retention**: 90 days for user activity and client submission logs
-- **Cleanup**: `cleanup-audit-logs.py` with dry-run support
-- **Backups**: Daily PostgreSQL/Redis backups (30-day retention, gzip verified)
-- **RTO**: <10 minutes for database restore
-- **Scripts**: `backup-all.sh`, `restore-database.sh` (see `cloudserver/OPERATIONS.md`)
+**IP Detection (diagnostics.go):** ip-api.com → ipapi.co → ipify.org (3-tier fallback)
 
-## Performance (v6.0.1)
+## Config Management (v7.0+)
 
-### Database Optimizations
-- **8 indexes** added via `add_performance_indexes.py` (CONCURRENTLY for zero downtime):
-  - API key composite index for upload validation
-  - Modem-specific and time-based indexes
-  - Signal quality, speedtest, ISP indexes
-  - Audit log indexes (user + action timestamps)
-- **Performance gain**: 5-100x faster queries on indexed columns
-- **Metric extraction**: 40+ metrics extracted to dedicated columns (no JSONB parsing)
+Server-side client config with encryption. Modes: `one_time` (client can modify), `locked` (server enforces).
 
-### Client Optimizations
-- **HTTP client reuse**: Shared client in `diagnostics.go` (10 idle conns, 30s timeout)
-- **TLS savings**: Eliminates 3-5 handshakes per check (75% reduction)
-- **Code deduplication**: `fetchJSONFromService()` consolidates ~80 lines
-- **Memory safety**: 2MB response limit in `readResponseBody()` prevents OOM
+Files: Client `config_sync.go`, `config_state.go` | Server `app/routers/config.py`, `app/core/config_*.py`
 
-## Client Features
-
-### Network Diagnostics
-**Three-tier IP detection** (`diagnostics.go:365-530`):
-1. **ipapi.co**: Full details (IP, ASN, org, city, country)
-2. **ip-api.com**: Fallback with full details
-3. **ipify.org**: IP only (ultra-reliable)
-
-### Speed Test Intervals
-Configurable via `SpeedTestInterval` in config.json:
-- `1`: Run every check
-- `N`: Run every Nth check
-- **Auto-retry**: Retries immediately if last test failed
-
-State: `ModemCheck-Results/[MODEM]/speedtest_state.json`
-
-Output: Normal result, `-1` (disabled), `-2` (skipped per interval)
-
-### Upload Queue & Retry
-**File:** `ModemCheck-Results/.upload_queue.json` (max 100 entries, FIFO eviction)
-
-**Retry logic:**
-1. Failed upload → Add to queue
-2. Next run → Process queue before new check
-3. Success → Remove from queue
-4. Failure → Increment attempts, update error
-5. Age >14 days → Auto-remove
+API: `GET/PUT /api/admin/configs/{api_key}/{modem_id}`, `/rollback/{version}`, `/history`
 
 ## Testing
 
-### Test Suite (374 tests, 100% pass rate)
+**Environment:** Ports 22560/23894 (test) vs 22557/23890 (prod), DB `modemcheck_test`, `TESTING=true` disables rate limiting
 
-**Test Categories:**
-- API (200+ tests): All endpoints, validation, metric extraction, audit retention
-- Security (50+ tests): SQL injection, XSS, CSRF, auth bypass, rate limiting
-- RBAC (20+ tests): Role permissions for all endpoints
-- Unit (99 tests): ZIP security, cache stats, pure functions
-- UI (10+ tests): Playwright browser automation
+**Coverage:** `./run_unit_coverage.sh`, `./run_e2e_coverage.sh`, `./run_combined_coverage.sh`
 
-**Coverage Reports:**
-ModemCheck provides **four coverage report types** showing different test perspectives:
-- **Standard** (`run_all_tests.sh`): 33% (unit tests, E2E code excluded for honest metrics)
-- **Unit Only** (`run_unit_coverage.sh`): 80-95% on core utilities
-- **E2E Only** (`run_e2e_coverage.sh`): 85-95% on routers/middleware (**proves they're tested**)
-- **Combined** (`run_combined_coverage.sh`): 90-98% total coverage
+## Database Schema
 
-**Dynamic Contexts:** All reports support click-through to see which specific test covered each line.
+| Table | Key Columns |
+|-------|-------------|
+| `modem_checks` | id, modem_id, check_time, filename, full_data (JSONB), 40+ extracted metrics |
+| `users` | username, password_hash, role, created_at, last_login |
+| `api_keys` | key_hash, name, created_at, expires_at, is_active |
+| `audit_logs` | user_id, action, resource, details, ip_address, timestamp |
 
-**Test Environment Isolation:**
-- Ports: 22560 (API), 23894 (UI) vs production 22557/23890
-- Separate database: `modemcheck_test`
-- Separate network: `172.26.0.0/16`
-- Credentials: admin/TestPass123!, test_elevated/TestPass123!, test_basic/TestPass123!
+## Key Files
 
-**Note:** Rate limiting auto-disabled (`TESTING=true`) to prevent fixture failures during setup (50+ sessions created)
+**Security-critical:** `.signing-keys/minisign.key` (BACKUP!), `cloudserver/.env` (chmod 600)
+
+**Server:** `app/core/errors.py`, `app/core/auth.py`, `app/core/security.py`, `app/routers/upload.py`
+
+**Client:** `diagnostics.go`, `cloud_client.go`, `updater.go`
+
+**Ops:** `backup-all.sh`, `restore-database.sh`, `update-db-password.sh`
+
+## Cron Jobs (Production)
+
+```
+0 2 1 * *       create_audit_partition.sh      # Monthly
+0 3 1 1,4,7,10 * cleanup_old_partitions.sh    # Quarterly
+15 * * * *      cleanup_nonces.py              # Hourly
+```
 
 ## Troubleshooting
 
-### Signature Verification Failures
-- **Cause**: Signature file mtime < binary mtime
-- **Solution**: `sign-all.sh` automatically removes old `.minisig` files before re-signing
+**Redis:** Critical (no fallback). DB 0: sessions/CSRF/logins, DB 1: rate limiting
 
-### Batch Signing Prompts
-- **Without expect**: Password prompted 9 times (once per binary)
-- **With expect**: Single password prompt, automatic signing
-- **Install**: `apt-get install expect` (Linux) or `brew install expect` (macOS)
+**Signing:** `sign-all.sh` removes old `.minisig` before re-signing
 
-### .old File Accumulation
-Each update creates `.old` backup of previous binary (persists until manual deletion or next update)
+**Version:** Makefile `VERSION` → `-ldflags "-X main.Version=$(VERSION)"`
 
-### Redis Configuration
-**Critical dependency**: No fallback if Redis unavailable (breaks auth and rate limiting)
-- **Authentication**: Password-protected (via `REDIS_PASSWORD` env var)
-- **DB 0**: Sessions, CSRF tokens, failed login counters
-- **DB 1**: Rate limiting counters
-- **Security**: requirepass flag prevents unauthorized access from compromised containers
-- **Monitoring**: Check Redis health in production
+## Docker Resources
 
-### Version Management
-Set via `Makefile` `VERSION` variable, injected with `-ldflags "-X main.Version=$(VERSION)"` (appears in `--version` and JSON output)
-
-## Docker Configuration
-
-### Resource Limits (Production)
-```
-modemcheck-api:  2 CPU / 4GB RAM (reserved: 1 CPU / 1GB)
-postgres:        2 CPU / 2GB RAM (reserved: 0.5 CPU / 512MB)
-redis:           0.5 CPU / 512MB RAM (reserved: 0.1 CPU / 128MB)
-nginx:           0.5 CPU / 512MB RAM
-```
-
-**Impact:** Prevents OOM crashes and CPU saturation; guarantees minimum resources during host contention
-
-### nginx Caching
-**File descriptors:** 1000 files cached, 30s validation, 20s inactive eviction
-**Browser cache:**
-- Static assets (images/fonts): 30 days immutable
-- JS/CSS: 7 days must-revalidate
-- HTML: no-cache
-
-### Database Schema (PostgreSQL)
-
-**Auto-initialization:** SQLAlchemy creates tables on first startup; default admin user (admin/changeme) auto-created if users table empty
-
-**Tables:**
-- `modem_checks`: id (PK), modem_id, check_time, filename, full_data (JSONB) + 40+ extracted metric columns
-- `users`: id (PK), username (unique), password_hash, role, created_at, last_login
-- `api_keys`: id (PK), user_id (FK), key_hash, name, created_at, expires_at, is_active
-- `audit_logs`: id (PK), user_id (FK nullable), action, resource, details (JSONB), ip_address, timestamp
-
-**Indexes:** See "Performance" section for 8 production indexes
-
-## Client Stability (v6.0.0)
-
-### Critical Fixes
-**HTTP response body leaks (18 locations):**
-- Impact: Crash after 12-48 hours ("too many open files")
-- Solution: `defer resp.Body.Close()` in coda.go (6), dm1000.go (9), xfinity.go (3)
-
-**Goroutine leak in ping tests:**
-- Impact: Deadlock if panic occurs (2-8KB leak per goroutine)
-- Solution: Panic recovery in `diagnostics.go:165-185`, sends default result
-
-**Race condition in log writes:**
-- Impact: Concurrent writes corrupted log file
-- Solution: `sync.Mutex` in ModemCheck struct protects `Log()` method
-
-**CookieJar error handling:**
-- Impact: Nil pointer crashes if creation failed
-- Solution: Changed `jar, _` to proper error checking with `log.Fatalf()`
-
-**Log cleanup memory usage:**
-- Impact: 10-100MB memory spikes loading entire log file
-- Solution: Streaming with `bufio.Scanner` (constant ~4KB usage)
-
-**Result:** Stable weeks/months operation, no resource leaks, thread-safe logging
-
-## Key Files Reference
-
-### Security-Critical
-**Keys:**
-- `.signing-keys/minisign.key` - Private key (gitignored, password-protected) **BACKUP CRITICAL**
-- `.signing-keys/minisign.pub` - Public key (committed, embedded in updater.go:31)
-- `cloudserver/.env` - Production credentials (chmod 600, NEVER commit)
-
-**Server modules:**
-- `app/core/errors.py` - Centralized exception hierarchy with correlation IDs (v6.0.1+)
-- `app/core/auth.py` - Password hashing, session management
-- `app/core/security.py` - CSRF, rate limiting, input validation
-- `app/core/passwords.py` - 10,000+ blocked weak passwords
-- `app/core/session_security.py` - Device fingerprinting, anomaly detection
-- `app/core/api_key_cache.py` - Redis caching (5min TTL)
-- `app/routers/upload.py` - HMAC validation, timing-safe comparison
-
-**Client modules:**
-- `modemcheck-client/diagnostics.go` - Hostname validation before ping
-- `modemcheck-client/cloud_client.go` - Response body handling
-- `modemcheck-client/updater.go` - HTTP timeouts
-
-### Operations
-**Scripts:**
-- `backup-all.sh`, `backup-database.sh`, `restore-database.sh`
-- `update-db-password.sh` - Credential rotation
-- `add_performance_indexes.py` - Performance migration
-- `cleanup-audit-logs.py` - Audit retention
-
-**Tests:**
-- `cloudserver/test-password-validation.sh` - 36 tests
-- `modemcheck-client/diagnostics_test.go` - 34 sub-tests
-
-### Directory Structure
-**Client:**
-- Config: `config.json` (binary dir or via `-config` flag)
-- Results: `ModemCheck-Results/[MODEL]-[MAC]/[TIMESTAMP].json`
-- State: `last_successful_modem.json`, `speedtest_state.json`, `.update_lock`, `.upload_queue.json`
-- Logs: `modem-check_logs.txt` (30-day auto-cleanup)
-
-**Server:**
-- App: `cloudserver/app/` (routers/, models/, core/)
-- Static: `cloudserver/static/`
-- Tests: `cloudserver/tests/`
-- Config: `cloudserver/.env`
-- Docker: `docker-compose.yml` (prod), `docker-compose.test.yml` (test)
-- Docs: `cloudserver/README.md`, `OPERATIONS.md`
-
-### Docker Services
-**Production (ports 22557/23890):**
-- `modemcheck-api`: FastAPI + Gunicorn (4 workers)
-- `nginx`: Reverse proxy + static files
-- `postgres`: PostgreSQL 16
-- `redis`: Session storage (256MB LRU)
-- Volumes: `postgres-data`, `redis-data`, `static-files`
-
-**Test (ports 22560/23894):**
-- Same services with `-test` suffix
-- Separate network: `172.26.0.0/16`
-- Ephemeral volumes, no resource limits
-
-**Flow:** Client → nginx → FastAPI → PostgreSQL/Redis
+API: 2 CPU/4GB | Postgres: 2 CPU/2GB | Redis: 0.5 CPU/512MB | nginx: 0.5 CPU/512MB

@@ -60,7 +60,7 @@ services:
       - REDIS_PORT=6379
       # Application
       - APP_ENV=test
-      - DEBUG=false
+      - DEBUG=true
       - SECRET_KEY=test-secret-key-not-for-production
       - SESSION_TTL=3600
       - CSRF_SECRET_KEY=test-csrf-secret-key

@@ -295,6 +295,34 @@ async def basic_user(db_session: AsyncSession, basic_user_credentials: Dict[str,
     return user
 
 
+@pytest.fixture(scope="function")
+async def test_user_must_change_password(db_session: AsyncSession) -> User:
+    """Create a user that must change their password (for testing password change flow)."""
+    from sqlalchemy import select, delete
+
+    test_username = "test_must_change_user"
+    test_password = "TempPassword123!"
+
+    # Clean up any existing user with this username
+    await db_session.execute(
+        delete(User).where(User.username == test_username)
+    )
+    await db_session.commit()
+
+    # Create user with must_change_password=True
+    user = User(
+        username=test_username,
+        password_hash=hash_password(test_password),
+        role="basic",
+        created_at=datetime.utcnow(),
+        must_change_password=True
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
 # ============================================================================
 # SESSION/TOKEN FIXTURES
 # ============================================================================
@@ -315,6 +343,18 @@ async def elevated_session_token(elevated_user: User) -> str:
 async def basic_session_token(basic_user: User) -> str:
     """Create session token for basic user."""
     return await create_session(basic_user.username, basic_user.role.value)
+
+
+@pytest.fixture(scope="function")
+async def test_admin_session(admin_session_token: str) -> str:
+    """Alias for admin_session_token for test compatibility."""
+    return admin_session_token
+
+
+@pytest.fixture(scope="function")
+async def test_basic_session(basic_session_token: str) -> str:
+    """Alias for basic_session_token for test compatibility."""
+    return basic_session_token
 
 
 @pytest.fixture(scope="function")
@@ -501,6 +541,117 @@ async def sample_modem_checks_in_db(db_session: AsyncSession, sample_modem_check
         await db_session.refresh(check)
 
     return checks
+
+
+# ============================================================================
+# REAL MODEM DATA FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope="session")
+def real_modem_data() -> Dict[str, list[Dict[str, Any]]]:
+    """Load all anonymized real modem check data.
+
+    Returns dictionary with keys "xb8", "dm1000", "coda56" mapping to lists of checks.
+    Data is loaded once per test session for efficiency.
+    """
+    from tests.fixtures.modem_data.loader import load_all_fixture_data
+    return load_all_fixture_data()
+
+
+@pytest.fixture(scope="function")
+async def populated_modem_database(
+    db_session: AsyncSession,
+    real_modem_data: Dict[str, list[Dict[str, Any]]]
+) -> Dict[str, list[ModemCheck]]:
+    """Populate database with real modem checks for comprehensive testing.
+
+    Creates all checks from all 3 modem types (75 total checks).
+    Returns dictionary mapping modem_type to list of ModemCheck objects.
+    """
+    import uuid
+    from tests.fixtures.modem_data.loader import get_modem_ids
+
+    modem_ids = get_modem_ids()
+    result = {"xb8": [], "dm1000": [], "coda56": []}
+
+    for modem_type, checks in real_modem_data.items():
+        modem_id = modem_ids[modem_type]
+
+        for i, check_data in enumerate(checks):
+            sysinfo = check_data.get("sysinfo", {})
+            check_time = sysinfo.get("checktime", int(time.time()) + i)
+
+            # Create unique filename
+            unique_id = str(uuid.uuid4())[:8]
+            dt = datetime.fromtimestamp(check_time)
+            filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
+
+            # Determine modem type from data or ID
+            detected_type = sysinfo.get("modemtype", modem_type.upper())
+
+            check = ModemCheck(
+                modem_id=modem_id,
+                modem_type=detected_type,
+                check_time=dt,
+                filename=filename,
+                full_data=check_data,
+                created_at=datetime.utcnow()
+            )
+            db_session.add(check)
+            result[modem_type].append(check)
+
+    await db_session.commit()
+
+    # Refresh all checks
+    for modem_type in result:
+        for check in result[modem_type]:
+            await db_session.refresh(check)
+
+    return result
+
+
+@pytest.fixture(scope="function")
+async def single_modem_populated(
+    db_session: AsyncSession,
+    real_modem_data: Dict[str, list[Dict[str, Any]]]
+) -> tuple[str, list[ModemCheck]]:
+    """Populate database with real checks from just one modem (XB8).
+
+    Useful for simpler tests that don't need all 3 modems.
+    Returns tuple of (modem_id, list of ModemCheck objects).
+    """
+    import uuid
+    from tests.fixtures.modem_data.loader import get_modem_ids
+
+    modem_ids = get_modem_ids()
+    modem_id = modem_ids["xb8"]
+    checks = []
+
+    for i, check_data in enumerate(real_modem_data["xb8"]):
+        sysinfo = check_data.get("sysinfo", {})
+        check_time = sysinfo.get("checktime", int(time.time()) + i)
+
+        # Create unique filename
+        unique_id = str(uuid.uuid4())[:8]
+        dt = datetime.fromtimestamp(check_time)
+        filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
+
+        check = ModemCheck(
+            modem_id=modem_id,
+            modem_type=sysinfo.get("modemtype", "XB8"),
+            check_time=dt,
+            filename=filename,
+            full_data=check_data,
+            created_at=datetime.utcnow()
+        )
+        db_session.add(check)
+        checks.append(check)
+
+    await db_session.commit()
+    for check in checks:
+        await db_session.refresh(check)
+
+    return (modem_id, checks)
 
 
 # ============================================================================
@@ -700,6 +851,12 @@ def ensure_ui_test_users():
                         must_change_password=False
                     )
                     session.add(user)
+                else:
+                    # Update existing user's password and role for tests
+                    # This handles the case where default admin was created with 'changeme'
+                    existing_user.password_hash = hash_password(user_data["password"])
+                    existing_user.role = user_data["role"]
+                    existing_user.must_change_password = False
 
             await session.commit()
             print("\n✓ Test users created for UI tests")

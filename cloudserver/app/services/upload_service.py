@@ -45,6 +45,10 @@ class InputValidator:
         if not modem_id:
             raise UploadValidationError("Missing modem_id")
 
+        # Length limit to prevent database issues
+        if len(modem_id) > 64:
+            raise UploadValidationError("modem_id too long (max 64 characters)")
+
         # Model can be alphanumeric with underscores, MAC address uses hex digits and colons
         if not re.match(r'^[a-zA-Z0-9_]+-[A-Fa-f0-9:]+$', modem_id):
             raise UploadValidationError(

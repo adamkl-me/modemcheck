@@ -23,7 +23,8 @@ const (
 	PingTimeout        = 30 * time.Second
 
 	// Test configuration
-	DefaultPingCount = 25
+	DefaultPingCount            = 100 // Number of pings for latency testing
+	DefaultSpeedTestConnections = 1   // Parallel connections for speed tests
 
 	// Network limits
 	MaxHostnameLength = 253 // RFC 1035 DNS hostname max length
@@ -38,9 +39,10 @@ const (
 type Configuration struct {
 	ModemAddress        string
 	IgnitePassword      string
-	SpeedTestEnabled    bool   // Enable speed tests (default: true)
-	SpeedTestInterval   int    // Run speed test every N runs (default: 1)
-	PingCount           int    // Number of pings to perform (default: 25)
+	SpeedTestEnabled     bool // Enable speed tests (default: true)
+	SpeedTestInterval    int  // Run speed test every N runs (default: 1)
+	SpeedTestConnections int  // Number of parallel connections for speed tests (default: 1)
+	PingCount            int  // Number of pings to perform (default: 100)
 	AutoUpdateEnabled   bool   // Enable automatic updates (default: true)
 	UpdateChannel       string // Update channel: "stable" (default), "beta", or "test" for pre-releases
 	Silent              bool   // Suppress console output
@@ -48,13 +50,15 @@ type Configuration struct {
 	LocalCleanupEnabled bool   // Enable automatic cleanup of old local files (default: true)
 	LocalRetentionDays  int    // Days to retain local files (default: 90)
 	// Cloud mode settings
-	EnableCloud  bool   // Enable cloud upload (always saves locally)
-	CloudHost    string // Cloud server hostname or IP
-	CloudPort    string // Cloud server port
-	CloudAPIKey  string // API key for authentication
-	CloudPath    string // Cloud storage path
-	EnforceHTTPS bool   // Always use HTTPS, reject HTTP connections (default: true)
-	InsecureTLS  bool   // Allow self-signed/invalid certificates for local dev (default: false)
+	EnableCloud       bool     // Enable cloud upload (always saves locally)
+	CloudHost         string   // Primary cloud server hostname or IP
+	CloudPort         string   // Primary cloud server port
+	CloudAPIKey       string   // API key for authentication
+	CloudPath         string   // Cloud storage path
+	FailoverHosts     []string // Optional failover cloud server hostnames/IPs (for config sync resilience)
+	FailoverPorts     []string // Optional failover cloud server ports (must match FailoverHosts length)
+	EnforceHTTPS      bool     // Always use HTTPS, reject HTTP connections (default: true)
+	InsecureTLS       bool     // Allow self-signed/invalid certificates for local dev (default: false)
 }
 
 // LoadConfigFile loads configuration from a JSON file and validates required settings.
@@ -76,8 +80,16 @@ func LoadConfigFile(path string, config *Configuration) error {
 		return fmt.Errorf("SpeedTestInterval must be at least 1")
 	}
 
+	// Set default for SpeedTestConnections if not specified
+	if config.SpeedTestConnections == 0 {
+		config.SpeedTestConnections = DefaultSpeedTestConnections // Default: 1 parallel connection
+	}
+	if config.SpeedTestConnections < 1 || config.SpeedTestConnections > 16 {
+		return fmt.Errorf("SpeedTestConnections must be between 1 and 16 (got: %d)", config.SpeedTestConnections)
+	}
+
 	if config.PingCount == 0 {
-		config.PingCount = DefaultPingCount // Default: 25 pings
+		config.PingCount = DefaultPingCount // Default: 100 pings
 	}
 	if config.PingCount < 1 || config.PingCount > 100 {
 		return fmt.Errorf("PingCount must be between 1 and 100 (got: %d)", config.PingCount)
@@ -107,6 +119,12 @@ func LoadConfigFile(path string, config *Configuration) error {
 		}
 		if config.CloudAPIKey == "" {
 			return fmt.Errorf("CloudAPIKey is required when EnableCloud is true")
+		}
+
+		// Validate failover configuration
+		if len(config.FailoverHosts) != len(config.FailoverPorts) {
+			return fmt.Errorf("FailoverHosts and FailoverPorts must have the same length (hosts: %d, ports: %d)",
+				len(config.FailoverHosts), len(config.FailoverPorts))
 		}
 	}
 
@@ -324,4 +342,50 @@ func (s *SpeedTestState) Save() error {
 	// Update hash after successful write
 	s.previousHash = currentHash
 	return nil
+}
+
+// SaveConfigurationAtomic atomically saves configuration to the config file
+// Uses temp file + atomic rename to prevent corruption on crash
+func SaveConfigurationAtomic(config *Configuration, configPath string) error {
+	// Ensure directory exists
+	dir := filepath.Dir(configPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// Marshal to JSON with indentation for readability
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Atomic write: write to temp file, then rename
+	tempFile := configPath + ".tmp"
+
+	// Write to temp file with restrictive permissions
+	if err := os.WriteFile(tempFile, data, 0600); err != nil {
+		return fmt.Errorf("failed to write temp config file: %w", err)
+	}
+
+	// Atomic rename (overwrites existing file)
+	if err := os.Rename(tempFile, configPath); err != nil {
+		// Clean up temp file on error
+		os.Remove(tempFile)
+		return fmt.Errorf("failed to rename temp config file: %w", err)
+	}
+
+	return nil
+}
+
+// GetConfigFilePath returns the path to the config file
+// Returns the path used at startup (either specified via -config or default config.json)
+func GetConfigFilePath() (string, error) {
+	// Get executable directory
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	exeDir := filepath.Dir(exePath)
+	return filepath.Join(exeDir, "config.json"), nil
 }

@@ -75,9 +75,13 @@ def create_valid_modem_data():
 
 
 class TestNetworkErrors:
-    """Test handling of network-related errors."""
+    """Test handling of network-related errors.
 
-    @pytest.mark.skip(reason="Infrastructure test causes ReadTimeout - application hangs waiting for database connection (expected behavior)")
+    NOTE: These tests are marked with @pytest.mark.chaos and excluded from
+    regular test runs. Run explicitly with: pytest -m chaos
+    """
+
+    @pytest.mark.chaos
     @pytest.mark.asyncio
     async def test_database_connection_failure(self, admin_client_with_token: httpx.AsyncClient):
         """Test handling when database connection fails."""
@@ -107,7 +111,7 @@ class TestNetworkErrors:
         response = await admin_client_with_token.get("/api/db/list_modems")
         assert response.status_code == 200, "Database operations should work after recovery"
 
-    @pytest.mark.skip(reason="Infrastructure test - login fails with 401 before Redis pause (needs investigation)")
+    @pytest.mark.chaos
     @pytest.mark.asyncio
     async def test_redis_connection_failure(self, http_client: httpx.AsyncClient):
         """Test handling when Redis connection fails."""
@@ -146,7 +150,7 @@ class TestNetworkErrors:
         )
         assert login_response.status_code == 200, "Login should work after Redis recovery"
 
-    @pytest.mark.skip(reason="Timeout test is unreliable and may succeed or fail randomly")
+    @pytest.mark.chaos
     @pytest.mark.asyncio
     async def test_timeout_handling(self, http_client: httpx.AsyncClient):
         """Test handling of request timeouts."""
@@ -497,7 +501,7 @@ class TestResourceLimits:
         assert response.status_code in [200, 413]
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Stress test - not a functional test, may fail due to resource limits")
+    @pytest.mark.chaos
     async def test_many_concurrent_connections(self, app):
         """Test handling of many concurrent connections."""
         async def make_request(client):

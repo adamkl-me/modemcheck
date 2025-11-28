@@ -40,6 +40,26 @@ from app.schemas.modem_check import (
     DeleteCheckRequest,
     DeleteAllChecksRequest,
 )
+from app.schemas.config import (
+    PreflightRequest,
+    PreflightResponse,
+    ConfigSyncRequest,
+    ConfigSyncResponse,
+    ConfigCreateRequest,
+    ConfigCreateResponse,
+    ConfigUpdateRequest,
+    ConfigUpdateResponse,
+    ConfigRollbackRequest,
+    ConfigRollbackResponse,
+    HealthCheckResponse,
+    ConfigListItem,
+    ConfigListResponse,
+    ConfigDetailResponse,
+    ConfigVersionItem,
+    ConfigHistoryItem,
+    ConfigHistoryResponse,
+    ConfigSSEUpdate,
+)
 
 __all__ = [
     # Common
@@ -80,4 +100,23 @@ __all__ = [
     "BulkUploadResponse",
     "DeleteCheckRequest",
     "DeleteAllChecksRequest",
+    # Config Management
+    "PreflightRequest",
+    "PreflightResponse",
+    "ConfigSyncRequest",
+    "ConfigSyncResponse",
+    "ConfigCreateRequest",
+    "ConfigCreateResponse",
+    "ConfigUpdateRequest",
+    "ConfigUpdateResponse",
+    "ConfigRollbackRequest",
+    "ConfigRollbackResponse",
+    "HealthCheckResponse",
+    "ConfigListItem",
+    "ConfigListResponse",
+    "ConfigDetailResponse",
+    "ConfigVersionItem",
+    "ConfigHistoryItem",
+    "ConfigHistoryResponse",
+    "ConfigSSEUpdate",
 ]

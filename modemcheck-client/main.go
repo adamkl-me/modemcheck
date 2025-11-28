@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -24,6 +25,7 @@ var Version = "dev"
 // ModemCheck represents the main application state.
 type ModemCheck struct {
 	config          Configuration
+	configFilePath  string // Path to configuration file for atomic saves
 	client          *http.Client
 	modemScraper    scraper.ModemScraper
 	modemType       string
@@ -38,7 +40,7 @@ type ModemCheck struct {
 }
 
 // NewModemCheck creates a new ModemCheck instance.
-func NewModemCheck(config Configuration) *ModemCheck {
+func NewModemCheck(config Configuration, configFilePath string) *ModemCheck {
 	// Create HTTP client with TLS configuration based on user settings
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -59,6 +61,7 @@ func NewModemCheck(config Configuration) *ModemCheck {
 	now := time.Now()
 	return &ModemCheck{
 		config:          config,
+		configFilePath:  configFilePath,
 		client:          client,
 		checkTime:       now.Unix(),
 		checkTimeString: now.Format("2006-01-02_15-04-05"),
@@ -313,17 +316,61 @@ func (m *ModemCheck) Run() error {
 		m.retryFailedUploads(queue)
 	}
 
+	// EARLY CONFIG SYNC: Sync config BEFORE modem detection
+	// This allows server-pushed configs to control modem detection behavior
+	// modem_id will be empty - server tracks via upload later
+	if m.config.EnableCloud && m.config.CloudAPIKey != "" {
+		m.Log("Performing configuration sync with server...")
+
+		// Load config state (per-API-key, not per-modem)
+		state, err := LoadConfigState()
+		if err != nil {
+			state = &ConfigState{}
+		}
+
+		// Sync with empty modem_id - server uses API key as primary key
+		// modem_id will be populated on upload after successful modem detection
+		configChanged, err := SyncWithRetry(&m.config, "", state, 3)
+		if err != nil {
+			m.Log(fmt.Sprintf("Warning: Config sync failed: %v", err))
+			m.Log("Continuing with local configuration")
+		} else {
+			// Save state after successful sync
+			if err := SaveConfigState(state); err != nil {
+				m.Log(fmt.Sprintf("Warning: Failed to save config state: %v", err))
+			}
+
+			if configChanged {
+				m.Log("✓ Configuration updated from server")
+
+				// Save updated config atomically
+				if m.configFilePath != "" {
+					if err := SaveConfigurationAtomic(&m.config, m.configFilePath); err != nil {
+						m.Log(fmt.Sprintf("ERROR: Failed to save updated configuration: %v", err))
+					} else {
+						m.Log("Configuration saved successfully")
+
+						// If in enforced status, notify user
+						if state.Status == "enforced_ready" || state.Status == "enforced_active" {
+							m.Log("⚠ Configuration is ENFORCED by server - local changes will be overwritten")
+						}
+					}
+				}
+			} else {
+				m.Log("✓ Configuration is up to date with server")
+			}
+		}
+	}
+
 	// Load last successful modem state
 	lastSuccessful, _ := LoadLastSuccessfulModem()
 
 	// Detect modem
 	detectionFailed := false
-	var detectionErr error
 
 	if m.config.ModemAddress == "autodetect" {
 		if err := m.AutoDetectModem(); err != nil {
 			m.Log(err.Error())
-			detectionErr = err
 			detectionFailed = true
 		}
 	} else {
@@ -332,7 +379,7 @@ func (m *ModemCheck) Run() error {
 		m.Log("Attempting to detect modem model...")
 		m.modemType = scraper.DetectModem(m.modemAddress, m.client)
 		if m.modemType == "Unknown" {
-			detectionErr = fmt.Errorf("modem model not detected at %s", m.modemAddress)
+			m.Log(fmt.Sprintf("Modem model not detected at %s", m.modemAddress))
 			detectionFailed = true
 		} else {
 			m.Log(fmt.Sprintf("Modem model detected: %s", m.modemType))
@@ -347,8 +394,14 @@ func (m *ModemCheck) Run() error {
 			m.modemMAC = lastSuccessful.ModemMAC
 			m.modemAddress = lastSuccessful.ModemAddress
 		} else {
+			// Exit gracefully - config sync already succeeded (if enabled)
+			// Next run will have the synced configuration
 			m.Log("Modem detection failed and no previous successful modem found")
-			return detectionErr
+			if m.config.EnableCloud {
+				m.Log("Configuration was synced successfully - next run will use the synced config")
+			}
+			m.Log("Exiting - please ensure modem is accessible and try again")
+			return nil // Exit gracefully, not an error
 		}
 	} else {
 		// Create appropriate scraper
@@ -532,7 +585,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Command-Line Flags:\n")
 		fmt.Fprintf(os.Stderr, "  -a, --address <ip>        Modem IP address or hostname (default: autodetect)\n")
 		fmt.Fprintf(os.Stderr, "  -c, --config <file>       Path to JSON configuration file\n")
-		fmt.Fprintf(os.Stderr, "  -s, --silent              Suppress terminal output (default: false)\n")
+		fmt.Fprintf(os.Stderr, "  -s, --server <host>       Cloud server hostname/IP (enables cloud mode)\n")
+		fmt.Fprintf(os.Stderr, "  -p, --port <port>         Cloud server port (default: 443)\n")
+		fmt.Fprintf(os.Stderr, "  -k, --apikey <key>        API key for cloud mode\n")
+		fmt.Fprintf(os.Stderr, "  -q, --quiet               Suppress terminal output (default: false)\n")
 		fmt.Fprintf(os.Stderr, "  -l, --nologs              Disable log file creation (default: false)\n")
 		fmt.Fprintf(os.Stderr, "  -x, --xfinitypassword     Password for Xfinity modems\n")
 		fmt.Fprintf(os.Stderr, "  -n, --nospeedtest         Disable speed tests (default: false)\n")
@@ -542,7 +598,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  IgnitePassword        Password for Rogers Xfinity modems\n")
 		fmt.Fprintf(os.Stderr, "  SpeedTestEnabled      Enable/disable speed tests (default: true)\n")
 		fmt.Fprintf(os.Stderr, "  SpeedTestInterval     Run speed test every N runs (default: 1)\n")
-		fmt.Fprintf(os.Stderr, "  PingCount             Number of pings to perform (default: 25, max: 100)\n")
+		fmt.Fprintf(os.Stderr, "  PingCount             Number of pings to perform (default: 100, max: 100)\n")
 		fmt.Fprintf(os.Stderr, "  AutoUpdateEnabled     Enable/disable automatic updates (default: true)\n")
 		fmt.Fprintf(os.Stderr, "  Silent                Suppress console output (default: false)\n")
 		fmt.Fprintf(os.Stderr, "  NoLogs                Disable log file creation (default: false)\n")
@@ -558,8 +614,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %s                                 # Auto-detect modem\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -a 192.168.100.1                # Specify modem IP\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -c config.json                  # Use config file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -s -l -n                        # Silent, no logs, no speed test\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -q -l -n                        # Quiet, no logs, no speed test\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -x mypassword                   # Xfinity modem with password\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -s api.example.com -k KEY       # Cloud mode bootstrap\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nFor more information, visit: https://github.com/adamkl-me/modemcheck\n")
 	}
 
@@ -570,8 +627,18 @@ func main() {
 	configFile := flag.String("c", "", "Path to JSON config file")
 	flag.StringVar(configFile, "config", "", "Path to JSON config file")
 
-	silent := flag.Bool("s", false, "Suppress terminal output")
-	flag.BoolVar(silent, "silent", false, "Suppress terminal output")
+	// Cloud mode flags
+	cloudServer := flag.String("s", "", "Cloud server hostname/IP (enables cloud mode)")
+	flag.StringVar(cloudServer, "server", "", "Cloud server hostname/IP (enables cloud mode)")
+
+	cloudPort := flag.String("p", "443", "Cloud server port")
+	flag.StringVar(cloudPort, "port", "443", "Cloud server port")
+
+	cloudAPIKey := flag.String("k", "", "API key for cloud mode")
+	flag.StringVar(cloudAPIKey, "apikey", "", "API key for cloud mode")
+
+	quiet := flag.Bool("q", false, "Suppress terminal output")
+	flag.BoolVar(quiet, "quiet", false, "Suppress terminal output")
 
 	noLogs := flag.Bool("l", false, "Disable log file creation")
 	flag.BoolVar(noLogs, "nologs", false, "Disable log file creation")
@@ -599,7 +666,8 @@ func main() {
 		SpeedTestInterval:   1,      // Default: run every time
 		PingCount:           DefaultPingCount, // Default: 25 pings
 		AutoUpdateEnabled:   true,   // Auto-update enabled by default
-		Silent:              *silent,
+		UpdateChannel:       "stable", // Default: stable releases only
+		Silent:              *quiet,
 		NoLogs:              *noLogs,
 		LocalCleanupEnabled: true,   // Default: cleanup enabled
 		LocalRetentionDays:  90,     // Default: 90 days
@@ -641,8 +709,59 @@ func main() {
 		}
 	}
 
+	// Cloud flags override config.json values
+	// Enable cloud mode if either -s or -k is provided, prompting for the missing value
+	if *cloudServer != "" || *cloudAPIKey != "" {
+		reader := bufio.NewReader(os.Stdin)
+
+		// Get server (from flag or prompt)
+		server := *cloudServer
+		if server == "" {
+			fmt.Print("Enter cloud server hostname: ")
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				log.Printf("Warning: failed to read server hostname: %v", err)
+			} else {
+				server = strings.TrimSpace(input)
+			}
+		}
+
+		// Get API key (from flag or prompt)
+		apiKey := *cloudAPIKey
+		if apiKey == "" {
+			fmt.Print("Enter API key: ")
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				log.Printf("Warning: failed to read API key: %v", err)
+			} else {
+				apiKey = strings.TrimSpace(input)
+			}
+		}
+
+		if server != "" && apiKey != "" {
+			config.EnableCloud = true
+			config.CloudHost = server
+			config.CloudPort = *cloudPort
+			config.CloudAPIKey = apiKey
+			log.Printf("Cloud mode enabled: %s:%s", config.CloudHost, config.CloudPort)
+
+			// Set default config path for saving synced config if not already set
+			// This allows bootstrap mode to save the server-pushed config for future runs
+			if configPath == "" {
+				exePath, err := os.Executable()
+				if err == nil {
+					exeDir := filepath.Dir(exePath)
+					configPath = filepath.Join(exeDir, "config.json")
+					log.Printf("Config will be saved to: %s", configPath)
+				}
+			}
+		} else {
+			log.Printf("Warning: Missing server or API key, cloud mode disabled")
+		}
+	}
+
 	// Create and run modem check
-	modemCheck := NewModemCheck(config)
+	modemCheck := NewModemCheck(config, configPath)
 
 	// Check if a previous update was successful and clear the lock if needed
 	if config.AutoUpdateEnabled {

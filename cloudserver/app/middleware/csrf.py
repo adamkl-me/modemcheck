@@ -1,10 +1,42 @@
 """
 CSRF protection middleware and dependencies.
+
+This module provides:
+1. CSRF token extraction from requests (header, body, query param)
+2. CSRF token validation dependency for FastAPI routes
+3. Middleware to add new CSRF tokens to response headers (X-New-CSRF-Token)
+
+The middleware enables token rotation without requiring separate session_check calls.
 """
 from typing import Optional
 from fastapi import Depends, HTTPException, status, Request, Cookie
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.core.security import validate_csrf_token, generate_csrf_token
+
+
+class CSRFResponseMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to add new CSRF token to response headers after token rotation.
+
+    When a CSRF token is validated (and consumed), a new token is generated
+    and stored in request.state.new_csrf_token. This middleware adds that
+    token to the response headers so the client can use it for the next request.
+
+    Response Header: X-New-CSRF-Token
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        """Add new CSRF token to response headers if available."""
+        response: Response = await call_next(request)
+
+        # Check if a new CSRF token was generated during request processing
+        new_csrf_token = getattr(request.state, 'new_csrf_token', None)
+        if new_csrf_token:
+            response.headers["X-New-CSRF-Token"] = new_csrf_token
+
+        return response
 
 
 async def get_csrf_token_from_request(request: Request) -> Optional[str]:
@@ -72,15 +104,17 @@ async def verify_csrf(
 
     # Validate CSRF token (one-time use - token is deleted during validation)
     is_valid = await validate_csrf_token(csrf_token, modemcheck_session)
+
+    # Generate new CSRF token for next request (token rotation)
+    # Store in request state so response can include it - even on failure
+    # This allows the client to recover without a page refresh
+    new_csrf_token = await generate_csrf_token(modemcheck_session)
+    request.state.new_csrf_token = new_csrf_token
+
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid CSRF token"
         )
-
-    # Generate new CSRF token for next request (token rotation)
-    # Store in request state so response can include it
-    new_csrf_token = await generate_csrf_token(modemcheck_session)
-    request.state.new_csrf_token = new_csrf_token
 
     return True

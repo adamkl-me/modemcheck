@@ -24,6 +24,28 @@
 
 
 # ============================================================================
+# CONFIG MANAGEMENT - NONCE CLEANUP (CRITICAL)
+# ============================================================================
+
+# Hourly nonce cleanup (prevents config_nonces table bloat)
+# CRITICAL: Without this, the nonces table grows ~5000 rows/hour at scale
+15 * * * * cd /path/to/modemcheck/cloudserver && source .venv/bin/activate && python3 scripts/cleanup_nonces.py >> logs/nonce-cleanup.log 2>&1
+
+
+# ============================================================================
+# CONFIG MANAGEMENT - PARTITION MAINTENANCE
+# ============================================================================
+
+# Monthly partition creation (run on 1st of each month at 2:00 AM)
+# Creates config_audit_logs partition for the next month
+0 2 1 * * /path/to/modemcheck/cloudserver/scripts/create_audit_partition.sh >> logs/partition-create.log 2>&1
+
+# Quarterly old partition cleanup (run on 1st of Jan/Apr/Jul/Oct at 3:00 AM)
+# Removes partitions older than 90 days
+0 3 1 1,4,7,10 * /path/to/modemcheck/cloudserver/scripts/cleanup_old_partitions.sh >> logs/partition-cleanup.log 2>&1
+
+
+# ============================================================================
 # AUDIT LOG CLEANUP
 # ============================================================================
 

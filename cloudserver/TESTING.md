@@ -1,5 +1,9 @@
 # Testing Philosophy and Strategy
 
+This document covers testing for the ModemCheck Cloud Server (Python/FastAPI). For Go client tests, see [modemcheck-client/README.md](../modemcheck-client/README.md#testing).
+
+---
+
 This document explains the testing approach for ModemCheck Cloud v2, including why coverage metrics are structured the way they are and what "good coverage" means for this project.
 
 ## Table of Contents
@@ -69,7 +73,7 @@ If you look at `coverage.xml`, you'll see routers and middleware at 0% coverage.
 - HTTP requests to the container are a "black box" to the coverage tool
 
 **This doesn't mean routers are untested!** They're extensively tested via:
-- 450+ E2E tests covering all endpoints
+- ~650+ E2E tests covering all endpoints
 - 96% test pass rate
 - All CRUD operations, auth flows, RBAC permissions
 - Security vulnerabilities (XSS, SQLi, CSRF, etc.)
@@ -81,7 +85,7 @@ We exclude E2E-tested code from coverage reports to show **honest metrics**:
 ```ini
 # pytest.ini - Coverage exclusions
 omit =
-    app/routers/*      # Tested via E2E (450+ tests)
+    app/routers/*      # Tested via E2E (~650+ tests)
     app/middleware/*   # Tested via E2E
     app/main.py        # Application lifecycle (tested via startup)
 ```
@@ -259,6 +263,25 @@ TOTAL                            386     23    94%
 # Attach to logs
 docker logs -f modemcheck-cloud-test
 ```
+
+### Performance Tests (Separate Run)
+```bash
+# Performance tests are skipped by default to prevent state pollution
+# Run them explicitly:
+./run_all_tests.sh tests/performance/ -v
+
+# Or with markers:
+./run_all_tests.sh -m performance
+```
+Performance tests create many database records and should run in isolation.
+
+### Security Tests with Production Settings
+```bash
+# Tests requiring rate limiting and account lockout
+# (disabled in normal test mode)
+./scripts/run_security_tests.sh
+```
+Runs tests marked `@pytest.mark.requires_production_settings` with `TESTING=false`.
 
 ### Coverage Reports
 
@@ -620,7 +643,7 @@ jobs:
 
 ## Summary
 
-✅ **450+ tests covering all critical functionality**
+✅ **~700 tests covering all critical functionality**
 ✅ **96% pass rate** (433 passed, 17 skipped)
 ✅ **Hybrid strategy**: E2E for APIs, Unit for utilities
 ✅ **80%+ coverage** of core business logic

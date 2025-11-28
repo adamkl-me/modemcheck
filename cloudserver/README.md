@@ -13,7 +13,7 @@ The ModemCheck cloud server provides a modern, high-performance API for storing 
 - **Modern Stack**: Python 3.11, SQLAlchemy 2.0, Pydantic validation, Redis sessions
 - **Production-Ready**: Gunicorn + Uvicorn workers, connection pooling, comprehensive logging
 - **Comprehensive Security**: Rate limiting, CSRF protection, account lockout, Argon2id password hashing
-- **Complete Test Suite**: 545+ tests (520+ passing) covering API, security, RBAC, service layer, and UI functionality
+- **Complete Test Suite**: API, security, RBAC, and UI tests
 
 ## Architecture
 
@@ -136,6 +136,17 @@ Database initialization happens automatically on first startup.
 - `DELETE /api/admin/api_keys` - Delete API key
 - `GET /api/admin/logs/user_activity` - View user logs (admin only)
 - `GET /api/admin/logs/client_submissions` - View client logs (elevated+)
+
+#### API Key Rotation
+To rotate an API key (e.g., suspected compromise or periodic rotation):
+1. Create a new API key in the admin dashboard
+2. Update the client's `config.json` with the new `CloudAPIKey`
+3. Verify the client can upload with the new key
+4. Delete the old API key
+
+**Note:** No automatic key versioning - rotation requires brief coordination
+between key creation and client update. For zero-downtime rotation,
+create the new key first, update all clients, then delete the old key.
 
 ### Users (`/api/users`)
 - `POST /api/users` - Create user
@@ -329,7 +340,7 @@ python -m uvicorn app.main:app --reload --port 8000
 
 ### Testing
 
-The cloud server includes a comprehensive test suite with 374 tests (100% pass rate):
+The cloud server includes a comprehensive test suite:
 
 ```bash
 # Run all tests
@@ -352,23 +363,23 @@ The cloud server includes a comprehensive test suite with 374 tests (100% pass r
 - Rate limiting disabled to prevent fixture failures
 - Automatic cleanup after tests complete
 
-**Test Coverage:**
-- API Tests (200+ tests): All endpoints, validation, edge cases, metric extraction
-- Security Tests (50+ tests): SQL injection, XSS, CSRF, auth bypass, session security
-- RBAC Tests (20+ tests): Role permissions for all endpoints
-- Unit Tests (99 tests): ZIP security, cache stats, pure functions
-- UI Tests (10+ tests): Playwright browser automation
+**Test Categories:**
+- API Tests: All endpoints, validation, edge cases, metric extraction
+- Security Tests: SQL injection, XSS, CSRF, auth bypass, session security
+- RBAC Tests: Role permissions for all endpoints
+- Unit Tests: ZIP security, cache stats, pure functions
+- UI Tests: Playwright browser automation
 
 #### Coverage Reports
 
 ModemCheck provides **multiple coverage reports** to show both unit and E2E test coverage:
 
 ```bash
-# Unit test coverage only (target: 80-90%)
+# Unit test coverage only
 ./run_unit_coverage.sh
 open htmlcov-unit/index.html
 
-# E2E test coverage only (proves routers ARE tested)
+# E2E test coverage only
 ./run_e2e_coverage.sh
 open htmlcov-e2e/index.html
 
@@ -377,10 +388,10 @@ open htmlcov-e2e/index.html
 open htmlcov-combined/index.html
 ```
 
-**Coverage Metrics:**
-- **Unit Test Coverage**: 80-95% on core utilities
-- **E2E Test Coverage**: 85-95% on routers/middleware
-- **Combined Coverage**: 90-98% across all modules
+**Coverage Reports:**
+- **Unit Test Coverage**: Core utilities and pure functions
+- **E2E Test Coverage**: Routers and middleware
+- **Combined Coverage**: All modules
 - **Dynamic Contexts**: Click any line to see which test covered it
 
 See [TESTING.md](TESTING.md) for detailed testing philosophy and strategy.

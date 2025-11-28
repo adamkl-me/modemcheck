@@ -231,6 +231,73 @@ class TestInMemoryCache:
         assert stats["max_size"] == 100
         assert 0 < stats["utilization"] < 1
 
+    @pytest.mark.asyncio
+    async def test_concurrent_incr(self, cache):
+        """Test that concurrent incr operations are thread-safe."""
+        import asyncio
+
+        async def increment():
+            for _ in range(100):
+                await cache.incr("counter")
+
+        # Run 10 concurrent incrementers
+        await asyncio.gather(*[increment() for _ in range(10)])
+
+        # Should be exactly 1000 (10 * 100)
+        result = await cache.get("counter")
+        assert int(result) == 1000
+
+    @pytest.mark.asyncio
+    async def test_concurrent_set_get(self):
+        """Test that concurrent set/get operations are thread-safe."""
+        import asyncio
+        # Use larger cache to avoid eviction during test
+        large_cache = InMemoryCache(max_size=500, default_ttl=3600)
+
+        async def writer(key_prefix: str):
+            for i in range(50):
+                await large_cache.set(f"{key_prefix}_{i}", f"value_{i}")
+
+        async def reader(key_prefix: str):
+            for i in range(50):
+                # May get None if not yet written, but shouldn't error
+                await large_cache.get(f"{key_prefix}_{i}")
+
+        # Run all writers first, then verify
+        await asyncio.gather(
+            writer("a"), writer("b"), writer("c")
+        )
+
+        # Run readers concurrently with verification
+        await asyncio.gather(
+            reader("a"), reader("b"), reader("c")
+        )
+
+        # Verify values were written correctly
+        assert await large_cache.get("a_49") == "value_49"
+        assert await large_cache.get("b_49") == "value_49"
+
+        await large_cache.close()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_lru_eviction(self, cache):
+        """Test that LRU eviction is thread-safe under concurrent load."""
+        import asyncio
+        small_cache = InMemoryCache(max_size=10, default_ttl=None)
+
+        async def writer():
+            for i in range(50):
+                await small_cache.set(f"key_{i}", f"value_{i}")
+
+        # Run concurrent writers that will cause frequent evictions
+        await asyncio.gather(*[writer() for _ in range(5)])
+
+        # Cache should have at most max_size entries
+        stats = small_cache.get_stats()
+        assert stats["size"] <= 10
+
+        await small_cache.close()
+
 
 class TestRedisCache:
     """Tests for RedisCache implementation."""

@@ -1,0 +1,377 @@
+{
+  "rx": [
+    {
+      "snr": "41.0",
+      "power": "1.0",
+      "octets": "838755348",
+      "portid": "16",
+      "frequency": "669",
+      "correcteds": "6292802",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.1",
+      "power": "0.0",
+      "octets": "1607000102",
+      "portid": "1",
+      "frequency": "279",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.6",
+      "power": "0.2",
+      "octets": "1607005613",
+      "portid": "2",
+      "frequency": "579",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.6",
+      "power": "0.2",
+      "octets": "1607009221",
+      "portid": "3",
+      "frequency": "585",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.8",
+      "power": "0.5",
+      "octets": "1607061057",
+      "portid": "4",
+      "frequency": "591",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.2",
+      "power": "0.9",
+      "octets": "1607064523",
+      "portid": "5",
+      "frequency": "597",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.2",
+      "power": "0.9",
+      "octets": "1607069768",
+      "portid": "6",
+      "frequency": "603",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.0",
+      "power": "0.6",
+      "octets": "1607031533",
+      "portid": "7",
+      "frequency": "609",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.5",
+      "power": "0.5",
+      "octets": "1607038081",
+      "portid": "8",
+      "frequency": "615",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.4",
+      "power": "0.4",
+      "octets": "1607042370",
+      "portid": "9",
+      "frequency": "621",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.7",
+      "power": "1.0",
+      "octets": "1607047728",
+      "portid": "10",
+      "frequency": "633",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.7",
+      "power": "0.8",
+      "octets": "1607052443",
+      "portid": "11",
+      "frequency": "639",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.6",
+      "power": "0.6",
+      "octets": "1607055963",
+      "portid": "12",
+      "frequency": "645",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.3",
+      "power": "0.4",
+      "octets": "1607060613",
+      "portid": "13",
+      "frequency": "651",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.5",
+      "power": "0.6",
+      "octets": "1607066394",
+      "portid": "14",
+      "frequency": "657",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.8",
+      "power": "0.9",
+      "octets": "1607075289",
+      "portid": "15",
+      "frequency": "663",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.8",
+      "power": "0.8",
+      "octets": "1607081096",
+      "portid": "17",
+      "frequency": "675",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.9",
+      "power": "0.5",
+      "octets": "1607087476",
+      "portid": "18",
+      "frequency": "681",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.0",
+      "power": "0.8",
+      "octets": "1607090463",
+      "portid": "19",
+      "frequency": "687",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.3",
+      "power": "1.1",
+      "octets": "1607095315",
+      "portid": "20",
+      "frequency": "693",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.5",
+      "power": "1.4",
+      "octets": "1607101500",
+      "portid": "21",
+      "frequency": "699",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.3",
+      "power": "1.0",
+      "octets": "1607104847",
+      "portid": "22",
+      "frequency": "705",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.1",
+      "power": "0.6",
+      "octets": "1607111772",
+      "portid": "23",
+      "frequency": "711",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.8",
+      "power": "0.3",
+      "octets": "1607117958",
+      "portid": "24",
+      "frequency": "717",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.7",
+      "power": "0.4",
+      "octets": "1607123952",
+      "portid": "25",
+      "frequency": "723",
+      "correcteds": "2",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.0",
+      "power": "0.6",
+      "octets": "1607128856",
+      "portid": "26",
+      "frequency": "825",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.3",
+      "power": "0.9",
+      "octets": "1607132755",
+      "portid": "27",
+      "frequency": "831",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.5",
+      "power": "1.1",
+      "octets": "1607137766",
+      "portid": "28",
+      "frequency": "837",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.2",
+      "power": "0.8",
+      "octets": "1607143426",
+      "portid": "29",
+      "frequency": "843",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "40.9",
+      "power": "0.6",
+      "octets": "1607148520",
+      "portid": "30",
+      "frequency": "849",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.1",
+      "power": "0.6",
+      "octets": "1607150386",
+      "portid": "31",
+      "frequency": "855",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    },
+    {
+      "snr": "41.4",
+      "power": "1.5",
+      "octets": "1607150132",
+      "portid": "32",
+      "frequency": "861",
+      "correcteds": "0",
+      "uncorrectds": "0"
+    }
+  ],
+  "tx": [
+    {
+      "power": "45.0",
+      "portid": "1",
+      "frequency": "21"
+    },
+    {
+      "power": "44.8",
+      "portid": "2",
+      "frequency": "25"
+    },
+    {
+      "power": "44.8",
+      "portid": "3",
+      "frequency": "32"
+    },
+    {
+      "power": "44.5",
+      "portid": "4",
+      "frequency": "38"
+    }
+  ],
+  "asn": "AS64496",
+  "rxofdm": [
+    {
+      "octets": "928320155",
+      "plcsnr": "40.8",
+      "portid": "33",
+      "ncplock": "n/a",
+      "plclock": "n/a",
+      "mdc1lock": "n/a",
+      "plcpower": "0.7",
+      "correcteds": "914390831",
+      "uncorrectds": "0",
+      "subcarr0freq": "350000000"
+    },
+    {
+      "octets": "838755348",
+      "plcsnr": "41.3",
+      "portid": "34",
+      "ncplock": "n/a",
+      "plclock": "n/a",
+      "mdc1lock": "n/a",
+      "plcpower": "2.9",
+      "correcteds": "6292802",
+      "uncorrectds": "0",
+      "subcarr0freq": "920000000"
+    }
+  ],
+  "txofdm": [
+    {
+      "power": "39.5",
+      "state": "Locked",
+      "portid": "10",
+      "subcarr0freq": "42"
+    }
+  ],
+  "ip_city": "Test City",
+  "sysinfo": {
+    "uptime": 35457,
+    "systime": 1763458555,
+    "firmware": "CGM4981COM_8.2p5s1_PROD_sey",
+    "modemmac": "AABBCC010203",
+    "checktime": 1763476545,
+    "modemtype": "XB8",
+    "detection_status": "success"
+  },
+  "eventlog": [],
+  "isp_name": "Test ISP Alpha",
+  "client_os": "linux",
+  "public_ip": "203.0.113.10",
+  "ip_country": "US",
+  "client_arch": "amd64",
+  "iperf3test_dl": -2,
+  "iperf3test_ul": -2,
+  "client_version": "7.0.0",
+  "ping_google_avg": "16.6",
+  "ping_google_loss": "0.0%",
+  "speedtest_enabled": true,
+  "ping_google_jitter": "3.6",
+  "ping_cloudflare_avg": "16.9",
+  "ping_cloudflare_loss": "0.0%",
+  "ping_cloudflare_jitter": "2.9",
+  "ping_google_max_latency": "21.5",
+  "ping_cloudflare_max_latency": "22.5"
+}

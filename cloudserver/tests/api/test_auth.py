@@ -61,14 +61,13 @@ class TestLogin:
         assert "error_id" in data["error"]
     
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Account lockout disabled in test mode - would require server restart with different config")
+    @pytest.mark.requires_production_settings
     async def test_login_account_lockout(self, http_client: httpx.AsyncClient, admin_user, admin_user_credentials: Dict[str, str]):
         """Test account lockout after 5 failed login attempts.
 
         NOTE: Account lockout is intentionally disabled in test mode (see app/routers/auth.py:69)
-        to avoid interfering with other tests during fixture setup. This test would require
-        starting the test server with production settings, which is complex and may cause
-        other tests to fail. Feature is working in production.
+        to avoid interfering with other tests during fixture setup. Run with
+        ./scripts/run_security_tests.sh to test with production settings (TESTING=false).
         """
         from app.core.security import clear_failed_logins
 
@@ -251,5 +250,165 @@ class TestChangeOwnPassword:
         response = await http_client.post("/api/auth/change_own_password", json={
             "new_password": "NewPassword123!"
         })
-        
+
         assert response.status_code == 401
+
+
+class TestPasswordChangeRequiredFlow:
+    """Tests for the password change required workflow.
+
+    These tests verify that:
+    1. Users with must_change_password=True are blocked from other endpoints
+    2. After changing password, they can access endpoints normally
+    """
+
+    @pytest.mark.asyncio
+    async def test_must_change_password_blocks_api_access(
+        self, http_client: httpx.AsyncClient, db_session, test_user_must_change_password
+    ):
+        """User with must_change_password=True should get 403 on protected endpoints."""
+        # Login first
+        login_response = await http_client.post("/api/auth/login", json={
+            "username": test_user_must_change_password.username,
+            "password": "TempPassword123!"  # The fixture password
+        })
+        assert login_response.status_code == 200
+        login_data = login_response.json()
+        assert login_data.get("must_change_password") is True
+
+        # Try to access a protected endpoint (e.g., modem list)
+        response = await http_client.get("/api/db/list_modems")
+        assert response.status_code == 403
+        data = response.json()
+        assert "password" in data.get("detail", "").lower()
+
+    @pytest.mark.asyncio
+    async def test_password_change_clears_requirement(
+        self, http_client: httpx.AsyncClient, db_session, test_user_must_change_password
+    ):
+        """After changing password, user should be able to access endpoints."""
+        # Login first
+        login_response = await http_client.post("/api/auth/login", json={
+            "username": test_user_must_change_password.username,
+            "password": "TempPassword123!"
+        })
+        assert login_response.status_code == 200
+        assert login_response.json().get("must_change_password") is True
+
+        # Change password using change_own_password endpoint
+        change_response = await http_client.post("/api/auth/change_own_password", json={
+            "new_password": "NewSecurePassword123!"
+        })
+        assert change_response.status_code == 200
+        assert change_response.json().get("success") is True
+
+        # Now try to access the protected endpoint again
+        response = await http_client.get("/api/db/list_modems")
+        # Should succeed (200 with empty list, but NOT 403)
+        assert response.status_code == 200
+
+
+class TestCSRFTokenResponseHeader:
+    """Tests for X-New-CSRF-Token response header functionality."""
+
+    @pytest.mark.asyncio
+    async def test_csrf_token_returned_in_response_header(
+        self, admin_client_with_token: httpx.AsyncClient
+    ):
+        """After a successful CSRF-protected request, a new token should be in the response header."""
+        # Get initial CSRF token
+        session_check = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token = session_check.json().get("csrf_token")
+        assert csrf_token is not None
+
+        # Make a CSRF-protected request (e.g., create API key)
+        response = await admin_client_with_token.post(
+            "/api/admin/api_keys",
+            json={"name": "test-key-csrf-header"},
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert response.status_code == 200
+
+        # The response should contain a new CSRF token in the header
+        new_csrf_token = response.headers.get("X-New-CSRF-Token")
+        assert new_csrf_token is not None
+        assert new_csrf_token != csrf_token  # Should be a different token
+
+    @pytest.mark.asyncio
+    async def test_new_csrf_token_is_valid(
+        self, admin_client_with_token: httpx.AsyncClient
+    ):
+        """The new CSRF token from response header should be valid for next request."""
+        # Get initial CSRF token
+        session_check = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token = session_check.json().get("csrf_token")
+
+        # Make first request
+        response1 = await admin_client_with_token.post(
+            "/api/admin/api_keys",
+            json={"name": "test-key-1"},
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert response1.status_code == 200
+
+        # Get new token from response header
+        new_csrf_token = response1.headers.get("X-New-CSRF-Token")
+        assert new_csrf_token is not None
+
+        # Use new token for second request (should succeed)
+        response2 = await admin_client_with_token.post(
+            "/api/admin/api_keys",
+            json={"name": "test-key-2"},
+            headers={"X-CSRF-Token": new_csrf_token}
+        )
+        assert response2.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_original_csrf_token_invalid_after_use(
+        self, admin_client_with_token: httpx.AsyncClient
+    ):
+        """Original CSRF token should be invalid after being used."""
+        # Get initial CSRF token
+        session_check = await admin_client_with_token.get("/api/auth/session_check")
+        csrf_token = session_check.json().get("csrf_token")
+
+        # Use the token
+        response1 = await admin_client_with_token.post(
+            "/api/admin/api_keys",
+            json={"name": "test-key-reuse"},
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert response1.status_code == 200
+
+        # Try to reuse the same token (should fail)
+        response2 = await admin_client_with_token.post(
+            "/api/admin/api_keys",
+            json={"name": "test-key-reuse-2"},
+            headers={"X-CSRF-Token": csrf_token}
+        )
+        assert response2.status_code == 403
+        assert "CSRF" in response2.json().get("detail", "")
+
+    @pytest.mark.asyncio
+    async def test_csrf_token_chain(
+        self, admin_client_with_token: httpx.AsyncClient
+    ):
+        """Should be able to chain multiple requests using tokens from response headers."""
+        # Get initial CSRF token
+        session_check = await admin_client_with_token.get("/api/auth/session_check")
+        current_token = session_check.json().get("csrf_token")
+
+        # Chain multiple requests, each using the token from the previous response
+        for i in range(5):
+            response = await admin_client_with_token.post(
+                "/api/admin/api_keys",
+                json={"name": f"test-key-chain-{i}"},
+                headers={"X-CSRF-Token": current_token}
+            )
+            assert response.status_code == 200, f"Request {i} failed"
+
+            # Get next token from response header
+            new_token = response.headers.get("X-New-CSRF-Token")
+            assert new_token is not None, f"No new token in response {i}"
+            assert new_token != current_token, f"Token not rotated in response {i}"
+            current_token = new_token

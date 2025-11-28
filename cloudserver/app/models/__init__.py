@@ -6,6 +6,16 @@ from app.models.api_key import APIKey
 from app.models.audit import UserActivityLog, ClientSubmissionLog
 from app.models.modem_check import ModemCheck
 from app.models.config_defaults import ConfigDefaults
+from app.models.client_config import (
+    ClientConfig,
+    ConfigStatus,
+    ConfigVersion,
+    ConfigAuditLog,
+    ConfigNonce,
+    # Backward compatibility aliases
+    ConfigMode,  # Alias for ConfigStatus
+    ConfigBackup,  # Alias for ConfigVersion
+)
 
 __all__ = [
     "User",
@@ -15,4 +25,12 @@ __all__ = [
     "ClientSubmissionLog",
     "ModemCheck",
     "ConfigDefaults",
+    "ClientConfig",
+    "ConfigStatus",
+    "ConfigVersion",
+    "ConfigAuditLog",
+    "ConfigNonce",
+    # Backward compatibility
+    "ConfigMode",
+    "ConfigBackup",
 ]

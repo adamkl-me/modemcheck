@@ -7,6 +7,7 @@ Functions for safely handling ZIP file uploads with protection against:
 - Malformed ZIP files
 - Invalid UTF-8 encoding
 """
+import os
 import zipfile
 from io import BytesIO
 from typing import Tuple, Optional
@@ -94,34 +95,47 @@ def sanitize_zip_path(path: str) -> Optional[str]:
     """
     Sanitize and validate ZIP file entry paths to prevent path traversal.
 
+    Uses os.path.normpath to properly handle encoded sequences, multiple
+    dots, and other edge cases that string matching might miss.
+
     Args:
         path: Path from ZIP file entry
 
     Returns:
         Sanitized path if safe, None if unsafe
     """
-    # Remove leading slashes (absolute paths)
-    while path.startswith('/'):
-        path = path[1:]
-
-    # Block paths with .. (parent directory traversal)
-    if '..' in path:
-        return None
-
-    # Block paths that would escape to absolute paths on Windows
-    # Check for drive letters (C:, D:, etc.) but allow colons in filenames (like MAC addresses)
-    if path.startswith('\\'):
-        return None
-
-    # Block Windows drive letters at start of path (e.g., "C:\path")
-    if len(path) >= 2 and path[1] == ':' and path[0].isalpha():
-        return None
-
-    # Empty path after sanitization
     if not path:
         return None
 
-    return path
+    # Block paths with .. BEFORE normalization (prevents traversal attacks)
+    # os.path.normpath would resolve these, but we want to reject them entirely
+    if '..' in path:
+        return None
+
+    # Block paths starting with backslash (Windows absolute/UNC)
+    if path.startswith('\\'):
+        return None
+
+    # Block Windows drive letters (e.g., "C:\path")
+    if len(path) >= 2 and path[1] == ':' and path[0].isalpha():
+        return None
+
+    # Remove leading slashes (convert absolute to relative)
+    while path.startswith('/'):
+        path = path[1:]
+
+    # Normalize the path (resolves ., multiple slashes)
+    normalized = os.path.normpath(path) if path else None
+
+    # Empty path after sanitization
+    if not normalized:
+        return None
+
+    # Final check: reject if normalization resulted in parent traversal
+    if normalized.startswith('..'):
+        return None
+
+    return normalized
 
 
 def validate_utf8(content: bytes) -> bool:
