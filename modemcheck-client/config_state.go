@@ -12,18 +12,17 @@ import (
 
 // ConfigState tracks client configuration sync state
 // Stored in .config_state.json alongside config file (single file per API key)
-// Version 2.1: API key-only binding (modem_id removed from primary key)
+//
+// Version 3.0: Simplified state model
+// - Status: unmanaged, managed, locked (3 states, not 6)
+// - SyncStatus: n/a, pending, active
+// - Version: simple int (1, 2, 3...) not string ("v1_client")
 type ConfigState struct {
-	Version          string    `json:"version"`            // Current version display (e.g., "v1_client")
-	Status           string    `json:"status"`             // 6 status states (replaces Mode)
-	ActiveTrack      string    `json:"active_track"`       // "client" or "server"
-	ClientVersion    int       `json:"client_version"`     // Latest v#_client number
-	ServerVersion    int       `json:"server_version"`     // Latest v#_server number
+	Version          int       `json:"version"`            // Simple int version (1, 2, 3...)
+	Status           string    `json:"status"`             // unmanaged, managed, locked
+	SyncStatus       string    `json:"sync_status"`        // n/a, pending, active
 	ServerConfigHash string    `json:"server_config_hash"` // SHA256 hash from last sync
 	LastSync         time.Time `json:"last_sync"`          // Last successful sync timestamp
-
-	// Backward compatibility: Mode is deprecated, use Status
-	Mode string `json:"mode,omitempty"` // DEPRECATED: kept for migration
 }
 
 // getStateFilePath returns the path to the state file
@@ -51,11 +50,9 @@ func LoadConfigState() (*ConfigState, error) {
 	if _, err := os.Stat(stateFile); os.IsNotExist(err) {
 		// No state file - return default state (first sync)
 		return &ConfigState{
-			Version:          "",
+			Version:          0,
 			Status:           "",
-			ActiveTrack:      "",
-			ClientVersion:    0,
-			ServerVersion:    0,
+			SyncStatus:       "",
 			ServerConfigHash: "",
 			LastSync:         time.Time{},
 		}, nil
@@ -82,7 +79,18 @@ func LoadConfigState() (*ConfigState, error) {
 	// Parse JSON
 	var state ConfigState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, fmt.Errorf("failed to parse state file: %w", err)
+		// State file is corrupted - attempt recovery
+		fmt.Fprintf(os.Stderr, "Warning: state file corrupted, attempting recovery: %v\n", err)
+
+		// Unlock before calling recovery (recovery will acquire its own lock)
+		lock.Unlock()
+
+		recoveredState, recoverErr := RecoverStateFile()
+		if recoverErr != nil {
+			return nil, fmt.Errorf("failed to parse state file and recovery failed: parse error: %w, recovery error: %v", err, recoverErr)
+		}
+
+		return recoveredState, nil
 	}
 
 	return &state, nil
@@ -90,6 +98,7 @@ func LoadConfigState() (*ConfigState, error) {
 
 // SaveConfigState atomically saves the configuration sync state
 // Uses temp file + atomic rename to prevent corruption on crash
+// Also creates a backup (.bak) for recovery if main file is corrupted
 func SaveConfigState(state *ConfigState) error {
 	stateFile, err := getStateFilePath()
 	if err != nil {
@@ -114,11 +123,25 @@ func SaveConfigState(state *ConfigState) error {
 		return fmt.Errorf("failed to marshal state: %w", err)
 	}
 
+	// Create backup of existing state file before overwriting
+	backupFile := stateFile + ".bak"
+	if _, err := os.Stat(stateFile); err == nil {
+		// State file exists, create backup
+		if err := os.Rename(stateFile, backupFile); err != nil {
+			// Continue even if backup fails (non-critical)
+			fmt.Fprintf(os.Stderr, "Warning: failed to create state file backup: %v\n", err)
+		}
+	}
+
 	// Atomic write: write to temp file, then rename
 	tempFile := stateFile + ".tmp"
 
 	// Write to temp file with restrictive permissions (only owner can read/write)
 	if err := os.WriteFile(tempFile, data, 0600); err != nil {
+		// Restore from backup if write failed
+		if _, bakErr := os.Stat(backupFile); bakErr == nil {
+			os.Rename(backupFile, stateFile)
+		}
 		return fmt.Errorf("failed to write temp state file: %w", err)
 	}
 
@@ -126,10 +149,94 @@ func SaveConfigState(state *ConfigState) error {
 	if err := os.Rename(tempFile, stateFile); err != nil {
 		// Clean up temp file on error
 		os.Remove(tempFile)
+		// Restore from backup
+		if _, bakErr := os.Stat(backupFile); bakErr == nil {
+			os.Rename(backupFile, stateFile)
+		}
 		return fmt.Errorf("failed to rename temp state file: %w", err)
 	}
 
+	// Success - can remove old backup now
+	os.Remove(backupFile)
+
 	return nil
+}
+
+// RecoverStateFile attempts to recover a corrupted state file
+// Recovery strategy (in order of preference):
+//  1. Try to restore from backup file (.bak)
+//  2. Try to restore from temp file (.tmp) if it exists and is valid
+//  3. Reinitialize with default state (safe fallback)
+//
+// This function is called automatically by LoadConfigState() if JSON parsing fails
+func RecoverStateFile() (*ConfigState, error) {
+	stateFile, err := getStateFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	// Acquire write lock for recovery operations
+	lock := flock.New(stateFile + ".lock")
+	locked, err := lock.TryLock()
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire write lock for recovery: %w", err)
+	}
+	if !locked {
+		return nil, fmt.Errorf("state file is locked by another process")
+	}
+	defer lock.Unlock()
+
+	backupFile := stateFile + ".bak"
+	tempFile := stateFile + ".tmp"
+
+	// Strategy 1: Try backup file
+	if data, err := os.ReadFile(backupFile); err == nil {
+		var state ConfigState
+		if err := json.Unmarshal(data, &state); err == nil {
+			// Backup is valid - restore it as main state file
+			fmt.Fprintf(os.Stderr, "Successfully recovered state from backup file\n")
+			if err := os.WriteFile(stateFile, data, 0600); err != nil {
+				return nil, fmt.Errorf("failed to restore backup: %w", err)
+			}
+			return &state, nil
+		}
+	}
+
+	// Strategy 2: Try temp file (might be more recent than corrupted main file)
+	if data, err := os.ReadFile(tempFile); err == nil {
+		var state ConfigState
+		if err := json.Unmarshal(data, &state); err == nil {
+			// Temp file is valid - use it as main state file
+			fmt.Fprintf(os.Stderr, "Successfully recovered state from temp file\n")
+			if err := os.WriteFile(stateFile, data, 0600); err != nil {
+				return nil, fmt.Errorf("failed to restore from temp file: %w", err)
+			}
+			// Clean up temp file after successful recovery
+			os.Remove(tempFile)
+			return &state, nil
+		}
+	}
+
+	// Strategy 3: Reinitialize with default state
+	fmt.Fprintf(os.Stderr, "No valid backup found, reinitializing with default state\n")
+	defaultState := &ConfigState{
+		Version:          0,
+		Status:           "",
+		SyncStatus:       "",
+		ServerConfigHash: "",
+		LastSync:         time.Time{},
+	}
+
+	// Write default state directly (already holding lock)
+	data, err := json.MarshalIndent(defaultState, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal default state: %w", err)
+	}
+	if err := os.WriteFile(stateFile, data, 0600); err != nil {
+		return nil, fmt.Errorf("failed to write default state: %w", err)
+	}
+
+	return defaultState, nil
 }
 
 // UpdateConfigState updates specific fields in the state file atomically
@@ -195,29 +302,33 @@ func CleanupOldStateFiles() error {
 	return nil
 }
 
-// IsConfigEnforced checks if config is in an enforced status
-// Enforced configs should not be modified locally
-func IsConfigEnforced() (bool, error) {
+// IsConfigLocked checks if config is in locked status
+// Locked configs cannot be modified locally - server always wins
+func IsConfigLocked() (bool, error) {
 	state, err := LoadConfigState()
 	if err != nil {
 		return false, err
 	}
 
-	// Check for enforced status states
-	return state.Status == "enforced_ready" || state.Status == "enforced_active", nil
+	return state.Status == "locked", nil
 }
 
-// IsConfigLocked is an alias for IsConfigEnforced (backward compatibility)
-// DEPRECATED: Use IsConfigEnforced instead
-func IsConfigLocked() (bool, error) {
-	return IsConfigEnforced()
+// IsConfigManaged checks if config is in managed status
+// Managed configs accept client changes but server can push updates
+func IsConfigManaged() (bool, error) {
+	state, err := LoadConfigState()
+	if err != nil {
+		return false, err
+	}
+
+	return state.Status == "managed", nil
 }
 
 // GetLastSyncInfo returns the last sync timestamp and version
-func GetLastSyncInfo() (time.Time, string, error) {
+func GetLastSyncInfo() (time.Time, int, error) {
 	state, err := LoadConfigState()
 	if err != nil {
-		return time.Time{}, "", err
+		return time.Time{}, 0, err
 	}
 
 	return state.LastSync, state.Version, nil
@@ -225,10 +336,10 @@ func GetLastSyncInfo() (time.Time, string, error) {
 
 // ShouldSync determines if a config sync should be attempted
 // Returns true if:
-// - Never synced before (Version is empty)
+// - Never synced before (Version is 0)
 // - More than syncInterval has elapsed since last sync
-// - Config is in enforced status (always sync to catch server updates)
-// - Config is in a "ready" state (pending server config to receive)
+// - Config is locked (always sync to catch server updates)
+// - Config has pending sync status (server config waiting)
 func ShouldSync(syncInterval time.Duration) (bool, error) {
 	state, err := LoadConfigState()
 	if err != nil {
@@ -236,12 +347,12 @@ func ShouldSync(syncInterval time.Duration) (bool, error) {
 	}
 
 	// Never synced before
-	if state.Version == "" {
+	if state.Version == 0 {
 		return true, nil
 	}
 
-	// Always sync if in enforced status (server might have updates)
-	if state.Status == "enforced_ready" || state.Status == "enforced_active" {
+	// Always sync if locked (server might have updates)
+	if state.Status == "locked" {
 		// But rate limit to once per hour minimum to avoid excessive requests
 		if time.Since(state.LastSync) < 1*time.Hour {
 			return false, nil
@@ -249,8 +360,8 @@ func ShouldSync(syncInterval time.Duration) (bool, error) {
 		return true, nil
 	}
 
-	// Sync more frequently if in ready state (waiting for server config)
-	if state.Status == "one_time_ready" {
+	// Sync more frequently if pending (waiting for server config)
+	if state.SyncStatus == "pending" {
 		// Check every 15 minutes for pending server configs
 		if time.Since(state.LastSync) < 15*time.Minute {
 			return false, nil

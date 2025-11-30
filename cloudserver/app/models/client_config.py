@@ -5,7 +5,7 @@ These models support centralized configuration management for ModemCheck clients
 allowing server-side control and locking of client configurations with encryption,
 versioning, and audit trails.
 
-Version 2.0: Dual-track versioning (v#_client / v#_server) with 6 status states.
+Version 3.0: Simplified 3-state model (UNMANAGED, MANAGED, LOCKED) with sync_status flag.
 """
 from datetime import datetime, timedelta
 from sqlalchemy import (
@@ -20,21 +20,29 @@ from app.core.database import Base
 
 class ConfigStatus(str, enum.Enum):
     """
-    Configuration status states.
+    Configuration management status.
 
-    Replaces the old ConfigMode enum with more granular states that track
-    both the management mode and the sync state.
+    Three simple states:
+    - UNMANAGED: Client controls config, server just stores it
+    - MANAGED: Server pushed config once, client can modify after receiving
+    - LOCKED: Server enforces config, client cannot modify
     """
-    UNMANAGED = "unmanaged"                      # Client-controlled, server just stores
-    ONE_TIME_READY = "one_time_ready"            # Server has config ready to push
-    ONE_TIME_ACTIVE = "one_time_active"          # Client received and using server config
-    ENFORCED_READY = "enforced_ready"            # Server has config ready to enforce
-    ENFORCED_ACTIVE = "enforced_active"          # Client using enforced config
-    AWAITING_FIRST_SYNC = "awaiting_first_sync"  # Admin pre-created, no client sync yet
+    UNMANAGED = "unmanaged"
+    MANAGED = "managed"
+    LOCKED = "locked"
 
 
-# Keep ConfigMode as alias for backward compatibility during transition
-ConfigMode = ConfigStatus
+class SyncStatus(str, enum.Enum):
+    """
+    Sync status for MANAGED and LOCKED states.
+
+    - NA: Not applicable (for UNMANAGED state)
+    - PENDING: Server has new config, waiting for client to receive
+    - ACTIVE: Client has received and acknowledged the config
+    """
+    NA = "n/a"
+    PENDING = "pending"
+    ACTIVE = "active"
 
 
 class ClientConfig(Base):
@@ -42,14 +50,9 @@ class ClientConfig(Base):
     Main configuration storage for clients.
 
     Stores both plaintext (for admin viewing) and encrypted configs (for security).
-    Tracks sync state, dual-track versions, and status.
+    Uses simplified single-track versioning (v1, v2, v3...).
 
     Primary key: api_key only (one config per API key)
-
-    Dual-Track Versioning:
-    - client_version: Latest v#_client number (configs from client)
-    - server_version: Latest v#_server number (configs from admin)
-    - active_track: Which track is currently in use ("client" or "server")
     """
     __tablename__ = "client_configs"
 
@@ -65,26 +68,24 @@ class ClientConfig(Base):
     config_encrypted = Column(Text, nullable=False)   # AES-256-GCM encrypted blob
     config_hash = Column(String(64), nullable=False)  # SHA256 of canonical JSON
 
-    # Status (replaces mode)
+    # Status - simplified 3-state model
     status = Column(
-        Enum(ConfigStatus, name="config_status", native_enum=False),
+        Enum(ConfigStatus, name="config_status_v3", native_enum=False),
         nullable=False,
         default=ConfigStatus.UNMANAGED,
         index=True
     )
 
-    # For AWAITING_FIRST_SYNC: what mode to become after first client sync
-    # Values: "unmanaged", "one_time", "enforced"
-    target_mode = Column(String(20), nullable=True)
+    # Sync status - tracks whether client has received server config
+    sync_status = Column(
+        Enum(SyncStatus, name="sync_status", native_enum=False),
+        nullable=False,
+        default=SyncStatus.NA,
+        index=True
+    )
 
-    # Dual-track versioning
-    client_version = Column(Integer, nullable=False, default=0)  # Latest v#_client
-    server_version = Column(Integer, nullable=False, default=0)  # Latest v#_server
-    active_track = Column(String(10), nullable=False, default="client")  # "client" or "server"
-
-    # Track what version the client has acknowledged receiving
-    client_acked_version = Column(Integer, nullable=True)  # Version number client confirmed
-    client_acked_track = Column(String(10), nullable=True)  # Track of confirmed version
+    # Single-track versioning (simple incrementing: 1, 2, 3...)
+    version = Column(Integer, nullable=False, default=1)
 
     # Sync metadata
     last_sync = Column(DateTime, nullable=True, index=True)
@@ -100,21 +101,19 @@ class ClientConfig(Base):
 
     # Indexes for performance
     __table_args__ = (
-        # Covering index for sync endpoint (api_key is PK, so just add other fields)
-        Index('idx_client_config_sync', 'status', 'client_version', 'server_version',
+        # Covering index for sync endpoint
+        Index('idx_client_config_sync_v3', 'status', 'sync_status', 'version',
               'config_encrypted', 'config_hash', 'encryption_salt'),
 
-        # Index for monitoring stale syncs (managed configs not synced in 48h)
-        Index('idx_client_config_stale', 'last_sync', 'status',
+        # Index for monitoring stale syncs (managed/locked configs not synced in 48h)
+        Index('idx_client_config_stale_v3', 'last_sync', 'status',
               postgresql_where=(
-                  (status == ConfigStatus.ONE_TIME_ACTIVE) |
-                  (status == ConfigStatus.ENFORCED_ACTIVE) |
-                  (status == ConfigStatus.ENFORCED_READY) |
-                  (status == ConfigStatus.ONE_TIME_READY)
+                  (status == ConfigStatus.MANAGED) |
+                  (status == ConfigStatus.LOCKED)
               )),
 
         # Index for admin dashboard filtering
-        Index('idx_client_config_status_updated', 'status', 'updated_at'),
+        Index('idx_client_config_status_updated_v3', 'status', 'sync_status', 'updated_at'),
 
         # Index for SSE change detection
         Index('idx_client_config_updated_at', 'updated_at'),
@@ -124,29 +123,36 @@ class ClientConfig(Base):
     )
 
     @property
-    def active_version_display(self) -> str:
-        """Get the display string for the active version (e.g., 'v3_client')."""
-        if self.active_track == "server":
-            return f"v{self.server_version}_server"
-        return f"v{self.client_version}_client"
+    def version_display(self) -> str:
+        """Get the display string for the version (e.g., 'v3')."""
+        return f"v{self.version}"
 
     @property
     def is_managed(self) -> bool:
-        """Check if this config is server-managed (not unmanaged)."""
-        return self.status not in (ConfigStatus.UNMANAGED, ConfigStatus.AWAITING_FIRST_SYNC)
+        """Check if this config is server-managed (MANAGED or LOCKED)."""
+        return self.status in (ConfigStatus.MANAGED, ConfigStatus.LOCKED)
+
+    @property
+    def is_locked(self) -> bool:
+        """Check if this config is locked (client cannot modify)."""
+        return self.status == ConfigStatus.LOCKED
+
+    @property
+    def is_pending(self) -> bool:
+        """Check if client hasn't received the latest server config yet."""
+        return self.sync_status == SyncStatus.PENDING
 
     def __repr__(self):
         modem_display = self.last_seen_modem_id or 'never synced'
-        return f"<ClientConfig(api_key='{self.api_key[:8]}...', last_modem='{modem_display}', status='{self.status}', version={self.active_version_display})>"
+        sync_str = f", sync={self.sync_status.value}" if self.status != ConfigStatus.UNMANAGED else ""
+        return f"<ClientConfig(api_key='{self.api_key[:8]}...', last_modem='{modem_display}', status='{self.status.value}'{sync_str}, version=v{self.version})>"
 
 
 class ConfigVersion(Base):
     """
     Stores all configuration versions for history and rollback.
 
-    Replaces the old ConfigBackup table with a more comprehensive version history
-    that tracks both client and server version tracks.
-
+    Single-track versioning: simple incrementing version numbers (1, 2, 3...).
     Each version is immutable once created - represents a point-in-time snapshot.
     """
     __tablename__ = "config_versions"
@@ -159,10 +165,8 @@ class ConfigVersion(Base):
     # Modem ID at time of creation (for tracking/audit, nullable)
     modem_id_at_creation = Column(String(255), nullable=True, index=True)
 
-    # Version identification
+    # Version identification - simple incrementing number
     version_number = Column(Integer, nullable=False)  # 1, 2, 3...
-    version_track = Column(String(10), nullable=False)  # "client" or "server"
-    version_display = Column(String(20), nullable=False)  # "v3_client" or "v1_server"
 
     # Configuration snapshot
     config_plaintext = Column(JSONB, nullable=False)
@@ -172,25 +176,28 @@ class ConfigVersion(Base):
 
     # Status at time of creation
     status_at_creation = Column(
-        Enum(ConfigStatus, name="config_status", native_enum=False),
+        Enum(ConfigStatus, name="config_status_v3", native_enum=False),
         nullable=False
+    )
+
+    # Sync status at time of creation
+    sync_status_at_creation = Column(
+        Enum(SyncStatus, name="sync_status", native_enum=False),
+        nullable=True
     )
 
     # Metadata
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_by = Column(String(255), nullable=False)  # Username or "client"
-    creation_reason = Column(String(255), nullable=False)  # "client_sync", "admin_update", "client_rejected_enforced", etc.
+    creation_reason = Column(String(255), nullable=False)  # "client_sync", "admin_update", "admin_create", "rollback", etc.
     ip_address = Column(String(45), nullable=True)  # IPv6 compatible
 
     __table_args__ = (
-        # Unique constraint: only one version per api_key per track per number
-        Index('idx_config_version_unique', 'api_key', 'version_track', 'version_number', unique=True),
+        # Unique constraint: only one version per api_key per version number
+        Index('idx_config_version_unique_v3', 'api_key', 'version_number', unique=True),
 
         # History lookup
         Index('idx_config_version_history', 'api_key', 'created_at'),
-
-        # Track filtering
-        Index('idx_config_version_track', 'api_key', 'version_track', 'created_at'),
 
         # Retention cleanup (90-day retention)
         Index('idx_config_version_retention', 'created_at'),
@@ -199,9 +206,14 @@ class ConfigVersion(Base):
         Index('idx_config_version_modem', 'modem_id_at_creation'),
     )
 
+    @property
+    def version_display(self) -> str:
+        """Get the display string for the version (e.g., 'v3')."""
+        return f"v{self.version_number}"
+
     def __repr__(self):
         modem_display = self.modem_id_at_creation or 'unknown'
-        return f"<ConfigVersion(api_key='{self.api_key[:8]}...', modem='{modem_display}', version={self.version_display})>"
+        return f"<ConfigVersion(api_key='{self.api_key[:8]}...', modem='{modem_display}', version=v{self.version_number})>"
 
 
 class ConfigAuditLog(Base):
@@ -225,7 +237,7 @@ class ConfigAuditLog(Base):
     ip_address = Column(String(45), nullable=False)  # IPv6 compatible
 
     # Target configuration
-    api_key = Column(String(255), nullable=False, index=True)
+    api_key = Column(String(255), nullable=True, index=True)  # Deprecated - use api_key_hash for security
 
     # Modem ID tracking (nullable - may not be known for admin operations)
     modem_id = Column(String(255), nullable=True, index=True)
@@ -235,18 +247,26 @@ class ConfigAuditLog(Base):
     new_modem_id = Column(String(255), nullable=True)  # New modem ID (for modem_change events)
 
     # Action details
-    action = Column(String(100), nullable=False, index=True)  # "sync", "update", "rollback", "status_change", "modem_change"
+    action = Column(String(100), nullable=False, index=True)  # "sync", "update", "rollback", "status_change", "modem_change", "create"
     config_summary = Column(JSONB, nullable=True)  # Changed field names only (no values)
 
-    # Version tracking (now using dual-track format)
-    old_version = Column(String(20), nullable=True)  # "v1_client" format
-    new_version = Column(String(20), nullable=True)  # "v2_client" format
+    # Version tracking - simple incrementing numbers
+    old_version = Column(Integer, nullable=True)  # Previous version number
+    new_version = Column(Integer, nullable=True)  # New version number
     old_status = Column(
-        Enum(ConfigStatus, name="config_status", native_enum=False),
+        Enum(ConfigStatus, name="config_status_v3", native_enum=False),
         nullable=True
     )
     new_status = Column(
-        Enum(ConfigStatus, name="config_status", native_enum=False),
+        Enum(ConfigStatus, name="config_status_v3", native_enum=False),
+        nullable=True
+    )
+    old_sync_status = Column(
+        Enum(SyncStatus, name="sync_status", native_enum=False),
+        nullable=True
+    )
+    new_sync_status = Column(
+        Enum(SyncStatus, name="sync_status", native_enum=False),
         nullable=True
     )
 
@@ -254,10 +274,6 @@ class ConfigAuditLog(Base):
     success = Column(Boolean, nullable=False, index=True)
     failure_reason = Column(Text, nullable=True)
 
-    # NOTE: Table partitioning must be created manually via SQL
-    # SQLAlchemy does not support declarative partitioning - use migration script
-    # See scripts/init_config_partitions.sql for parent table creation
-    # See scripts/create_audit_partition.sh for monthly partition creation
     __table_args__ = (
         # Composite indexes (will be created on each partition)
         Index('idx_config_audit_client', 'api_key', 'timestamp'),
@@ -327,7 +343,6 @@ class ConfigNonce(Base):
             ConfigNonce instance
         """
         # Convert timezone-aware datetime to naive UTC for database storage
-        # (PostgreSQL columns are TIMESTAMP WITHOUT TIME ZONE)
         if request_timestamp.tzinfo is not None:
             request_timestamp = request_timestamp.replace(tzinfo=None)
 
@@ -342,6 +357,6 @@ class ConfigNonce(Base):
         )
 
 
-# Backward compatibility: Keep ConfigBackup as alias for ConfigVersion
-# This allows gradual migration of code that references ConfigBackup
-ConfigBackup = ConfigVersion
+# Backward compatibility aliases for v2.x code
+ConfigMode = ConfigStatus  # Old name for ConfigStatus
+ConfigBackup = ConfigVersion  # Old name for ConfigVersion

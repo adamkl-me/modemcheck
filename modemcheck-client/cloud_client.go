@@ -51,6 +51,54 @@ func generateRequestSignature(apiKey, timestamp, modemID, filename, checksum str
 	return signature
 }
 
+// isRetryableError determines if an upload error should be retried.
+// Returns true for transient failures (network errors, 5xx server errors).
+// Returns false for permanent failures (validation errors, auth errors, 4xx client errors).
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := err.Error()
+
+	// Network-level errors (connection refused, timeout, DNS, etc.) - RETRY
+	if strings.Contains(errMsg, "connection refused") ||
+		strings.Contains(errMsg, "timeout") ||
+		strings.Contains(errMsg, "no such host") ||
+		strings.Contains(errMsg, "network is unreachable") ||
+		strings.Contains(errMsg, "connection reset") ||
+		strings.Contains(errMsg, "TLS handshake") {
+		return true
+	}
+
+	// Parse HTTP status code from error message format: "upload failed with status %d: %s"
+	if strings.Contains(errMsg, "upload failed with status ") {
+		// Extract status code
+		parts := strings.SplitN(errMsg, "upload failed with status ", 2)
+		if len(parts) == 2 {
+			statusParts := strings.SplitN(parts[1], ":", 2)
+			if len(statusParts) >= 1 {
+				statusCode, err := strconv.Atoi(strings.TrimSpace(statusParts[0]))
+				if err == nil {
+					// 4xx client errors are permanent - DON'T RETRY
+					// (400 Bad Request, 401 Unauthorized, 403 Forbidden, 422 Validation Error, etc.)
+					if statusCode >= 400 && statusCode < 500 {
+						return false
+					}
+					// 5xx server errors are transient - RETRY
+					// (500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout)
+					if statusCode >= 500 && statusCode < 600 {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	// Unknown error - be conservative and retry
+	return true
+}
+
 const queueFilePath = "ModemCheck-Results/.upload_queue.json"
 
 // buildIndex constructs the file path index for O(1) lookups.
@@ -147,10 +195,21 @@ func addToUploadQueue(queue *UploadQueue, entry UploadQueueEntry) {
 
 	// Enforce max queue size (remove oldest entries)
 	if len(queue.FailedUploads) > MaxQueueSize {
-		// Remove oldest entries and rebuild index
+		// Remove oldest entries and update index incrementally
 		removedCount := len(queue.FailedUploads) - MaxQueueSize
+
+		// Remove old entries from map
+		for i := 0; i < removedCount; i++ {
+			delete(queue.fileIndex, queue.FailedUploads[i].FilePath)
+		}
+
+		// Remove from slice
 		queue.FailedUploads = queue.FailedUploads[removedCount:]
-		queue.buildIndex() // Rebuild index after slice modification
+
+		// Update indices for remaining entries (shift down by removedCount)
+		for i, entry := range queue.FailedUploads {
+			queue.fileIndex[entry.FilePath] = i
+		}
 	}
 }
 
@@ -166,11 +225,17 @@ func removeFromUploadQueue(queue *UploadQueue, filePath string) {
 		return // Entry not found
 	}
 
+	// Remove from map first
+	delete(queue.fileIndex, filePath)
+
 	// Remove from slice
 	queue.FailedUploads = append(queue.FailedUploads[:idx], queue.FailedUploads[idx+1:]...)
 
-	// Rebuild index after slice modification (indices have shifted)
-	queue.buildIndex()
+	// Update indices for entries after the removed entry (O(n) but unavoidable)
+	// This is still better than O(n) rebuild since we only update affected entries
+	for i := idx; i < len(queue.FailedUploads); i++ {
+		queue.fileIndex[queue.FailedUploads[i].FilePath] = i
+	}
 }
 
 // cleanupUploadQueue removes entries older than QueueMaxAgeDays and entries
@@ -233,22 +298,9 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	remoteDirName := modemID
 	remoteFileName := filepath.Base(localFile)
 
-	// SECURITY: Cloud API key transmission always uses HTTPS
-	// InsecureTLS only skips certificate validation (for self-signed certs)
-	// but still encrypts traffic to protect API keys
-	protocol := "https"
-
-	if m.config.InsecureTLS {
-		m.Log("WARNING: InsecureTLS enabled - certificate validation disabled but HTTPS still enforced")
-	}
-
-	// Build upload URL
-	// Use CloudPath if specified, otherwise use root path "/"
-	path := m.config.CloudPath
-	if path == "" {
-		path = "/"
-	}
-	uploadURL := fmt.Sprintf("%s://%s:%s%s", protocol, m.config.CloudHost, m.config.CloudPort, path)
+	// SECURITY: Cloud API key transmission always uses HTTPS (v3.0+)
+	// Build upload URL with root path
+	uploadURL := fmt.Sprintf("https://%s:%s/", m.config.CloudHost, m.config.CloudPort)
 
 	// Generate timestamp for request signing (Unix timestamp as string)
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -323,7 +375,7 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 		return fmt.Errorf("server rejected upload: %s", errorMsg)
 	}
 
-	m.Log(fmt.Sprintf("Successfully uploaded %s to %s/%s", remoteFileName, m.config.CloudPath, remoteDirName))
+	m.Log(fmt.Sprintf("Successfully uploaded %s to cloud/%s", remoteFileName, remoteDirName))
 	return nil
 }
 
@@ -380,14 +432,23 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 			delete(entryMap, entry.FilePath) // Keep map in sync
 			successCount++
 		} else {
-			m.Log(fmt.Sprintf("  ✗ Upload failed: %s - %v", filepath.Base(entry.FilePath), err))
-			// Update the entry with new attempt info using O(1) map lookup
-			if idx, exists := entryMap[entry.FilePath]; exists {
-				queue.FailedUploads[idx].Attempts++
-				queue.FailedUploads[idx].LastAttempt = attemptTime
-				queue.FailedUploads[idx].LastError = err.Error()
+			// Check if error is retryable (network errors, 5xx) or permanent (validation errors, 4xx)
+			if isRetryableError(err) {
+				m.Log(fmt.Sprintf("  ✗ Upload failed (will retry): %s - %v", filepath.Base(entry.FilePath), err))
+				// Update the entry with new attempt info using O(1) map lookup
+				if idx, exists := entryMap[entry.FilePath]; exists {
+					queue.FailedUploads[idx].Attempts++
+					queue.FailedUploads[idx].LastAttempt = attemptTime
+					queue.FailedUploads[idx].LastError = err.Error()
+				}
+				failCount++
+			} else {
+				m.Log(fmt.Sprintf("  ✗ Upload failed (permanent error, removing from queue): %s - %v", filepath.Base(entry.FilePath), err))
+				// Permanent error (validation, auth, etc.) - remove from queue
+				removeFromUploadQueue(queue, entry.FilePath)
+				delete(entryMap, entry.FilePath) // Keep map in sync
+				failCount++
 			}
-			failCount++
 		}
 	}
 

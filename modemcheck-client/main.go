@@ -40,14 +40,15 @@ type ModemCheck struct {
 }
 
 // NewModemCheck creates a new ModemCheck instance.
-func NewModemCheck(config Configuration, configFilePath string) *ModemCheck {
-	// Create HTTP client with TLS configuration based on user settings
+// Returns an error if initialization fails (e.g., cookie jar creation).
+func NewModemCheck(config Configuration, configFilePath string) (*ModemCheck, error) {
+	// Create HTTP client with secure TLS configuration (v3.0+: always enforce TLS)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		log.Fatalf("Failed to create cookie jar: %v", err)
+		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
 	}
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: config.InsecureTLS, // Only skip verification if explicitly enabled for local dev
+		InsecureSkipVerify: false, // Always verify TLS certificates (v3.0+)
 	}
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
@@ -65,7 +66,7 @@ func NewModemCheck(config Configuration, configFilePath string) *ModemCheck {
 		client:          client,
 		checkTime:       now.Unix(),
 		checkTimeString: now.Format("2006-01-02_15-04-05"),
-	}
+	}, nil
 }
 
 // VerifyUpdateSuccess checks if a previous update succeeded and clears the lock if so.
@@ -163,8 +164,8 @@ func (m *ModemCheck) Log(message string) {
 	// Write to log file unless NoLogs is enabled (protected by mutex for concurrent access)
 	if m.logFile != nil && !m.config.NoLogs {
 		m.logMutex.Lock()
+		defer m.logMutex.Unlock() // Ensure lock is released even if WriteString panics
 		m.logFile.WriteString(logMessage)
-		m.logMutex.Unlock()
 	}
 }
 
@@ -669,14 +670,13 @@ func main() {
 		UpdateChannel:       "stable", // Default: stable releases only
 		Silent:              *quiet,
 		NoLogs:              *noLogs,
-		LocalCleanupEnabled: true,   // Default: cleanup enabled
-		LocalRetentionDays:  90,     // Default: 90 days
+		LocalCleanupEnabled: true, // Default: cleanup enabled
+		LocalRetentionDays:  90,   // Default: 90 days
 		// Cloud settings default to disabled, loaded from config file if provided
 		EnableCloud: false,
 		CloudHost:   "",
 		CloudPort:   "",
 		CloudAPIKey: "",
-		CloudPath:   "",
 	}
 
 	// Only set the password if provided via command line
@@ -705,7 +705,9 @@ func main() {
 	// Load config file if found or specified
 	if configPath != "" {
 		if err := LoadConfigFile(configPath, &config); err != nil {
-			log.Fatalf("Error loading config file: %v", err)
+			log.Printf("Warning: Failed to load config file: %v", err)
+			log.Printf("Continuing with default configuration...")
+			// config already has defaults from flag.Parse()
 		}
 	}
 
@@ -761,7 +763,11 @@ func main() {
 	}
 
 	// Create and run modem check
-	modemCheck := NewModemCheck(config, configPath)
+	modemCheck, err := NewModemCheck(config, configPath)
+	if err != nil {
+		log.Printf("Error: Failed to initialize: %v", err)
+		os.Exit(1)
+	}
 
 	// Check if a previous update was successful and clear the lock if needed
 	if config.AutoUpdateEnabled {
@@ -787,6 +793,7 @@ func main() {
 	}
 
 	if err := modemCheck.Run(); err != nil {
-		log.Fatalf("Error: %v", err)
+		log.Printf("Error: %v", err)
+		os.Exit(1)
 	}
 }

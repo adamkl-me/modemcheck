@@ -489,8 +489,8 @@ class TestUploadValidation:
             headers=headers
         )
 
-        # Should reject based on size limits (if configured), or accept
-        # TODO: Configure max upload size limit in nginx/FastAPI
+        # Max upload size is configured via MAX_UPLOAD_SIZE env var (settings.max_upload_size)
+        # Default: 10MB, Test env: 50MB. Oversized uploads return 400 with size exceeded error.
         assert response.status_code in [413, 400, 200]
 
 

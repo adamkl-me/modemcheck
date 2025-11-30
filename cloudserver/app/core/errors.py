@@ -38,7 +38,7 @@ class ModemCheckError(Exception):
         self.status_code = status_code
         self.details = details or {}
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = datetime.utcnow().isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert error to standardized response format."""
@@ -317,10 +317,11 @@ class ConfigNotFoundError(NotFoundError):
 
     def __init__(self, api_key: str, modem_id: str = None):
         # v2.1: modem_id is optional (primary key is api_key only)
+        # SECURITY: Do not include API key in error message (information disclosure)
         if modem_id:
-            identifier = f"{api_key[:8]}.../{modem_id}"
+            identifier = f"modem {modem_id}"
         else:
-            identifier = f"{api_key[:8]}..."
+            identifier = "for provided API key"
         super().__init__(
             resource="Client configuration",
             identifier=identifier
@@ -407,10 +408,11 @@ class ConfigBackupNotFoundError(NotFoundError):
 
     def __init__(self, api_key: str, version: str, modem_id: str = None):
         # v2.1: modem_id is optional (primary key is api_key only)
+        # SECURITY: Do not include API key in error message (information disclosure)
         if modem_id:
-            identifier = f"{api_key[:8]}.../{modem_id}/{version}"
+            identifier = f"modem {modem_id}, version {version}"
         else:
-            identifier = f"{api_key[:8]}.../{version}"
+            identifier = f"version {version}"
         super().__init__(
             resource="Configuration backup",
             identifier=identifier

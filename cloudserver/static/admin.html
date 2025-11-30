@@ -824,7 +824,7 @@
     </style>
 
     <!-- Password Strength Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js" integrity="sha512-TZlMGFY9xKj38t/5m2FzJ+RM/aD5alMHDe26p0mYUMoCF5G7ibfHUQILq0qQPV3wlsnCwL+TPRNK4vIWGLOkUQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/static/zxcvbn.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1146,7 +1146,7 @@
             <div class="sub-tab-navigation">
                 <button id="configGenConfigMgmtSubTab" class="sub-tab-btn active" onclick="showConfigSubTab('configMgmt')">Client Config Management</button>
                 <button id="configGenApiKeysSubTab" class="sub-tab-btn" onclick="showConfigSubTab('apiKeys')">API Keys</button>
-                <button id="configGenDefaultsSubTab" class="sub-tab-btn" onclick="showConfigSubTab('defaults')">Config Wizard Defaults</button>
+                <button id="configGenDefaultsSubTab" class="sub-tab-btn" onclick="showConfigSubTab('defaults')">Config Defaults</button>
             </div>
 
             <!-- Client Config Management Sub-tab -->
@@ -1155,35 +1155,31 @@
                     <h2>⚙️ Client Configuration Management</h2>
                     <p class="subtitle">Manage remote configurations for all ModemCheck clients</p>
 
-                    <!-- Stats Cards - Updated for 6 status states -->
+                    <!-- Stats Cards - 3-state model with sync status -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0;">
                         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                             <div style="font-size: 0.85em; opacity: 0.9;">Total Clients</div>
                             <div id="configStatTotal" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">🔓 Unmanaged</div>
+                        <div style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                            <div style="font-size: 0.85em; opacity: 0.9;">📝 Unmanaged</div>
                             <div id="configStatUnmanaged" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">📤 One-Time Ready</div>
-                            <div id="configStatOneTimeReady" style="font-size: 1.8em; font-weight: bold;">-</div>
-                        </div>
                         <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">✅ One-Time Active</div>
-                            <div id="configStatOneTimeActive" style="font-size: 1.8em; font-weight: bold;">-</div>
+                            <div style="font-size: 0.85em; opacity: 0.9;">🔄 Managed</div>
+                            <div id="configStatManaged" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">🔒 Enforced Ready</div>
-                            <div id="configStatEnforcedReady" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                            <div style="font-size: 0.85em; opacity: 0.9;">🔒 Locked</div>
+                            <div id="configStatLocked" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">🔐 Enforced Active</div>
-                            <div id="configStatEnforcedActive" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                            <div style="font-size: 0.85em; opacity: 0.9;">⏳ Pending Sync</div>
+                            <div id="configStatPending" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">⏳ Awaiting Sync</div>
-                            <div id="configStatAwaiting" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                            <div style="font-size: 0.85em; opacity: 0.9;">✅ Active</div>
+                            <div id="configStatActive" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
                         <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                             <div style="font-size: 0.85em; opacity: 0.9;">⚠️ Stale (48h+)</div>
@@ -1198,12 +1194,16 @@
                             <span style="font-weight: 600; color: #555;">Status:</span>
                             <select id="configStatusFilter" style="padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px;">
                                 <option value="">All</option>
-                                <option value="unmanaged">🔓 Unmanaged</option>
-                                <option value="one_time_ready">📤 One-Time (Ready)</option>
-                                <option value="one_time_active">✅ One-Time (Active)</option>
-                                <option value="enforced_ready">🔒 Enforced (Ready)</option>
-                                <option value="enforced_active">🔐 Enforced (Active)</option>
-                                <option value="awaiting_first_sync">⏳ Awaiting First Sync</option>
+                                <option value="unmanaged">📝 Unmanaged</option>
+                                <option value="managed">🔄 Managed</option>
+                                <option value="locked">🔒 Locked</option>
+                            </select>
+                            <span style="font-weight: 600; color: #555; margin-left: 10px;">Sync:</span>
+                            <select id="configSyncStatusFilter" style="padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                                <option value="">All</option>
+                                <option value="n/a">N/A</option>
+                                <option value="pending">⏳ Pending</option>
+                                <option value="active">✅ Active</option>
                             </select>
                         </div>
                         <button class="btn btn-success" onclick="showCreateConfigModal()">➕ Create Config</button>
@@ -1223,9 +1223,9 @@
                                     <th>API Key</th>
                                     <th>Last Seen Modem</th>
                                     <th>Status</th>
+                                    <th>Sync</th>
                                     <th>Version</th>
                                     <th>Last Sync</th>
-                                    <th>Updated By</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -1261,14 +1261,14 @@
             <!-- Defaults Sub-tab -->
             <div id="configGenDefaultsSection" class="sub-tab-content">
                 <div class="action-section">
-                    <h2>⚙️ Config Wizard Default Management</h2>
-                    <p class="subtitle">Set default pre-fill values for the configuration wizard used when creating new client configurations.</p>
+                    <h2>⚙️ Configuration Defaults</h2>
+                    <p class="subtitle">Set default values used when creating new client configurations.</p>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
-                        <!-- Left Column: Cloud & Basic Settings (Wizard Steps 2-3) -->
+                        <!-- Left Column: Cloud & Basic Settings -->
                         <div>
                             <h3 style="margin-bottom: 15px; color: #667eea;">☁️ Cloud Connection Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Step 2 defaults - Used when cloud mode is selected</p>
+                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Server connection defaults</p>
 
                             <div class="form-group">
                                 <label for="defaultCloudHost">Cloud Host</label>
@@ -1280,8 +1280,8 @@
                                 <input type="text" id="defaultCloudPort" value="443" placeholder="443">
                             </div>
 
-                            <h3 style="margin: 25px 0 15px 0; color: #667eea;">⚙️ Basic Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Step 3 defaults - Modem and speed test configuration</p>
+                            <h3 style="margin: 25px 0 15px 0; color: #667eea;">⚙️ Modem & Speed Test Settings</h3>
+                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Modem detection and speed test defaults</p>
 
                             <div class="form-group">
                                 <label for="defaultModemAddress">Modem Address</label>
@@ -1312,10 +1312,10 @@
                             </div>
                         </div>
 
-                        <!-- Right Column: Network & Logging Settings (Wizard Step 4) -->
+                        <!-- Right Column: Network & Logging Settings -->
                         <div>
-                            <h3 style="margin-bottom: 15px; color: #667eea;">🌐 Network & Logging Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Step 4 defaults - Updates, logging, and diagnostics</p>
+                            <h3 style="margin-bottom: 15px; color: #667eea;">🌐 Updates & Logging Settings</h3>
+                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Auto-update, logging, and diagnostics defaults</p>
 
                             <div class="form-group">
                                 <label>
@@ -1916,26 +1916,35 @@
                 configSseConnection.addEventListener('config_update', (e) => {
                     const update = JSON.parse(e.data);
                     updateConfigTableRow(update);
-                    showToast(`Config updated: ${update.modem_id}`, 'info');
+                    showMessage(`Config updated: ${update.modem_id}`, 'info');
                 });
 
                 configSseConnection.addEventListener('keepalive', (e) => {
                     // Just a heartbeat, no action needed
                 });
 
-                configSseConnection.addEventListener('error', (e) => {
-                    console.error('SSE error:', e);
+                configSseConnection.onerror = (e) => {
+                    // Gracefully handle connection failures without spamming console
+                    console.warn('SSE connection unavailable - real-time updates disabled');
+
                     if (statusEl) {
-                        // Hide the status on error - don't show scary disconnect message
-                        statusEl.style.display = 'none';
+                        statusEl.style.background = '#fff3cd';
+                        statusEl.style.color = '#856404';
+                        statusEl.textContent = '🟡 Real-time updates: Unavailable';
                     }
-                    // Browser will auto-reconnect
-                });
+
+                    // Close connection to prevent auto-reconnect spam
+                    if (configSseConnection) {
+                        configSseConnection.close();
+                        configSseConnection = null;
+                    }
+                };
             } catch (err) {
-                console.error('Failed to connect SSE:', err);
+                console.warn('SSE not supported or unavailable:', err);
                 if (statusEl) {
-                    // Hide the status on error - SSE is optional
-                    statusEl.style.display = 'none';
+                    statusEl.style.background = '#f8f9fa';
+                    statusEl.style.color = '#6c757d';
+                    statusEl.textContent = '⚪ Real-time updates: Not available';
                 }
             }
         }
@@ -1961,12 +1970,14 @@
                 if (apiKeyCell && update.api_key && apiKeyCell.textContent.includes(update.api_key.substring(0, 8))) {
                     // Update last seen modem cell
                     row.cells[1].innerHTML = `<code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(update.last_seen_modem_id) || 'Never synced'}</code>`;
-                    // Update status cell
+                    // Update status cell (3-state)
                     row.cells[2].innerHTML = getStatusBadge(update.status);
+                    // Update sync status cell
+                    row.cells[3].innerHTML = getSyncStatusBadge(update.sync_status);
                     // Update version cell
-                    row.cells[3].textContent = update.version;
+                    row.cells[4].textContent = `v${update.version || 0}`;
                     // Update last sync cell
-                    row.cells[4].textContent = update.last_sync ? formatDateTime(update.last_sync) : 'Never';
+                    row.cells[5].textContent = update.last_sync ? formatConfigTimestamp(update.last_sync) : 'Never';
                     // Flash the row to indicate update
                     row.style.transition = 'background-color 0.5s';
                     row.style.backgroundColor = '#e8f5e9';
@@ -3091,21 +3102,29 @@
         }
 
         // Config Generator Functions
+
+        // Helper: Toggle field disabled state based on checkbox, with null guards
+        const guardToggleFields = (triggerId, fieldIds, callback = null) => {
+            const triggerEl = document.getElementById(triggerId);
+            if (!triggerEl) return;
+
+            const enabled = triggerEl.checked;
+            fieldIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = !enabled;
+            });
+
+            if (callback) callback();
+        };
+
         function toggleCloudFields() {
-            const enabled = document.getElementById('cfgEnableCloud').checked;
-            document.getElementById('cfgCloudHost').disabled = !enabled;
-            document.getElementById('cfgCloudPort').disabled = !enabled;
-            document.getElementById('cfgCloudPath').disabled = !enabled;
-            document.getElementById('cfgCloudAPIKey').disabled = !enabled;
-            document.getElementById('generateKeyBtn').disabled = !enabled;
-            document.getElementById('selectKeyBtn').disabled = !enabled;
-            updateConfigPreview();
+            guardToggleFields('cfgEnableCloud',
+                ['cfgCloudHost', 'cfgCloudPort', 'cfgCloudPath', 'cfgCloudAPIKey', 'generateKeyBtn', 'selectKeyBtn'],
+                updateConfigPreview);
         }
 
         function toggleRetentionDaysField() {
-            const enabled = document.getElementById('cfgLocalCleanupEnabled').checked;
-            document.getElementById('cfgLocalRetentionDays').disabled = !enabled;
-            updateConfigPreview();
+            guardToggleFields('cfgLocalCleanupEnabled', ['cfgLocalRetentionDays'], updateConfigPreview);
         }
 
         async function showDownloadClientModal() {
@@ -3514,10 +3533,6 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Update wizard data
-                    updateWizardData('apiKey', data.api_key);
-                    updateWizardData('apiKeyName', name);
-
                     // Update the wizard UI
                     const apiKeyInput = document.getElementById('wizardApiKey');
                     if (apiKeyInput) {
@@ -3613,10 +3628,6 @@
                         const data = await response.json();
 
                         if (data.success && data.api_key) {
-                            // Update wizard data
-                            updateWizardData('apiKey', data.api_key);
-                            updateWizardData('apiKeyName', selectedKey.name);
-
                             // Update the wizard UI
                             const apiKeyInput = document.getElementById('wizardApiKey');
                             if (apiKeyInput) {
@@ -3683,7 +3694,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage('Config defaults saved successfully! These will be used in the configuration wizard.', 'success');
+                    showMessage('Config defaults saved successfully! These will be used when creating new configurations.', 'success');
                 } else {
                     showMessage('Error: ' + (data.error || 'Failed to save defaults'), 'error');
                 }
@@ -3800,31 +3811,50 @@
 
         function applyDefaultsToGenerator() {
             // Apply defaults from the defaults form to the generator form
-            document.getElementById('cfgModemAddress').value = document.getElementById('defaultModemAddress').value;
-            document.getElementById('cfgIgnitePassword').value = document.getElementById('defaultIgnitePassword').value;
-            document.getElementById('cfgSpeedTestEnabled').checked = document.getElementById('defaultSpeedTestEnabled').checked;
-            document.getElementById('cfgSpeedTestInterval').value = document.getElementById('defaultSpeedTestInterval').value;
-            document.getElementById('cfgSpeedTestConnections').value = document.getElementById('defaultSpeedTestConnections').value;
-            document.getElementById('cfgPingCount').value = document.getElementById('defaultPingCount').value;
-            document.getElementById('cfgAutoUpdateEnabled').checked = document.getElementById('defaultAutoUpdateEnabled').checked;
-            document.getElementById('cfgUpdateChannel').value = document.getElementById('defaultUpdateChannel').value;
-            document.getElementById('cfgSilent').checked = document.getElementById('defaultSilent').checked;
-            document.getElementById('cfgNoLogs').checked = document.getElementById('defaultNoLogs').checked;
-            document.getElementById('cfgLocalCleanupEnabled').checked = document.getElementById('defaultLocalCleanupEnabled').checked;
-            document.getElementById('cfgLocalRetentionDays').value = document.getElementById('defaultLocalRetentionDays').value;
-            document.getElementById('cfgEnableCloud').checked = document.getElementById('defaultEnableCloud').checked;
-            document.getElementById('cfgCloudHost').value = document.getElementById('defaultCloudHost').value;
-            document.getElementById('cfgCloudPort').value = document.getElementById('defaultCloudPort').value;
-            document.getElementById('cfgCloudPath').value = document.getElementById('defaultCloudPath').value;
+            // Helper to safely copy values between elements
+            const copyValue = (fromId, toId) => {
+                const from = document.getElementById(fromId);
+                const to = document.getElementById(toId);
+                if (from && to) to.value = from.value;
+            };
+            const copyChecked = (fromId, toId) => {
+                const from = document.getElementById(fromId);
+                const to = document.getElementById(toId);
+                if (from && to) to.checked = from.checked;
+            };
+
+            copyValue('defaultModemAddress', 'cfgModemAddress');
+            copyValue('defaultIgnitePassword', 'cfgIgnitePassword');
+            copyChecked('defaultSpeedTestEnabled', 'cfgSpeedTestEnabled');
+            copyValue('defaultSpeedTestInterval', 'cfgSpeedTestInterval');
+            copyValue('defaultSpeedTestConnections', 'cfgSpeedTestConnections');
+            copyValue('defaultPingCount', 'cfgPingCount');
+            copyChecked('defaultAutoUpdateEnabled', 'cfgAutoUpdateEnabled');
+            copyValue('defaultUpdateChannel', 'cfgUpdateChannel');
+            copyChecked('defaultSilent', 'cfgSilent');
+            copyChecked('defaultNoLogs', 'cfgNoLogs');
+            copyChecked('defaultLocalCleanupEnabled', 'cfgLocalCleanupEnabled');
+            copyValue('defaultLocalRetentionDays', 'cfgLocalRetentionDays');
+            // Note: Cloud fields (EnableCloud, CloudHost, CloudPort, CloudPath) removed - not in current form
 
             // Trigger field state updates
-            toggleCloudFields();
-            toggleRetentionDaysField();
+            if (typeof toggleCloudFields === 'function') toggleCloudFields();
+            if (typeof toggleRetentionDaysField === 'function') toggleRetentionDaysField();
             updateConfigPreview();
         }
 
         async function loadPersistedDefaultsToGenerator() {
             // Load persisted defaults from backend and apply to generator form (for all users)
+            // Helper to safely set element values
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            };
+            const setChecked = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = val;
+            };
+
             try {
                 const response = await fetch('/api/admin/config_defaults', {
                     method: 'GET',
@@ -3836,46 +3866,48 @@
                     const defaults = data.defaults;
 
                     // Apply defaults directly to generator form
-                    document.getElementById('cfgModemAddress').value = defaults.ModemAddress || 'autodetect';
-                    document.getElementById('cfgIgnitePassword').value = defaults.IgnitePassword || '';
-                    document.getElementById('cfgSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
-                    document.getElementById('cfgSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
-                    document.getElementById('cfgSpeedTestConnections').value = defaults.SpeedTestConnections || 1;
-                    document.getElementById('cfgPingCount').value = defaults.PingCount || 100;
-                    document.getElementById('cfgAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
-                    document.getElementById('cfgUpdateChannel').value = defaults.UpdateChannel || 'stable';
-                    document.getElementById('cfgSilent').checked = defaults.Silent || false;
-                    document.getElementById('cfgNoLogs').checked = defaults.NoLogs || false;
-                    document.getElementById('cfgLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
-                    document.getElementById('cfgLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
-                    document.getElementById('cfgEnableCloud').checked = defaults.EnableCloud || false;
-                    document.getElementById('cfgCloudHost').value = defaults.CloudHost || '';
-                    document.getElementById('cfgCloudPort').value = defaults.CloudPort || '443';
-                    document.getElementById('cfgCloudPath').value = defaults.CloudPath || '';
+                    setVal('cfgModemAddress', defaults.ModemAddress || 'autodetect');
+                    setVal('cfgIgnitePassword', defaults.IgnitePassword || '');
+                    setChecked('cfgSpeedTestEnabled', defaults.SpeedTestEnabled !== false);
+                    setVal('cfgSpeedTestInterval', defaults.SpeedTestInterval || 1);
+                    setVal('cfgSpeedTestConnections', defaults.SpeedTestConnections || 1);
+                    setVal('cfgPingCount', defaults.PingCount || 100);
+                    setChecked('cfgAutoUpdateEnabled', defaults.AutoUpdateEnabled !== false);
+                    setVal('cfgUpdateChannel', defaults.UpdateChannel || 'stable');
+                    setChecked('cfgSilent', defaults.Silent || false);
+                    setChecked('cfgNoLogs', defaults.NoLogs || false);
+                    setChecked('cfgLocalCleanupEnabled', defaults.LocalCleanupEnabled !== false);
+                    setVal('cfgLocalRetentionDays', defaults.LocalRetentionDays || 90);
+                    // Cloud fields - only set if elements exist
+                    setChecked('cfgEnableCloud', defaults.EnableCloud || false);
+                    setVal('cfgCloudHost', defaults.CloudHost || '');
+                    setVal('cfgCloudPort', defaults.CloudPort || '443');
+                    setVal('cfgCloudPath', defaults.CloudPath || '');
 
-                    // If admin, also update the defaults form
+                    // If admin, also update the defaults form (if elements exist)
                     if (currentUserRole === 'admin') {
-                        document.getElementById('defaultModemAddress').value = defaults.ModemAddress || 'autodetect';
-                        document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || '';
-                        document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== false;
-                        document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
-                        document.getElementById('defaultSpeedTestConnections').value = defaults.SpeedTestConnections || 1;
-                        document.getElementById('defaultPingCount').value = defaults.PingCount || 100;
-                        document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== false;
-                        document.getElementById('defaultUpdateChannel').value = defaults.UpdateChannel || 'stable';
-                        document.getElementById('defaultSilent').checked = defaults.Silent || false;
-                        document.getElementById('defaultNoLogs').checked = defaults.NoLogs || false;
-                        document.getElementById('defaultLocalCleanupEnabled').checked = defaults.LocalCleanupEnabled !== false;
-                        document.getElementById('defaultLocalRetentionDays').value = defaults.LocalRetentionDays || 90;
-                        document.getElementById('defaultEnableCloud').checked = defaults.EnableCloud || false;
-                        document.getElementById('defaultCloudHost').value = defaults.CloudHost || '';
-                        document.getElementById('defaultCloudPort').value = defaults.CloudPort || '443';
-                        document.getElementById('defaultCloudPath').value = defaults.CloudPath || '';
+                        setVal('defaultModemAddress', defaults.ModemAddress || 'autodetect');
+                        setVal('defaultIgnitePassword', defaults.IgnitePassword || '');
+                        setChecked('defaultSpeedTestEnabled', defaults.SpeedTestEnabled !== false);
+                        setVal('defaultSpeedTestInterval', defaults.SpeedTestInterval || 1);
+                        setVal('defaultSpeedTestConnections', defaults.SpeedTestConnections || 1);
+                        setVal('defaultPingCount', defaults.PingCount || 100);
+                        setChecked('defaultAutoUpdateEnabled', defaults.AutoUpdateEnabled !== false);
+                        setVal('defaultUpdateChannel', defaults.UpdateChannel || 'stable');
+                        setChecked('defaultSilent', defaults.Silent || false);
+                        setChecked('defaultNoLogs', defaults.NoLogs || false);
+                        setChecked('defaultLocalCleanupEnabled', defaults.LocalCleanupEnabled !== false);
+                        setVal('defaultLocalRetentionDays', defaults.LocalRetentionDays || 90);
+                        // Cloud fields may not exist in defaults form
+                        setChecked('defaultEnableCloud', defaults.EnableCloud || false);
+                        setVal('defaultCloudHost', defaults.CloudHost || '');
+                        setVal('defaultCloudPort', defaults.CloudPort || '443');
+                        setVal('defaultCloudPath', defaults.CloudPath || '');
                     }
 
                     // Trigger field state updates
-                    toggleCloudFields();
-                    toggleRetentionDaysField();
+                    if (typeof toggleCloudFields === 'function') toggleCloudFields();
+                    if (typeof toggleRetentionDaysField === 'function') toggleRetentionDaysField();
                     updateConfigPreview();
                 }
             } catch (error) {
@@ -4371,40 +4403,44 @@
         let allConfigMgmtConfigs = [];
         let currentEditConfig = null;
 
-        // Get status badge HTML for config status
+        // Get status badge HTML for config status (3-state model)
         function getStatusBadge(status) {
             const statusConfig = {
-                'unmanaged': { bg: '#10b981', icon: '🔓', label: 'Unmanaged' },
-                'one_time_ready': { bg: '#f59e0b', icon: '📤', label: 'One-Time (Ready)' },
-                'one_time_active': { bg: '#3b82f6', icon: '✅', label: 'One-Time (Active)' },
-                'enforced_ready': { bg: '#8b5cf6', icon: '🔒', label: 'Enforced (Ready)' },
-                'enforced_active': { bg: '#ec4899', icon: '🔐', label: 'Enforced (Active)' },
-                'awaiting_first_sync': { bg: '#6b7280', icon: '⏳', label: 'Awaiting Sync' }
+                'unmanaged': { bg: '#6b7280', icon: '📝', label: 'Unmanaged' },
+                'managed': { bg: '#3b82f6', icon: '🔄', label: 'Managed' },
+                'locked': { bg: '#dc2626', icon: '🔒', label: 'Locked' }
             };
 
             const cfg = statusConfig[status] || { bg: '#9ca3af', icon: '❓', label: status };
             return `<span style="padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; background: ${cfg.bg}; color: white;">${cfg.icon} ${cfg.label}</span>`;
         }
 
-        // Helper function to translate 6-state status to 3-option mode for dropdown
-        function statusToMode(status) {
-            if (status === 'unmanaged') return 'unmanaged';
-            if (status && status.startsWith('one_time')) return 'one_time';
-            if (status && status.startsWith('enforced')) return 'enforced';
-            if (status === 'awaiting_first_sync') return 'one_time'; // default for awaiting
-            return 'one_time'; // fallback default
+        // Get sync status badge HTML
+        function getSyncStatusBadge(syncStatus) {
+            const syncConfig = {
+                'n/a': { bg: '#9ca3af', label: 'N/A' },
+                'pending': { bg: '#f59e0b', label: '⏳ Pending' },
+                'active': { bg: '#10b981', label: '✅ Active' }
+            };
+
+            const cfg = syncConfig[syncStatus] || syncConfig['n/a'];
+            return `<span style="padding: 4px 10px; border-radius: 15px; font-size: 0.8em; font-weight: 500; background: ${cfg.bg}; color: white;">${cfg.label}</span>`;
         }
 
         // Load config management data from API
         async function loadConfigMgmtData() {
             try {
                 const statusFilter = document.getElementById('configStatusFilter').value;
+                const syncStatusFilter = document.getElementById('configSyncStatusFilter')?.value || '';
                 const searchTerm = document.getElementById('configSearchBox').value.toLowerCase();
 
                 // Build query parameters
                 const params = new URLSearchParams();
                 if (statusFilter) {
                     params.append('status', statusFilter);
+                }
+                if (syncStatusFilter) {
+                    params.append('sync_status', syncStatusFilter);
                 }
                 params.append('limit', '1000');
 
@@ -4443,21 +4479,19 @@
             }
         }
 
-        // Update statistics cards for 6 status states
+        // Update statistics cards for 3-state model with sync status
         function updateConfigMgmtStats(configs) {
             const total = configs.length;
             const unmanaged = configs.filter(c => c.status === 'unmanaged').length;
-            const oneTimeReady = configs.filter(c => c.status === 'one_time_ready').length;
-            const oneTimeActive = configs.filter(c => c.status === 'one_time_active').length;
-            const enforcedReady = configs.filter(c => c.status === 'enforced_ready').length;
-            const enforcedActive = configs.filter(c => c.status === 'enforced_active').length;
-            const awaiting = configs.filter(c => c.status === 'awaiting_first_sync').length;
+            const managed = configs.filter(c => c.status === 'managed').length;
+            const locked = configs.filter(c => c.status === 'locked').length;
+            const pending = configs.filter(c => c.sync_status === 'pending').length;
+            const active = configs.filter(c => c.sync_status === 'active').length;
 
-            // Calculate stale syncs (no sync in last 48 hours for active/ready managed configs)
+            // Calculate stale syncs (no sync in last 48 hours for managed/locked configs)
             const staleThreshold = Date.now() - (48 * 60 * 60 * 1000);
-            const managedStatuses = ['one_time_ready', 'one_time_active', 'enforced_ready', 'enforced_active'];
             const stale = configs.filter(c => {
-                if (managedStatuses.includes(c.status) && c.last_sync) {
+                if ((c.status === 'managed' || c.status === 'locked') && c.last_sync) {
                     const syncTime = new Date(c.last_sync).getTime();
                     return syncTime < staleThreshold;
                 }
@@ -4466,15 +4500,14 @@
 
             document.getElementById('configStatTotal').textContent = total;
             document.getElementById('configStatUnmanaged').textContent = unmanaged;
-            document.getElementById('configStatOneTimeReady').textContent = oneTimeReady;
-            document.getElementById('configStatOneTimeActive').textContent = oneTimeActive;
-            document.getElementById('configStatEnforcedReady').textContent = enforcedReady;
-            document.getElementById('configStatEnforcedActive').textContent = enforcedActive;
-            document.getElementById('configStatAwaiting').textContent = awaiting;
+            document.getElementById('configStatManaged').textContent = managed;
+            document.getElementById('configStatLocked').textContent = locked;
+            document.getElementById('configStatPending').textContent = pending;
+            document.getElementById('configStatActive').textContent = active;
             document.getElementById('configStatStale').textContent = stale;
         }
 
-        // Render config management table with dual-track versioning
+        // Render config management table with simplified versioning
         function renderConfigMgmtTable(configs) {
             const tbody = document.getElementById('configTableBody');
 
@@ -4492,11 +4525,12 @@
 
             tbody.innerHTML = configs.map(config => {
                 const lastSync = formatConfigTimestamp(config.last_sync);
-                const syncClass = getConfigSyncStatusClass(config.last_sync, config.status);
+                const syncClass = getConfigSyncStatusClass(config.last_sync, config.status, config.sync_status);
                 const statusBadge = getStatusBadge(config.status);
+                const syncStatusBadge = getSyncStatusBadge(config.sync_status);
 
-                // Version display with track info
-                const versionDisplay = config.version || `v${config.client_version}_${config.active_track}`;
+                // Simple version display (integer)
+                const versionDisplay = config.version || 0;
 
                 // Use last_seen_modem_id (the new schema field) with fallback
                 const lastSeenModem = config.last_seen_modem_id || config.modem_id || 'Never synced';
@@ -4506,18 +4540,15 @@
                         <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(config.api_key)}</code></td>
                         <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(lastSeenModem)}</code></td>
                         <td>${statusBadge}</td>
-                        <td>${versionDisplay}</td>
+                        <td>${syncStatusBadge}</td>
+                        <td>v${versionDisplay}</td>
                         <td style="${syncClass}">${lastSync}</td>
-                        <td>${escapeHtml(config.updated_by || 'N/A')}</td>
                         <td>
                             <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em;" onclick='openConfigViewModal(${JSON.stringify(config).replace(/'/g, "&#39;")})'>
                                 ⚙️ View
                             </button>
                             <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='openConfigEditModal(${JSON.stringify(config).replace(/'/g, "&#39;")})'>
                                 ✏️ Edit
-                            </button>
-                            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='openConfigHistoryModal("${config.api_key_full}")'>
-                                📜 History
                             </button>
                         </td>
                     </tr>
@@ -4555,14 +4586,15 @@
             }
         }
 
-        // Get CSS class for sync status
-        function getConfigSyncStatusClass(lastSync, status) {
+        // Get CSS class for sync status (v3.0 - uses status + sync_status)
+        function getConfigSyncStatusClass(lastSync, status, syncStatus) {
             if (!lastSync) return '';
 
             const hours = (Date.now() - new Date(lastSync).getTime()) / (1000 * 60 * 60);
-            const managedStatuses = ['one_time_ready', 'one_time_active', 'enforced_ready', 'enforced_active'];
+            // In v3.0, managed/locked with pending sync status indicates waiting for client
+            const needsSync = (status === 'managed' || status === 'locked') && syncStatus === 'pending';
 
-            if (managedStatuses.includes(status) && hours > 48) {
+            if (needsSync && hours > 48) {
                 return 'color: #ff6b6b; font-weight: 600;';
             } else if (hours < 24) {
                 return 'color: #51cf66; font-weight: 600;';
@@ -4570,59 +4602,19 @@
             return 'color: #666;';
         }
 
-        // Open config edit modal - redirects to wizard-based editor
+        // Open config edit modal
         function openConfigEditModal(config) {
             showConfigEditModal(config);
         }
 
-        // Close config edit modal
+        // Close config edit modal (legacy - now uses unified modal)
         function closeConfigEditModal() {
-            const modal = document.getElementById('configEditModal');
-            if (modal) modal.classList.remove('active');
-            currentEditConfig = null;
+            closeConfigModal();
         }
 
-        // View config modal - displays current config with version history dropdown
-        let configViewHistory = [];
-        let configViewCurrentConfig = null;
-
+        // View config modal - uses unified configModalState
         async function openConfigViewModal(config) {
             const apiKey = config.api_key_full || config.api_key;
-
-            // Remove existing modal and recreate to ensure fresh state
-            let modal = document.getElementById('configViewModal');
-            if (modal) {
-                modal.remove();
-            }
-
-            modal = document.createElement('div');
-            modal.id = 'configViewModal';
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width: 700px;">
-                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: none; padding-bottom: 0;">
-                        <h2>Configuration Details</h2>
-                        <button class="btn btn-secondary" onclick="closeConfigViewModal()" style="padding: 5px 12px; font-size: 18px; border: none;">&times;</button>
-                    </div>
-                    <div id="configViewHeader" style="padding: 0 25px 15px 25px;">
-                        <select id="configViewVersionSelect" onchange="loadConfigVersion()" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer;">
-                            <option value="current">Loading...</option>
-                        </select>
-                        <div id="configViewVersionInfo" style="display: none; background: #f0f4ff; color: #4a5568; padding: 10px 12px; border-radius: 8px; font-size: 0.85em; margin-top: 10px;"></div>
-                    </div>
-                    <div id="configViewBody" style="padding: 0 25px 25px 25px; min-height: 280px;">
-                        <div class="loading">Loading configuration...</div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="closeConfigViewModal()">Close</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            modal.classList.add('active');
-            const viewBody = document.getElementById('configViewBody');
-            viewBody.innerHTML = '<div class="loading">Loading configuration...</div>';
 
             try {
                 // Fetch current config and history in parallel
@@ -4635,290 +4627,112 @@
                     throw new Error(`Failed to load config: ${configResp.status}`);
                 }
 
-                const configData = await configResp.json();
+                const fullConfig = await configResp.json();
                 const historyData = historyResp.ok ? await historyResp.json() : { versions: [] };
+                const cfg = fullConfig.config || {};
 
-                configViewCurrentConfig = configData;
-                configViewHistory = historyData.versions || [];
+                // Set modal state for view mode
+                configModalState.mode = 'view';
+                configModalState.apiKey = apiKey;
+                configModalState.originalApiKey = apiKey;
+                configModalState.lastSeenModem = fullConfig.last_seen_modem_id || 'Never synced';
+                configModalState.version = fullConfig.version || 1;
+                configModalState.syncStatus = fullConfig.sync_status || 'n/a';
+                configModalState.versions = historyData.versions || [];
+                configModalState.selectedVersion = null;
 
-                renderConfigViewModal(configData, config);
+                // Populate data from config
+                configModalState.data = {
+                    status: fullConfig.status || 'unmanaged',
+                    cloudHost: cfg.CloudHost || '',
+                    cloudPort: cfg.CloudPort || '443',
+                    modemAddress: cfg.ModemAddress || 'autodetect',
+                    speedTestEnabled: cfg.SpeedTestEnabled !== false,
+                    speedTestInterval: cfg.SpeedTestInterval || 1,
+                    speedTestConnections: cfg.SpeedTestConnections || 1,
+                    autoUpdateEnabled: cfg.AutoUpdateEnabled !== false,
+                    updateChannel: cfg.UpdateChannel || 'stable',
+                    pingCount: cfg.PingCount || 100,
+                    localCleanupEnabled: cfg.LocalCleanupEnabled !== false,
+                    localRetentionDays: cfg.LocalRetentionDays || 90,
+                    silent: cfg.Silent || false,
+                    noLogs: cfg.NoLogs || false,
+                    ignitePassword: cfg.IgnitePassword || ''
+                };
+
+                // Show the unified modal
+                showConfigModal();
             } catch (error) {
                 console.error('Failed to load config:', error);
-                viewBody.innerHTML = `
-                    <div style="color: #c33; padding: 20px;">
-                        Failed to load configuration: ${error.message}
-                    </div>
-                `;
+                showMessage(`Failed to load configuration: ${error.message}`, 'error');
             }
         }
 
-        function renderConfigViewModal(configData, tableConfig) {
-            const viewBody = document.getElementById('configViewBody');
-            const versionSelect = document.getElementById('configViewVersionSelect');
-            const cfg = configData.config || {};
-            const status = configData.status || tableConfig.status || 'unknown';
-
-            // Build version dropdown options and populate the header dropdown
-            const versionOptions = configViewHistory.length > 0
-                ? configViewHistory.map((v, idx) => {
-                    const timestamp = new Date(v.created_at).toLocaleString();
-                    const label = `${v.version_display} - ${timestamp}`;
-                    return `<option value="${idx}">${label}</option>`;
-                }).join('')
-                : '';
-
-            versionSelect.innerHTML = `
-                <option value="current" selected>Current Configuration</option>
-                ${versionOptions}
-            `;
-
-            // Mode labels
-            const modeLabels = {
-                'unmanaged': '🔓 Unmanaged',
-                'one_time_ready': '📤 One-Time (Ready)',
-                'one_time_active': '✅ One-Time (Active)',
-                'enforced_ready': '🔒 Enforced (Ready)',
-                'enforced_active': '🔐 Enforced (Active)',
-                'awaiting_first_sync': '⏳ Awaiting First Sync'
-            };
-
-            const modeDisplay = modeLabels[status] || status;
-            const apiKeyDisplay = (tableConfig.api_key_full || tableConfig.api_key || '').substring(0, 8) + '...';
-            const serverDisplay = `${cfg.CloudHost || 'N/A'}:${cfg.CloudPort || '443'}`;
-            const modemDisplay = cfg.ModemAddress || 'autodetect';
-            const pingCount = cfg.PingCount || 100;
-            const cleanupDisplay = cfg.LocalCleanupEnabled ? `${cfg.LocalRetentionDays || 90}d` : 'Off';
-            const speedTestDisplay = cfg.SpeedTestEnabled ? `Every ${cfg.SpeedTestInterval || 1}` : 'Off';
-            const autoUpdateDisplay = cfg.AutoUpdateEnabled ? (cfg.UpdateChannel || 'stable') : 'Off';
-            const silentNoLog = `${cfg.Silent ? '✓' : '✗'} / ${cfg.NoLogs ? '✓' : '✗'}`;
-
-            viewBody.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                    <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                        <h4 style="margin-bottom: 8px;">Mode</h4>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Type</span>
-                            <span class="review-value">${modeDisplay}</span>
-                        </div>
-                    </div>
-
-                    <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                        <h4 style="margin-bottom: 8px;">Cloud</h4>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">API Key</span>
-                            <span class="review-value">${apiKeyDisplay}</span>
-                        </div>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Server</span>
-                            <span class="review-value">${serverDisplay}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                        <h4 style="margin-bottom: 8px;">Client</h4>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Modem</span>
-                            <span class="review-value">${modemDisplay}</span>
-                        </div>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Ping Count</span>
-                            <span class="review-value">${pingCount}</span>
-                        </div>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Cleanup</span>
-                            <span class="review-value">${cleanupDisplay}</span>
-                        </div>
-                    </div>
-
-                    <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                        <h4 style="margin-bottom: 8px;">Features</h4>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Speed Test</span>
-                            <span class="review-value">${speedTestDisplay}</span>
-                        </div>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Auto-Update</span>
-                            <span class="review-value">${autoUpdateDisplay}</span>
-                        </div>
-                        <div class="review-row" style="padding: 4px 0;">
-                            <span class="review-label">Silent/NoLog</span>
-                            <span class="review-value">${silentNoLog}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        async function loadConfigVersion() {
-            const select = document.getElementById('configViewVersionSelect');
-            const versionInfo = document.getElementById('configViewVersionInfo');
-            const selectedValue = select.value;
-
-            if (selectedValue === 'current') {
-                // Show current config
-                versionInfo.style.display = 'none';
-                updateConfigViewDisplay(configViewCurrentConfig.config, configViewCurrentConfig.status);
+        // Load a specific version into view mode
+        function loadConfigVersion(versionIdx) {
+            if (versionIdx === 'current' || versionIdx === null) {
+                // Reset to current version - need to reload from API
+                configModalState.selectedVersion = null;
+                // Hide version info
+                const versionInfo = document.getElementById('configVersionInfo');
+                if (versionInfo) versionInfo.style.display = 'none';
                 return;
             }
 
-            const versionIdx = parseInt(selectedValue);
-            if (versionIdx < 0 || versionIdx >= configViewHistory.length) return;
+            const idx = parseInt(versionIdx);
+            if (idx < 0 || idx >= configModalState.versions.length) return;
 
-            const version = configViewHistory[versionIdx];
+            const version = configModalState.versions[idx];
+            configModalState.selectedVersion = version;
 
             // Show version info
-            const timestamp = new Date(version.created_at).toLocaleString();
-            const reasonLabels = {
-                'client_sync': 'Client Sync',
-                'admin_update': 'Admin Update',
-                'rollback': 'Rollback',
-                'first_sync': 'First Sync',
-                'first_sync_unmanaged': 'First Sync (Unmanaged)',
-                'rejected_sync': 'Rejected Sync'
-            };
-            const reason = reasonLabels[version.creation_reason] || version.creation_reason;
-            versionInfo.innerHTML = `<strong>Version ${version.version_display}</strong> • ${reason} • ${timestamp} • by ${version.created_by || 'system'}`;
-            versionInfo.style.display = 'block';
+            const versionInfo = document.getElementById('configVersionInfo');
+            if (versionInfo) {
+                const timestamp = new Date(version.created_at).toLocaleString();
+                const reasonLabels = {
+                    'client_sync': 'Client Sync',
+                    'admin_update': 'Admin Update',
+                    'rollback': 'Rollback',
+                    'first_sync': 'First Sync',
+                    'first_sync_unmanaged': 'First Sync (Unmanaged)',
+                    'rejected_sync': 'Rejected Sync'
+                };
+                const reason = reasonLabels[version.creation_reason] || version.creation_reason;
+                versionInfo.innerHTML = `<strong>Version ${version.version_display}</strong> • ${reason} • ${timestamp} • by ${version.created_by || 'system'}`;
+                versionInfo.style.display = 'block';
+            }
 
-            // Update display with historical config
+            // Update modal data with historical config
             if (version.config_plaintext) {
-                updateConfigViewDisplay(version.config_plaintext, version.status_at_creation);
+                const cfg = version.config_plaintext;
+                configModalState.data = {
+                    status: version.status_at_creation || configModalState.data.status,
+                    cloudHost: cfg.CloudHost || '',
+                    cloudPort: cfg.CloudPort || '443',
+                    modemAddress: cfg.ModemAddress || 'autodetect',
+                    speedTestEnabled: cfg.SpeedTestEnabled !== false,
+                    speedTestInterval: cfg.SpeedTestInterval || 1,
+                    speedTestConnections: cfg.SpeedTestConnections || 1,
+                    autoUpdateEnabled: cfg.AutoUpdateEnabled !== false,
+                    updateChannel: cfg.UpdateChannel || 'stable',
+                    pingCount: cfg.PingCount || 100,
+                    localCleanupEnabled: cfg.LocalCleanupEnabled !== false,
+                    localRetentionDays: cfg.LocalRetentionDays || 90,
+                    silent: cfg.Silent || false,
+                    noLogs: cfg.NoLogs || false,
+                    ignitePassword: cfg.IgnitePassword || ''
+                };
+                renderConfigModalContent();
             }
         }
 
-        function updateConfigViewDisplay(cfg, status) {
-            // Mode labels
-            const modeLabels = {
-                'unmanaged': '🔓 Unmanaged',
-                'one_time_ready': '📤 One-Time (Ready)',
-                'one_time_active': '✅ One-Time (Active)',
-                'enforced_ready': '🔒 Enforced (Ready)',
-                'enforced_active': '🔐 Enforced (Active)',
-                'awaiting_first_sync': '⏳ Awaiting First Sync'
-            };
-
-            const modeDisplay = modeLabels[status] || status || 'Unknown';
-            const serverDisplay = `${cfg.CloudHost || 'N/A'}:${cfg.CloudPort || '443'}`;
-            const modemDisplay = cfg.ModemAddress || 'autodetect';
-            const pingCount = cfg.PingCount || 100;
-            const cleanupDisplay = cfg.LocalCleanupEnabled ? `${cfg.LocalRetentionDays || 90}d` : 'Off';
-            const speedTestDisplay = cfg.SpeedTestEnabled ? `Every ${cfg.SpeedTestInterval || 1}` : 'Off';
-            const autoUpdateDisplay = cfg.AutoUpdateEnabled ? (cfg.UpdateChannel || 'stable') : 'Off';
-            const silentNoLog = `${cfg.Silent ? '✓' : '✗'} / ${cfg.NoLogs ? '✓' : '✗'}`;
-
-            // Update the review sections (find them by traversing the DOM)
-            const reviewSections = document.querySelectorAll('#configViewBody .review-section');
-            if (reviewSections.length >= 4) {
-                // Mode section
-                const modeValue = reviewSections[0].querySelector('.review-value');
-                if (modeValue) modeValue.textContent = modeDisplay;
-
-                // Cloud section
-                const cloudValues = reviewSections[1].querySelectorAll('.review-value');
-                if (cloudValues[1]) cloudValues[1].textContent = serverDisplay;
-
-                // Client section
-                const clientValues = reviewSections[2].querySelectorAll('.review-value');
-                if (clientValues[0]) clientValues[0].textContent = modemDisplay;
-                if (clientValues[1]) clientValues[1].textContent = pingCount;
-                if (clientValues[2]) clientValues[2].textContent = cleanupDisplay;
-
-                // Features section
-                const featureValues = reviewSections[3].querySelectorAll('.review-value');
-                if (featureValues[0]) featureValues[0].textContent = speedTestDisplay;
-                if (featureValues[1]) featureValues[1].textContent = autoUpdateDisplay;
-                if (featureValues[2]) featureValues[2].textContent = silentNoLog;
-            }
-        }
-
+        // Legacy alias for backward compatibility
         function closeConfigViewModal() {
-            const modal = document.getElementById('configViewModal');
-            if (modal) modal.classList.remove('active');
-            // Hide version info when closing
-            const versionInfo = document.getElementById('configViewVersionInfo');
-            if (versionInfo) versionInfo.style.display = 'none';
-            configViewHistory = [];
-            configViewCurrentConfig = null;
-        }
-
-        // Save config edit (called from edit wizard)
-        async function saveConfigEdit() {
-            if (!currentEditConfig) return;
-
-            try {
-                // Get fresh token if we don't have one
-                if (!csrfToken) await refreshCsrfToken();
-
-                const configObj = buildConfigFromEditWizard();
-                const mode = configEditWizard.data.mode;
-                const apiKey = currentEditConfig.api_key_full || currentEditConfig.api_key;
-
-                // v2.1: API uses api_key only (no modem_id in path)
-                const response = await fetch(
-                    `/api/admin/configs/${encodeURIComponent(apiKey)}`,
-                    {
-                        method: 'PUT',
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-Token': csrfToken
-                        },
-                        body: JSON.stringify({
-                            config: configObj,
-                            mode: mode
-                        })
-                    }
-                );
-
-                // Update CSRF token from response header for next request
-                updateCsrfFromResponse(response);
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error?.message || `Update failed: ${response.status}`);
-                }
-
-                showMessage('Configuration updated successfully!', 'success');
-                closeConfigEditModal();
-                await loadConfigMgmtData();
-            } catch (error) {
-                console.error('Save failed:', error);
-                document.getElementById('configEditError').textContent = error.message;
-                document.getElementById('configEditError').style.display = 'block';
-            }
-        }
-
-        // Build config object from edit wizard form fields
-        function buildConfigFromEditWizard() {
-            const d = configEditWizard.data;
-            const config = {
-                ModemAddress: d.modemAddress || 'autodetect',
-                SpeedTestEnabled: d.speedTestEnabled,
-                SpeedTestInterval: parseInt(d.speedTestInterval) || 1,
-                SpeedTestConnections: parseInt(d.speedTestConnections) || 1,
-                PingCount: parseInt(d.pingCount) || 100,
-                AutoUpdateEnabled: d.autoUpdateEnabled,
-                UpdateChannel: d.updateChannel || 'stable',
-                Silent: d.silent,
-                NoLogs: d.noLogs,
-                LocalCleanupEnabled: d.localCleanupEnabled,
-                LocalRetentionDays: parseInt(d.localRetentionDays) || 90,
-                EnableCloud: true,
-                CloudHost: d.cloudHost || '',
-                CloudPort: d.cloudPort || '443',
-                EnforceHTTPS: true,
-                InsecureTLS: false
-            };
-            // Optional fields - only include if non-empty
-            if (d.ignitePassword) config.IgnitePassword = d.ignitePassword;
-            if (d.cloudPath) config.CloudPath = d.cloudPath;
-            return config;
+            closeConfigModal();
         }
 
         // =====================================================================
-        // SHARED WIZARD STYLES - Used by both Create and Edit wizards
+        // SHARED CONFIG MODAL STYLES
         // =====================================================================
 
         function ensureWizardStyles() {
@@ -5095,93 +4909,16 @@
         }
 
         // =====================================================================
-        // EDIT CONFIG WIZARD - Form-based editor for existing configs
+        // EDIT CONFIG MODAL - Single-page editor for existing configs
         // =====================================================================
 
-        // Edit wizard state
-        const configEditWizard = {
-            currentStep: 1,
-            totalSteps: 5,
-            data: {}
-        };
-
-        // Show config edit modal (wizard-based)
+        // Show config edit modal (single-page version)
         async function showConfigEditModal(config) {
             currentEditConfig = config;
-
-            // Ensure wizard CSS is loaded (shared with create wizard)
-            ensureWizardStyles();
-
-            // Create modal if it doesn't exist
-            let modal = document.getElementById('configEditModal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'configEditModal';
-                modal.className = 'modal';
-                modal.innerHTML = `
-                    <div class="modal-content" style="max-width: 700px;">
-                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 id="editWizardTitle">Edit Configuration</h2>
-                            <button class="btn btn-secondary" onclick="closeConfigEditModal()" style="padding: 5px 12px; font-size: 18px; border: none;">&times;</button>
-                        </div>
-
-                        <!-- Progress indicator -->
-                        <div id="editWizardProgress" style="display: flex; justify-content: space-between; padding: 15px 30px; background: #f7f7f7; border-bottom: 1px solid #e0e0e0;">
-                            <div class="wizard-step active" data-step="1">
-                                <div class="step-number">1</div>
-                                <div class="step-label">Mode</div>
-                            </div>
-                            <div class="wizard-step" data-step="2">
-                                <div class="step-number">2</div>
-                                <div class="step-label">Cloud</div>
-                            </div>
-                            <div class="wizard-step" data-step="3">
-                                <div class="step-number">3</div>
-                                <div class="step-label">Basic</div>
-                            </div>
-                            <div class="wizard-step" data-step="4">
-                                <div class="step-number">4</div>
-                                <div class="step-label">Network</div>
-                            </div>
-                            <div class="wizard-step" data-step="5">
-                                <div class="step-number">5</div>
-                                <div class="step-label">Review</div>
-                            </div>
-                        </div>
-
-                        <div id="configEditLoading" style="padding: 40px; text-align: center; color: #666;">
-                            Loading configuration...
-                        </div>
-                        <div id="configEditError" style="display: none; background: #fee; color: #c33; padding: 10px 20px; margin: 15px 20px 0 20px; border-radius: 6px;"></div>
-
-                        <!-- Step content container -->
-                        <div id="editWizardStepContent" style="padding: 25px; min-height: 350px; display: none;">
-                            <!-- Content populated dynamically -->
-                        </div>
-
-                        <div class="modal-footer" style="display: flex; justify-content: space-between;">
-                            <button class="btn btn-secondary" id="editWizardBackBtn" onclick="editWizardBack()" style="display: none;">&larr; Back</button>
-                            <div style="flex: 1;"></div>
-                            <button class="btn btn-primary" id="editWizardNextBtn" onclick="editWizardNext()" style="display: none;">Next &rarr;</button>
-                            <button class="btn btn-primary" id="editWizardSaveBtn" onclick="saveConfigEdit()" style="display: none;">Save Changes</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-            }
-
-            // Show modal with loading state
-            modal.classList.add('active');
-            document.getElementById('configEditLoading').style.display = 'block';
-            document.getElementById('editWizardStepContent').style.display = 'none';
-            document.getElementById('configEditError').style.display = 'none';
-            document.getElementById('editWizardNextBtn').style.display = 'none';
-            document.getElementById('editWizardBackBtn').style.display = 'none';
-            document.getElementById('editWizardSaveBtn').style.display = 'none';
+            const apiKey = config.api_key_full || config.api_key;
 
             try {
                 // Fetch full config data from detail endpoint
-                const apiKey = config.api_key_full || config.api_key;
                 const response = await fetch(
                     `/api/admin/configs/${encodeURIComponent(apiKey)}`,
                     { credentials: 'include' }
@@ -5195,16 +4932,18 @@
                 const fullConfig = await response.json();
                 const cfg = fullConfig.config || {};
 
-                // Initialize edit wizard state with current values
-                configEditWizard.currentStep = 1;
-                configEditWizard.data = {
-                    mode: statusToMode(fullConfig.status),
-                    apiKey: apiKey,
-                    lastSeenModem: fullConfig.last_seen_modem_id || 'Never synced',
-                    currentStatus: fullConfig.status,
+                // Set modal state for edit mode
+                configModalState.mode = 'edit';
+                configModalState.apiKey = apiKey;
+                configModalState.originalApiKey = apiKey;
+                configModalState.apiKeyName = '';
+                configModalState.lastSeenModem = fullConfig.last_seen_modem_id || 'Never synced';
+                configModalState.version = fullConfig.version || 1;
+                configModalState.syncStatus = fullConfig.sync_status || 'n/a';
+                configModalState.data = {
+                    status: fullConfig.status || 'managed',
                     cloudHost: cfg.CloudHost || '',
                     cloudPort: cfg.CloudPort || '443',
-                    cloudPath: cfg.CloudPath || '',
                     modemAddress: cfg.ModemAddress || 'autodetect',
                     speedTestEnabled: cfg.SpeedTestEnabled !== false,
                     speedTestInterval: cfg.SpeedTestInterval || 1,
@@ -5219,284 +4958,28 @@
                     ignitePassword: cfg.IgnitePassword || ''
                 };
 
-                // Show form
-                document.getElementById('configEditLoading').style.display = 'none';
-                document.getElementById('editWizardStepContent').style.display = 'block';
-
-                // Render first step
-                renderEditWizardStep(1);
-                updateEditWizardProgress();
+                // Show the unified modal
+                showConfigModal();
 
             } catch (error) {
                 console.error('Failed to load config:', error);
-                document.getElementById('configEditLoading').style.display = 'none';
-                document.getElementById('configEditError').textContent = error.message;
-                document.getElementById('configEditError').style.display = 'block';
+                showMessage(error.message, 'error');
             }
-        }
-
-        // Render edit wizard step
-        function renderEditWizardStep(step) {
-            const container = document.getElementById('editWizardStepContent');
-            const d = configEditWizard.data;
-
-            switch(step) {
-                case 1: // Mode Selection (with info bar)
-                    container.innerHTML = `
-                        <div class="config-info-bar">
-                            <div class="config-info-item">
-                                <span class="label">API Key:</span>
-                                <code>${d.apiKey.substring(0, 8)}...</code>
-                            </div>
-                            <div class="config-info-item">
-                                <span class="label">Modem:</span>
-                                <code>${d.lastSeenModem}</code>
-                            </div>
-                            <div class="config-info-item">
-                                <span class="label">Status:</span>
-                                ${getStatusBadge(d.currentStatus)}
-                            </div>
-                        </div>
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Select Configuration Mode</h3>
-                        <div class="mode-card ${d.mode === 'one_time' ? 'selected' : ''}" onclick="selectEditWizardMode('one_time')">
-                            <h3>📤 One-Time Push</h3>
-                            <p>Server provides configuration to the client. After sync, the client can modify their local config freely.</p>
-                        </div>
-                        <div class="mode-card ${d.mode === 'enforced' ? 'selected' : ''}" onclick="selectEditWizardMode('enforced')">
-                            <h3>🔒 Enforced (Locked)</h3>
-                            <p>Server controls the configuration. Client cannot modify settings locally - changes are overwritten on next sync.</p>
-                        </div>
-                    `;
-                    break;
-
-                case 2: // Cloud Settings (matches Create wizard Step 2, minus API key generation)
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Cloud Connection Settings</h3>
-                        <div class="wizard-form-group">
-                            <label>API Key</label>
-                            <div style="background: #f3f4f6; padding: 10px; border-radius: 5px; border: 2px solid #e0e0e0; margin-bottom: 10px;">
-                                <small style="color: #6b7280;">Using Key:</small>
-                                <div style="font-weight: 500; color: #333; margin-top: 5px; font-family: monospace;">${d.apiKey.substring(0, 8)}...</div>
-                            </div>
-                            <small>API key cannot be changed when editing a configuration</small>
-                        </div>
-                        <div class="wizard-row">
-                            <div class="wizard-form-group">
-                                <label for="editWizardCloudHost">Cloud Host</label>
-                                <input type="text" id="editWizardCloudHost" value="${d.cloudHost}" onchange="updateEditWizardData('cloudHost', this.value)">
-                                <small>Server hostname (e.g., cloud.example.com)</small>
-                            </div>
-                            <div class="wizard-form-group">
-                                <label for="editWizardCloudPort">Cloud Port</label>
-                                <input type="text" id="editWizardCloudPort" value="${d.cloudPort}" onchange="updateEditWizardData('cloudPort', this.value)">
-                                <small>Usually 443 for HTTPS</small>
-                            </div>
-                        </div>
-                    `;
-                    break;
-
-                case 3: // Basic Settings (matches Create wizard Step 3)
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Basic Settings</h3>
-                        <div class="wizard-form-group">
-                            <label for="editWizardModemAddress">Modem Address</label>
-                            <input type="text" id="editWizardModemAddress" value="${d.modemAddress}" onchange="updateEditWizardData('modemAddress', this.value)">
-                            <small>Use "autodetect" or enter an IP address (e.g., 192.168.100.1)</small>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="editWizardSpeedTestEnabled" ${d.speedTestEnabled ? 'checked' : ''} onchange="updateEditWizardData('speedTestEnabled', this.checked)">
-                                <span>Enable Speed Test</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="editWizardSpeedTestInterval">Speed Test Interval</label>
-                                <input type="number" id="editWizardSpeedTestInterval" value="${d.speedTestInterval}" min="1" max="100" onchange="updateEditWizardData('speedTestInterval', parseInt(this.value) || 1)">
-                            </div>
-                        </div>
-                        <small style="display: block; margin-bottom: 15px; color: #888;">Run speed test every N checks (1 = every check, 6 = every 6th check)</small>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="editWizardAutoUpdateEnabled" ${d.autoUpdateEnabled ? 'checked' : ''} onchange="updateEditWizardData('autoUpdateEnabled', this.checked)">
-                                <span>Enable Auto-Update</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="editWizardUpdateChannel">Update Channel</label>
-                                <select id="editWizardUpdateChannel" onchange="updateEditWizardData('updateChannel', this.value)">
-                                    <option value="stable" ${d.updateChannel === 'stable' ? 'selected' : ''}>Stable (recommended)</option>
-                                    <option value="beta" ${d.updateChannel === 'beta' ? 'selected' : ''}>Beta</option>
-                                </select>
-                            </div>
-                        </div>
-                    `;
-                    break;
-
-                case 4: // Network & Logging Settings (matches Create wizard Step 4)
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Network & Logging Settings</h3>
-                        <div class="wizard-form-group">
-                            <label for="editWizardPingCount">Ping Count</label>
-                            <input type="number" id="editWizardPingCount" value="${d.pingCount}" min="1" max="100" onchange="updateEditWizardData('pingCount', parseInt(this.value) || 100)">
-                            <small>Number of pings to run for latency testing (recommended: 100)</small>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="editWizardLocalCleanup" ${d.localCleanupEnabled ? 'checked' : ''} onchange="updateEditWizardData('localCleanupEnabled', this.checked)">
-                                <span>Enable Local Cleanup</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="editWizardRetentionDays">Retention (days)</label>
-                                <input type="number" id="editWizardRetentionDays" value="${d.localRetentionDays}" min="1" max="365" onchange="updateEditWizardData('localRetentionDays', parseInt(this.value) || 90)">
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0;">
-                                <input type="checkbox" id="editWizardSilent" ${d.silent ? 'checked' : ''} onchange="updateEditWizardData('silent', this.checked)">
-                                <span>Silent Mode (no console output)</span>
-                            </label>
-                            <label class="wizard-checkbox" style="margin: 0;">
-                                <input type="checkbox" id="editWizardNoLogs" ${d.noLogs ? 'checked' : ''} onchange="updateEditWizardData('noLogs', this.checked)">
-                                <span>Disable Log File</span>
-                            </label>
-                        </div>
-                    `;
-                    break;
-
-                case 5: // Review (matches Create wizard Step 5 layout)
-                    const editModeLabels = {
-                        'one_time': '📤 One-Time Push',
-                        'enforced': '🔒 Enforced (Locked)'
-                    };
-
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 15px 0; color: #333;">Review Configuration</h3>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Mode</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Type</span>
-                                    <span class="review-value">${editModeLabels[d.mode]}</span>
-                                </div>
-                            </div>
-
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Cloud</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">API Key</span>
-                                    <span class="review-value">${d.apiKey.substring(0, 8)}...</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Server</span>
-                                    <span class="review-value">${d.cloudHost}:${d.cloudPort}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Client</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Modem</span>
-                                    <span class="review-value">${d.modemAddress}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Ping Count</span>
-                                    <span class="review-value">${d.pingCount}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Cleanup</span>
-                                    <span class="review-value">${d.localCleanupEnabled ? `${d.localRetentionDays}d` : 'Off'}</span>
-                                </div>
-                            </div>
-
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Features</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Speed Test</span>
-                                    <span class="review-value">${d.speedTestEnabled ? `Every ${d.speedTestInterval}` : 'Off'}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Auto-Update</span>
-                                    <span class="review-value">${d.autoUpdateEnabled ? d.updateChannel : 'Off'}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Silent/NoLog</span>
-                                    <span class="review-value">${d.silent ? '✓' : '✗'} / ${d.noLogs ? '✓' : '✗'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="background: #d4edda; color: #155724; padding: 10px 12px; border-radius: 8px; font-size: 0.85em;">
-                            <strong>Ready:</strong> Click "Save Changes" to push configuration. ${d.mode === 'enforced' ? 'Client cannot override (enforced mode).' : 'Client can modify after sync (one-time mode).'}
-                        </div>
-                    `;
-                    break;
-            }
-        }
-
-        // Update edit wizard progress indicator
-        function updateEditWizardProgress() {
-            const steps = document.querySelectorAll('#editWizardProgress .wizard-step');
-            steps.forEach((step, index) => {
-                const stepNum = index + 1;
-                step.classList.remove('active', 'completed');
-                if (stepNum < configEditWizard.currentStep) {
-                    step.classList.add('completed');
-                } else if (stepNum === configEditWizard.currentStep) {
-                    step.classList.add('active');
-                }
-            });
-
-            // Update buttons
-            const backBtn = document.getElementById('editWizardBackBtn');
-            const nextBtn = document.getElementById('editWizardNextBtn');
-            const saveBtn = document.getElementById('editWizardSaveBtn');
-
-            backBtn.style.display = configEditWizard.currentStep > 1 ? 'inline-block' : 'none';
-            nextBtn.style.display = configEditWizard.currentStep < configEditWizard.totalSteps ? 'inline-block' : 'none';
-            saveBtn.style.display = configEditWizard.currentStep === configEditWizard.totalSteps ? 'inline-block' : 'none';
-        }
-
-        // Edit wizard navigation
-        function editWizardNext() {
-            if (configEditWizard.currentStep < configEditWizard.totalSteps) {
-                configEditWizard.currentStep++;
-                renderEditWizardStep(configEditWizard.currentStep);
-                updateEditWizardProgress();
-            }
-        }
-
-        function editWizardBack() {
-            if (configEditWizard.currentStep > 1) {
-                configEditWizard.currentStep--;
-                renderEditWizardStep(configEditWizard.currentStep);
-                updateEditWizardProgress();
-            }
-        }
-
-        // Update edit wizard data
-        function updateEditWizardData(field, value) {
-            configEditWizard.data[field] = value;
-        }
-
-        // Select mode in edit wizard
-        function selectEditWizardMode(mode) {
-            configEditWizard.data.mode = mode;
-            renderEditWizardStep(1); // Re-render to update selection
         }
 
         // =====================================================================
-        // CREATE CONFIG WIZARD - 5-step wizard for creating client configs
+        // CREATE CONFIG MODAL - Single-page scrollable modal for creating client configs
         // =====================================================================
 
-        // Wizard state
-        const configWizard = {
-            currentStep: 1,
-            totalSteps: 5,
+        // Config modal state
+        const configModalState = {
+            mode: 'create',  // 'create', 'edit', or 'view'
+            apiKey: '',
+            apiKeyName: '',
+            originalApiKey: '',  // For edit mode - the key we're editing (cannot be changed)
+            lastSeenModem: '',   // For edit/view mode - last modem that synced
             data: {
-                mode: 'one_time',  // one_time, enforced, manual
-                apiKey: '',
-                apiKeyName: '',
+                status: 'managed',  // unmanaged, managed, locked
                 cloudHost: '',
                 cloudPort: '443',
                 modemAddress: 'autodetect',
@@ -5511,11 +4994,35 @@
                 silent: false,
                 noLogs: false,
                 ignitePassword: ''
+            },
+            apiKeys: [],
+            version: 1,
+            syncStatus: 'n/a',
+            versions: [],  // For view mode - version history
+            selectedVersion: null,  // Currently selected historical version (null = current)
+            filterText: ''  // For API key dropdown filtering
+        };
+
+        // Legacy alias for backward compatibility
+        const configWizard = {
+            get data() {
+                return {
+                    mode: configModalState.data.status,
+                    apiKey: configModalState.apiKey,
+                    apiKeyName: configModalState.apiKeyName,
+                    ...configModalState.data
+                };
+            },
+            set data(val) {
+                if (val.mode) configModalState.data.status = val.mode;
+                if (val.apiKey) configModalState.apiKey = val.apiKey;
+                if (val.apiKeyName) configModalState.apiKeyName = val.apiKeyName;
+                Object.assign(configModalState.data, val);
             }
         };
 
-        // Load wizard defaults from server
-        async function loadWizardDefaults() {
+        // Load config defaults from server
+        async function loadConfigDefaults() {
             try {
                 const response = await fetch('/api/admin/config_defaults', {
                     method: 'GET',
@@ -5525,103 +5032,437 @@
 
                 if (data.success && data.defaults) {
                     const defaults = data.defaults;
-                    // Apply server defaults to wizard data (keep mode, apiKey, apiKeyName as is)
-                    if (defaults.CloudHost) configWizard.data.cloudHost = defaults.CloudHost;
-                    if (defaults.CloudPort) configWizard.data.cloudPort = defaults.CloudPort;
-                    if (defaults.ModemAddress) configWizard.data.modemAddress = defaults.ModemAddress;
-                    if (defaults.IgnitePassword !== undefined) configWizard.data.ignitePassword = defaults.IgnitePassword;
-                    if (defaults.SpeedTestEnabled !== undefined) configWizard.data.speedTestEnabled = defaults.SpeedTestEnabled;
-                    if (defaults.SpeedTestInterval) configWizard.data.speedTestInterval = defaults.SpeedTestInterval;
-                    if (defaults.SpeedTestConnections) configWizard.data.speedTestConnections = defaults.SpeedTestConnections;
-                    if (defaults.AutoUpdateEnabled !== undefined) configWizard.data.autoUpdateEnabled = defaults.AutoUpdateEnabled;
-                    if (defaults.UpdateChannel) configWizard.data.updateChannel = defaults.UpdateChannel;
-                    if (defaults.PingCount) configWizard.data.pingCount = defaults.PingCount;
-                    if (defaults.LocalCleanupEnabled !== undefined) configWizard.data.localCleanupEnabled = defaults.LocalCleanupEnabled;
-                    if (defaults.LocalRetentionDays) configWizard.data.localRetentionDays = defaults.LocalRetentionDays;
-                    if (defaults.Silent !== undefined) configWizard.data.silent = defaults.Silent;
-                    if (defaults.NoLogs !== undefined) configWizard.data.noLogs = defaults.NoLogs;
+                    if (defaults.CloudHost) configModalState.data.cloudHost = defaults.CloudHost;
+                    if (defaults.CloudPort) configModalState.data.cloudPort = defaults.CloudPort;
+                    if (defaults.ModemAddress) configModalState.data.modemAddress = defaults.ModemAddress;
+                    if (defaults.IgnitePassword !== undefined) configModalState.data.ignitePassword = defaults.IgnitePassword;
+                    if (defaults.SpeedTestEnabled !== undefined) configModalState.data.speedTestEnabled = defaults.SpeedTestEnabled;
+                    if (defaults.SpeedTestInterval) configModalState.data.speedTestInterval = defaults.SpeedTestInterval;
+                    if (defaults.SpeedTestConnections) configModalState.data.speedTestConnections = defaults.SpeedTestConnections;
+                    if (defaults.AutoUpdateEnabled !== undefined) configModalState.data.autoUpdateEnabled = defaults.AutoUpdateEnabled;
+                    if (defaults.UpdateChannel) configModalState.data.updateChannel = defaults.UpdateChannel;
+                    if (defaults.PingCount) configModalState.data.pingCount = defaults.PingCount;
+                    if (defaults.LocalCleanupEnabled !== undefined) configModalState.data.localCleanupEnabled = defaults.LocalCleanupEnabled;
+                    if (defaults.LocalRetentionDays) configModalState.data.localRetentionDays = defaults.LocalRetentionDays;
+                    if (defaults.Silent !== undefined) configModalState.data.silent = defaults.Silent;
+                    if (defaults.NoLogs !== undefined) configModalState.data.noLogs = defaults.NoLogs;
 
-                    // Re-render current step if wizard is visible to show updated defaults
-                    const modal = document.getElementById('configCreateModal');
-                    if (modal && modal.classList.contains('active')) {
-                        renderWizardStep(configWizard.currentStep);
-                    }
+                    // Re-render modal if visible
+                    renderConfigModalContent();
                 }
             } catch (error) {
-                console.error('Error loading wizard defaults:', error);
-                // Continue with hardcoded defaults on error
+                console.error('Error loading config defaults:', error);
             }
         }
 
-        // Show create config modal (wizard)
-        function showCreateConfigModal() {
-            // Create modal if it doesn't exist
-            let modal = document.getElementById('configCreateModal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'configCreateModal';
-                modal.className = 'modal';
-                modal.innerHTML = `
-                    <div class="modal-content" style="max-width: 700px;">
-                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 id="wizardTitle">Create Configuration</h2>
-                            <button class="btn btn-secondary" onclick="closeCreateConfigModal()" style="padding: 5px 12px; font-size: 18px; border: none;">&times;</button>
+        // Load API keys for selection
+        async function loadApiKeysForModal() {
+            try {
+                const response = await fetch('/api/admin/api_keys', { credentials: 'include' });
+                const data = await response.json();
+                if (data.success && data.api_keys) {
+                    configModalState.apiKeys = data.api_keys;
+                    configModalState.filterText = '';  // Reset filter when loading
+                    renderConfigModalContent();
+                }
+            } catch (error) {
+                console.error('Error loading API keys:', error);
+            }
+        }
+
+        // Render filterable API key dropdown
+        function renderApiKeyDropdown() {
+            const filterText = configModalState.filterText.toLowerCase();
+            const filtered = filterText
+                ? configModalState.apiKeys.filter(k =>
+                    k.name.toLowerCase().includes(filterText) ||
+                    (k.api_key_preview || k.api_key || '').toLowerCase().includes(filterText)
+                )
+                : configModalState.apiKeys;
+
+            const listItems = filtered.length === 0
+                ? `<div style="padding: 12px; color: #666; text-align: center;">No matching API keys</div>`
+                : filtered.map(k => {
+                    const originalIndex = configModalState.apiKeys.indexOf(k);
+                    return `
+                        <div class="api-key-item"
+                             onclick="selectConfigModalApiKey(${originalIndex})"
+                             style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.15s;"
+                             onmouseover="this.style.background='#f0f9ff'"
+                             onmouseout="this.style.background='white'">
+                            <strong>${k.name}</strong>
+                            <span style="color: #666; margin-left: 10px; font-family: monospace; font-size: 0.85em;">${(k.api_key_preview || k.api_key || '').substring(0, 8)}...</span>
                         </div>
+                    `;
+                }).join('');
 
-                        <!-- Progress indicator -->
-                        <div id="wizardProgress" style="display: flex; justify-content: space-between; padding: 15px 30px; background: #f7f7f7; border-bottom: 1px solid #e0e0e0;">
-                            <div class="wizard-step active" data-step="1">
-                                <div class="step-number">1</div>
-                                <div class="step-label">Mode</div>
-                            </div>
-                            <div class="wizard-step" data-step="2">
-                                <div class="step-number">2</div>
-                                <div class="step-label">Cloud</div>
-                            </div>
-                            <div class="wizard-step" data-step="3">
-                                <div class="step-number">3</div>
-                                <div class="step-label">Basic</div>
-                            </div>
-                            <div class="wizard-step" data-step="4">
-                                <div class="step-number">4</div>
-                                <div class="step-label">Network</div>
-                            </div>
-                            <div class="wizard-step" data-step="5">
-                                <div class="step-number">5</div>
-                                <div class="step-label">Review</div>
-                            </div>
+            return `
+                <input type="text"
+                       id="apiKeyFilter"
+                       placeholder="Type to filter ${configModalState.apiKeys.length} API keys..."
+                       value="${configModalState.filterText}"
+                       oninput="filterApiKeys(this.value)"
+                       style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px 6px 0 0; border-bottom: none;">
+                <div class="api-key-list" style="max-height: 180px; overflow-y: auto; border: 2px solid #e0e0e0; border-top: 1px solid #eee; border-radius: 0 0 6px 6px; background: white;">
+                    ${listItems}
+                </div>
+            `;
+        }
+
+        // Filter API keys by search text
+        function filterApiKeys(text) {
+            configModalState.filterText = text;
+            const container = document.getElementById('apiKeyDropdownContainer');
+            if (container) {
+                container.innerHTML = renderApiKeyDropdown();
+                // Restore focus to the filter input
+                const input = document.getElementById('apiKeyFilter');
+                if (input) {
+                    input.focus();
+                    input.setSelectionRange(text.length, text.length);
+                }
+            }
+        }
+
+        // Update config modal field
+        function updateConfigModalField(field, value) {
+            if (field === 'status') {
+                configModalState.data.status = value;
+                // Update mode card selection
+                document.querySelectorAll('.config-mode-card').forEach(card => {
+                    card.classList.toggle('selected', card.dataset.mode === value);
+                });
+            } else if (field === 'apiKey') {
+                configModalState.apiKey = value;
+                configModalState.apiKeyName = '';
+                const display = document.getElementById('configModalSelectedKey');
+                if (display) display.style.display = 'none';
+            } else {
+                configModalState.data[field] = value;
+            }
+        }
+
+        // Select API key from dropdown
+        function selectConfigModalApiKey(index) {
+            const key = configModalState.apiKeys[index];
+            if (key) {
+                configModalState.apiKey = key.api_key_full || key.api_key;
+                configModalState.apiKeyName = key.name;
+
+                const input = document.getElementById('configModalApiKeyInput');
+                const display = document.getElementById('configModalSelectedKey');
+                const nameSpan = document.getElementById('configModalSelectedKeyName');
+
+                if (input) input.value = configModalState.apiKey;
+                if (nameSpan) nameSpan.textContent = key.name;
+                if (display) display.style.display = 'block';
+            }
+        }
+
+        // Generate new API key for config modal
+        async function generateConfigModalApiKey() {
+            const name = prompt('Enter a name for the new API key:');
+            if (!name) return;
+
+            try {
+                if (!csrfToken) await refreshCsrfToken();
+
+                const response = await fetch('/api/admin/api_keys', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ name })
+                });
+
+                updateCsrfFromResponse(response);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || 'Failed to create API key');
+                }
+
+                const data = await response.json();
+                configModalState.apiKey = data.api_key;
+                configModalState.apiKeyName = name;
+
+                // Refresh API keys list and update UI
+                await loadApiKeysForModal();
+
+                const input = document.getElementById('configModalApiKeyInput');
+                const display = document.getElementById('configModalSelectedKey');
+                const nameSpan = document.getElementById('configModalSelectedKeyName');
+
+                if (input) input.value = data.api_key;
+                if (nameSpan) nameSpan.textContent = name;
+                if (display) display.style.display = 'block';
+
+                showMessage(`API key "${name}" created`, 'success');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        // Render config modal content
+        function renderConfigModalContent() {
+            const container = document.getElementById('configModalBody');
+            if (!container) return;
+
+            const d = configModalState.data;
+            const isView = configModalState.mode === 'view';
+            const isCreate = configModalState.mode === 'create';
+
+            const isEdit = configModalState.mode === 'edit';
+
+            // Build version dropdown options for view mode
+            const versionOptions = isView && configModalState.versions.length > 0
+                ? configModalState.versions.map((v, idx) => {
+                    const timestamp = new Date(v.created_at).toLocaleString();
+                    const label = `${v.version_display} - ${timestamp}`;
+                    return `<option value="${idx}">${label}</option>`;
+                }).join('')
+                : '';
+
+            container.innerHTML = `
+                <!-- Version History (View mode only) -->
+                ${isView && configModalState.versions.length > 0 ? `
+                <div class="config-section" style="margin-bottom: 15px;">
+                    <h3>📜 Version History</h3>
+                    <select id="configVersionSelect" onchange="loadConfigVersion(this.value)"
+                            style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer;">
+                        <option value="current" ${!configModalState.selectedVersion ? 'selected' : ''}>Current Configuration (v${configModalState.version})</option>
+                        ${versionOptions}
+                    </select>
+                    <div id="configVersionInfo" style="display: ${configModalState.selectedVersion ? 'block' : 'none'}; background: #f0f4ff; color: #4a5468; padding: 10px 12px; border-radius: 8px; font-size: 0.85em; margin-top: 10px;"></div>
+                </div>
+                ` : ''}
+
+                <!-- Info Bar (Edit/View mode only) -->
+                ${!isCreate ? `
+                <div class="config-info-bar" style="margin-bottom: 20px;">
+                    <div class="config-info-item">
+                        <span class="label">API Key:</span>
+                        <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${configModalState.originalApiKey.substring(0, 8)}...</code>
+                    </div>
+                    <div class="config-info-item">
+                        <span class="label">Modem:</span>
+                        <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${configModalState.lastSeenModem || 'Never synced'}</code>
+                    </div>
+                    <div class="config-info-item">
+                        <span class="label">Version:</span>
+                        <span style="font-weight: 600;">v${configModalState.version}</span>
+                    </div>
+                    <div class="config-info-item">
+                        <span class="label">Sync:</span>
+                        ${getSyncStatusBadge(configModalState.syncStatus)}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- API Key Selection (Create mode only) -->
+                ${isCreate ? `
+                <div class="config-section">
+                    <h3>🔑 API Key</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div id="apiKeyDropdownContainer" style="flex: 1;">
+                            ${renderApiKeyDropdown()}
                         </div>
+                        <button class="btn btn-primary" onclick="generateConfigModalApiKey()" style="white-space: nowrap; align-self: flex-start;">
+                            ➕ New Key
+                        </button>
+                    </div>
+                    <div id="configModalSelectedKey" style="display: ${configModalState.apiKeyName ? 'block' : 'none'}; background: #dcfce7; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                        <small style="color: #059669;">✓ Selected:</small>
+                        <span id="configModalSelectedKeyName" style="font-weight: 600; margin-left: 5px;">${configModalState.apiKeyName}</span>
+                    </div>
+                    <input type="text" id="configModalApiKeyInput" value="${configModalState.apiKey}"
+                           placeholder="Or paste an API key directly"
+                           oninput="updateConfigModalField('apiKey', this.value)"
+                           style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-family: monospace; font-size: 12px;">
+                </div>
+                ` : ''}
 
-                        <div id="configCreateError" style="display: none; background: #fee; color: #c33; padding: 10px 20px; margin: 15px 20px 0 20px; border-radius: 6px;"></div>
-
-                        <!-- Step content container -->
-                        <div id="wizardStepContent" style="padding: 25px; min-height: 350px;">
-                            <!-- Content populated dynamically -->
+                <!-- Management Mode -->
+                <div class="config-section">
+                    <h3>📋 Management Mode</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                        <div class="config-mode-card ${d.status === 'unmanaged' ? 'selected' : ''}"
+                             data-mode="unmanaged"
+                             onclick="${isView ? '' : "updateConfigModalField('status', 'unmanaged')"}"
+                             style="padding: 15px; border: 2px solid ${d.status === 'unmanaged' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'unmanaged' ? '#f0f4ff' : 'white'};">
+                            <div style="font-size: 1.5em;">📝</div>
+                            <div style="font-weight: 600; margin: 8px 0;">Unmanaged</div>
+                            <div style="font-size: 0.8em; color: #666;">Client controls config</div>
                         </div>
-
-                        <div class="modal-footer" style="display: flex; justify-content: space-between;">
-                            <button class="btn btn-secondary" id="wizardBackBtn" onclick="wizardBack()" style="display: none;">← Back</button>
-                            <div style="flex: 1;"></div>
-                            <button class="btn btn-primary" id="wizardNextBtn" onclick="wizardNext()">Next →</button>
-                            <button class="btn btn-primary" id="wizardSaveBtn" onclick="wizardFinish(false)" style="display: none;">Save</button>
-                            <button class="btn btn-success" id="wizardSaveDownloadBtn" onclick="wizardFinish(true)" style="display: none; margin-left: 10px;">Save & Download</button>
-                            <button class="btn btn-success" id="wizardDownloadBtn" onclick="wizardDownloadManual()" style="display: none;">Download config.json</button>
+                        <div class="config-mode-card ${d.status === 'managed' ? 'selected' : ''}"
+                             data-mode="managed"
+                             onclick="${isView ? '' : "updateConfigModalField('status', 'managed')"}"
+                             style="padding: 15px; border: 2px solid ${d.status === 'managed' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'managed' ? '#f0f4ff' : 'white'};">
+                            <div style="font-size: 1.5em;">🔄</div>
+                            <div style="font-weight: 600; margin: 8px 0;">Managed</div>
+                            <div style="font-size: 0.8em; color: #666;">Server pushes once</div>
+                        </div>
+                        <div class="config-mode-card ${d.status === 'locked' ? 'selected' : ''}"
+                             data-mode="locked"
+                             onclick="${isView ? '' : "updateConfigModalField('status', 'locked')"}"
+                             style="padding: 15px; border: 2px solid ${d.status === 'locked' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'locked' ? '#f0f4ff' : 'white'};">
+                            <div style="font-size: 1.5em;">🔒</div>
+                            <div style="font-weight: 600; margin: 8px 0;">Locked</div>
+                            <div style="font-size: 0.8em; color: #666;">Server enforces</div>
                         </div>
                     </div>
-                `;
+                </div>
 
-                // Add wizard CSS (shared with edit wizard)
-                ensureWizardStyles();
+                <!-- Cloud Settings -->
+                <div class="config-section">
+                    <h3>☁️ Cloud Settings</h3>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Cloud Host</label>
+                            <input type="text" value="${d.cloudHost}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('cloudHost', this.value)"
+                                   placeholder="e.g., cloud.example.com"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Port</label>
+                            <input type="text" value="${d.cloudPort}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('cloudPort', this.value)"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                    </div>
+                </div>
 
-                document.body.appendChild(modal);
-            }
+                <!-- Basic Settings -->
+                <div class="config-section">
+                    <h3>⚙️ Basic Settings</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Modem Address</label>
+                            <input type="text" value="${d.modemAddress}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('modemAddress', this.value)"
+                                   placeholder="autodetect or IP address"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Ping Count</label>
+                            <input type="number" value="${d.pingCount}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('pingCount', parseInt(this.value) || 100)"
+                                   min="1" max="1000"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 5px;">Xfinity Password (optional)</label>
+                        <input type="password" value="${d.ignitePassword || ''}" ${isView ? 'disabled' : ''}
+                               onchange="updateConfigModalField('ignitePassword', this.value)"
+                               placeholder="For Xfinity/Ignite modems"
+                               style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                    </div>
+                </div>
 
-            // Reset wizard state with defaults
-            configWizard.currentStep = 1;
-            configWizard.data = {
-                mode: 'one_time',
-                apiKey: '',
-                apiKeyName: '',
+                <!-- Speed Test Settings -->
+                <div class="config-section">
+                    <h3>🚀 Speed Test</h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr 1fr; gap: 15px; align-items: end;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" ${d.speedTestEnabled ? 'checked' : ''} ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('speedTestEnabled', this.checked)"
+                                   style="width: 18px; height: 18px;">
+                            <span style="font-weight: 600;">Enabled</span>
+                        </label>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Run every N checks</label>
+                            <input type="number" value="${d.speedTestInterval}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('speedTestInterval', parseInt(this.value) || 1)"
+                                   min="1" max="100"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Connections</label>
+                            <input type="number" value="${d.speedTestConnections}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('speedTestConnections', parseInt(this.value) || 1)"
+                                   min="1" max="32"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto Update Settings -->
+                <div class="config-section">
+                    <h3>🔄 Auto Update</h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px; align-items: end;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" ${d.autoUpdateEnabled ? 'checked' : ''} ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('autoUpdateEnabled', this.checked)"
+                                   style="width: 18px; height: 18px;">
+                            <span style="font-weight: 600;">Enabled</span>
+                        </label>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Update Channel</label>
+                            <select onchange="updateConfigModalField('updateChannel', this.value)" ${isView ? 'disabled' : ''}
+                                    style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                <option value="stable" ${d.updateChannel === 'stable' ? 'selected' : ''}>Stable</option>
+                                <option value="beta" ${d.updateChannel === 'beta' ? 'selected' : ''}>Beta</option>
+                                <option value="test" ${d.updateChannel === 'test' ? 'selected' : ''}>Test</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Local Cleanup Settings -->
+                <div class="config-section">
+                    <h3>🧹 Local Cleanup</h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px; align-items: end;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" ${d.localCleanupEnabled ? 'checked' : ''} ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('localCleanupEnabled', this.checked)"
+                                   style="width: 18px; height: 18px;">
+                            <span style="font-weight: 600;">Enabled</span>
+                        </label>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 5px;">Retention Days</label>
+                            <input type="number" value="${d.localRetentionDays}" ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('localRetentionDays', parseInt(this.value) || 90)"
+                                   min="1" max="365"
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logging Options -->
+                <div class="config-section">
+                    <h3>📝 Logging Options</h3>
+                    <div style="display: flex; gap: 30px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" ${d.silent ? 'checked' : ''} ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('silent', this.checked)"
+                                   style="width: 18px; height: 18px;">
+                            <span>Silent Mode (no console output)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" ${d.noLogs ? 'checked' : ''} ${isView ? 'disabled' : ''}
+                                   onchange="updateConfigModalField('noLogs', this.checked)"
+                                   style="width: 18px; height: 18px;">
+                            <span>Disable Log File</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show create config modal (single-page)
+        function showCreateConfigModal() {
+            // Reset state
+            configModalState.mode = 'create';
+            configModalState.apiKey = '';
+            configModalState.apiKeyName = '';
+            configModalState.version = 1;
+            configModalState.syncStatus = 'n/a';
+            configModalState.data = {
+                status: 'managed',
                 cloudHost: '',
                 cloudPort: '443',
                 modemAddress: 'autodetect',
@@ -5638,447 +5479,234 @@
                 ignitePassword: ''
             };
 
-            // Load saved defaults from server and apply to wizard
-            loadWizardDefaults();
+            // Show the unified config modal
+            showConfigModal();
+        }
 
-            // Load API keys for step 2
-            loadApiKeysForConfigCreate();
+        // Show the unified config modal (works for create, edit, view modes)
+        function showConfigModal() {
+            // Ensure modal exists
+            ensureConfigModalExists();
 
-            // Show first step
-            renderWizardStep(1);
-            updateWizardProgress();
+            // Update modal header and footer based on mode
+            updateConfigModalHeader();
+
+            // Load defaults for create mode
+            if (configModalState.mode === 'create') {
+                loadConfigDefaults();
+                loadApiKeysForModal();
+            }
+
+            // Render content
+            renderConfigModalContent();
+
+            // Clear any previous errors
+            const errorEl = document.getElementById('configModalError');
+            if (errorEl) errorEl.style.display = 'none';
 
             // Show modal
-            modal.classList.add('active');
+            const modal = document.getElementById('configModal');
+            if (modal) modal.classList.add('active');
         }
 
-        // Render wizard step content
-        function renderWizardStep(step) {
-            const container = document.getElementById('wizardStepContent');
-            const d = configWizard.data;
+        // Create the config modal if it doesn't exist
+        function ensureConfigModalExists() {
+            if (document.getElementById('configModal')) return;
 
-            switch(step) {
-                case 1: // Mode Selection
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Select Configuration Mode</h3>
-                        <div class="mode-card ${d.mode === 'one_time' ? 'selected' : ''}" onclick="selectWizardMode('one_time')">
-                            <h3>📤 One-Time Push</h3>
-                            <p>Server provides initial configuration to the client. After first sync, the client can modify their local config freely. Use this for initial setup with flexibility.</p>
-                        </div>
-                        <div class="mode-card ${d.mode === 'enforced' ? 'selected' : ''}" onclick="selectWizardMode('enforced')">
-                            <h3>🔒 Enforced (Locked)</h3>
-                            <p>Server controls the configuration. Client cannot modify settings locally - any changes are overwritten on next sync. Use this for managed deployments.</p>
-                        </div>
-                        <div class="mode-card ${d.mode === 'manual' ? 'selected' : ''}" onclick="selectWizardMode('manual')">
-                            <h3>📁 Manual / Offline</h3>
-                            <p>Generate a config.json file for manual deployment. No server sync - useful for air-gapped environments or clients without cloud connectivity.</p>
-                        </div>
-                    `;
-                    break;
+            const modal = document.createElement('div');
+            modal.id = 'configModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                        <h2 id="configModalTitle">Configuration</h2>
+                        <button class="btn btn-secondary" onclick="closeConfigModal()" style="padding: 5px 12px; font-size: 18px; border: none;">&times;</button>
+                    </div>
 
-                case 2: // Cloud Settings
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Cloud Connection Settings</h3>
-                        <div class="wizard-form-group">
-                            <label>API Key *</label>
-                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                                <button class="btn btn-primary" onclick="generateWizardAPIKey()" style="flex: 1;">Generate New Key</button>
-                                <button class="btn btn-primary" onclick="selectWizardAPIKey()" style="flex: 1;">Select Existing Key</button>
-                            </div>
-                            <div id="wizardSelectedKeyDisplay" style="display: ${d.apiKeyName ? 'block' : 'none'}; background: #f3f4f6; padding: 10px; border-radius: 5px; border: 2px solid #e0e0e0; margin-bottom: 10px;">
-                                <small style="color: #6b7280;">Using Key:</small>
-                                <div id="wizardSelectedKeyName" style="font-weight: 500; color: #333; margin-top: 5px;">${d.apiKeyName || ''}</div>
-                            </div>
-                            <input type="text" id="wizardApiKey" value="${d.apiKey || ''}" placeholder="Paste an existing API key, generate a new one, or select existing" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; font-family: monospace; font-size: 12px;" oninput="updateWizardData('apiKey', this.value); document.getElementById('wizardSelectedKeyDisplay').style.display = 'none';">
-                            <small>The API key is used to authenticate uploads to the cloud server</small>
-                        </div>
-                        <div class="wizard-row">
-                            <div class="wizard-form-group">
-                                <label for="wizardCloudHost">Cloud Host</label>
-                                <input type="text" id="wizardCloudHost" value="${d.cloudHost}" onchange="updateWizardData('cloudHost', this.value)">
-                                <small>Server hostname (e.g., cloud.example.com)</small>
-                            </div>
-                            <div class="wizard-form-group">
-                                <label for="wizardCloudPort">Cloud Port</label>
-                                <input type="text" id="wizardCloudPort" value="${d.cloudPort}" onchange="updateWizardData('cloudPort', this.value)">
-                                <small>Usually 443 for HTTPS</small>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                    <div id="configModalError" style="display: none; background: #fee; color: #c33; padding: 10px 20px; margin: 0 20px; border-radius: 6px; flex-shrink: 0;"></div>
 
-                case 3: // Basic Settings
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Basic Settings</h3>
-                        <div class="wizard-form-group">
-                            <label for="wizardModemAddress">Modem Address</label>
-                            <input type="text" id="wizardModemAddress" value="${d.modemAddress}" onchange="updateWizardData('modemAddress', this.value)">
-                            <small>Use "autodetect" or enter an IP address (e.g., 192.168.100.1)</small>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="wizardSpeedTestEnabled" ${d.speedTestEnabled ? 'checked' : ''} onchange="updateWizardData('speedTestEnabled', this.checked)">
-                                <span>Enable Speed Test</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="wizardSpeedTestInterval">Speed Test Interval</label>
-                                <input type="number" id="wizardSpeedTestInterval" value="${d.speedTestInterval}" min="1" max="100" onchange="updateWizardData('speedTestInterval', parseInt(this.value) || 1)">
-                            </div>
-                        </div>
-                        <small style="display: block; margin-bottom: 15px; color: #888;">Run speed test every N checks (1 = every check, 6 = every 6th check)</small>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="wizardAutoUpdateEnabled" ${d.autoUpdateEnabled ? 'checked' : ''} onchange="updateWizardData('autoUpdateEnabled', this.checked)">
-                                <span>Enable Auto-Update</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="wizardUpdateChannel">Update Channel</label>
-                                <select id="wizardUpdateChannel" onchange="updateWizardData('updateChannel', this.value)">
-                                    <option value="stable" ${d.updateChannel === 'stable' ? 'selected' : ''}>Stable (recommended)</option>
-                                    <option value="beta" ${d.updateChannel === 'beta' ? 'selected' : ''}>Beta</option>
-                                </select>
-                            </div>
-                        </div>
-                    `;
-                    break;
+                    <div id="configModalBody" style="padding: 20px; overflow-y: auto; flex: 1;">
+                        <!-- Content rendered by renderConfigModalContent() -->
+                    </div>
 
-                case 4: // Network & Logging Settings
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 20px 0; color: #333;">Network & Logging Settings</h3>
-                        <div class="wizard-form-group">
-                            <label for="wizardPingCount">Ping Count</label>
-                            <input type="number" id="wizardPingCount" value="${d.pingCount}" min="1" max="100" onchange="updateWizardData('pingCount', parseInt(this.value) || 100)">
-                            <small>Number of pings to run for latency testing (recommended: 100)</small>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: end; margin-bottom: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0; height: 46px;">
-                                <input type="checkbox" id="wizardLocalCleanup" ${d.localCleanupEnabled ? 'checked' : ''} onchange="updateWizardData('localCleanupEnabled', this.checked)">
-                                <span>Enable Local Cleanup</span>
-                            </label>
-                            <div class="wizard-form-group" style="margin-bottom: 0;">
-                                <label for="wizardRetentionDays">Retention (days)</label>
-                                <input type="number" id="wizardRetentionDays" value="${d.localRetentionDays}" min="1" max="365" onchange="updateWizardData('localRetentionDays', parseInt(this.value) || 90)">
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <label class="wizard-checkbox" style="margin: 0;">
-                                <input type="checkbox" id="wizardSilent" ${d.silent ? 'checked' : ''} onchange="updateWizardData('silent', this.checked)">
-                                <span>Silent Mode (no console output)</span>
-                            </label>
-                            <label class="wizard-checkbox" style="margin: 0;">
-                                <input type="checkbox" id="wizardNoLogs" ${d.noLogs ? 'checked' : ''} onchange="updateWizardData('noLogs', this.checked)">
-                                <span>Disable Log File</span>
-                            </label>
-                        </div>
-                    `;
-                    break;
+                    <div id="configModalFooter" class="modal-footer" style="display: flex; justify-content: space-between; flex-shrink: 0; border-top: 1px solid #e0e0e0;">
+                        <!-- Footer buttons rendered dynamically -->
+                    </div>
+                </div>
+            `;
 
-                case 5: // Review
-                    const isManual = d.mode === 'manual';
-                    const modeLabels = {
-                        'one_time': '📤 One-Time Push',
-                        'enforced': '🔒 Enforced (Locked)',
-                        'manual': '📁 Manual / Offline'
-                    };
-
-                    container.innerHTML = `
-                        <h3 style="margin: 0 0 15px 0; color: #333;">Review Configuration</h3>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Mode</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Type</span>
-                                    <span class="review-value">${modeLabels[d.mode]}</span>
-                                </div>
-                            </div>
-
-                            ${!isManual ? `
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Cloud</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">API Key</span>
-                                    <span class="review-value">${d.apiKeyName || d.apiKey.substring(0, 8) + '...'}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Server</span>
-                                    <span class="review-value">${d.cloudHost}:${d.cloudPort}</span>
-                                </div>
-                            </div>
-                            ` : '<div></div>'}
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Client</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Modem</span>
-                                    <span class="review-value">${d.modemAddress}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Ping Count</span>
-                                    <span class="review-value">${d.pingCount}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Cleanup</span>
-                                    <span class="review-value">${d.localCleanupEnabled ? `${d.localRetentionDays}d` : 'Off'}</span>
-                                </div>
-                            </div>
-
-                            <div class="review-section" style="margin-bottom: 0; padding: 12px;">
-                                <h4 style="margin-bottom: 8px;">Features</h4>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Speed Test</span>
-                                    <span class="review-value">${d.speedTestEnabled ? `Every ${d.speedTestInterval}` : 'Off'}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Auto-Update</span>
-                                    <span class="review-value">${d.autoUpdateEnabled ? d.updateChannel : 'Off'}</span>
-                                </div>
-                                <div class="review-row" style="padding: 4px 0;">
-                                    <span class="review-label">Silent/NoLog</span>
-                                    <span class="review-value">${d.silent ? '✓' : '✗'} / ${d.noLogs ? '✓' : '✗'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        ${isManual ? `
-                        <div style="background: #fff3cd; color: #856404; padding: 10px 12px; border-radius: 8px; font-size: 0.85em;">
-                            <strong>Manual Mode:</strong> Click "Download config.json" to save. Place it next to the modem-check executable.
-                        </div>
-                        ` : `
-                        <div style="background: #d4edda; color: #155724; padding: 10px 12px; border-radius: 8px; font-size: 0.85em;">
-                            <strong>Ready:</strong> "Save" stores on server (client syncs next run), or "Save & Download" for manual deployment too.
-                        </div>
-                        `}
-                    `;
-                    break;
-            }
-
-            document.getElementById('configCreateError').style.display = 'none';
-        }
-
-        // Update wizard progress indicators
-        function updateWizardProgress() {
-            const steps = document.querySelectorAll('.wizard-step');
-            const isManual = configWizard.data.mode === 'manual';
-
-            steps.forEach((step, idx) => {
-                const stepNum = idx + 1;
-                step.classList.remove('active', 'completed', 'skipped');
-
-                // Step 2 (Cloud) is skipped in manual mode
-                if (stepNum === 2 && isManual) {
-                    step.style.opacity = '0.3';
-                    step.querySelector('.step-number').style.textDecoration = 'line-through';
-                } else {
-                    step.style.opacity = '';
-                    step.querySelector('.step-number').style.textDecoration = '';
-                }
-
-                if (stepNum < configWizard.currentStep) {
-                    step.classList.add('completed');
-                } else if (stepNum === configWizard.currentStep) {
-                    step.classList.add('active');
-                }
-            });
-
-            // Update buttons
-            const backBtn = document.getElementById('wizardBackBtn');
-            const nextBtn = document.getElementById('wizardNextBtn');
-            const saveBtn = document.getElementById('wizardSaveBtn');
-            const saveDownloadBtn = document.getElementById('wizardSaveDownloadBtn');
-            const downloadBtn = document.getElementById('wizardDownloadBtn');
-
-            // Back button - hide on step 1
-            backBtn.style.display = configWizard.currentStep > 1 ? 'inline-block' : 'none';
-
-            // On last step, show appropriate action button(s)
-            if (configWizard.currentStep === 5) {
-                nextBtn.style.display = 'none';
-                if (isManual) {
-                    // Manual mode - just show download button
-                    saveBtn.style.display = 'none';
-                    saveDownloadBtn.style.display = 'none';
-                    downloadBtn.style.display = 'inline-block';
-                } else {
-                    // Cloud mode - show Save and Save & Download buttons
-                    saveBtn.style.display = 'inline-block';
-                    saveDownloadBtn.style.display = 'inline-block';
-                    downloadBtn.style.display = 'none';
-                }
-            } else {
-                nextBtn.style.display = 'inline-block';
-                saveBtn.style.display = 'none';
-                saveDownloadBtn.style.display = 'none';
-                downloadBtn.style.display = 'none';
-            }
-        }
-
-        // Select mode in step 1
-        function selectWizardMode(mode) {
-            configWizard.data.mode = mode;
-            document.querySelectorAll('.mode-card').forEach(card => card.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
-            updateWizardProgress();
-        }
-
-        // Update wizard data
-        function updateWizardData(key, value) {
-            configWizard.data[key] = value;
-        }
-
-        // Navigate back
-        function wizardBack() {
-            let prevStep = configWizard.currentStep - 1;
-
-            // Skip step 2 in manual mode
-            if (prevStep === 2 && configWizard.data.mode === 'manual') {
-                prevStep = 1;
-            }
-
-            if (prevStep >= 1) {
-                configWizard.currentStep = prevStep;
-                renderWizardStep(prevStep);
-                updateWizardProgress();
-            }
-        }
-
-        // Navigate next
-        function wizardNext() {
-            // Validate current step
-            if (!validateWizardStep(configWizard.currentStep)) {
-                return;
-            }
-
-            let nextStep = configWizard.currentStep + 1;
-
-            // Skip step 2 in manual mode
-            if (nextStep === 2 && configWizard.data.mode === 'manual') {
-                nextStep = 3;
-            }
-
-            if (nextStep <= 5) {
-                configWizard.currentStep = nextStep;
-                renderWizardStep(nextStep);
-                updateWizardProgress();
-            }
-        }
-
-        // Validate current wizard step
-        function validateWizardStep(step) {
-            const errorEl = document.getElementById('configCreateError');
-
-            switch(step) {
-                case 2: // Cloud settings
-                    if (configWizard.data.mode !== 'manual') {
-                        if (!configWizard.data.apiKey) {
-                            errorEl.textContent = 'Please provide an API key (paste, generate, or select one)';
-                            errorEl.style.display = 'block';
-                            return false;
-                        }
-                        if (!configWizard.data.cloudHost) {
-                            errorEl.textContent = 'Please enter a cloud host';
-                            errorEl.style.display = 'block';
-                            return false;
-                        }
+            // Add config section styles
+            if (!document.getElementById('configModalStyles')) {
+                const style = document.createElement('style');
+                style.id = 'configModalStyles';
+                style.textContent = `
+                    .config-section {
+                        margin-bottom: 25px;
+                        padding-bottom: 20px;
+                        border-bottom: 1px solid #e0e0e0;
                     }
-                    break;
-
-                case 3: // Basic settings
-                    if (!configWizard.data.modemAddress) {
-                        errorEl.textContent = 'Please enter a modem address';
-                        errorEl.style.display = 'block';
-                        return false;
+                    .config-section:last-child {
+                        border-bottom: none;
+                        margin-bottom: 0;
                     }
-                    break;
+                    .config-section h3 {
+                        margin: 0 0 15px 0;
+                        color: #333;
+                        font-size: 1.1em;
+                    }
+                    .config-info-bar {
+                        display: flex;
+                        gap: 20px;
+                        background: #f7f7f7;
+                        padding: 10px 15px;
+                        border-radius: 6px;
+                        margin-bottom: 15px;
+                    }
+                    .config-info-item .label {
+                        font-weight: 600;
+                        color: #666;
+                        margin-right: 5px;
+                    }
+                `;
+                document.head.appendChild(style);
             }
 
-            errorEl.style.display = 'none';
-            return true;
+            document.body.appendChild(modal);
         }
 
-        // Build config object from wizard data
-        function buildConfigFromWizard() {
-            const d = configWizard.data;
-            const isManual = d.mode === 'manual';
+        // Update modal header and footer based on mode
+        function updateConfigModalHeader() {
+            const titleEl = document.getElementById('configModalTitle');
+            const footerEl = document.getElementById('configModalFooter');
 
+            if (titleEl) {
+                switch (configModalState.mode) {
+                    case 'create':
+                        titleEl.textContent = 'Create Configuration';
+                        break;
+                    case 'edit':
+                        titleEl.textContent = 'Edit Configuration';
+                        break;
+                    case 'view':
+                        titleEl.textContent = 'View Configuration';
+                        break;
+                }
+            }
+
+            if (footerEl) {
+                if (configModalState.mode === 'view') {
+                    footerEl.innerHTML = `
+                        <button class="btn btn-secondary" onclick="closeConfigModal()">Close</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="downloadConfigFromModal()">📥 Download</button>
+                            <button class="btn btn-primary" onclick="switchConfigModalToEdit()">✏️ Edit</button>
+                        </div>
+                    `;
+                } else {
+                    footerEl.innerHTML = `
+                        <button class="btn btn-secondary" onclick="closeConfigModal()">Cancel</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="downloadConfigFromModal()">📥 Download</button>
+                            <button class="btn btn-primary" onclick="saveConfigFromModal(false)">💾 Save</button>
+                            <button class="btn btn-success" onclick="saveConfigFromModal(true)">💾 Save & Download</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Switch from view mode to edit mode
+        function switchConfigModalToEdit() {
+            configModalState.mode = 'edit';
+            updateConfigModalHeader();
+            renderConfigModalContent();
+        }
+
+        // Build config object from modal state
+        function buildConfigFromModal() {
+            const d = configModalState.data;
             const config = {
+                CloudAPIKey: configModalState.apiKey,
+                CloudHost: d.cloudHost,
+                CloudPort: d.cloudPort,
                 ModemAddress: d.modemAddress,
                 SpeedTestEnabled: d.speedTestEnabled,
                 SpeedTestInterval: d.speedTestInterval,
-                SpeedTestConnections: d.speedTestConnections || 1,
-                PingCount: d.pingCount,
+                SpeedTestConnections: d.speedTestConnections,
                 AutoUpdateEnabled: d.autoUpdateEnabled,
                 UpdateChannel: d.updateChannel,
-                Silent: d.silent,
-                NoLogs: d.noLogs,
+                PingCount: d.pingCount,
                 LocalCleanupEnabled: d.localCleanupEnabled,
-                LocalRetentionDays: d.localRetentionDays
+                LocalRetentionDays: d.localRetentionDays,
+                Silent: d.silent,
+                NoLogs: d.noLogs
             };
 
-            // Add Ignite password if set (only relevant for Ignite/Xfinity modems)
             if (d.ignitePassword) {
                 config.IgnitePassword = d.ignitePassword;
-            }
-
-            // Add cloud settings only for non-manual modes
-            if (!isManual) {
-                config.EnableCloud = true;
-                config.CloudHost = d.cloudHost;
-                config.CloudPort = d.cloudPort;
-                config.CloudAPIKey = d.apiKey;
-                // CloudPath is optional - server uses default if not provided
-                config.EnforceHTTPS = true;
-                config.InsecureTLS = false;
-                config.ConfigSyncEnabled = true;
-            } else {
-                config.EnableCloud = false;
-                config.ConfigSyncEnabled = false;
             }
 
             return config;
         }
 
-        // Finish wizard - create config on server
-        async function wizardFinish(downloadAfter = false) {
-            if (!validateWizardStep(configWizard.currentStep)) {
+        // Save config from modal
+        async function saveConfigFromModal(downloadAfter = false) {
+            const errorEl = document.getElementById('configModalError');
+            errorEl.style.display = 'none';
+
+            const isEdit = configModalState.mode === 'edit';
+            const apiKeyToUse = isEdit ? configModalState.originalApiKey : configModalState.apiKey;
+
+            // Validation
+            if (!apiKeyToUse) {
+                errorEl.textContent = 'Please select or enter an API key';
+                errorEl.style.display = 'block';
                 return;
             }
 
-            const errorEl = document.getElementById('configCreateError');
-            const saveBtn = document.getElementById('wizardSaveBtn');
-            const saveDownloadBtn = document.getElementById('wizardSaveDownloadBtn');
+            if (!configModalState.data.cloudHost) {
+                errorEl.textContent = 'Please enter a cloud host';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             try {
-                saveBtn.disabled = true;
-                saveDownloadBtn.disabled = true;
-                if (downloadAfter) {
-                    saveDownloadBtn.textContent = 'Saving...';
-                } else {
-                    saveBtn.textContent = 'Saving...';
-                }
-
-                // Get fresh token if we don't have one
                 if (!csrfToken) await refreshCsrfToken();
 
-                const config = buildConfigFromWizard();
+                const config = buildConfigFromModal();
 
-                const response = await fetch('/api/admin/configs', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: JSON.stringify({
-                        api_key: configWizard.data.apiKey,
-                        config: config,
-                        mode: configWizard.data.mode  // 'one_time' or 'enforced'
-                    })
-                });
+                let response;
+                if (isEdit) {
+                    // Update existing config with PUT
+                    response = await fetch(`/api/admin/configs/${encodeURIComponent(apiKeyToUse)}`, {
+                        method: 'PUT',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
+                        },
+                        body: JSON.stringify({
+                            config: config,
+                            mode: configModalState.data.status  // 'unmanaged', 'managed', or 'locked'
+                        })
+                    });
+                } else {
+                    // Create new config with POST
+                    response = await fetch('/api/admin/configs', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
+                        },
+                        body: JSON.stringify({
+                            api_key: apiKeyToUse,
+                            config: config,
+                            mode: configModalState.data.status  // 'unmanaged', 'managed', or 'locked'
+                        })
+                    });
+                }
 
-                // Update CSRF token from response header for next request
                 updateCsrfFromResponse(response);
 
                 if (!response.ok) {
@@ -6086,7 +5714,6 @@
                     throw new Error(error.error?.message || `Save failed: ${response.status}`);
                 }
 
-                // If download requested, generate and download the config.json file
                 if (downloadAfter) {
                     const jsonStr = JSON.stringify(config, null, 2);
                     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -6099,34 +5726,34 @@
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
 
-                    showMessage('Configuration saved and config.json downloaded! Place the file in the same directory as the modem-check executable.', 'success');
+                    showMessage('Configuration saved and downloaded!', 'success');
                 } else {
-                    showMessage('Configuration saved successfully! Client will receive this config on next sync.', 'success');
+                    showMessage(isEdit ? 'Configuration updated successfully!' : 'Configuration saved successfully!', 'success');
                 }
 
-                closeCreateConfigModal();
+                closeConfigModal();
                 await loadConfigMgmtData();
 
             } catch (error) {
                 console.error('Save failed:', error);
                 errorEl.textContent = error.message;
                 errorEl.style.display = 'block';
-            } finally {
-                saveBtn.disabled = false;
-                saveDownloadBtn.disabled = false;
-                saveBtn.textContent = 'Save';
-                saveDownloadBtn.textContent = 'Save & Download';
             }
         }
 
-        // Download manual config file
-        function wizardDownloadManual() {
-            const config = buildConfigFromWizard();
+        // Download config from modal (without saving)
+        function downloadConfigFromModal() {
+            if (!configModalState.apiKey) {
+                const errorEl = document.getElementById('configModalError');
+                errorEl.textContent = 'Please select or enter an API key first';
+                errorEl.style.display = 'block';
+                return;
+            }
 
+            const config = buildConfigFromModal();
             const jsonStr = JSON.stringify(config, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-
             const a = document.createElement('a');
             a.href = url;
             a.download = 'config.json';
@@ -6134,79 +5761,21 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-
-            showMessage('config.json downloaded! Place it in the same directory as modem-check executable.', 'success');
-            closeCreateConfigModal();
         }
 
-        // Populate API key dropdown from cached data
-        function populateApiKeyDropdown() {
-            const select = document.getElementById('wizardApiKey');
-            if (!select) return;
+        // Legacy aliases for backward compatibility
+        function loadWizardDefaults() { return loadConfigDefaults(); }
+        function loadApiKeysForConfigCreate() { return loadApiKeysForModal(); }
 
-            // Use cached API keys from loadApiKeysForConfigCreate
-            if (window.cachedApiKeys && window.cachedApiKeys.length > 0) {
-                window.cachedApiKeys.forEach(key => {
-                    const option = document.createElement('option');
-                    option.value = key.fullKey;
-                    option.textContent = `${key.name} (${key.preview})`;
-                    if (configWizard.data.apiKey === key.fullKey) {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
-                });
-            }
-        }
-
-        // Load API keys for config creation dropdown
-        async function loadApiKeysForConfigCreate() {
-            try {
-                window.cachedApiKeys = [];
-
-                const response = await fetch('/api_keys', {
-                    credentials: 'include'
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to load API keys');
-                }
-
-                const data = await response.json();
-                const activeKeys = (data.api_keys || []).filter(k => k.is_active);
-
-                for (const key of activeKeys) {
-                    try {
-                        const revealResponse = await fetch(`/api_keys/reveal/${key.api_key_preview}`, {
-                            credentials: 'include'
-                        });
-
-                        if (revealResponse.ok) {
-                            const revealData = await revealResponse.json();
-                            window.cachedApiKeys.push({
-                                fullKey: revealData.api_key,
-                                name: key.name || 'Unnamed',
-                                preview: key.api_key_preview
-                            });
-                        }
-                    } catch (revealError) {
-                        console.warn(`Could not reveal key ${key.api_key_preview}:`, revealError);
-                    }
-                }
-
-                // If currently on step 2, populate dropdown
-                if (configWizard.currentStep === 2) {
-                    populateApiKeyDropdown();
-                }
-
-            } catch (error) {
-                console.error('Failed to load API keys:', error);
-            }
-        }
-
-        // Close create config modal
-        function closeCreateConfigModal() {
-            const modal = document.getElementById('configCreateModal');
+        // Close config modal (generic - works for create, edit, view)
+        function closeConfigModal() {
+            const modal = document.getElementById('configModal');
             if (modal) modal.classList.remove('active');
+        }
+
+        // Legacy alias for backward compatibility
+        function closeCreateConfigModal() {
+            closeConfigModal();
         }
 
         // Open config history modal
@@ -6301,14 +5870,11 @@
                 'modem_change': 'Modem Changed'
             };
 
-            // Status badge config for history
+            // Status badge config for history (3-state model)
             const statusBadges = {
-                'unmanaged': { bg: '#10b981', label: '📁 Unmanaged' },
-                'one_time_ready': { bg: '#f59e0b', label: '📤 One-Time (Ready)' },
-                'one_time_active': { bg: '#3b82f6', label: '✅ One-Time (Active)' },
-                'enforced_ready': { bg: '#8b5cf6', label: '🔒 Enforced (Ready)' },
-                'enforced_active': { bg: '#ec4899', label: '🔐 Enforced (Active)' },
-                'awaiting_first_sync': { bg: '#6b7280', label: '⏳ Awaiting Sync' }
+                'unmanaged': { bg: '#6b7280', label: '📝 Unmanaged' },
+                'managed': { bg: '#3b82f6', label: '🔄 Managed' },
+                'locked': { bg: '#dc2626', label: '🔒 Locked' }
             };
 
             // Merge and sort all events by timestamp (newest first)
@@ -6410,6 +5976,12 @@
             const configStatusFilter = document.getElementById('configStatusFilter');
             if (configStatusFilter) {
                 configStatusFilter.addEventListener('change', loadConfigMgmtData);
+            }
+
+            // Add change listener for sync status filter
+            const configSyncStatusFilter = document.getElementById('configSyncStatusFilter');
+            if (configSyncStatusFilter) {
+                configSyncStatusFilter.addEventListener('change', loadConfigMgmtData);
             }
         });
 

@@ -25,6 +25,17 @@ from app.core.cache_provider import get_cache, ICacheProvider
 
 
 # ============================================================================
+# PASSWORD HASHING CONSTANTS
+# ============================================================================
+
+# PBKDF2 iteration count (for backward compatibility verification)
+# NIST SP 800-63B recommends minimum 10,000 iterations
+# OWASP recommends 600,000+ iterations for PBKDF2-SHA256 (as of 2023)
+PBKDF2_MIN_ITERATIONS = 600_000  # Flag for upgrade if below this
+PBKDF2_LEGACY_ITERATIONS = 100_000  # Old default, always needs upgrade
+
+
+# ============================================================================
 # REDIS CONNECTION WITH POOLING
 # ============================================================================
 
@@ -168,7 +179,7 @@ def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
                 )
 
                 is_valid = secrets.compare_digest(new_hash.hex(), pwd_hash)
-                # Upgrade to Argon2id
+                # Always upgrade PBKDF2 to Argon2id (regardless of iteration count)
                 return (is_valid, is_valid)
             except (ValueError, IndexError):
                 return (False, False)

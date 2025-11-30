@@ -79,6 +79,14 @@ class ICacheProvider(ABC):
         pass
 
     @abstractmethod
+    async def setnx(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """
+        Set key to value if key does not exist (atomic SET if Not eXists).
+        Returns True if key was set, False if key already existed.
+        """
+        pass
+
+    @abstractmethod
     async def close(self) -> None:
         """Close cache connection."""
         pass
@@ -267,6 +275,19 @@ class InMemoryCache(ICacheProvider):
         """In-memory cache is always healthy."""
         return True
 
+    async def setnx(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """Set key to value if key does not exist."""
+        async with self._lock:
+            await self._cleanup_expired()
+
+            if key in self._data:
+                return False  # Key already exists
+
+            # Key doesn't exist, set it
+            expiry_time = datetime.now() + timedelta(seconds=ttl) if ttl else None
+            self._data[key] = (value, expiry_time)
+            return True
+
     async def close(self) -> None:
         """Close cache (no-op for in-memory)."""
         async with self._lock:
@@ -385,6 +406,17 @@ class RedisCache(ICacheProvider):
         except (RedisError, ConnectionError, TimeoutError) as e:
             logger.error(f"RedisCache health check failed: {e}")
             return False
+
+    async def setnx(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """Set key to value if key does not exist (atomic operation)."""
+        try:
+            # Use SET with NX (not exists) and optional EX (expiry) flags
+            # Returns True if key was set, None if key already existed
+            result = await self.redis.set(key, value, nx=True, ex=ttl)
+            return result is not None
+        except (RedisError, ConnectionError, TimeoutError) as e:
+            logger.error(f"RedisCache.setnx error for key '{key}': {e}")
+            raise
 
     async def close(self) -> None:
         """Close Redis connection."""
@@ -594,6 +626,14 @@ class FallbackCache(ICacheProvider):
             return await self.fallback.is_healthy()
         else:
             return await self.primary.is_healthy()
+
+    async def setnx(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        """Set key if not exists with automatic fallback."""
+        return await self._execute_with_fallback(
+            "setnx",
+            lambda: self.primary.setnx(key, value, ttl),
+            lambda: self.fallback.setnx(key, value, ttl)
+        )
 
     async def close(self) -> None:
         """Close both primary and fallback caches."""

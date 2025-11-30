@@ -9,14 +9,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 )
 
+// Version 3.0: Simplified config sync with single endpoint and 3-state model
+// - Removed preflight endpoint (merged into sync)
+// - Removed dual-track versioning (now single-track: v1, v2, v3...)
+// - States: unmanaged, managed, locked
+// - SyncStatus: n/a, pending, active
+
 // Shared HTTP client for config sync operations to avoid repeated TLS handshakes
-// and improve performance. This client is reused across PreflightCheck and SyncConfig calls.
 var configSyncHTTPClient = &http.Client{
 	Timeout: 30 * time.Second,
 	Transport: &http.Transport{
@@ -27,50 +33,29 @@ var configSyncHTTPClient = &http.Client{
 	},
 }
 
-// PreflightRequest represents the request payload for pre-flight API key validation
-type PreflightRequest struct {
-	APIKey    string `json:"api_key"`
-	Timestamp string `json:"timestamp"` // ISO 8601
-	Nonce     string `json:"nonce"`     // SHA256 hex
-	Signature string `json:"signature"` // HMAC-SHA256 of "{timestamp}|{nonce}"
-}
-
-// PreflightResponse represents the server response for pre-flight check
-type PreflightResponse struct {
-	Success           bool                   `json:"success"`
-	APIKeyValid       bool                   `json:"api_key_valid"`
-	HasExistingConfig bool                   `json:"has_existing_config"`
-	Status            string                 `json:"status,omitempty"` // Config status if exists (6 states)
-	Config            map[string]interface{} `json:"config,omitempty"` // Enforced config to apply (if any)
-	ServerTimestamp   string                 `json:"server_timestamp"`
-	Error             *ErrorResponse         `json:"error,omitempty"`
-}
-
 // ConfigSyncRequest represents the request payload for config sync
 type ConfigSyncRequest struct {
 	APIKey     string                 `json:"api_key"`
 	ModemID    string                 `json:"modem_id,omitempty"` // Optional - for tracking metadata only
 	Config     map[string]interface{} `json:"config"`
-	Version    string                 `json:"version,omitempty"` // e.g., "v1_client" or empty for first sync
-	ConfigHash string                 `json:"config_hash"`       // SHA256 of canonical JSON
-	Timestamp  string                 `json:"timestamp"`         // ISO 8601
-	Nonce      string                 `json:"nonce"`             // SHA256 hex
-	Signature  string                 `json:"signature"`         // HMAC-SHA256 of "{timestamp}|{nonce}|{config_hash}"
+	Version    int                    `json:"version"`     // Simple int version (0 for first sync)
+	ConfigHash string                 `json:"config_hash"` // SHA256 of canonical JSON
+	Timestamp  string                 `json:"timestamp"`   // ISO 8601
+	Nonce      string                 `json:"nonce"`       // SHA256 hex
+	Signature  string                 `json:"signature"`   // HMAC-SHA256 of "{timestamp}|{nonce}|{config_hash}"
 }
 
-// ConfigSyncResponse represents the server response with dual-track versioning
+// ConfigSyncResponse represents the server response with simplified versioning
 type ConfigSyncResponse struct {
 	Success         bool                   `json:"success"`
 	Config          map[string]interface{} `json:"config"`
-	Version         string                 `json:"version"`          // e.g., "v1_server" or "v2_client"
-	Status          string                 `json:"status"`           // 6 status states
+	Version         int                    `json:"version"`      // Simple int version
+	Status          string                 `json:"status"`       // unmanaged, managed, locked
+	SyncStatus      string                 `json:"sync_status"`  // n/a, pending, active
 	ConfigHash      string                 `json:"config_hash"`
 	ServerTimestamp string                 `json:"server_timestamp"`
 	ConfigChanged   bool                   `json:"config_changed"`
-	ActiveTrack     string                 `json:"active_track"`     // "client" or "server"
-	ClientVersion   int                    `json:"client_version"`   // Latest v#_client number
-	ServerVersion   int                    `json:"server_version"`   // Latest v#_server number
-	Error           *ErrorResponse         `json:"error,omitempty"`  // If success=false
+	Error           *ErrorResponse         `json:"error,omitempty"`
 }
 
 // ErrorResponse represents API error structure
@@ -148,20 +133,8 @@ func canonicalizeJSON(data map[string]interface{}) (string, error) {
 	return buf.String(), nil
 }
 
-// generatePreflightSignature creates HMAC-SHA256 signature for preflight check
-// Message format: timestamp|nonce (no modem_id - not known yet)
-func generatePreflightSignature(apiKey, timestamp, nonce string) string {
-	message := fmt.Sprintf("%s|%s", timestamp, nonce)
-
-	mac := hmac.New(sha256.New, []byte(apiKey))
-	mac.Write([]byte(message))
-	signature := hex.EncodeToString(mac.Sum(nil))
-
-	return signature
-}
-
 // generateConfigSyncSignature creates HMAC-SHA256 signature for config sync
-// Message format: timestamp|nonce|config_hash (no modem_id - API key is the primary key)
+// Message format: timestamp|nonce|config_hash
 func generateConfigSyncSignature(apiKey, timestamp, nonce, configHash string) string {
 	message := fmt.Sprintf("%s|%s|%s", timestamp, nonce, configHash)
 
@@ -173,30 +146,30 @@ func generateConfigSyncSignature(apiKey, timestamp, nonce, configHash string) st
 }
 
 // configToMap converts Configuration struct to map for JSON serialization
+// Version 3.0: Removed CloudPath, EnforceHTTPS, InsecureTLS
 func configToMap(config *Configuration) map[string]interface{} {
 	return map[string]interface{}{
-		"ModemAddress":        config.ModemAddress,
-		"IgnitePassword":      config.IgnitePassword,
-		"SpeedTestEnabled":    config.SpeedTestEnabled,
-		"SpeedTestInterval":   config.SpeedTestInterval,
-		"PingCount":           config.PingCount,
-		"AutoUpdateEnabled":   config.AutoUpdateEnabled,
-		"UpdateChannel":       config.UpdateChannel,
-		"Silent":              config.Silent,
-		"NoLogs":              config.NoLogs,
-		"LocalCleanupEnabled": config.LocalCleanupEnabled,
-		"LocalRetentionDays":  config.LocalRetentionDays,
-		"EnableCloud":         config.EnableCloud,
-		"CloudHost":           config.CloudHost,
-		"CloudPort":           config.CloudPort,
-		"CloudAPIKey":         config.CloudAPIKey,
-		"CloudPath":           config.CloudPath,
-		"EnforceHTTPS":        config.EnforceHTTPS,
-		"InsecureTLS":         config.InsecureTLS,
+		"ModemAddress":         config.ModemAddress,
+		"IgnitePassword":       config.IgnitePassword,
+		"SpeedTestEnabled":     config.SpeedTestEnabled,
+		"SpeedTestInterval":    config.SpeedTestInterval,
+		"SpeedTestConnections": config.SpeedTestConnections,
+		"PingCount":            config.PingCount,
+		"AutoUpdateEnabled":    config.AutoUpdateEnabled,
+		"UpdateChannel":        config.UpdateChannel,
+		"Silent":               config.Silent,
+		"NoLogs":               config.NoLogs,
+		"LocalCleanupEnabled":  config.LocalCleanupEnabled,
+		"LocalRetentionDays":   config.LocalRetentionDays,
+		"EnableCloud":          config.EnableCloud,
+		"CloudHost":            config.CloudHost,
+		"CloudPort":            config.CloudPort,
+		"CloudAPIKey":          config.CloudAPIKey,
 	}
 }
 
 // mapToConfig converts map back to Configuration struct
+// Version 3.0: Removed CloudPath, EnforceHTTPS, InsecureTLS
 func mapToConfig(data map[string]interface{}, config *Configuration) error {
 	// Helper to safely get values with type checking
 	getString := func(key string, defaultVal string) string {
@@ -224,17 +197,19 @@ func mapToConfig(data map[string]interface{}, config *Configuration) error {
 			case int:
 				return val
 			case float64:
-				return int(val)
+				// Use math.Round to properly round instead of truncating
+				return int(math.Round(val))
 			}
 		}
 		return defaultVal
 	}
 
-	// Map all fields
+	// Map all fields (v3.0 - 16 fields, no CloudPath/EnforceHTTPS/InsecureTLS)
 	config.ModemAddress = getString("ModemAddress", config.ModemAddress)
 	config.IgnitePassword = getString("IgnitePassword", config.IgnitePassword)
 	config.SpeedTestEnabled = getBool("SpeedTestEnabled", config.SpeedTestEnabled)
 	config.SpeedTestInterval = getInt("SpeedTestInterval", config.SpeedTestInterval)
+	config.SpeedTestConnections = getInt("SpeedTestConnections", config.SpeedTestConnections)
 	config.PingCount = getInt("PingCount", config.PingCount)
 	config.AutoUpdateEnabled = getBool("AutoUpdateEnabled", config.AutoUpdateEnabled)
 	config.UpdateChannel = getString("UpdateChannel", config.UpdateChannel)
@@ -246,103 +221,18 @@ func mapToConfig(data map[string]interface{}, config *Configuration) error {
 	config.CloudHost = getString("CloudHost", config.CloudHost)
 	config.CloudPort = getString("CloudPort", config.CloudPort)
 	config.CloudAPIKey = getString("CloudAPIKey", config.CloudAPIKey)
-	config.CloudPath = getString("CloudPath", config.CloudPath)
-	config.EnforceHTTPS = getBool("EnforceHTTPS", config.EnforceHTTPS)
-	config.InsecureTLS = getBool("InsecureTLS", config.InsecureTLS)
 
 	return nil
-}
-
-// PreflightCheck validates API key and checks for pending enforced config BEFORE modem login.
-// This allows faster failure for invalid keys and pre-application of enforced configs.
-// Returns: (apiKeyValid, hasEnforcedConfig, preflightResponse, error)
-func PreflightCheck(config *Configuration) (bool, bool, *PreflightResponse, error) {
-	// Check if cloud is enabled
-	if !config.EnableCloud {
-		return false, false, nil, fmt.Errorf("cloud sync disabled")
-	}
-
-	if config.CloudAPIKey == "" {
-		return false, false, nil, fmt.Errorf("no API key configured")
-	}
-
-	// Build preflight URL (always HTTPS for security)
-	scheme := "https"
-	preflightURL := fmt.Sprintf("%s://%s:%s/api/config/preflight", scheme, config.CloudHost, config.CloudPort)
-
-	// Generate nonce
-	nonce, err := generateNonce()
-	if err != nil {
-		return false, false, nil, fmt.Errorf("failed to generate nonce: %w", err)
-	}
-
-	// Get current timestamp
-	timestamp := time.Now().UTC().Format(time.RFC3339)
-
-	// Generate signature (no modem_id in preflight)
-	signature := generatePreflightSignature(config.CloudAPIKey, timestamp, nonce)
-
-	// Build request
-	preflightRequest := PreflightRequest{
-		APIKey:    config.CloudAPIKey,
-		Timestamp: timestamp,
-		Nonce:     nonce,
-		Signature: signature,
-	}
-
-	// Marshal request
-	requestBody, err := json.Marshal(preflightRequest)
-	if err != nil {
-		return false, false, nil, fmt.Errorf("failed to marshal preflight request: %w", err)
-	}
-
-	// Create HTTP request
-	req, err := http.NewRequest("POST", preflightURL, bytes.NewBuffer(requestBody))
-	if err != nil {
-		return false, false, nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send request using shared HTTP client
-	resp, err := configSyncHTTPClient.Do(req)
-	if err != nil {
-		return false, false, nil, fmt.Errorf("failed to send preflight request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response
-	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseSize))
-	if err != nil {
-		return false, false, nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Parse response
-	var preflightResponse PreflightResponse
-	if err := json.Unmarshal(responseBody, &preflightResponse); err != nil {
-		return false, false, nil, fmt.Errorf("failed to parse preflight response: %w", err)
-	}
-
-	// Check if API key is valid
-	if !preflightResponse.APIKeyValid {
-		return false, false, &preflightResponse, nil
-	}
-
-	// Check if there's an enforced config to apply
-	hasEnforcedConfig := false
-	if preflightResponse.HasExistingConfig && preflightResponse.Config != nil {
-		status := preflightResponse.Status
-		if status == "enforced_ready" || status == "enforced_active" {
-			hasEnforcedConfig = true
-		}
-	}
-
-	return true, hasEnforcedConfig, &preflightResponse, nil
 }
 
 // SyncConfig syncs client configuration with the server
 // modemID is optional - used for tracking metadata only, not as part of lookup key
 // Returns true if config was changed (client should save), false otherwise
+//
+// Version 3.0: Simplified state model
+// - Status: unmanaged, managed, locked
+// - SyncStatus: n/a, pending, active
+// - Single-track versioning (1, 2, 3...)
 func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool, error) {
 	// Check if cloud is enabled
 	if !config.EnableCloud {
@@ -350,8 +240,7 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	}
 
 	// Build sync URL (always HTTPS for security)
-	scheme := "https"
-	syncURL := fmt.Sprintf("%s://%s:%s/api/config/sync", scheme, config.CloudHost, config.CloudPort)
+	syncURL := fmt.Sprintf("https://%s:%s/api/config/sync", config.CloudHost, config.CloudPort)
 
 	// Convert config to map
 	configMap := configToMap(config)
@@ -371,7 +260,7 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	// Get current timestamp
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 
-	// Generate signature (no modem_id in signature - API key is the primary key)
+	// Generate signature
 	signature := generateConfigSyncSignature(config.CloudAPIKey, timestamp, nonce, configHash)
 
 	// Build request (modem_id is optional tracking metadata)
@@ -379,7 +268,7 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 		APIKey:     config.CloudAPIKey,
 		ModemID:    modemID, // Optional - for tracking only
 		Config:     configMap,
-		Version:    state.Version,
+		Version:    state.Version, // Simple int version
 		ConfigHash: configHash,
 		Timestamp:  timestamp,
 		Nonce:      nonce,
@@ -442,21 +331,19 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	// Check if config changed
 	configChanged := syncResponse.ConfigChanged
 
-	// Update state with dual-track versioning info
+	// Update state with simplified versioning (v3.0)
 	state.Version = syncResponse.Version
 	state.Status = syncResponse.Status
-	state.ActiveTrack = syncResponse.ActiveTrack
-	state.ClientVersion = syncResponse.ClientVersion
-	state.ServerVersion = syncResponse.ServerVersion
+	state.SyncStatus = syncResponse.SyncStatus
 	state.ServerConfigHash = syncResponse.ConfigHash
 	state.LastSync = time.Now()
 
-	// Clear deprecated Mode field
-	state.Mode = ""
+	// If config changed or in locked status with pending sync, apply server config
+	isLocked := syncResponse.Status == "locked"
+	isManaged := syncResponse.Status == "managed"
+	hasPendingConfig := syncResponse.SyncStatus == "pending"
 
-	// If config changed or in enforced status, apply server config
-	isEnforced := syncResponse.Status == "enforced_ready" || syncResponse.Status == "enforced_active"
-	if isEnforced || configChanged {
+	if (isLocked || (isManaged && hasPendingConfig)) && configChanged {
 		// Apply server config to our config struct
 		if err := mapToConfig(syncResponse.Config, config); err != nil {
 			return false, fmt.Errorf("failed to apply server config: %w", err)
@@ -471,83 +358,43 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	return false, nil // Config was not changed
 }
 
-// SyncWithRetry attempts to sync config with automatic retries and failover support
-// Tries primary server first, then failover servers if configured
+// SyncWithRetry attempts to sync config with automatic retries
+// Version 3.0: Simplified - removed failover server support
 func SyncWithRetry(config *Configuration, modemID string, state *ConfigState, maxRetries int) (bool, error) {
 	var lastErr error
 
-	// Build list of servers to try (primary + failovers)
-	servers := []struct {
-		host string
-		port string
-	}{
-		{host: config.CloudHost, port: config.CloudPort}, // Primary server
-	}
-
-	// Add failover servers if configured
-	for i := range config.FailoverHosts {
-		servers = append(servers, struct {
-			host string
-			port string
-		}{
-			host: config.FailoverHosts[i],
-			port: config.FailoverPorts[i],
-		})
-	}
-
-	// Try each server with retries
-	for serverIdx, server := range servers {
-		serverName := server.host
-		if serverIdx == 0 {
-			serverName = server.host + " (primary)"
-		} else {
-			serverName = server.host + fmt.Sprintf(" (failover %d)", serverIdx)
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 1s, 2s, 4s
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			time.Sleep(backoff)
 		}
 
-		for attempt := 0; attempt < maxRetries; attempt++ {
-			if attempt > 0 {
-				// Exponential backoff: 1s, 2s, 4s
-				backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-				time.Sleep(backoff)
-			}
+		configChanged, err := SyncConfig(config, modemID, state)
+		if err == nil {
+			return configChanged, nil
+		}
 
-			// Temporarily override config with current server
-			origHost := config.CloudHost
-			origPort := config.CloudPort
-			config.CloudHost = server.host
-			config.CloudPort = server.port
+		lastErr = err
 
-			configChanged, err := SyncConfig(config, modemID, state)
+		// Check if it's a non-retryable error
+		if strings.Contains(err.Error(), "locked") {
+			// Config is locked by server - not retryable
+			return false, lastErr
+		}
+		if strings.Contains(err.Error(), "nonce") {
+			// Nonce replay - not retryable (would need new nonce)
+			return false, lastErr
+		}
 
-			// Restore original config
-			config.CloudHost = origHost
-			config.CloudPort = origPort
-
-			if err == nil {
-				// Success! Return immediately
-				return configChanged, nil
-			}
-
-			lastErr = fmt.Errorf("server %s: %w", serverName, err)
-
-			// Check if it's a non-retryable error
-			if strings.Contains(err.Error(), "locked") {
-				// Config is locked by server - not retryable
-				return false, lastErr
-			}
-			if strings.Contains(err.Error(), "nonce") {
-				// Nonce replay - not retryable (would need new nonce)
-				return false, lastErr
-			}
-
-			// If this is a network error, try next server immediately (don't retry same server)
-			if isNetworkError(err) {
-				break // Move to next server
-			}
+		// If this is a network error, retry
+		if !isNetworkError(err) {
+			// Non-network error, don't retry
+			return false, lastErr
 		}
 	}
 
-	return false, fmt.Errorf("sync failed after trying %d server(s) with %d retries: %w", len(servers), maxRetries, lastErr)
+	return false, fmt.Errorf("sync failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // isNetworkError checks if an error is a network-related error

@@ -36,29 +36,26 @@ const (
 )
 
 // Configuration holds all user-configurable settings.
+// Version 3.0: Removed CloudPath, FailoverHosts, FailoverPorts, EnforceHTTPS, InsecureTLS
+// (HTTPS is now always enforced for security)
 type Configuration struct {
-	ModemAddress        string
-	IgnitePassword      string
-	SpeedTestEnabled     bool // Enable speed tests (default: true)
-	SpeedTestInterval    int  // Run speed test every N runs (default: 1)
-	SpeedTestConnections int  // Number of parallel connections for speed tests (default: 1)
-	PingCount            int  // Number of pings to perform (default: 100)
-	AutoUpdateEnabled   bool   // Enable automatic updates (default: true)
-	UpdateChannel       string // Update channel: "stable" (default), "beta", or "test" for pre-releases
-	Silent              bool   // Suppress console output
-	NoLogs              bool   // Disable log file creation
-	LocalCleanupEnabled bool   // Enable automatic cleanup of old local files (default: true)
-	LocalRetentionDays  int    // Days to retain local files (default: 90)
-	// Cloud mode settings
-	EnableCloud       bool     // Enable cloud upload (always saves locally)
-	CloudHost         string   // Primary cloud server hostname or IP
-	CloudPort         string   // Primary cloud server port
-	CloudAPIKey       string   // API key for authentication
-	CloudPath         string   // Cloud storage path
-	FailoverHosts     []string // Optional failover cloud server hostnames/IPs (for config sync resilience)
-	FailoverPorts     []string // Optional failover cloud server ports (must match FailoverHosts length)
-	EnforceHTTPS      bool     // Always use HTTPS, reject HTTP connections (default: true)
-	InsecureTLS       bool     // Allow self-signed/invalid certificates for local dev (default: false)
+	ModemAddress         string
+	IgnitePassword       string
+	SpeedTestEnabled     bool   // Enable speed tests (default: true)
+	SpeedTestInterval    int    // Run speed test every N runs (default: 1)
+	SpeedTestConnections int    // Number of parallel connections for speed tests (default: 1)
+	PingCount            int    // Number of pings to perform (default: 100)
+	AutoUpdateEnabled    bool   // Enable automatic updates (default: true)
+	UpdateChannel        string // Update channel: "stable" (default), "beta", or "test" for pre-releases
+	Silent               bool   // Suppress console output
+	NoLogs               bool   // Disable log file creation
+	LocalCleanupEnabled  bool   // Enable automatic cleanup of old local files (default: true)
+	LocalRetentionDays   int    // Days to retain local files (default: 90)
+	// Cloud mode settings (HTTPS always enforced)
+	EnableCloud bool   // Enable cloud upload (always saves locally)
+	CloudHost   string // Cloud server hostname or IP
+	CloudPort   string // Cloud server port
+	CloudAPIKey string // API key for authentication
 }
 
 // LoadConfigFile loads configuration from a JSON file and validates required settings.
@@ -119,12 +116,6 @@ func LoadConfigFile(path string, config *Configuration) error {
 		}
 		if config.CloudAPIKey == "" {
 			return fmt.Errorf("CloudAPIKey is required when EnableCloud is true")
-		}
-
-		// Validate failover configuration
-		if len(config.FailoverHosts) != len(config.FailoverPorts) {
-			return fmt.Errorf("FailoverHosts and FailoverPorts must have the same length (hosts: %d, ports: %d)",
-				len(config.FailoverHosts), len(config.FailoverPorts))
 		}
 	}
 

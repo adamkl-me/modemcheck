@@ -84,6 +84,7 @@ class Settings(BaseSettings):
     api_data_mgmt_rate_limit: str = Field(default="50/minute", description="Data management endpoint rate limit (bulk ops)")
     config_preflight_rate_limit: str = Field(default="10/hour", description="Config preflight check rate limit per client IP")
     config_sync_rate_limit: str = Field(default="5/hour", description="Config sync endpoint rate limit per client IP")
+    config_sse_rate_limit: str = Field(default="10/minute", description="Config SSE stream endpoint rate limit")
 
     # File Upload Limits
     max_upload_size: int = Field(default=10 * 1024 * 1024, description="Max upload size in bytes (10MB)")

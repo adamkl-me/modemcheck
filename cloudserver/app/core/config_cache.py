@@ -34,12 +34,17 @@ LOCK_TIMEOUT = 5   # Maximum time to wait for lock (seconds)
 LOCK_TTL = 10      # Lock expiration (seconds)
 
 
-def _get_config_cache_key(api_key: str) -> str:
+def _get_config_cache_key(api_key: str, version: Optional[int] = None) -> str:
     """
-    Generate cache key for configuration.
+    Generate cache key for configuration with optional version.
+
+    Versioned keys prevent race conditions during updates:
+    - Old: config:{api_key} - stale data possible during invalidation
+    - New: config:{api_key}:v{version} - each version has unique key
 
     Args:
         api_key: Client API key
+        version: Optional version number for versioned cache keys
 
     Returns:
         Redis cache key
@@ -47,7 +52,11 @@ def _get_config_cache_key(api_key: str) -> str:
     Example:
         >>> _get_config_cache_key("api_123")
         'config:api_123'
+        >>> _get_config_cache_key("api_123", 5)
+        'config:api_123:v5'
     """
+    if version is not None:
+        return f"config:{api_key}:v{version}"
     return f"config:{api_key}"
 
 
@@ -84,13 +93,15 @@ def _calculate_jittered_ttl() -> int:
 
 
 async def get_cached_config(
-    api_key: str
+    api_key: str,
+    version: Optional[int] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve configuration from cache.
 
     Args:
         api_key: Client API key
+        version: Optional version number for versioned cache lookup
 
     Returns:
         Cached config dict if found, None if cache miss
@@ -99,7 +110,7 @@ async def get_cached_config(
         ConfigCacheError: If cache operation fails critically
 
     Example:
-        >>> config = await get_cached_config("api_123")
+        >>> config = await get_cached_config("api_123", version=5)
         >>> config
         {
             "encrypted_blob": "ab12cd34...",
@@ -109,7 +120,7 @@ async def get_cached_config(
             "version": 5
         }
     """
-    cache_key = _get_config_cache_key(api_key)
+    cache_key = _get_config_cache_key(api_key, version)
 
     try:
         cache = await get_cache()
@@ -149,6 +160,9 @@ async def set_cached_config(
     """
     Store configuration in cache with jittered TTL.
 
+    Uses versioned cache key (config:api_key:v{version}) to prevent
+    race conditions during concurrent updates.
+
     Args:
         api_key: Client API key
         encrypted_blob: Encrypted config blob
@@ -168,7 +182,7 @@ async def set_cached_config(
         ... )
         True
     """
-    cache_key = _get_config_cache_key(api_key)
+    cache_key = _get_config_cache_key(api_key, version)
 
     # Build cache entry
     cache_entry = {
@@ -198,23 +212,27 @@ async def set_cached_config(
         return False
 
 
-async def invalidate_config_cache(api_key: str) -> bool:
+async def invalidate_config_cache(api_key: str, version: Optional[int] = None) -> bool:
     """
     Invalidate cached configuration.
 
-    Called when config is updated via admin interface or client sync.
+    With versioned caching, invalidation is less critical since each version
+    has its own cache key. This function is kept for backward compatibility
+    and can be used to invalidate specific versions.
 
     Args:
         api_key: Client API key
+        version: Optional specific version to invalidate. If None, invalidates
+                the base key (for backward compatibility)
 
     Returns:
         True if invalidated successfully, False otherwise
 
     Example:
-        >>> await invalidate_config_cache("api_123")
+        >>> await invalidate_config_cache("api_123", version=5)
         True
     """
-    cache_key = _get_config_cache_key(api_key)
+    cache_key = _get_config_cache_key(api_key, version)
 
     try:
         cache = await get_cache()
@@ -229,6 +247,7 @@ async def invalidate_config_cache(api_key: str) -> bool:
 
 async def acquire_config_lock(
     api_key: str,
+    version: Optional[int] = None,
     timeout_seconds: int = LOCK_TIMEOUT
 ) -> bool:
     """
@@ -240,23 +259,24 @@ async def acquire_config_lock(
 
     Args:
         api_key: Client API key
+        version: Optional version number for versioned locking
         timeout_seconds: Maximum time to wait for lock
 
     Returns:
         True if lock acquired, False if timeout
 
     Example:
-        >>> if await acquire_config_lock("api_123"):
+        >>> if await acquire_config_lock("api_123", version=5):
         ...     # Query database and populate cache
         ...     config = query_database()
         ...     await set_cached_config(...)
-        ...     await release_config_lock("api_123")
+        ...     await release_config_lock("api_123", version=5)
         ... else:
         ...     # Wait briefly and retry cache
         ...     await asyncio.sleep(0.1)
         ...     config = await get_cached_config(...)
     """
-    cache_key = _get_config_cache_key(api_key)
+    cache_key = _get_config_cache_key(api_key, version)
     lock_key = _get_lock_key(cache_key)
 
     try:
@@ -291,21 +311,22 @@ async def acquire_config_lock(
         return False
 
 
-async def release_config_lock(api_key: str) -> bool:
+async def release_config_lock(api_key: str, version: Optional[int] = None) -> bool:
     """
     Release distributed lock.
 
     Args:
         api_key: Client API key
+        version: Optional version number for versioned locking
 
     Returns:
         True if released successfully, False otherwise
 
     Example:
-        >>> await release_config_lock("api_123")
+        >>> await release_config_lock("api_123", version=5)
         True
     """
-    cache_key = _get_config_cache_key(api_key)
+    cache_key = _get_config_cache_key(api_key, version)
     lock_key = _get_lock_key(cache_key)
 
     try:
@@ -321,7 +342,8 @@ async def release_config_lock(api_key: str) -> bool:
 
 async def get_or_fetch_config(
     api_key: str,
-    fetch_func
+    fetch_func,
+    version: Optional[int] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Get config from cache, or fetch from database with stampede prevention.
@@ -329,10 +351,14 @@ async def get_or_fetch_config(
     This is the recommended high-level function for sync operations.
     Implements cache-aside pattern with automatic stampede prevention.
 
+    With versioned caching: if version is provided, looks up that specific
+    version in cache. This prevents race conditions during concurrent updates.
+
     Args:
         api_key: Client API key
         fetch_func: Async function that fetches from database
                    Should return Dict with encrypted_blob, salt, hash, mode, version
+        version: Optional version number for versioned cache lookup
 
     Returns:
         Config dict if found, None if not found in DB
@@ -350,20 +376,20 @@ async def get_or_fetch_config(
         ...         "mode": "locked",
         ...         "version": 5
         ...     }
-        >>> config = await get_or_fetch_config("api_123", fetch_from_db)
+        >>> config = await get_or_fetch_config("api_123", fetch_from_db, version=5)
     """
     # Try cache first
-    cached = await get_cached_config(api_key)
+    cached = await get_cached_config(api_key, version)
     if cached is not None:
         return cached
 
     # Cache miss - acquire lock to prevent stampede
-    lock_acquired = await acquire_config_lock(api_key)
+    lock_acquired = await acquire_config_lock(api_key, version)
 
     if lock_acquired:
         try:
             # Double-check cache (another request might have populated it)
-            cached = await get_cached_config(api_key)
+            cached = await get_cached_config(api_key, version)
             if cached is not None:
                 return cached
 
@@ -388,13 +414,13 @@ async def get_or_fetch_config(
 
         finally:
             # Always release lock
-            await release_config_lock(api_key)
+            await release_config_lock(api_key, version)
 
     else:
         # Failed to acquire lock - another request is fetching
         # Wait briefly and retry cache
         await asyncio.sleep(0.1)
-        cached = await get_cached_config(api_key)
+        cached = await get_cached_config(api_key, version)
 
         if cached is not None:
             return cached

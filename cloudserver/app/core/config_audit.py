@@ -10,19 +10,16 @@ Records all config changes with:
 Audit logs are stored in partitioned tables (config_audit_logs_YYYYMM)
 with 90-day retention.
 
-Version 2.0: Updated for dual-track versioning with string versions.
+Version 3.0: Updated for simplified 3-state model with single-track versioning.
 """
 
-from datetime import datetime
+import hashlib
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Set, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.client_config import ConfigAuditLog, ConfigStatus
+from app.models.client_config import ConfigAuditLog, ConfigStatus, SyncStatus
 from app.core.errors import InternalServerError
-
-
-# Alias for backward compatibility
-ConfigMode = ConfigStatus
 
 
 # Fields that contain sensitive data (never log values)
@@ -45,27 +42,18 @@ def get_changed_fields(
 
     Returns:
         Set of field names that changed
-
-    Example:
-        >>> old = {"PingCount": 25, "Silent": False}
-        >>> new = {"PingCount": 50, "Silent": False}
-        >>> get_changed_fields(old, new)
-        {'PingCount'}
     """
     if old_config is None:
-        # First sync - all fields are "new"
         return set(new_config.keys())
 
     changed = set()
 
-    # Check for added or modified fields
     for field, new_value in new_config.items():
         if field not in old_config:
             changed.add(field)
         elif old_config[field] != new_value:
             changed.add(field)
 
-    # Check for removed fields
     for field in old_config:
         if field not in new_config:
             changed.add(field)
@@ -85,19 +73,6 @@ def create_config_summary(config: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Sanitized summary for audit log
-
-    Example:
-        >>> summary = create_config_summary({
-        ...     "PingCount": 25,
-        ...     "CloudAPIKey": "secret123",
-        ...     "EnableCloud": True
-        ... })
-        >>> summary
-        {
-            "fields": ["PingCount", "EnableCloud"],
-            "sensitive_fields": ["CloudAPIKey"],
-            "field_types": {"PingCount": "int", "EnableCloud": "bool"}
-        }
     """
     regular_fields = []
     sensitive_fields = []
@@ -131,17 +106,6 @@ def create_change_summary(
 
     Returns:
         Change summary for audit log
-
-    Example:
-        >>> old = {"PingCount": 25, "Silent": False}
-        >>> new = {"PingCount": 50, "Silent": False, "NoLogs": True}
-        >>> create_change_summary(old, new)
-        {
-            "changed_fields": ["PingCount"],
-            "added_fields": ["NoLogs"],
-            "removed_fields": [],
-            "total_changes": 2
-        }
     """
     if old_config is None:
         return create_config_summary(new_config)
@@ -150,14 +114,12 @@ def create_change_summary(
     added = []
     removed = []
 
-    # Find changed and added fields
     for field, new_value in new_config.items():
         if field not in old_config:
             added.append(field)
         elif old_config[field] != new_value:
             changed.append(field)
 
-    # Find removed fields
     for field in old_config:
         if field not in new_config:
             removed.append(field)
@@ -177,10 +139,12 @@ async def log_config_sync(
     ip_address: str,
     old_config: Optional[Dict[str, Any]],
     new_config: Dict[str, Any],
-    old_version: Optional[str],
-    new_version: str,
+    old_version: Optional[int],
+    new_version: int,
     old_status: Optional[ConfigStatus] = None,
     new_status: Optional[ConfigStatus] = None,
+    old_sync_status: Optional[SyncStatus] = None,
+    new_sync_status: Optional[SyncStatus] = None,
     success: bool = True,
     failure_reason: Optional[str] = None
 ) -> None:
@@ -189,34 +153,31 @@ async def log_config_sync(
 
     Args:
         db: Database session
-        api_key: Client API key
+        api_key: Client API key (will be hashed for storage)
         modem_id: Client modem ID (optional, for tracking metadata)
         ip_address: Client IP address
         old_config: Previous config (None if first sync)
         new_config: New config
-        old_version: Previous version string (e.g., 'v1_client') or None
-        new_version: New version string (e.g., 'v2_client')
+        old_version: Previous version number or None
+        new_version: New version number
         old_status: Previous status (optional)
         new_status: New status (optional)
+        old_sync_status: Previous sync status (optional)
+        new_sync_status: New sync status (optional)
         success: Whether sync succeeded
         failure_reason: Error message if failed
-
-    Example:
-        >>> await log_config_sync(
-        ...     db, "api_key_123", "ARRIS-AABBCCDD",
-        ...     "192.168.1.100", old_cfg, new_cfg, "v1_client", "v2_client", True
-        ... )
     """
-    # Create change summary (redacts sensitive fields)
     config_summary = create_change_summary(old_config, new_config)
 
-    # Create audit log entry
+    # Hash API key for secure storage (SHA256)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     audit_entry = ConfigAuditLog(
         timestamp=datetime.utcnow(),
         username=None,  # Client-initiated (no user)
-        api_key_hash=None,  # Could hash API key for correlation
+        api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=api_key,
+        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="sync",
         config_summary=config_summary,
@@ -224,12 +185,13 @@ async def log_config_sync(
         new_version=new_version,
         old_status=old_status,
         new_status=new_status,
+        old_sync_status=old_sync_status,
+        new_sync_status=new_sync_status,
         success=success,
         failure_reason=failure_reason
     )
 
     db.add(audit_entry)
-    # Note: Caller is responsible for committing transaction
 
 
 async def log_config_update(
@@ -240,11 +202,13 @@ async def log_config_update(
     ip_address: str,
     old_config: Optional[Dict[str, Any]],
     new_config: Dict[str, Any],
-    old_version: Optional[str],
-    new_version: str,
-    old_mode: Optional[ConfigStatus],
-    new_mode: ConfigStatus,
-    success: bool,
+    old_version: Optional[int],
+    new_version: int,
+    old_status: Optional[ConfigStatus],
+    new_status: ConfigStatus,
+    old_sync_status: Optional[SyncStatus] = None,
+    new_sync_status: Optional[SyncStatus] = None,
+    success: bool = True,
     failure_reason: Optional[str] = None
 ) -> None:
     """
@@ -253,33 +217,40 @@ async def log_config_update(
     Args:
         db: Database session
         username: Admin username
-        api_key: Target client API key
+        api_key: Target client API key (will be hashed for storage)
         modem_id: Target client modem ID (optional, for tracking metadata)
         ip_address: Admin IP address
         old_config: Previous config (None for new configs)
         new_config: New config
-        old_version: Previous version string (e.g., 'v1_server') or None
-        new_version: New version string (e.g., 'v2_server')
-        old_mode: Previous status (ConfigStatus enum or None)
-        new_mode: New status (ConfigStatus enum)
+        old_version: Previous version number or None
+        new_version: New version number
+        old_status: Previous status (ConfigStatus enum or None)
+        new_status: New status (ConfigStatus enum)
+        old_sync_status: Previous sync status (optional)
+        new_sync_status: New sync status (optional)
         success: Whether update succeeded
         failure_reason: Error message if failed
     """
     config_summary = create_change_summary(old_config, new_config)
 
+    # Hash API key for secure storage (SHA256)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     audit_entry = ConfigAuditLog(
         timestamp=datetime.utcnow(),
         username=username,
-        api_key_hash=None,
+        api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=api_key,
+        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="update",
         config_summary=config_summary,
         old_version=old_version,
         new_version=new_version,
-        old_status=old_mode,
-        new_status=new_mode,
+        old_status=old_status,
+        new_status=new_status,
+        old_sync_status=old_sync_status,
+        new_sync_status=new_sync_status,
         success=success,
         failure_reason=failure_reason
     )
@@ -293,9 +264,9 @@ async def log_config_rollback(
     api_key: str,
     modem_id: Optional[str],
     ip_address: str,
-    target_version: str,
-    current_version: str,
-    new_version: str,
+    target_version: int,
+    current_version: int,
+    new_version: int,
     success: bool,
     failure_reason: Optional[str] = None
 ) -> None:
@@ -305,21 +276,24 @@ async def log_config_rollback(
     Args:
         db: Database session
         username: Admin username
-        api_key: Target client API key
+        api_key: Target client API key (will be hashed for storage)
         modem_id: Target client modem ID (optional, for tracking metadata)
         ip_address: Admin IP address
-        target_version: Version being rolled back to (e.g., 'v1_server')
-        current_version: Current version before rollback (e.g., 'v2_server')
-        new_version: New version after rollback (e.g., 'v3_server')
+        target_version: Version being rolled back to
+        current_version: Current version before rollback
+        new_version: New version after rollback
         success: Whether rollback succeeded
         failure_reason: Error message if failed
     """
+    # Hash API key for secure storage (SHA256)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     audit_entry = ConfigAuditLog(
         timestamp=datetime.utcnow(),
         username=username,
-        api_key_hash=None,
+        api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=api_key,
+        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="rollback",
         config_summary={
@@ -330,6 +304,8 @@ async def log_config_rollback(
         new_version=new_version,
         old_status=None,
         new_status=None,
+        old_sync_status=None,
+        new_sync_status=None,
         success=success,
         failure_reason=failure_reason
     )
@@ -337,7 +313,7 @@ async def log_config_rollback(
     db.add(audit_entry)
 
 
-async def log_mode_change(
+async def log_status_change(
     db: AsyncSession,
     username: str,
     api_key: str,
@@ -345,41 +321,52 @@ async def log_mode_change(
     ip_address: str,
     old_status: ConfigStatus,
     new_status: ConfigStatus,
-    version: str,
+    old_sync_status: SyncStatus,
+    new_sync_status: SyncStatus,
+    version: int,
     success: bool,
     failure_reason: Optional[str] = None
 ) -> None:
     """
-    Log a configuration status change.
+    Log a configuration status/sync_status change.
 
     Args:
         db: Database session
         username: Admin username (or 'client' for client-initiated)
-        api_key: Target client API key
+        api_key: Target client API key (will be hashed for storage)
         modem_id: Target client modem ID (optional, for tracking metadata)
         ip_address: Admin/client IP address
         old_status: Previous status (ConfigStatus enum)
         new_status: New status (ConfigStatus enum)
-        version: Current version string (e.g., 'v2_server')
+        old_sync_status: Previous sync status (SyncStatus enum)
+        new_sync_status: New sync status (SyncStatus enum)
+        version: Current version number
         success: Whether status change succeeded
         failure_reason: Error message if failed
     """
+    # Hash API key for secure storage (SHA256)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     audit_entry = ConfigAuditLog(
         timestamp=datetime.utcnow(),
         username=username,
-        api_key_hash=None,
+        api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=api_key,
+        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="status_change",
         config_summary={
             "old_status": old_status.value,
-            "new_status": new_status.value
+            "new_status": new_status.value,
+            "old_sync_status": old_sync_status.value,
+            "new_sync_status": new_sync_status.value
         },
         old_version=version,
         new_version=version,  # Version doesn't change on status-only change
         old_status=old_status,
         new_status=new_status,
+        old_sync_status=old_sync_status,
+        new_sync_status=new_sync_status,
         success=success,
         failure_reason=failure_reason
     )
@@ -396,11 +383,10 @@ async def get_modem_events_for_history(
     Retrieve modem events for history timeline.
 
     Returns modem_change events from audit log (when modem switches).
-    The first modem association is captured as a modem_change with old_modem_id=None.
 
     Args:
         db: Database session
-        api_key: API key to filter by
+        api_key: API key to filter by (will be hashed for query)
         limit: Maximum events to return
 
     Returns:
@@ -411,7 +397,9 @@ async def get_modem_events_for_history(
 
     events = []
 
-    # Get modem_change events from audit log
+    # Hash API key for secure lookup
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     modem_changes = await db.execute(
         select(
             ConfigAuditLog.id,
@@ -420,7 +408,7 @@ async def get_modem_events_for_history(
             ConfigAuditLog.new_modem_id,
             ConfigAuditLog.ip_address
         ).where(
-            ConfigAuditLog.api_key == api_key,
+            ConfigAuditLog.api_key_hash == api_key_hash,
             ConfigAuditLog.action == 'modem_change',
             ConfigAuditLog.success == True
         ).order_by(ConfigAuditLog.timestamp.desc())
@@ -453,7 +441,7 @@ async def get_recent_audit_logs(
 
     Args:
         db: Database session
-        api_key: Filter by API key (optional)
+        api_key: Filter by API key (optional, will be hashed for query)
         modem_id: Filter by modem ID (optional)
         username: Filter by username (optional)
         action: Filter by action type (optional)
@@ -466,9 +454,10 @@ async def get_recent_audit_logs(
 
     query = select(ConfigAuditLog).order_by(ConfigAuditLog.timestamp.desc())
 
-    # Apply filters
     if api_key:
-        query = query.where(ConfigAuditLog.api_key == api_key)
+        # Hash API key for secure lookup
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+        query = query.where(ConfigAuditLog.api_key_hash == api_key_hash)
     if modem_id:
         query = query.where(ConfigAuditLog.modem_id == modem_id)
     if username:

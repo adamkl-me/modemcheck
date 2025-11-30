@@ -9,6 +9,8 @@ Provides multi-layer validation:
 
 Used by both sync endpoint (validating client configs) and
 admin endpoint (validating server-pushed configs).
+
+Version 3.0: Removed CloudPath, EnforceHTTPS, InsecureTLS (HTTPS always enforced).
 """
 
 import logging
@@ -22,7 +24,8 @@ from app.core.errors import ConfigValidationError
 logger = logging.getLogger(__name__)
 
 
-# JSON Schema for client configuration
+# JSON Schema for client configuration (14 fields)
+# Removed: CloudPath, EnforceHTTPS, InsecureTLS, FailoverHosts, FailoverPorts
 CONFIG_SCHEMA = {
     "type": "object",
     "properties": {
@@ -42,9 +45,6 @@ CONFIG_SCHEMA = {
         "CloudHost": {"type": "string"},
         "CloudPort": {"type": "string"},
         "CloudAPIKey": {"type": "string"},
-        "CloudPath": {"type": "string"},
-        "EnforceHTTPS": {"type": "boolean"},
-        "InsecureTLS": {"type": "boolean"},
     },
     "additionalProperties": True,  # Allow extra fields for forward compatibility
 }
@@ -253,16 +253,13 @@ def validate_urls(config: Dict[str, Any]) -> List[str]:
             # Must be digits only (no whitespace, decimals, or other characters)
             if not isinstance(port, str) or not port.isdigit():
                 errors.append(f"Field CloudPort: must be numeric string (got '{port}')")
+            # SECURITY: Reject ports with leading zeros (e.g., "0080")
+            elif len(port) > 1 and port[0] == '0':
+                errors.append(f"Field CloudPort: leading zeros not allowed (got '{port}')")
             else:
                 port_int = int(port)
                 if port_int < 1 or port_int > 65535:
                     errors.append(f"Field CloudPort: port {port_int} out of range (1-65535)")
-
-    # CloudPath validation (basic - prevent absolute paths)
-    if "CloudPath" in config:
-        path = config["CloudPath"]
-        if path and path.startswith("/"):
-            errors.append(f"Field CloudPath: absolute paths not allowed")
 
     return errors
 
@@ -315,10 +312,8 @@ async def test_url_reachability(
     if not host or not port:
         return {"reachable": False, "error": "Missing CloudHost or CloudPort", "status_code": None}
 
-    # Build URL
-    enforce_https = config.get("EnforceHTTPS", True)
-    scheme = "https" if enforce_https else "http"
-    url = f"{scheme}://{host}:{port}/api/config/health"
+    # Build URL (always HTTPS - security requirement)
+    url = f"https://{host}:{port}/api/config/health"
 
     # Test reachability
     start_time = asyncio.get_event_loop().time()
@@ -326,8 +321,7 @@ async def test_url_reachability(
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 url,
-                timeout=aiohttp.ClientTimeout(total=timeout_seconds),
-                ssl=False if config.get("InsecureTLS") else None
+                timeout=aiohttp.ClientTimeout(total=timeout_seconds)
             ) as response:
                 latency_ms = (asyncio.get_event_loop().time() - start_time) * 1000
 
