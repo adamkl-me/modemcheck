@@ -7,7 +7,7 @@ into service functions that can be tested independently of HTTP concerns.
 import pytest
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.exc import IntegrityError
 
@@ -276,7 +276,7 @@ class TestUploadPersistenceService:
                 db=mock_db,
                 modem_id="XB8-AA:BB:CC:DD:EE:FF",
                 modem_type="XB8",
-                check_time=datetime.utcnow(),
+                check_time=datetime.now(timezone.utc),
                 filename="2024-01-01_12-00-00.json",
                 json_data=json_data
             )
@@ -300,7 +300,7 @@ class TestUploadPersistenceService:
                 db=mock_db,
                 modem_id="XB8-AA:BB:CC:DD:EE:FF",
                 modem_type="XB8",
-                check_time=datetime.utcnow(),
+                check_time=datetime.now(timezone.utc),
                 filename="2024-01-01_12-00-00.json",
                 json_data=json_data
             )

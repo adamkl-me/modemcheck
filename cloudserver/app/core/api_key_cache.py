@@ -7,13 +7,16 @@ upload operations.
 """
 
 import json
+import logging
 import secrets
 import hashlib
 from typing import Optional, Dict, List, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.cache_provider import get_cache
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class APIKeyCache:
@@ -43,9 +46,9 @@ class APIKeyCache:
             cached_data = await cache.get(APIKeyCache.CACHE_KEY)
             if cached_data:
                 return json.loads(cached_data)
-        except Exception:
+        except Exception as e:
             # If cache read fails, fallback to database
-            pass
+            logger.debug(f"API key cache read failed, falling back to database: {type(e).__name__}: {e}")
 
         return None
 
@@ -64,9 +67,9 @@ class APIKeyCache:
                 json.dumps(keys),
                 ttl=settings.api_key_cache_ttl
             )
-        except Exception:
+        except Exception as e:
             # If cache write fails, continue without caching
-            pass
+            logger.debug(f"API key cache write failed: {type(e).__name__}: {e}")
 
     @staticmethod
     async def invalidate_cache() -> None:
@@ -74,8 +77,8 @@ class APIKeyCache:
         try:
             cache = await get_cache()
             await cache.delete(APIKeyCache.CACHE_KEY)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"API key cache invalidation failed: {type(e).__name__}: {e}")
 
     @staticmethod
     async def validate_api_key_cached(
@@ -143,13 +146,13 @@ class APIKeyCache:
                 await session.execute(
                     update(APIKey)
                     .where(APIKey.api_key == api_key)
-                    .values(last_used=datetime.utcnow())
+                    .values(last_used=datetime.now(timezone.utc))
                 )
                 # Commit is handled by the context manager
-        except Exception:
-            # Silently fail - last_used timestamp is not critical
+        except Exception as e:
+            # Log but don't fail - last_used timestamp is not critical
             # Upload should succeed even if timestamp update fails
-            pass
+            logger.debug(f"API key last_used update failed: {type(e).__name__}: {e}")
 
 
 class APIKeyCacheStats:
@@ -158,7 +161,7 @@ class APIKeyCacheStats:
     def __init__(self):
         self.hits = 0
         self.misses = 0
-        self.last_reset = datetime.utcnow()
+        self.last_reset = datetime.now(timezone.utc)
 
     @property
     def hit_rate(self) -> float:
@@ -180,7 +183,7 @@ class APIKeyCacheStats:
         """Reset statistics."""
         self.hits = 0
         self.misses = 0
-        self.last_reset = datetime.utcnow()
+        self.last_reset = datetime.now(timezone.utc)
 
 
 # Global stats instance

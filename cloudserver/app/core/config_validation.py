@@ -316,14 +316,15 @@ async def test_url_reachability(
     url = f"https://{host}:{port}/api/config/health"
 
     # Test reachability
-    start_time = asyncio.get_event_loop().time()
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 url,
                 timeout=aiohttp.ClientTimeout(total=timeout_seconds)
             ) as response:
-                latency_ms = (asyncio.get_event_loop().time() - start_time) * 1000
+                latency_ms = (loop.time() - start_time) * 1000
 
                 return {
                     "reachable": response.status < 500,

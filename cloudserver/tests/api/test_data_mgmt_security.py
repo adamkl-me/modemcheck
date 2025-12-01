@@ -17,7 +17,7 @@ import httpx
 import zipfile
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 pytestmark = pytest.mark.api
 
@@ -35,7 +35,7 @@ class TestDataManagementAuthorization:
                 "sysinfo": {
                     "modemtype": "XB8",
                     "modemmac": "AA:BB:CC:DD:EE:FF",
-                    "checktime": datetime.utcnow().isoformat()
+                    "checktime": datetime.now(timezone.utc).isoformat()
                 }
             }
             zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data))
@@ -62,7 +62,7 @@ class TestDataManagementAuthorization:
                 "sysinfo": {
                     "modemtype": "XB8",
                     "modemmac": "AA:BB:CC:DD:EE:FF",
-                    "checktime": datetime.utcnow().isoformat()
+                    "checktime": datetime.now(timezone.utc).isoformat()
                 }
             }
             zf.writestr("XB8-AA:BB:CC:DD:EE:FF/2024-01-01_12-00-00.json", json.dumps(check_data))
@@ -116,7 +116,7 @@ class TestFileEncodingValidation:
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
             # Use unique timestamp to avoid collisions with other tests
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             filename_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S-%f")
 
             check_data = {
@@ -278,7 +278,7 @@ class TestZipBombProtection:
             for i in range(1100):
                 check_data = {
                     "modem_id": f"XB8-AA:BB:CC:DD:EE:{i:02X}",
-                    "check_time": datetime.utcnow().isoformat(),
+                    "check_time": datetime.now(timezone.utc).isoformat(),
                     "modem_type": "XB8",
                     "test": f"file_{i}"
                 }

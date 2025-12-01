@@ -1,7 +1,7 @@
 """
 Authentication router for login, logout, session management, and password changes.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -120,7 +120,7 @@ async def login(
     await db.execute(
         update(User)
         .where(User.username == login_data.username)
-        .values(last_login=datetime.utcnow(), last_login_ip=ip_address)
+        .values(last_login=datetime.now(timezone.utc), last_login_ip=ip_address)
     )
     await db.commit()
 

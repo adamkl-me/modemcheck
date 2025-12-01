@@ -183,7 +183,7 @@ async def sync_config(
             status=sync_result.status,
             sync_status=sync_result.sync_status,
             config_hash=config_hash,
-            server_timestamp=datetime.utcnow().isoformat(),
+            server_timestamp=datetime.now(timezone.utc).isoformat(),
             config_changed=sync_result.config_changed
         )
 
@@ -227,7 +227,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     return HealthCheckResponse(
         healthy=overall_healthy,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         database=database_status,
         cache=cache_status
     )
@@ -274,7 +274,7 @@ async def list_configs(
             pass
 
     if stale_hours:
-        stale_threshold = datetime.utcnow() - timedelta(hours=stale_hours)
+        stale_threshold = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         query = query.where(ClientConfig.last_sync < stale_threshold)
 
     count_query = select(func.count()).select_from(query.subquery())
@@ -397,9 +397,9 @@ async def create_config(
             version=1,
             encryption_salt=salt,
             last_sync=None,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by=username,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by=username
         )
 
@@ -485,8 +485,8 @@ async def stream_config_updates(
     from app.core.database import get_async_session
 
     async def event_generator():
-        last_check = datetime.utcnow()
-        connection_start = datetime.utcnow()
+        last_check = datetime.now(timezone.utc)
+        connection_start = datetime.now(timezone.utc)
         max_connection_time = timedelta(minutes=30)  # Close idle connections after 30 min
 
         yield f"event: connected\ndata: {json.dumps({'timestamp': last_check.isoformat()})}\n\n"
@@ -498,7 +498,7 @@ async def stream_config_updates(
                 break
 
             # Check for maximum connection time (prevents zombie connections)
-            if datetime.utcnow() - connection_start > max_connection_time:
+            if datetime.now(timezone.utc) - connection_start > max_connection_time:
                 logger.info("SSE connection timeout after 30 minutes")
                 yield f"event: timeout\ndata: {json.dumps({'message': 'Connection timeout, please reconnect'})}\n\n"
                 break
@@ -548,7 +548,7 @@ async def stream_config_updates(
                 yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
             await asyncio.sleep(5)
-            yield f"event: keepalive\ndata: {json.dumps({'timestamp': datetime.utcnow().isoformat()})}\n\n"
+            yield f"event: keepalive\ndata: {json.dumps({'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -654,7 +654,7 @@ async def update_config(
         existing_config.config_encrypted = encrypted_blob
         existing_config.config_hash = new_hash
         existing_config.encryption_salt = new_salt
-        existing_config.updated_at = datetime.utcnow()
+        existing_config.updated_at = datetime.now(timezone.utc)
         existing_config.updated_by = username
 
         # Handle mode change if specified
@@ -784,7 +784,7 @@ async def rollback_config(
         current_config.config_encrypted = target_version.config_encrypted
         current_config.config_hash = target_version.config_hash
         current_config.encryption_salt = target_version.encryption_salt
-        current_config.updated_at = datetime.utcnow()
+        current_config.updated_at = datetime.now(timezone.utc)
         current_config.updated_by = username
 
         # Set to PENDING if managed/locked so client picks up rollback

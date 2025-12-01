@@ -15,6 +15,11 @@ import (
 	"time"
 )
 
+func init() {
+	// Use HTTP for tests (HTTPS in production)
+	SetCloudUploadURLScheme("http")
+}
+
 // TestGenerateRequestSignature tests HMAC-SHA256 signature generation
 func TestGenerateRequestSignature(t *testing.T) {
 	tests := []struct {
@@ -547,13 +552,10 @@ func TestUploadToCloudWithModemID_Success(t *testing.T) {
 
 	// Create test config
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    host,
-		CloudPort:    port,
-		CloudAPIKey:  "test-api-key-123",
-		CloudPath:    "/api/upload",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   host,
+		CloudPort:   port,
+		CloudAPIKey: "test-api-key-123",
 	}
 
 	m := createTestModemCheck(server.Client(), config)
@@ -606,12 +608,10 @@ func TestUploadToCloudWithModemID_ServerError(t *testing.T) {
 	parts := strings.Split(serverURL, ":")
 
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    parts[0],
-		CloudPort:    parts[1],
-		CloudAPIKey:  "test-key",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   parts[0],
+		CloudPort:   parts[1],
+		CloudAPIKey: "test-key",
 	}
 
 	m := createTestModemCheck(server.Client(), config)
@@ -641,12 +641,10 @@ func TestUploadToCloudWithModemID_RejectedUpload(t *testing.T) {
 	parts := strings.Split(serverURL, ":")
 
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    parts[0],
-		CloudPort:    parts[1],
-		CloudAPIKey:  "test-key",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   parts[0],
+		CloudPort:   parts[1],
+		CloudAPIKey: "test-key",
 	}
 
 	m := createTestModemCheck(server.Client(), config)
@@ -707,12 +705,10 @@ func TestUploadToCloud_Success(t *testing.T) {
 	parts := strings.Split(serverURL, ":")
 
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    parts[0],
-		CloudPort:    parts[1],
-		CloudAPIKey:  "test-key",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   parts[0],
+		CloudPort:   parts[1],
+		CloudAPIKey: "test-key",
 	}
 
 	m := createTestModemCheck(server.Client(), config)
@@ -745,12 +741,10 @@ func TestRetryFailedUploads_Success(t *testing.T) {
 	parts := strings.Split(serverURL, ":")
 
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    parts[0],
-		CloudPort:    parts[1],
-		CloudAPIKey:  "test-key",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   parts[0],
+		CloudPort:   parts[1],
+		CloudAPIKey: "test-key",
 	}
 
 	m := createTestModemCheck(server.Client(), config)
@@ -860,12 +854,10 @@ func TestRetryFailedUploads_AllFail(t *testing.T) {
 	parts := strings.Split(serverURL, ":")
 
 	config := Configuration{
-		EnableCloud:  true,
-		CloudHost:    parts[0],
-		CloudPort:    parts[1],
-		CloudAPIKey:  "test-key",
-		EnforceHTTPS: false,
-		InsecureTLS:  true,
+		EnableCloud: true,
+		CloudHost:   parts[0],
+		CloudPort:   parts[1],
+		CloudAPIKey: "test-key",
 	}
 
 	m := createTestModemCheck(server.Client(), config)

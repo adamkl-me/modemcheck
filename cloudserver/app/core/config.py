@@ -3,6 +3,7 @@ Configuration management using Pydantic Settings.
 
 Environment variables are loaded from .env file or system environment.
 """
+import ipaddress
 from typing import List, Optional
 from pydantic import Field, validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -91,6 +92,15 @@ class Settings(BaseSettings):
     max_bulk_upload_files: int = Field(default=1000, description="Max files in bulk upload")
     max_bulk_download_size: int = Field(default=100 * 1024 * 1024, description="Max bulk download size (100MB)")
 
+    # Trusted Proxies (for X-Forwarded-For header validation)
+    # SECURITY: Only trust X-Forwarded-For from these IP ranges
+    # Default includes Docker internal networks and localhost
+    # Format: comma-separated CIDR ranges or IPs
+    trusted_proxies: str = Field(
+        default="127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+        description="Trusted proxy IPs/CIDRs that can set X-Forwarded-For (comma-separated)"
+    )
+
     # Common Passwords File
     common_passwords_file: str = Field(
         default="/app/common_passwords.txt",
@@ -163,6 +173,41 @@ class Settings(BaseSettings):
     def is_test(self) -> bool:
         """Check if running in test environment."""
         return self.app_env.lower() == "test"
+
+    def get_trusted_proxy_networks(self) -> List[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+        """Parse trusted_proxies into a list of IP networks."""
+        networks = []
+        for proxy in self.trusted_proxies.split(","):
+            proxy = proxy.strip()
+            if not proxy:
+                continue
+            try:
+                # Try to parse as network (CIDR notation)
+                if "/" in proxy:
+                    networks.append(ipaddress.ip_network(proxy, strict=False))
+                else:
+                    # Single IP - convert to /32 or /128 network
+                    addr = ipaddress.ip_address(proxy)
+                    if isinstance(addr, ipaddress.IPv4Address):
+                        networks.append(ipaddress.ip_network(f"{proxy}/32"))
+                    else:
+                        networks.append(ipaddress.ip_network(f"{proxy}/128"))
+            except ValueError:
+                # Skip invalid entries
+                pass
+        return networks
+
+    def is_trusted_proxy(self, ip: str) -> bool:
+        """Check if an IP address is from a trusted proxy."""
+        try:
+            addr = ipaddress.ip_address(ip)
+            for network in self.get_trusted_proxy_networks():
+                if addr in network:
+                    return True
+            return False
+        except ValueError:
+            # Invalid IP address
+            return False
 
 
 # Global settings instance

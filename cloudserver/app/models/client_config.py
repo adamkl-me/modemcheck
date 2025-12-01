@@ -7,7 +7,7 @@ versioning, and audit trails.
 
 Version 3.0: Simplified 3-state model (UNMANAGED, MANAGED, LOCKED) with sync_status flag.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, Index,
     ForeignKey, BigInteger, Enum, CheckConstraint
@@ -94,9 +94,9 @@ class ClientConfig(Base):
     encryption_salt = Column(String(32), nullable=False)  # Random salt for encryption
 
     # Audit fields
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(255), nullable=False)  # Username who created config
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     updated_by = Column(String(255), nullable=False)  # Username who last updated config
 
     # Indexes for performance
@@ -187,7 +187,7 @@ class ConfigVersion(Base):
     )
 
     # Metadata
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String(255), nullable=False)  # Username or "client"
     creation_reason = Column(String(255), nullable=False)  # "client_sync", "admin_update", "admin_create", "rollback", etc.
     ip_address = Column(String(45), nullable=True)  # IPv6 compatible
@@ -229,7 +229,7 @@ class ConfigAuditLog(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     # Timestamp (partition key)
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
     # Actor information
     username = Column(String(255), nullable=True, index=True)  # NULL for client-initiated

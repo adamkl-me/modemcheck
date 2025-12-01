@@ -10,7 +10,7 @@ Tests for:
 """
 import pytest
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.cache import (
     InMemoryBackend,
@@ -33,13 +33,13 @@ class TestInMemoryCacheEntry:
 
     def test_entry_not_expired(self):
         """Entry should not be expired before expiration time."""
-        future = datetime.utcnow() + timedelta(seconds=60)
+        future = datetime.now(timezone.utc) + timedelta(seconds=60)
         entry = InMemoryCacheEntry("value", expires_at=future)
         assert entry.is_expired() is False
 
     def test_entry_expired(self):
         """Entry should be expired after expiration time."""
-        past = datetime.utcnow() - timedelta(seconds=1)
+        past = datetime.now(timezone.utc) - timedelta(seconds=1)
         entry = InMemoryCacheEntry("value", expires_at=past)
         assert entry.is_expired() is True
 

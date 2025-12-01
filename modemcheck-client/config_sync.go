@@ -33,6 +33,21 @@ var configSyncHTTPClient = &http.Client{
 	},
 }
 
+// SetConfigSyncHTTPClient allows tests to inject a custom HTTP client
+// This should only be used in tests
+func SetConfigSyncHTTPClient(client *http.Client) {
+	configSyncHTTPClient = client
+}
+
+// configSyncURLScheme allows tests to use HTTP instead of HTTPS
+var configSyncURLScheme = "https"
+
+// SetConfigSyncURLScheme allows tests to use HTTP instead of HTTPS
+// This should only be used in tests
+func SetConfigSyncURLScheme(scheme string) {
+	configSyncURLScheme = scheme
+}
+
 // ConfigSyncRequest represents the request payload for config sync
 type ConfigSyncRequest struct {
 	APIKey     string                 `json:"api_key"`
@@ -168,6 +183,38 @@ func configToMap(config *Configuration) map[string]interface{} {
 	}
 }
 
+// validateConfigRanges validates config field ranges after sync
+// Returns error if any field has an invalid range
+func validateConfigRanges(config *Configuration) error {
+	// Validate SpeedTestInterval (must be >= 1)
+	if config.SpeedTestInterval < 1 {
+		return fmt.Errorf("SpeedTestInterval must be at least 1 (got: %d)", config.SpeedTestInterval)
+	}
+
+	// Validate SpeedTestConnections (must be 1-16)
+	if config.SpeedTestConnections < 1 || config.SpeedTestConnections > 16 {
+		return fmt.Errorf("SpeedTestConnections must be between 1 and 16 (got: %d)", config.SpeedTestConnections)
+	}
+
+	// Validate PingCount (must be 1-100)
+	if config.PingCount < 1 || config.PingCount > 100 {
+		return fmt.Errorf("PingCount must be between 1 and 100 (got: %d)", config.PingCount)
+	}
+
+	// Validate LocalRetentionDays (must be >= 1)
+	if config.LocalRetentionDays < 1 {
+		return fmt.Errorf("LocalRetentionDays must be at least 1 (got: %d)", config.LocalRetentionDays)
+	}
+
+	// Validate UpdateChannel (must be stable, beta, or test)
+	validChannels := map[string]bool{"stable": true, "beta": true, "test": true, "": true}
+	if !validChannels[config.UpdateChannel] {
+		return fmt.Errorf("UpdateChannel must be 'stable', 'beta', or 'test' (got: %s)", config.UpdateChannel)
+	}
+
+	return nil
+}
+
 // mapToConfig converts map back to Configuration struct
 // Version 3.0: Removed CloudPath, EnforceHTTPS, InsecureTLS
 func mapToConfig(data map[string]interface{}, config *Configuration) error {
@@ -222,6 +269,11 @@ func mapToConfig(data map[string]interface{}, config *Configuration) error {
 	config.CloudPort = getString("CloudPort", config.CloudPort)
 	config.CloudAPIKey = getString("CloudAPIKey", config.CloudAPIKey)
 
+	// Validate ranges after mapping server values
+	if err := validateConfigRanges(config); err != nil {
+		return fmt.Errorf("invalid server config: %w", err)
+	}
+
 	return nil
 }
 
@@ -239,8 +291,8 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 		return false, fmt.Errorf("cloud sync disabled")
 	}
 
-	// Build sync URL (always HTTPS for security)
-	syncURL := fmt.Sprintf("https://%s:%s/api/config/sync", config.CloudHost, config.CloudPort)
+	// Build sync URL (HTTPS by default, configurable for testing)
+	syncURL := fmt.Sprintf("%s://%s:%s/api/config/sync", configSyncURLScheme, config.CloudHost, config.CloudPort)
 
 	// Convert config to map
 	configMap := configToMap(config)

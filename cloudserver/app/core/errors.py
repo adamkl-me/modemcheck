@@ -38,7 +38,7 @@ class ModemCheckError(Exception):
         self.status_code = status_code
         self.details = details or {}
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.utcnow().isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert error to standardized response format."""

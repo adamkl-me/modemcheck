@@ -105,15 +105,27 @@ def get_client_ip(request: Request) -> str:
     """
     Extract client IP address from request.
 
-    Checks X-Forwarded-For header (for nginx reverse proxy) first,
-    then falls back to direct client IP.
-    """
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        # X-Forwarded-For can contain multiple IPs, take the first one
-        return forwarded_for.split(",")[0].strip()
+    SECURITY: Only trusts X-Forwarded-For header when the request comes from
+    a trusted proxy (configured via TRUSTED_PROXIES setting). This prevents
+    IP spoofing attacks where malicious clients set X-Forwarded-For directly.
 
-    return request.client.host if request.client else "unknown"
+    When running behind nginx/Docker, nginx sets X-Forwarded-For and requests
+    come from Docker internal network (172.x.x.x), which is trusted by default.
+    """
+    from app.core.config import settings
+
+    # Get the direct client IP (the IP that actually connected to us)
+    direct_ip = request.client.host if request.client else "unknown"
+
+    # Only trust X-Forwarded-For from trusted proxies
+    if direct_ip != "unknown" and settings.is_trusted_proxy(direct_ip):
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # X-Forwarded-For can contain multiple IPs: client, proxy1, proxy2
+            # The first IP is the original client (set by first proxy)
+            return forwarded_for.split(",")[0].strip()
+
+    return direct_ip
 
 
 def get_user_agent(request: Request) -> str:

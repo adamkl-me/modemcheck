@@ -191,7 +191,7 @@ async def encrypt_config(config_dict: Dict[str, Any], salt_hex: str = None) -> t
         salt_hex = os.urandom(16).hex()
 
     # Run CPU-intensive encryption in thread pool to avoid blocking event loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     encrypted_blob, nonce_hex = await loop.run_in_executor(
         _executor,
         _encrypt_sync,
@@ -224,7 +224,7 @@ async def decrypt_config(encrypted_blob: str, salt_hex: str) -> Dict[str, Any]:
         'https://example.com'
     """
     # Run CPU-intensive decryption in thread pool
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     config_dict = await loop.run_in_executor(
         _executor,
         _decrypt_sync,

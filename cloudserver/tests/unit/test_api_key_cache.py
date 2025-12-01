@@ -7,7 +7,7 @@ These tests cover:
 - Statistics reset functionality
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.api_key_cache import APIKeyCacheStats
 
@@ -99,9 +99,9 @@ class TestAPIKeyCacheStats:
 
     def test_last_reset_timestamp(self):
         """Last reset timestamp should be set on initialization and reset."""
-        before = datetime.utcnow()
+        before = datetime.now(timezone.utc)
         stats = APIKeyCacheStats()
-        after = datetime.utcnow()
+        after = datetime.now(timezone.utc)
 
         # Should be set during initialization
         assert before <= stats.last_reset <= after
@@ -110,9 +110,9 @@ class TestAPIKeyCacheStats:
         stats.record_hit()
 
         # Reset and check timestamp updated
-        before_reset = datetime.utcnow()
+        before_reset = datetime.now(timezone.utc)
         stats.reset()
-        after_reset = datetime.utcnow()
+        after_reset = datetime.now(timezone.utc)
 
         assert before_reset <= stats.last_reset <= after_reset
 

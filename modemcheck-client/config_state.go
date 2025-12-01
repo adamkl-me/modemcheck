@@ -68,7 +68,14 @@ func LoadConfigState() (*ConfigState, error) {
 	if !locked {
 		return nil, fmt.Errorf("state file is locked by another process")
 	}
-	defer lock.Unlock()
+
+	// Track if we've manually unlocked (to avoid double-unlock in defer)
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			lock.Unlock()
+		}
+	}()
 
 	// Read state file
 	data, err := os.ReadFile(stateFile)
@@ -82,7 +89,9 @@ func LoadConfigState() (*ConfigState, error) {
 		// State file is corrupted - attempt recovery
 		fmt.Fprintf(os.Stderr, "Warning: state file corrupted, attempting recovery: %v\n", err)
 
-		// Unlock before calling recovery (recovery will acquire its own lock)
+		// Release read lock before recovery (RecoverStateFile needs write lock)
+		// Mark as unlocked so defer doesn't double-unlock
+		unlocked = true
 		lock.Unlock()
 
 		recoveredState, recoverErr := RecoverStateFile()

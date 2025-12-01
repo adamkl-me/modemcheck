@@ -29,9 +29,6 @@ from app.services.upload_service import UploadService, UploadValidationError
 
 router = APIRouter(prefix="/api/upload", tags=["Upload"])
 
-# HMAC signature validation constants
-TIMESTAMP_WINDOW_SECONDS = 300  # 5 minutes - prevents replay attacks
-
 
 def validate_request_signature(
     api_key: str,
@@ -47,22 +44,17 @@ def validate_request_signature(
     Returns:
         (is_valid, error_message)
     """
+    from app.core.security import validate_request_timestamp
+
     if not timestamp:
         logger.warning("HMAC validation failed: missing timestamp")
-        return False, "Invalid request signature"
+        return False, "Missing request timestamp"
 
-    try:
-        request_time = int(timestamp)
-    except (ValueError, TypeError):
-        logger.warning("HMAC validation failed: invalid timestamp format")
-        return False, "Invalid request signature"
-
-    # Check timestamp within 5 minutes to prevent replay attacks
-    current_time = int(time.time())
-    time_diff = abs(current_time - request_time)
-    if time_diff > TIMESTAMP_WINDOW_SECONDS:
-        logger.warning(f"HMAC validation failed: timestamp too old (diff={time_diff}s, max={TIMESTAMP_WINDOW_SECONDS}s)")
-        return False, "Invalid request signature"
+    # Use shared timestamp validation
+    is_valid_ts, ts_error = validate_request_timestamp(timestamp)
+    if not is_valid_ts:
+        logger.warning(f"HMAC validation failed: {ts_error}")
+        return False, ts_error
 
     # Compute expected signature using HMAC-SHA256 (matches Go client)
     message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
@@ -237,9 +229,9 @@ async def upload_check(
             )
             client_config.last_seen_modem_id = modem_id
             await db.commit()
-    except Exception:
+    except Exception as e:
         # Non-critical - don't fail upload if config update fails
-        pass
+        logger.warning(f"Failed to update client config last_seen_modem_id: {type(e).__name__}: {e}")
 
     # Step 6: Log successful submission
     processing_time_ms = int((time.time() - start_time) * 1000)

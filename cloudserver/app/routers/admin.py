@@ -3,7 +3,7 @@ Admin router for API key management, audit logs, and configuration.
 """
 import secrets
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, and_, func, Integer
@@ -60,7 +60,7 @@ async def create_api_key(
     api_key = APIKey(
         api_key=new_api_key,
         name=key_data.name,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         is_active=True
     )
 

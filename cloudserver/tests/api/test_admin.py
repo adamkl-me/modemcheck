@@ -9,7 +9,7 @@ Tests:
 """
 import pytest
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 pytestmark = pytest.mark.api
 
@@ -456,8 +456,8 @@ class TestUserActivityLogs:
     @pytest.mark.asyncio
     async def test_user_activity_date_range(self, admin_client_with_token: httpx.AsyncClient):
         """Test filtering by date range."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 
         response = await admin_client_with_token.get(
             "/api/admin/logs/user_activity",

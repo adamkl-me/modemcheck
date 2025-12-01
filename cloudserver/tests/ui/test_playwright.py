@@ -697,6 +697,7 @@ def _populate_real_modem_data():
     from app.models import ModemCheck
     from tests.fixtures.modem_data.loader import load_all_fixture_data, get_modem_ids
     import time
+    from datetime import timezone
 
     async def populate():
         # Create async engine for test database
@@ -741,7 +742,7 @@ def _populate_real_modem_data():
                         check_time=dt,
                         filename=filename,
                         full_data=check_data,
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(timezone.utc)
                     )
                     session.add(check)
 

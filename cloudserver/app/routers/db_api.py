@@ -94,7 +94,7 @@ async def list_checks(
     try:
         start_dt = datetime.fromisoformat(f"{start_date}T00:00:00")
         end_dt = datetime.fromisoformat(f"{end_date}T23:59:59")
-    except Exception:
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid date format. Use YYYY-MM-DD"
@@ -188,7 +188,7 @@ async def get_all_checks(
     try:
         start_dt = datetime.fromisoformat(f"{date_range.start_date}T00:00:00")
         end_dt = datetime.fromisoformat(f"{date_range.end_date}T23:59:59")
-    except Exception:
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid date format. Use YYYY-MM-DD"

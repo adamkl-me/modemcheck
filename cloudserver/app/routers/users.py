@@ -1,7 +1,7 @@
 """
 User management router for admin operations.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
@@ -85,7 +85,7 @@ async def create_user(
         username=user_data.username,
         password_hash=password_hash,
         role=user_data.role,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         must_change_password=user_data.must_change_password
     )
 

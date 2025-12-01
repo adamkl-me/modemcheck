@@ -8,7 +8,7 @@ Tests for:
 - Retention policy enforcement
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, text
 from app.models.audit import UserActivityLog, ClientSubmissionLog
 from app.core.audit_retention import (
@@ -35,7 +35,7 @@ class TestUserActivityLogCleanup:
     async def test_cleanup_old_user_activity_logs_with_old_logs(self, db_session):
         """Test cleanup when there are old logs to delete."""
         # Create old log (100 days ago)
-        old_timestamp = datetime.utcnow() - timedelta(days=100)
+        old_timestamp = datetime.now(timezone.utc) - timedelta(days=100)
         old_log = UserActivityLog(
             timestamp=old_timestamp,
             username="test_cleanup_user",
@@ -47,7 +47,7 @@ class TestUserActivityLogCleanup:
         await db_session.commit()
 
         # Create recent log (10 days ago)
-        recent_timestamp = datetime.utcnow() - timedelta(days=10)
+        recent_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
         recent_log = UserActivityLog(
             timestamp=recent_timestamp,
             username="test_recent_user",
@@ -85,7 +85,7 @@ class TestUserActivityLogCleanup:
     async def test_cleanup_custom_retention_period(self, db_session):
         """Test cleanup with custom retention period."""
         # Create log 45 days ago
-        timestamp_45 = datetime.utcnow() - timedelta(days=45)
+        timestamp_45 = datetime.now(timezone.utc) - timedelta(days=45)
         log_45 = UserActivityLog(
             timestamp=timestamp_45,
             username="test_45_day_user",
@@ -131,7 +131,7 @@ class TestClientSubmissionLogCleanup:
     async def test_cleanup_old_client_submission_logs(self, db_session):
         """Test cleanup of old client submission logs."""
         # Create old log (100 days ago)
-        old_timestamp = datetime.utcnow() - timedelta(days=100)
+        old_timestamp = datetime.now(timezone.utc) - timedelta(days=100)
         old_log = ClientSubmissionLog(
             timestamp=old_timestamp,
             ip_address="192.168.1.100",
@@ -165,7 +165,7 @@ class TestCleanupAllAuditLogs:
     async def test_cleanup_all_audit_logs(self, db_session):
         """Test cleanup of all audit log types."""
         # Create old logs for both types
-        old_timestamp = datetime.utcnow() - timedelta(days=100)
+        old_timestamp = datetime.now(timezone.utc) - timedelta(days=100)
 
         user_log = UserActivityLog(
             timestamp=old_timestamp,
@@ -223,8 +223,8 @@ class TestAuditLogStatistics:
     async def test_get_audit_log_statistics_with_logs(self, db_session):
         """Test statistics with existing logs."""
         # Create some logs with known timestamps
-        old_timestamp = datetime.utcnow() - timedelta(days=50)
-        recent_timestamp = datetime.utcnow() - timedelta(days=5)
+        old_timestamp = datetime.now(timezone.utc) - timedelta(days=50)
+        recent_timestamp = datetime.now(timezone.utc) - timedelta(days=5)
 
         # Add user activity log
         user_log = UserActivityLog(
@@ -273,7 +273,7 @@ class TestCleanupEdgeCases:
         """Test cleanup with zero retention (delete all)."""
         # Create recent log
         recent_log = UserActivityLog(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             username="test_zero_retention",
             action_type="test_action",
             ip_address="192.168.1.100",
@@ -293,7 +293,7 @@ class TestCleanupEdgeCases:
         """Test cleanup with very large retention period."""
         # Create old log
         old_log = UserActivityLog(
-            timestamp=datetime.utcnow() - timedelta(days=100),
+            timestamp=datetime.now(timezone.utc) - timedelta(days=100),
             username="test_large_retention",
             action_type="test_action",
             ip_address="192.168.1.100",

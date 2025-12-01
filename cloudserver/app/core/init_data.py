@@ -3,7 +3,7 @@ Initialize default data for the application.
 
 Creates default admin user if database is empty.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,12 +46,12 @@ async def create_default_admin():
                 must_change = True  # Force change on first login
 
             # Create default admin user
-            # Use datetime.utcnow() for timezone-naive columns (consistent with model defaults)
+            # Use datetime.now(timezone.utc) for timezone-naive columns (consistent with model defaults)
             admin_user = User(
                 username="admin",
                 password_hash=hash_password(password),
                 role=UserRole.ADMIN,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 must_change_password=must_change
             )
 

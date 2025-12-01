@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +19,15 @@ import (
 	"sync"
 	"time"
 )
+
+// cloudUploadURLScheme allows tests to use HTTP instead of HTTPS
+var cloudUploadURLScheme = "https"
+
+// SetCloudUploadURLScheme allows tests to use HTTP instead of HTTPS
+// This should only be used in tests
+func SetCloudUploadURLScheme(scheme string) {
+	cloudUploadURLScheme = scheme
+}
 
 // UploadQueueEntry represents a failed upload that needs to be retried.
 type UploadQueueEntry struct {
@@ -298,9 +309,9 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	remoteDirName := modemID
 	remoteFileName := filepath.Base(localFile)
 
-	// SECURITY: Cloud API key transmission always uses HTTPS (v3.0+)
-	// Build upload URL with root path
-	uploadURL := fmt.Sprintf("https://%s:%s/", m.config.CloudHost, m.config.CloudPort)
+	// SECURITY: Cloud API key transmission always uses HTTPS in production (v3.0+)
+	// Build upload URL with root path (scheme configurable for testing)
+	uploadURL := fmt.Sprintf("%s://%s:%s/", cloudUploadURLScheme, m.config.CloudHost, m.config.CloudPort)
 
 	// Generate timestamp for request signing (Unix timestamp as string)
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -308,32 +319,45 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	// Generate HMAC-SHA256 signature for request authentication
 	signature := generateRequestSignature(m.config.CloudAPIKey, timestamp, remoteDirName, remoteFileName, checksum)
 
-	// Create HTTP request with multipart form data
-	body := &strings.Builder{}
-	body.WriteString("--boundary123\r\n")
-	body.WriteString("Content-Disposition: form-data; name=\"api_key\"\r\n\r\n")
-	body.WriteString(fmt.Sprintf("%s\r\n", m.config.CloudAPIKey))
-	body.WriteString("--boundary123\r\n")
-	body.WriteString("Content-Disposition: form-data; name=\"modem_id\"\r\n\r\n")
-	body.WriteString(fmt.Sprintf("%s\r\n", remoteDirName))
-	body.WriteString("--boundary123\r\n")
-	body.WriteString("Content-Disposition: form-data; name=\"filename\"\r\n\r\n")
-	body.WriteString(fmt.Sprintf("%s\r\n", remoteFileName))
-	body.WriteString("--boundary123\r\n")
-	body.WriteString("Content-Disposition: form-data; name=\"checksum\"\r\n\r\n")
-	body.WriteString(fmt.Sprintf("%s\r\n", checksum))
-	body.WriteString("--boundary123\r\n")
-	body.WriteString(fmt.Sprintf("Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n", remoteFileName))
-	body.WriteString("Content-Type: application/json\r\n\r\n")
-	body.Write(fileContents)
-	body.WriteString("\r\n--boundary123--\r\n")
+	// Create HTTP request with multipart form data using mime/multipart
+	// This generates a unique boundary for each request (security best practice)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Add form fields
+	if err := writer.WriteField("api_key", m.config.CloudAPIKey); err != nil {
+		return fmt.Errorf("failed to write api_key field: %v", err)
+	}
+	if err := writer.WriteField("modem_id", remoteDirName); err != nil {
+		return fmt.Errorf("failed to write modem_id field: %v", err)
+	}
+	if err := writer.WriteField("filename", remoteFileName); err != nil {
+		return fmt.Errorf("failed to write filename field: %v", err)
+	}
+	if err := writer.WriteField("checksum", checksum); err != nil {
+		return fmt.Errorf("failed to write checksum field: %v", err)
+	}
+
+	// Add file field with proper Content-Type
+	filePart, err := writer.CreateFormFile("file", remoteFileName)
+	if err != nil {
+		return fmt.Errorf("failed to create file field: %v", err)
+	}
+	if _, err := filePart.Write(fileContents); err != nil {
+		return fmt.Errorf("failed to write file contents: %v", err)
+	}
+
+	// Close writer to finalize the multipart message (writes closing boundary)
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close multipart writer: %v", err)
+	}
 
 	// Create POST request
-	req, err := http.NewRequest("POST", uploadURL, strings.NewReader(body.String()))
+	req, err := http.NewRequest("POST", uploadURL, body)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %v", err)
 	}
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=boundary123")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	// Add authentication headers (HMAC signature + timestamp)
 	req.Header.Set("X-Request-Timestamp", timestamp)
@@ -354,7 +378,35 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 
 	// Check response status after reading body
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(respBody))
+		// Sanitize error message to avoid exposing sensitive server details
+		// Try to extract just the error message from JSON response if possible
+		var errResp struct {
+			Error   string `json:"error"`
+			Message string `json:"message"`
+			Detail  string `json:"detail"`
+		}
+		errorMsg := ""
+		if json.Unmarshal(respBody, &errResp) == nil {
+			if errResp.Error != "" {
+				errorMsg = errResp.Error
+			} else if errResp.Message != "" {
+				errorMsg = errResp.Message
+			} else if errResp.Detail != "" {
+				errorMsg = errResp.Detail
+			}
+		}
+
+		// If we couldn't extract a clean error message, use truncated body
+		if errorMsg == "" {
+			bodyStr := string(respBody)
+			// Limit to 200 characters to avoid exposing sensitive details
+			if len(bodyStr) > 200 {
+				bodyStr = bodyStr[:200] + "..."
+			}
+			errorMsg = bodyStr
+		}
+
+		return fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, errorMsg)
 	}
 
 	var uploadResp struct {
@@ -504,12 +556,13 @@ func (m *ModemCheck) cleanupLogFile() error {
 		}
 
 		// Try to parse timestamp from log line format: "Mon Jan 2 03:04:05 PM MST 2006"
-		// The actual format varies, so we look for the first 20 characters after the first space
+		// Use ParseInLocation with time.Local to handle different timezone abbreviations correctly
+		// (e.g., EST, PST, MST, MDT) without timezone conversion issues
 		shouldKeep := true
 		parts := strings.SplitN(line, ": ", 2)
 		if len(parts) == 2 {
 			timestampStr := parts[0]
-			if logTime, err := time.Parse("Mon Jan 2 03:04:05 PM MST 2006", timestampStr); err == nil {
+			if logTime, err := time.ParseInLocation("Mon Jan 2 03:04:05 PM MST 2006", timestampStr, time.Local); err == nil {
 				if logTime.Before(cutoffDate) {
 					shouldKeep = false
 				}

@@ -19,7 +19,7 @@ import random
 import json
 import hashlib
 from typing import Optional, Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.cache import get_cache
 
@@ -191,7 +191,7 @@ async def set_cached_config(
         "hash": config_hash,
         "mode": mode,
         "version": version,
-        "cached_at": datetime.utcnow().isoformat()
+        "cached_at": datetime.now(timezone.utc).isoformat()
     }
 
     try:

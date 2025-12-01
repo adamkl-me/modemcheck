@@ -173,7 +173,7 @@ async def log_config_sync(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         username=None,  # Client-initiated (no user)
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -237,7 +237,7 @@ async def log_config_update(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -289,7 +289,7 @@ async def log_config_rollback(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -348,7 +348,7 @@ async def log_status_change(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,

@@ -13,7 +13,7 @@ import json
 import pytest
 import hashlib
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import AsyncGenerator, Dict, Any
 from pathlib import Path
 
@@ -214,7 +214,7 @@ async def admin_user(db_session: AsyncSession, admin_user_credentials: Dict[str,
         username=admin_user_credentials["username"],
         password_hash=hash_password(admin_user_credentials["password"]),
         role="admin",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         must_change_password=False
     )
     db_session.add(user)
@@ -250,7 +250,7 @@ async def elevated_user(db_session: AsyncSession, elevated_user_credentials: Dic
         username=elevated_user_credentials["username"],
         password_hash=hash_password(elevated_user_credentials["password"]),
         role="elevated",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         must_change_password=False
     )
     db_session.add(user)
@@ -286,7 +286,7 @@ async def basic_user(db_session: AsyncSession, basic_user_credentials: Dict[str,
         username=basic_user_credentials["username"],
         password_hash=hash_password(basic_user_credentials["password"]),
         role="basic",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         must_change_password=False
     )
     db_session.add(user)
@@ -314,7 +314,7 @@ async def test_user_must_change_password(db_session: AsyncSession) -> User:
         username=test_username,
         password_hash=hash_password(test_password),
         role="basic",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         must_change_password=True
     )
     db_session.add(user)
@@ -407,7 +407,7 @@ async def active_api_key(db_session: AsyncSession, test_api_key: str) -> APIKey:
     api_key = APIKey(
         api_key=test_api_key,
         name="test_key_active",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         is_active=True
     )
     db_session.add(api_key)
@@ -423,7 +423,7 @@ async def inactive_api_key(db_session: AsyncSession) -> APIKey:
     api_key = APIKey(
         api_key=secrets.token_hex(32),
         name="test_key_inactive",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         is_active=False
     )
     db_session.add(api_key)
@@ -498,7 +498,7 @@ async def sample_modem_check(db_session: AsyncSession, sample_modem_check_data: 
         check_time=datetime.fromtimestamp(sysinfo["checktime"]),
         filename=unique_filename,
         full_data=sample_modem_check_data,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db_session.add(check)
     await db_session.commit()
@@ -531,7 +531,7 @@ async def sample_modem_checks_in_db(db_session: AsyncSession, sample_modem_check
             check_time=dt,
             filename=unique_filename,
             full_data=sample_modem_check_data,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db_session.add(check)
         checks.append(check)
@@ -595,7 +595,7 @@ async def populated_modem_database(
                 check_time=dt,
                 filename=filename,
                 full_data=check_data,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             db_session.add(check)
             result[modem_type].append(check)
@@ -642,7 +642,7 @@ async def single_modem_populated(
             check_time=dt,
             filename=filename,
             full_data=check_data,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db_session.add(check)
         checks.append(check)
@@ -805,7 +805,7 @@ def ensure_ui_test_users():
     from sqlalchemy import select
     from app.models import User
     from app.core.security import hash_password
-    from datetime import datetime
+    from datetime import datetime, timezone
     import os
 
     async def create_users():
@@ -847,7 +847,7 @@ def ensure_ui_test_users():
                         username=user_data["username"],
                         password_hash=hash_password(user_data["password"]),
                         role=user_data["role"],
-                        created_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
                         must_change_password=False
                     )
                     session.add(user)

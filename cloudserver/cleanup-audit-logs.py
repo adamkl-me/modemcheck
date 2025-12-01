@@ -20,7 +20,7 @@ Usage:
 import asyncio
 import argparse
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.database import AsyncSessionLocal
 from app.core.audit_retention import (
@@ -67,7 +67,7 @@ async def main():
         print("=" * 70)
         print("ModemCheck Audit Log Cleanup")
         print("=" * 70)
-        print(f"Timestamp: {datetime.utcnow().isoformat()}")
+        print(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
         print()
 
         # Show current statistics
@@ -106,8 +106,8 @@ async def main():
         print(f"User activity retention: {args.user_retention} days")
         print(f"Client submission retention: {args.client_retention} days")
 
-        user_cutoff = datetime.utcnow() - timedelta(days=args.user_retention)
-        client_cutoff = datetime.utcnow() - timedelta(days=args.client_retention)
+        user_cutoff = datetime.now(timezone.utc) - timedelta(days=args.user_retention)
+        client_cutoff = datetime.now(timezone.utc) - timedelta(days=args.client_retention)
 
         print(f"\nWill delete:")
         print(f"  User activity logs before: {user_cutoff.isoformat()}")

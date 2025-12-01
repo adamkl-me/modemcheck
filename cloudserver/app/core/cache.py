@@ -8,7 +8,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import OrderedDict
 import redis.asyncio as aioredis
 
@@ -198,7 +198,7 @@ class InMemoryCacheEntry:
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 
 class InMemoryBackend(CacheBackend):
@@ -265,7 +265,7 @@ class InMemoryBackend(CacheBackend):
 
         expires_at = None
         if ttl:
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
 
         async with self.lock:
             self.cache[key] = InMemoryCacheEntry(value, expires_at)
@@ -320,7 +320,7 @@ class InMemoryBackend(CacheBackend):
             if entry is None:
                 return False
 
-            entry.expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+            entry.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
             return True
 
     async def ttl(self, key: str) -> int:
@@ -337,7 +337,7 @@ class InMemoryBackend(CacheBackend):
             if entry.expires_at is None:
                 return -1  # No expiration
 
-            remaining = (entry.expires_at - datetime.utcnow()).total_seconds()
+            remaining = (entry.expires_at - datetime.now(timezone.utc)).total_seconds()
             return max(0, int(remaining))
 
     async def ping(self) -> bool:
@@ -403,7 +403,7 @@ class CacheManager:
         self.memory_backend: InMemoryBackend = InMemoryBackend()
         self.current_backend: CacheBackend = self.memory_backend
         self.redis_check_interval = 60  # seconds
-        self.last_redis_check = datetime.utcnow()
+        self.last_redis_check = datetime.now(timezone.utc)
         self._redis_available = False
 
     async def initialize(self, redis_client: aioredis.Redis):
@@ -422,7 +422,7 @@ class CacheManager:
 
     async def _check_redis_health(self):
         """Periodically check Redis health and reconnect if available."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if (now - self.last_redis_check).total_seconds() < self.redis_check_interval:
             return
 

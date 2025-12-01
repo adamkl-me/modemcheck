@@ -11,7 +11,7 @@ Tests:
 - Error handling
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from app.models import User
@@ -145,13 +145,13 @@ class TestCreateDefaultAdminUnit:
         mock_settings = MagicMock()
         mock_settings.is_test.return_value = True
 
-        before_creation = datetime.utcnow()
+        before_creation = datetime.now(timezone.utc)
 
         with patch("app.core.database.AsyncSessionLocal", mock_session_local):
             with patch("app.core.config.settings", mock_settings):
                 await create_default_admin()
 
-        after_creation = datetime.utcnow()
+        after_creation = datetime.now(timezone.utc)
 
         added_user = mock_session.add.call_args[0][0]
         assert added_user.created_at is not None

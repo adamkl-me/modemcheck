@@ -50,21 +50,15 @@ func TestLoadConfigState_MissingFile(t *testing.T) {
 		t.Fatalf("LoadConfigState() error = %v", err)
 	}
 
-	// Verify default state
-	if state.Version != "" {
-		t.Errorf("Version = %q, want empty string", state.Version)
+	// Verify default state (new structure: Version is int, Status/SyncStatus are strings)
+	if state.Version != 0 {
+		t.Errorf("Version = %d, want 0", state.Version)
 	}
 	if state.Status != "" {
 		t.Errorf("Status = %q, want empty string", state.Status)
 	}
-	if state.ActiveTrack != "" {
-		t.Errorf("ActiveTrack = %q, want empty string", state.ActiveTrack)
-	}
-	if state.ClientVersion != 0 {
-		t.Errorf("ClientVersion = %d, want 0", state.ClientVersion)
-	}
-	if state.ServerVersion != 0 {
-		t.Errorf("ServerVersion = %d, want 0", state.ServerVersion)
+	if state.SyncStatus != "" {
+		t.Errorf("SyncStatus = %q, want empty string", state.SyncStatus)
 	}
 	if state.ServerConfigHash != "" {
 		t.Errorf("ServerConfigHash = %q, want empty string", state.ServerConfigHash)
@@ -81,14 +75,12 @@ func TestLoadConfigState_ValidFile(t *testing.T) {
 		t.Fatalf("getStateFilePath() error = %v", err)
 	}
 
-	// Create a valid state file
+	// Create a valid state file with new structure
 	expectedTime := time.Now().UTC().Truncate(time.Second)
 	state := ConfigState{
-		Version:          "v1_client",
-		Status:           "one_time_active",
-		ActiveTrack:      "client",
-		ClientVersion:    1,
-		ServerVersion:    0,
+		Version:          1,
+		Status:           "managed",
+		SyncStatus:       "active",
 		ServerConfigHash: "abc123hash",
 		LastSync:         expectedTime,
 	}
@@ -108,20 +100,14 @@ func TestLoadConfigState_ValidFile(t *testing.T) {
 		t.Fatalf("LoadConfigState() error = %v", err)
 	}
 
-	if loaded.Version != "v1_client" {
-		t.Errorf("Version = %q, want %q", loaded.Version, "v1_client")
+	if loaded.Version != 1 {
+		t.Errorf("Version = %d, want %d", loaded.Version, 1)
 	}
-	if loaded.Status != "one_time_active" {
-		t.Errorf("Status = %q, want %q", loaded.Status, "one_time_active")
+	if loaded.Status != "managed" {
+		t.Errorf("Status = %q, want %q", loaded.Status, "managed")
 	}
-	if loaded.ActiveTrack != "client" {
-		t.Errorf("ActiveTrack = %q, want %q", loaded.ActiveTrack, "client")
-	}
-	if loaded.ClientVersion != 1 {
-		t.Errorf("ClientVersion = %d, want %d", loaded.ClientVersion, 1)
-	}
-	if loaded.ServerVersion != 0 {
-		t.Errorf("ServerVersion = %d, want %d", loaded.ServerVersion, 0)
+	if loaded.SyncStatus != "active" {
+		t.Errorf("SyncStatus = %q, want %q", loaded.SyncStatus, "active")
 	}
 	if loaded.ServerConfigHash != "abc123hash" {
 		t.Errorf("ServerConfigHash = %q, want %q", loaded.ServerConfigHash, "abc123hash")
@@ -131,7 +117,7 @@ func TestLoadConfigState_ValidFile(t *testing.T) {
 	}
 }
 
-// TestLoadConfigState_CorruptedFile verifies error handling for invalid JSON
+// TestLoadConfigState_CorruptedFile verifies auto-recovery for invalid JSON
 func TestLoadConfigState_CorruptedFile(t *testing.T) {
 	stateFile, err := getStateFilePath()
 	if err != nil {
@@ -147,9 +133,17 @@ func TestLoadConfigState_CorruptedFile(t *testing.T) {
 		os.Remove(stateFile + ".lock")
 	}()
 
-	_, err = LoadConfigState()
-	if err == nil {
-		t.Error("LoadConfigState() expected error for corrupted file, got nil")
+	// Corrupted files are now auto-recovered with default state (no error)
+	state, err := LoadConfigState()
+	if err != nil {
+		t.Errorf("LoadConfigState() error = %v, expected auto-recovery", err)
+	}
+	// Should return default state after auto-recovery
+	if state.Version != 0 {
+		t.Errorf("Version = %d, want 0 (default after recovery)", state.Version)
+	}
+	if state.Status != "" {
+		t.Errorf("Status = %q, want empty (default after recovery)", state.Status)
 	}
 }
 
@@ -167,11 +161,9 @@ func TestSaveConfigState_Success(t *testing.T) {
 	}()
 
 	state := &ConfigState{
-		Version:          "v2_server",
-		Status:           "enforced_active",
-		ActiveTrack:      "server",
-		ClientVersion:    1,
-		ServerVersion:    2,
+		Version:          2,
+		Status:           "locked",
+		SyncStatus:       "active",
 		ServerConfigHash: "hashvalue",
 		LastSync:         time.Now().UTC(),
 	}
@@ -201,7 +193,7 @@ func TestSaveConfigState_Success(t *testing.T) {
 		t.Fatalf("LoadConfigState() after save error = %v", err)
 	}
 	if loaded.Version != state.Version {
-		t.Errorf("Loaded Version = %q, want %q", loaded.Version, state.Version)
+		t.Errorf("Loaded Version = %d, want %d", loaded.Version, state.Version)
 	}
 	if loaded.Status != state.Status {
 		t.Errorf("Loaded Status = %q, want %q", loaded.Status, state.Status)
@@ -221,7 +213,7 @@ func TestSaveConfigState_AtomicWrite(t *testing.T) {
 		os.Remove(stateFile + ".tmp")
 	}()
 
-	state := &ConfigState{Version: "test"}
+	state := &ConfigState{Version: 1}
 	if err := SaveConfigState(state); err != nil {
 		t.Fatalf("SaveConfigState() error = %v", err)
 	}
@@ -250,8 +242,9 @@ func TestUpdateConfigState_Success(t *testing.T) {
 
 	// Update state
 	err = UpdateConfigState(func(s *ConfigState) error {
-		s.Version = "v1_client"
-		s.Status = "one_time_active"
+		s.Version = 1
+		s.Status = "managed"
+		s.SyncStatus = "active"
 		s.LastSync = time.Now().UTC()
 		return nil
 	})
@@ -264,11 +257,11 @@ func TestUpdateConfigState_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfigState() error = %v", err)
 	}
-	if state.Version != "v1_client" {
-		t.Errorf("Version = %q, want %q", state.Version, "v1_client")
+	if state.Version != 1 {
+		t.Errorf("Version = %d, want %d", state.Version, 1)
 	}
-	if state.Status != "one_time_active" {
-		t.Errorf("Status = %q, want %q", state.Status, "one_time_active")
+	if state.Status != "managed" {
+		t.Errorf("Status = %q, want %q", state.Status, "managed")
 	}
 }
 
@@ -296,8 +289,8 @@ func TestUpdateConfigState_CallbackError(t *testing.T) {
 	}
 }
 
-// TestIsConfigEnforced_EnforcedStates verifies enforced status detection
-func TestIsConfigEnforced_EnforcedStates(t *testing.T) {
+// TestIsConfigLocked_LockedStatus verifies locked status detection
+func TestIsConfigLocked_LockedStatus(t *testing.T) {
 	stateFile, err := getStateFilePath()
 	if err != nil {
 		t.Fatalf("getStateFilePath() error = %v", err)
@@ -313,10 +306,9 @@ func TestIsConfigEnforced_EnforcedStates(t *testing.T) {
 		status   string
 		expected bool
 	}{
-		{"enforced_ready", "enforced_ready", true},
-		{"enforced_active", "enforced_active", true},
-		{"one_time_active", "one_time_active", false},
-		{"one_time_ready", "one_time_ready", false},
+		{"locked status", "locked", true},
+		{"managed status", "managed", false},
+		{"unmanaged status", "unmanaged", false},
 		{"empty status", "", false},
 	}
 
@@ -327,12 +319,12 @@ func TestIsConfigEnforced_EnforcedStates(t *testing.T) {
 				t.Fatalf("SaveConfigState() error = %v", err)
 			}
 
-			enforced, err := IsConfigEnforced()
+			locked, err := IsConfigLocked()
 			if err != nil {
-				t.Fatalf("IsConfigEnforced() error = %v", err)
+				t.Fatalf("IsConfigLocked() error = %v", err)
 			}
-			if enforced != tc.expected {
-				t.Errorf("IsConfigEnforced() = %v, want %v", enforced, tc.expected)
+			if locked != tc.expected {
+				t.Errorf("IsConfigLocked() = %v, want %v", locked, tc.expected)
 			}
 		})
 	}
@@ -350,7 +342,7 @@ func TestIsConfigLocked_Alias(t *testing.T) {
 		os.Remove(stateFile + ".lock")
 	}()
 
-	state := &ConfigState{Status: "enforced_active"}
+	state := &ConfigState{Status: "locked"}
 	if err := SaveConfigState(state); err != nil {
 		t.Fatalf("SaveConfigState() error = %v", err)
 	}
@@ -360,7 +352,48 @@ func TestIsConfigLocked_Alias(t *testing.T) {
 		t.Fatalf("IsConfigLocked() error = %v", err)
 	}
 	if !locked {
-		t.Error("IsConfigLocked() = false, want true for enforced_active status")
+		t.Error("IsConfigLocked() = false, want true for locked status")
+	}
+}
+
+// TestIsConfigManaged_ManagedStatus verifies managed status detection
+func TestIsConfigManaged_ManagedStatus(t *testing.T) {
+	stateFile, err := getStateFilePath()
+	if err != nil {
+		t.Fatalf("getStateFilePath() error = %v", err)
+	}
+
+	defer func() {
+		os.Remove(stateFile)
+		os.Remove(stateFile + ".lock")
+	}()
+
+	tests := []struct {
+		name     string
+		status   string
+		expected bool
+	}{
+		{"managed status", "managed", true},
+		{"locked status", "locked", false},
+		{"unmanaged status", "unmanaged", false},
+		{"empty status", "", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			state := &ConfigState{Status: tc.status}
+			if err := SaveConfigState(state); err != nil {
+				t.Fatalf("SaveConfigState() error = %v", err)
+			}
+
+			managed, err := IsConfigManaged()
+			if err != nil {
+				t.Fatalf("IsConfigManaged() error = %v", err)
+			}
+			if managed != tc.expected {
+				t.Errorf("IsConfigManaged() = %v, want %v", managed, tc.expected)
+			}
+		})
 	}
 }
 
@@ -378,7 +411,7 @@ func TestGetLastSyncInfo(t *testing.T) {
 
 	expectedTime := time.Now().UTC().Truncate(time.Second)
 	state := &ConfigState{
-		Version:  "v3_server",
+		Version:  3,
 		LastSync: expectedTime,
 	}
 	if err := SaveConfigState(state); err != nil {
@@ -389,8 +422,8 @@ func TestGetLastSyncInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetLastSyncInfo() error = %v", err)
 	}
-	if version != "v3_server" {
-		t.Errorf("version = %q, want %q", version, "v3_server")
+	if version != 3 {
+		t.Errorf("version = %d, want %d", version, 3)
 	}
 	if !syncTime.Equal(expectedTime) {
 		t.Errorf("syncTime = %v, want %v", syncTime, expectedTime)
@@ -420,8 +453,8 @@ func TestShouldSync_NeverSynced(t *testing.T) {
 	}
 }
 
-// TestShouldSync_EnforcedRateLimiting verifies rate limiting for enforced configs
-func TestShouldSync_EnforcedRateLimiting(t *testing.T) {
+// TestShouldSync_LockedRateLimiting verifies rate limiting for locked configs
+func TestShouldSync_LockedRateLimiting(t *testing.T) {
 	stateFile, err := getStateFilePath()
 	if err != nil {
 		t.Fatalf("getStateFilePath() error = %v", err)
@@ -455,8 +488,8 @@ func TestShouldSync_EnforcedRateLimiting(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			state := &ConfigState{
-				Version:  "v1_server",
-				Status:   "enforced_active",
+				Version:  1,
+				Status:   "locked",
 				LastSync: tc.lastSync,
 			}
 			if err := SaveConfigState(state); err != nil {
@@ -474,8 +507,8 @@ func TestShouldSync_EnforcedRateLimiting(t *testing.T) {
 	}
 }
 
-// TestShouldSync_OneTimeReady verifies faster sync for pending configs
-func TestShouldSync_OneTimeReady(t *testing.T) {
+// TestShouldSync_PendingFasterSync verifies faster sync for pending configs
+func TestShouldSync_PendingFasterSync(t *testing.T) {
 	stateFile, err := getStateFilePath()
 	if err != nil {
 		t.Fatalf("getStateFilePath() error = %v", err)
@@ -498,9 +531,10 @@ func TestShouldSync_OneTimeReady(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			state := &ConfigState{
-				Version:  "v1_client",
-				Status:   "one_time_ready",
-				LastSync: tc.lastSync,
+				Version:    1,
+				Status:     "managed",
+				SyncStatus: "pending",
+				LastSync:   tc.lastSync,
 			}
 			if err := SaveConfigState(state); err != nil {
 				t.Fatalf("SaveConfigState() error = %v", err)
@@ -544,9 +578,10 @@ func TestShouldSync_IntervalBased(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			state := &ConfigState{
-				Version:  "v1_client",
-				Status:   "one_time_active",
-				LastSync: tc.lastSync,
+				Version:    1,
+				Status:     "managed",
+				SyncStatus: "active",
+				LastSync:   tc.lastSync,
 			}
 			if err := SaveConfigState(state); err != nil {
 				t.Fatalf("SaveConfigState() error = %v", err)
@@ -579,7 +614,7 @@ func TestCleanupOldStateFiles(t *testing.T) {
 	}
 
 	for _, f := range legacyFiles {
-		if err := os.WriteFile(f, []byte(`{"version":"v1"}`), 0600); err != nil {
+		if err := os.WriteFile(f, []byte(`{"version":1}`), 0600); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", f, err)
 		}
 	}
@@ -612,7 +647,7 @@ func TestCleanupOldStateFiles_PreservesMainStateFile(t *testing.T) {
 	}
 
 	// Create main state file
-	if err := os.WriteFile(stateFile, []byte(`{"version":"v1"}`), 0600); err != nil {
+	if err := os.WriteFile(stateFile, []byte(`{"version":1}`), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -643,7 +678,7 @@ func TestCleanupOldStateFiles_Idempotent(t *testing.T) {
 
 	// Create a legacy state file
 	legacyFile := filepath.Join(dir, ".config_state_TEST-IDEMPOTENT.json")
-	if err := os.WriteFile(legacyFile, []byte(`{"version":"v1"}`), 0600); err != nil {
+	if err := os.WriteFile(legacyFile, []byte(`{"version":1}`), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	defer os.Remove(legacyFile)
@@ -673,14 +708,11 @@ func TestCleanupOldStateFiles_Idempotent(t *testing.T) {
 // TestConfigState_JSONRoundTrip verifies JSON serialization/deserialization
 func TestConfigState_JSONRoundTrip(t *testing.T) {
 	original := ConfigState{
-		Version:          "v5_server",
-		Status:           "enforced_active",
-		ActiveTrack:      "server",
-		ClientVersion:    3,
-		ServerVersion:    5,
+		Version:          5,
+		Status:           "locked",
+		SyncStatus:       "active",
 		ServerConfigHash: "sha256hash123",
 		LastSync:         time.Now().UTC().Truncate(time.Second),
-		Mode:             "locked", // legacy field
 	}
 
 	data, err := json.Marshal(original)
@@ -694,27 +726,18 @@ func TestConfigState_JSONRoundTrip(t *testing.T) {
 	}
 
 	if loaded.Version != original.Version {
-		t.Errorf("Version = %q, want %q", loaded.Version, original.Version)
+		t.Errorf("Version = %d, want %d", loaded.Version, original.Version)
 	}
 	if loaded.Status != original.Status {
 		t.Errorf("Status = %q, want %q", loaded.Status, original.Status)
 	}
-	if loaded.ActiveTrack != original.ActiveTrack {
-		t.Errorf("ActiveTrack = %q, want %q", loaded.ActiveTrack, original.ActiveTrack)
-	}
-	if loaded.ClientVersion != original.ClientVersion {
-		t.Errorf("ClientVersion = %d, want %d", loaded.ClientVersion, original.ClientVersion)
-	}
-	if loaded.ServerVersion != original.ServerVersion {
-		t.Errorf("ServerVersion = %d, want %d", loaded.ServerVersion, original.ServerVersion)
+	if loaded.SyncStatus != original.SyncStatus {
+		t.Errorf("SyncStatus = %q, want %q", loaded.SyncStatus, original.SyncStatus)
 	}
 	if loaded.ServerConfigHash != original.ServerConfigHash {
 		t.Errorf("ServerConfigHash = %q, want %q", loaded.ServerConfigHash, original.ServerConfigHash)
 	}
 	if !loaded.LastSync.Equal(original.LastSync) {
 		t.Errorf("LastSync = %v, want %v", loaded.LastSync, original.LastSync)
-	}
-	if loaded.Mode != original.Mode {
-		t.Errorf("Mode = %q, want %q", loaded.Mode, original.Mode)
 	}
 }

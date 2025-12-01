@@ -2,12 +2,15 @@
 Data management router for bulk operations and deletions.
 """
 import json
+import logging
 import re
 import tempfile
 import zipfile
 from io import BytesIO
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -228,12 +231,13 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             try:
                 if isinstance(check_time_raw, int):
                     if check_time_raw > 0:
-                        check_time = datetime.utcfromtimestamp(check_time_raw)
+                        check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc)
                 else:
                     check_time_str = str(check_time_raw).replace('Z', '+00:00')
                     check_time = datetime.fromisoformat(check_time_str)
-            except Exception:
-                pass
+            except (ValueError, TypeError, OSError) as e:
+                # Log but continue with default timestamp
+                logger.debug(f"Failed to parse check_time '{check_time_raw}' in {filename}: {e}")
 
         # Insert into database - let database constraint handle duplicates
         db_filename = f"{modem_id}/{filename}"
@@ -241,9 +245,9 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             modem_id=modem_id,
             modem_type=modem_type,
             filename=db_filename,
-            check_time=check_time or datetime.utcnow(),
+            check_time=check_time or datetime.now(timezone.utc),
             full_data=data,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(new_check)
 
@@ -431,15 +435,15 @@ async def bulk_download_checks(
         try:
             start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
             conditions.append(ModemCheck.check_time >= start_dt)
-        except Exception:
-            pass
+        except ValueError as e:
+            logger.debug(f"Invalid start_date format '{start_date}', ignoring filter: {e}")
 
     if end_date:
         try:
             end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
             conditions.append(ModemCheck.check_time <= end_dt)
-        except Exception:
-            pass
+        except ValueError as e:
+            logger.debug(f"Invalid end_date format '{end_date}', ignoring filter: {e}")
 
     if conditions:
         query = query.where(and_(*conditions))

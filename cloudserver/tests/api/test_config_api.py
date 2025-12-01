@@ -16,7 +16,7 @@ Updated for dual-track versioning (v#_client / v#_server format).
 import pytest
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from httpx import AsyncClient
 from sqlalchemy import select
 
@@ -55,7 +55,7 @@ class TestConfigSync:
             "CloudAPIKey": api_key_value
         }
 
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         modem_id = "ARRIS-TEST001"  # Optional - for tracking only
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -106,7 +106,7 @@ class TestConfigSync:
     async def test_sync_with_invalid_signature_fails(self, http_client: AsyncClient, active_api_key):
         """Sync with invalid HMAC signature fails."""
         config = {"PingCount": 25}
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         modem_id = "ARRIS-TEST001"
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -133,7 +133,7 @@ class TestConfigSync:
     async def test_sync_with_replay_nonce_fails(self, http_client: AsyncClient, db_session, active_api_key):
         """Sync with reused nonce fails (replay attack)."""
         config = {"PingCount": 25}
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         modem_id = "ARRIS-TEST002"  # Optional - for tracking
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -170,7 +170,7 @@ class TestConfigSync:
         """Sync with timestamp too far in past/future fails."""
         config = {"PingCount": 25}
         # Timestamp 10 minutes in past
-        timestamp = (datetime.utcnow() - timedelta(minutes=10)).isoformat() + "Z"
+        timestamp = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat() + "Z"
         modem_id = "ARRIS-TEST003"  # Optional
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -205,7 +205,7 @@ class TestConfigSync:
         """Sync with invalid configuration fails validation."""
         # Invalid config (PingCount too high)
         config = {"PingCount": 150}  # Above maximum of 100
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         modem_id = "ARRIS-TEST004"  # Optional
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -293,9 +293,9 @@ class TestAdminListConfigs:
             server_version=0,
             active_track="client",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -333,9 +333,9 @@ class TestAdminListConfigs:
             server_version=1,
             active_track="server",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(enforced_config)
@@ -396,9 +396,9 @@ class TestAdminGetConfig:
             server_version=0,
             active_track="client",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -469,9 +469,9 @@ class TestAdminUpdateConfig:
             server_version=0,
             active_track="client",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -531,9 +531,9 @@ class TestAdminUpdateConfig:
             server_version=0,
             active_track="client",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -595,9 +595,9 @@ class TestAdminRollbackConfig:
             server_version=0,
             active_track="client",
             encryption_salt=salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -617,7 +617,7 @@ class TestAdminRollbackConfig:
             config_hash=old_hash,
             status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
             encryption_salt=old_salt,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             created_by="system",
             creation_reason="initial_sync"
         )
@@ -688,7 +688,7 @@ class TestAdminConfigHistory:
                 config_hash=config_hash,
                 status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
                 encryption_salt=salt,
-                created_at=datetime.utcnow() - timedelta(days=version_num),
+                created_at=datetime.now(timezone.utc) - timedelta(days=version_num),
                 created_by="system",
                 creation_reason="client_sync"
             )
@@ -733,7 +733,7 @@ class TestAdminConfigHistory:
                 config_hash=config_hash,
                 status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
                 encryption_salt=salt,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
                 created_by="system",
                 creation_reason="client_sync" if track == "client" else "admin_update"
             )
@@ -768,7 +768,7 @@ class TestAdminConfigHistory:
 
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             username=None,
             ip_address="192.168.1.100",
             api_key=active_api_key.api_key,
@@ -802,7 +802,7 @@ class TestAdminConfigHistory:
 
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             username=None,
             ip_address="192.168.1.100",
             api_key=active_api_key.api_key,

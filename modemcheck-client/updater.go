@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/jedisct1/go-minisign"
 )
 
@@ -165,6 +166,7 @@ func extractPrereleaseNumber(prerelease string) int {
 
 // checkUpdateLock checks if an update was recently attempted and failed.
 // Returns true if the update should be blocked (cooldown period not expired).
+// Uses flock to prevent race conditions with concurrent update checks.
 func checkUpdateLock(targetVersion string) bool {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -172,6 +174,16 @@ func checkUpdateLock(targetVersion string) bool {
 	}
 	exeDir := filepath.Dir(exePath)
 	lockPath := filepath.Join(exeDir, UpdateLockFile)
+	flockPath := lockPath + ".flock"
+
+	// Acquire file lock to prevent race conditions
+	fileLock := flock.New(flockPath)
+	locked, err := fileLock.TryRLock()
+	if err != nil || !locked {
+		// Can't acquire lock, be conservative and block update
+		return true
+	}
+	defer fileLock.Unlock()
 
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
@@ -202,6 +214,7 @@ func checkUpdateLock(targetVersion string) bool {
 }
 
 // createUpdateLock creates a lock file to prevent repeated update attempts.
+// Uses flock to prevent race conditions with concurrent writes.
 func createUpdateLock(version string) {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -209,6 +222,16 @@ func createUpdateLock(version string) {
 	}
 	exeDir := filepath.Dir(exePath)
 	lockPath := filepath.Join(exeDir, UpdateLockFile)
+	flockPath := lockPath + ".flock"
+
+	// Acquire exclusive file lock
+	fileLock := flock.New(flockPath)
+	locked, err := fileLock.TryLock()
+	if err != nil || !locked {
+		// Can't acquire lock, skip creating update lock
+		return
+	}
+	defer fileLock.Unlock()
 
 	lock := UpdateLock{
 		Version:   version,
@@ -224,6 +247,7 @@ func createUpdateLock(version string) {
 }
 
 // clearUpdateLock removes the update lock file.
+// Uses flock to prevent race conditions.
 func clearUpdateLock() {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -231,6 +255,16 @@ func clearUpdateLock() {
 	}
 	exeDir := filepath.Dir(exePath)
 	lockPath := filepath.Join(exeDir, UpdateLockFile)
+	flockPath := lockPath + ".flock"
+
+	// Acquire exclusive file lock
+	fileLock := flock.New(flockPath)
+	locked, err := fileLock.TryLock()
+	if err != nil || !locked {
+		return
+	}
+	defer fileLock.Unlock()
+
 	os.Remove(lockPath)
 }
 

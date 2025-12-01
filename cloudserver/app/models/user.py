@@ -1,7 +1,7 @@
 """
 User model for authentication and authorization.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, Enum
 from sqlalchemy.orm import relationship
 import enum
@@ -35,7 +35,7 @@ class User(Base):
         default=UserRole.BASIC,
         index=True
     )
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     last_login = Column(DateTime, nullable=True)
     last_login_ip = Column(String(45), nullable=True)  # IPv6 compatible
     must_change_password = Column(Boolean, nullable=False, default=False)

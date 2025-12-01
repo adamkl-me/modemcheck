@@ -8,7 +8,7 @@ import re
 import json
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -170,8 +170,8 @@ class FileProcessor:
             try:
                 # If it's a Unix timestamp (integer), convert to datetime and ISO string
                 if isinstance(check_time_raw, int):
-                    check_time = datetime.utcfromtimestamp(check_time_raw)
-                    check_time_str = check_time.isoformat() + 'Z'
+                    check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc)
+                    check_time_str = check_time.isoformat().replace('+00:00', 'Z')
                 else:
                     # If it's already an ISO string
                     check_time_str = str(check_time_raw)
@@ -221,10 +221,10 @@ class UploadPersistenceService:
         new_check = ModemCheck(
             modem_id=modem_id,
             modem_type=modem_type,
-            check_time=check_time or datetime.utcnow(),
+            check_time=check_time or datetime.now(timezone.utc),
             filename=db_filename,
             full_data=json_data,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             # Extracted metrics for efficient querying
             **extracted_metrics
         )

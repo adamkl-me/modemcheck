@@ -655,6 +655,78 @@ async def clear_failed_api_keys(ip_address: str):
 
 
 # ============================================================================
+# TIMESTAMP VALIDATION (shared across modules)
+# ============================================================================
+
+# Consistent timestamp window for all replay attack prevention
+TIMESTAMP_WINDOW_SECONDS = 300  # 5 minutes
+
+
+def validate_request_timestamp(
+    timestamp: int | str,
+    window_seconds: int = TIMESTAMP_WINDOW_SECONDS
+) -> tuple[bool, str]:
+    """
+    Validate that a request timestamp is within the allowed window.
+
+    This is a shared function used by:
+    - Upload endpoint (HMAC signature validation)
+    - Config sync endpoint (nonce + timestamp validation)
+
+    Args:
+        timestamp: Unix epoch timestamp (int or string)
+        window_seconds: Maximum allowed time difference (default: 300s)
+
+    Returns:
+        (is_valid, error_message): Tuple where error_message is empty if valid
+    """
+    import time
+
+    # Parse timestamp to int if string
+    if isinstance(timestamp, str):
+        try:
+            timestamp = int(timestamp)
+        except (ValueError, TypeError):
+            return False, "Invalid timestamp format"
+
+    # Validate timestamp is within window
+    current_time = int(time.time())
+    time_diff = abs(current_time - timestamp)
+
+    if time_diff > window_seconds:
+        return False, f"Request timestamp expired (diff={time_diff}s, max={window_seconds}s)"
+
+    return True, ""
+
+
+def validate_request_timestamp_datetime(
+    request_time: datetime,
+    window_seconds: int = TIMESTAMP_WINDOW_SECONDS
+) -> tuple[bool, str, datetime]:
+    """
+    Validate that a request datetime is within the allowed window.
+
+    Variant that works with datetime objects for config sync.
+
+    Args:
+        request_time: Request timestamp as datetime (should be UTC)
+        window_seconds: Maximum allowed time difference (default: 300s)
+
+    Returns:
+        (is_valid, error_message, server_time): Tuple with server time for error reporting
+    """
+    from datetime import timezone
+
+    server_time = datetime.now(timezone.utc)
+    time_diff = abs((server_time - request_time).total_seconds())
+
+    if time_diff > window_seconds:
+        return False, f"Clock skew too large (diff={time_diff:.1f}s, max={window_seconds}s)", server_time
+
+    return True, "", server_time
+
+
+# ============================================================================
 # HMAC SIGNATURE VALIDATION (for client uploads)
 # ============================================================================
 
@@ -663,7 +735,7 @@ def verify_hmac_signature(
     timestamp: str,
     request_body: bytes,
     signature: str,
-    max_age_seconds: int = 300
+    max_age_seconds: int = TIMESTAMP_WINDOW_SECONDS
 ) -> bool:
     """
     Verify HMAC-SHA256 signature for client uploads.
@@ -673,18 +745,14 @@ def verify_hmac_signature(
         timestamp: Request timestamp
         request_body: Raw request body bytes
         signature: HMAC signature from request
-        max_age_seconds: Maximum age of request (replay prevention)
+        max_age_seconds: Maximum age of request (default: TIMESTAMP_WINDOW_SECONDS)
 
     Returns:
         True if valid, False otherwise
     """
-    # Check timestamp age (replay prevention)
-    try:
-        request_time = int(timestamp)
-        current_time = int(datetime.now().timestamp())
-        if abs(current_time - request_time) > max_age_seconds:
-            return False
-    except (ValueError, TypeError):
+    # Use shared timestamp validation
+    is_valid, _ = validate_request_timestamp(timestamp, max_age_seconds)
+    if not is_valid:
         return False
 
     # Compute expected signature

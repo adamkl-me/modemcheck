@@ -20,7 +20,7 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Set
 from collections import OrderedDict
 
@@ -513,7 +513,7 @@ class FallbackCache(ICacheProvider):
                 "Data will NOT be shared across workers."
             )
             self.using_fallback = True
-            self._failover_time = datetime.utcnow()
+            self._failover_time = datetime.now(timezone.utc)
             self._failure_count = 0
 
     async def _activate_fallback(self) -> None:
@@ -651,7 +651,7 @@ class FallbackCache(ICacheProvider):
         if self._failover_time:
             stats["failover_time"] = self._failover_time.isoformat()
             stats["failover_duration_seconds"] = (
-                datetime.utcnow() - self._failover_time
+                datetime.now(timezone.utc) - self._failover_time
             ).total_seconds()
 
         if self.using_fallback:

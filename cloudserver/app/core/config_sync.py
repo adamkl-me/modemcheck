@@ -69,7 +69,7 @@ class SyncResult:
 logger = logging.getLogger(__name__)
 
 # Sync configuration
-MAX_CLOCK_SKEW_SECONDS = 300  # 5 minutes
+# Note: Uses TIMESTAMP_WINDOW_SECONDS from app.core.security for consistency
 MAX_VERSION = 2_000_000_000  # PostgreSQL INTEGER max is 2,147,483,647, leaving headroom
 DEADLOCK_RETRY_ATTEMPTS = 5
 DEADLOCK_RETRY_BASE_DELAY = 0.1  # 100ms base delay
@@ -113,21 +113,21 @@ async def verify_nonce(
         ConfigClockSkewError: If timestamp too far from server time
     """
     from app.core.cache import get_cache
+    from app.core.security import validate_request_timestamp_datetime, TIMESTAMP_WINDOW_SECONDS
 
-    # Check clock skew first (fast, no I/O)
-    server_time = datetime.utcnow()
-    time_diff = abs((server_time - request_timestamp).total_seconds())
+    # Check clock skew first using shared validation (fast, no I/O)
+    is_valid, error_msg, server_time = validate_request_timestamp_datetime(request_timestamp)
 
-    if time_diff > MAX_CLOCK_SKEW_SECONDS:
+    if not is_valid:
         raise ConfigClockSkewError(
             client_time=request_timestamp.isoformat(),
             server_time=server_time.isoformat(),
-            max_skew_seconds=MAX_CLOCK_SKEW_SECONDS
+            max_skew_seconds=TIMESTAMP_WINDOW_SECONDS
         )
 
     # Try Redis first (fast path)
     redis_key = f"nonce:{nonce}"
-    nonce_ttl = MAX_CLOCK_SKEW_SECONDS * 2  # 10 minutes
+    nonce_ttl = TIMESTAMP_WINDOW_SECONDS * 2  # 10 minutes
 
     try:
         cache = await get_cache()
@@ -206,7 +206,7 @@ async def create_config_version(
         encryption_salt=encryption_salt,
         status_at_creation=status,
         sync_status_at_creation=sync_status,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         created_by=created_by,
         creation_reason=reason,
         ip_address=ip_address
@@ -377,7 +377,7 @@ async def _log_modem_change(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         username=None,  # Client-initiated
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -428,10 +428,10 @@ async def _handle_first_sync(
         sync_status=SyncStatus.NA,
         version=1,
         encryption_salt=salt,
-        last_sync=datetime.utcnow(),
-        created_at=datetime.utcnow(),
+        last_sync=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
         created_by="client",
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.now(timezone.utc),
         updated_by="client"
     )
 
@@ -487,7 +487,7 @@ async def _handle_unmanaged_sync(
     - Same config: No version change
     - Different config: Create new version
     """
-    existing_config.last_sync = datetime.utcnow()
+    existing_config.last_sync = datetime.now(timezone.utc)
 
     # Check if config actually changed
     stored_hash = calculate_config_hash(existing_config.config_plaintext)
@@ -520,7 +520,7 @@ async def _handle_unmanaged_sync(
     existing_config.config_hash = config_hash
     existing_config.encryption_salt = salt
     existing_config.version = new_version
-    existing_config.updated_at = datetime.utcnow()
+    existing_config.updated_at = datetime.now(timezone.utc)
     existing_config.updated_by = "client"
 
     # Create version history
@@ -573,7 +573,7 @@ async def _handle_managed_sync(
     - ACTIVE + same config: Stay MANAGED/ACTIVE
     - ACTIVE + different config: Client modified, transition to UNMANAGED
     """
-    existing_config.last_sync = datetime.utcnow()
+    existing_config.last_sync = datetime.now(timezone.utc)
 
     if existing_config.sync_status == SyncStatus.PENDING:
         # Push server config to client, transition to ACTIVE
@@ -638,7 +638,7 @@ async def _handle_managed_sync(
     existing_config.version = new_version
     existing_config.status = ConfigStatus.UNMANAGED
     existing_config.sync_status = SyncStatus.NA
-    existing_config.updated_at = datetime.utcnow()
+    existing_config.updated_at = datetime.now(timezone.utc)
     existing_config.updated_by = "client"
 
     await create_config_version(
@@ -705,7 +705,7 @@ async def _handle_locked_sync(
 
     Client config changes are NOT recorded as new versions (per requirements).
     """
-    existing_config.last_sync = datetime.utcnow()
+    existing_config.last_sync = datetime.now(timezone.utc)
 
     if existing_config.sync_status == SyncStatus.PENDING:
         # Push server config to client, transition to ACTIVE

@@ -28,9 +28,9 @@ from app.core.config_sync import (
     _handle_unmanaged_sync,
     _handle_managed_sync,
     _handle_locked_sync,
-    MAX_CLOCK_SKEW_SECONDS,
     SyncResult
 )
+from app.core.security import TIMESTAMP_WINDOW_SECONDS as MAX_CLOCK_SKEW_SECONDS
 from app.models.client_config import ClientConfig, ConfigStatus, SyncStatus, ConfigVersion, ConfigNonce
 from app.core.errors import (
     ConfigClockSkewError,

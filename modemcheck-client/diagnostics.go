@@ -458,7 +458,8 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	}
 
 	// If we have cached info and the IP hasn't changed, use the cache
-	if cache != nil && cache.PublicIP == currentIP && cache.ASN != "" {
+	// Validate that cache has all required fields (ASN and ISPName are mandatory)
+	if cache != nil && cache.PublicIP == currentIP && cache.ASN != "" && cache.ISPName != "" {
 		m.Log(fmt.Sprintf("Using cached ASN info for IP: %s", currentIP))
 		data.PublicIP = cache.PublicIP
 		data.ASN = cache.ASN
