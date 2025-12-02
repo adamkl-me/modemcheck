@@ -97,4 +97,4 @@ API: `GET/PUT /api/admin/configs/{api_key}/{modem_id}`, `/rollback/{version}`, `
 
 ## Docker Resources
 
-API: 2 CPU/4GB | Postgres: 2 CPU/2GB | Redis: 0.5 CPU/512MB | nginx: 0.5 CPU/512MB
+API: 2 CPU/2GB | Postgres: 2 CPU/2GB | Redis: 0.5 CPU/512MB

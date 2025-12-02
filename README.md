@@ -141,7 +141,7 @@ Then run: `./modem-check -c config.json`
 | **Testing** |||||
 | `SpeedTestEnabled` | bool | true | true/false | Enable Ookla speed tests |
 | `SpeedTestInterval` | int | 1 | 1-∞ | Run speed test every N checks |
-| `PingCount` | int | 25 | 1-100 | Number of pings per target |
+| `PingCount` | int | 100 | 1-100 | Number of pings per target |
 | **Updates** |||||
 | `AutoUpdateEnabled` | bool | true | true/false | Enable automatic updates |
 | `UpdateChannel` | string | "stable" | "stable", "beta", "test" | Update channel selection |
@@ -168,7 +168,7 @@ See "Cloud Mode" section below for API key generation.
 |-------|------|---------|-------------|
 | `-a` | `--address` | autodetect | Modem IP address or hostname (or "autodetect") |
 | `-c` | `--config` | | Path to JSON configuration file |
-| `-s` | `--silent` | false | Suppress terminal output |
+| `-q` | `--quiet` | false | Suppress terminal output |
 | `-l` | `--nologs` | false | Disable log file creation |
 | `-x` | `--xfinitypassword` | | Password for Xfinity modems |
 | `-n` | `--nospeedtest` | false | Disable speed tests |
@@ -236,12 +236,11 @@ docker compose up -d
 ```
 
 **Access Points:**
-- Web Viewer: `http://localhost:23890`
-- Admin Dashboard: `http://localhost:23891`
+- Web UI (Viewer + Admin): `http://localhost:23890`
 - Upload API: Port 22557 (HTTPS)
 
 **Create API Key:**
-1. Open admin dashboard: `http://localhost:23891`
+1. Open admin dashboard: `http://localhost:23890`
 2. Login with: `admin` / `changeme` (change on first login)
 3. Navigate to "API Keys" tab → Create new key
 4. Or use "Config Generator" tab for complete config.json generation
@@ -289,7 +288,7 @@ Add to your `config.json`:
 
 **Speed Tests**
 - Issue: Speed tests are slow or fail
-- Solution: Use `-speedtest=false` to disable, or check firewall/internet connection
+- Solution: Use `-n` or `--nospeedtest` to disable, or check firewall/internet connection
 
 **Platform-Specific**
 - Windows: Run `.\modem-check.exe` from PowerShell/Command Prompt

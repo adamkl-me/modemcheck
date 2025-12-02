@@ -54,7 +54,7 @@ This is the main application source code for modem-check, organized into a clean
   - ASN (Autonomous System Number) identification
   - ISP/provider name
   - Geolocation (city, country)
-  - Uses ipapi.co free API (no authentication required)
+  - 3-tier fallback: ip-api.com → ipapi.co → ipify.org (no authentication required)
 
 ## Building
 
@@ -70,7 +70,7 @@ cd modemcheck-client
 go build -o ../modem-check .
 
 # Build with version info
-go build -ldflags="-s -w -X main.Version=5.4.0" -o ../modem-check .
+go build -ldflags="-s -w -X main.Version=9.1.0" -o ../modem-check .
 ```
 
 The resulting binary will be placed in the parent directory as `modem-check` (or `modem-check.exe` on Windows).
@@ -190,7 +190,7 @@ Create a `config.json` file in the same directory as the binary:
 | `SpeedTestConnections` | int | Parallel connections (1-16) | `4` |
 | `PingCount` | int | Number of pings (1-100) | `100` |
 | `AutoUpdateEnabled` | bool | Enable automatic updates | `true` |
-| `UpdateChannel` | string | `"stable"` or `"beta"` | `"stable"` |
+| `UpdateChannel` | string | `"stable"`, `"beta"`, or `"test"` | `"stable"` |
 | `Silent` | bool | Suppress console output | `false` |
 | `NoLogs` | bool | Disable log file | `false` |
 | `LocalCleanupEnabled` | bool | Auto-cleanup old files | `true` |

@@ -567,4 +567,4 @@ See main project CLAUDE.md for detailed implementation notes.
 
 **Additional documentation:**
 - [OPERATIONS.md](OPERATIONS.md) - Complete operations guide for backups, monitoring, and maintenance
-- [../TESTING.md](../TESTING.md) - Comprehensive test suite documentation
+- [TESTING.md](TESTING.md) - Comprehensive test suite documentation
