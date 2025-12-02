@@ -205,8 +205,8 @@ class TestUpload:
         
         assert response.status_code == 401
         result = response.json()
-        # Error message is intentionally generic to prevent information leakage
-        assert "invalid request signature" in result["detail"].lower()
+        # Error message includes specific failure reason for debugging
+        assert "signature validation failed" in result["detail"].lower() or "expired" in result["detail"].lower()
     
     @pytest.mark.asyncio
     async def test_upload_invalid_checksum(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):

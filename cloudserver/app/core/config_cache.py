@@ -19,9 +19,9 @@ import random
 import json
 import hashlib
 from typing import Optional, Dict, Any, Tuple
-from datetime import datetime, timezone
 
 from app.core.cache import get_cache
+from app.core.utils import utc_now
 
 logger = logging.getLogger(__name__)
 from app.core.errors import ConfigCacheError
@@ -191,7 +191,7 @@ async def set_cached_config(
         "hash": config_hash,
         "mode": mode,
         "version": version,
-        "cached_at": datetime.now(timezone.utc).isoformat()
+        "cached_at": utc_now().isoformat()
     }
 
     try:

@@ -214,34 +214,31 @@ class TestViewerUI:
         await expect(load_btn).to_have_text("Load Data")
 
     @pytest.mark.asyncio
-    async def test_viewer_modem_dropdown_opens_on_click(self, browser_page: Page):
-        """Test clicking modem search input opens the dropdown."""
-        await login_as_admin(browser_page)
+    async def test_viewer_modem_dropdown_opens_on_click(self, browser_with_real_data):
+        """Test clicking modem search input opens the dropdown with modem options."""
+        page, modem_ids = browser_with_real_data
 
         # Wait for page JavaScript to fully initialize
-        await browser_page.wait_for_timeout(2000)
+        await page.wait_for_timeout(2000)
 
         # Click on modem search input
-        search_input = browser_page.locator('#modemSearchInput')
+        search_input = page.locator('#modemSearchInput')
         await search_input.click()
 
         # Wait for the click handler to execute
-        await browser_page.wait_for_timeout(1000)
+        await page.wait_for_timeout(1000)
 
         # Dropdown should become visible (has 'show' class)
-        # Note: The dropdown may not show if no modems are loaded in test data
-        dropdown = browser_page.locator('#modemDropdown')
+        dropdown = page.locator('#modemDropdown')
         dropdown_class = await dropdown.get_attribute('class') or ""
 
-        # Verify the dropdown element exists and we interacted with it
-        # The 'show' class is added by JavaScript when clicking the input
-        is_visible = 'show' in dropdown_class
-        if not is_visible:
-            # Check if the dropdown element at least exists
-            await expect(dropdown).to_be_attached()
-            # The dropdown didn't open, but the element exists - this may be due to
-            # the test environment not having modem data loaded
-            pytest.skip("Dropdown didn't open - may need modem data in test fixtures")
+        # Verify the dropdown opened and has the 'show' class
+        assert 'show' in dropdown_class, "Dropdown should open when clicking search input"
+
+        # Verify dropdown contains modem options
+        modem_options = dropdown.locator('.searchable-option')
+        option_count = await modem_options.count()
+        assert option_count >= 3, f"Expected at least 3 modem options, got {option_count}"
 
     @pytest.mark.asyncio
     async def test_viewer_view_toggle_buttons_work(self, browser_page: Page):
@@ -592,16 +589,27 @@ class TestPasswordChangeDialog:
 
     @pytest.mark.asyncio
     async def test_password_change_dialog_accessible(self, browser_page: Page):
-        """Test password change dialog can be opened from admin."""
+        """Test password change functionality is available in User Management."""
         await login_as_admin(browser_page)
         await browser_page.goto(f"{BASE_URL}/admin")
         await browser_page.wait_for_timeout(1000)
 
-        # Look for change password option - may be in user dropdown or header
-        # This test verifies the dialog exists somewhere accessible
-        page_content = await browser_page.content()
-        assert "password" in page_content.lower(), \
-            "Admin page should have password-related functionality"
+        # Navigate to Users tab where password functionality exists
+        await browser_page.click('#usersTab')
+        await browser_page.wait_for_timeout(500)
+
+        # Verify password input field exists for creating users
+        password_input = browser_page.locator('#newPassword')
+        await expect(password_input).to_be_visible()
+
+        # Verify password strength container is present
+        strength_container = browser_page.locator('#newPassword-strength-container, .password-strength')
+        # Strength shows when typing, so just verify the input accepts text
+        await password_input.fill('TestPassword123!')
+        await browser_page.wait_for_timeout(300)
+
+        # Password strength meter should appear
+        await expect(browser_page.locator('#newPassword-strength-container')).to_be_visible()
 
 
 class TestSessionPersistence:
@@ -695,6 +703,7 @@ def _populate_real_modem_data():
     import os
 
     from app.models import ModemCheck
+    from app.core.utils import utc_now
     from tests.fixtures.modem_data.loader import load_all_fixture_data, get_modem_ids
     import time
     from datetime import timezone
@@ -742,7 +751,7 @@ def _populate_real_modem_data():
                         check_time=dt,
                         filename=filename,
                         full_data=check_data,
-                        created_at=datetime.now(timezone.utc)
+                        created_at=utc_now()
                     )
                     session.add(check)
 
@@ -884,16 +893,22 @@ class TestViewerWithRealData:
         await page.click('#loadBtn')
         await page.wait_for_timeout(3000)
 
-        # Look for downstream table
+        # Look for downstream table - real modem data has 32 channels
         downstream_table = page.locator('#downstreamTable tbody')
         downstream_rows = await downstream_table.locator('tr').count()
 
-        # Should have channel data (real modem data has multiple channels)
-        if downstream_rows > 0:
-            # Verify data is populated (not just empty rows)
-            first_row = downstream_table.locator('tr').first
-            row_text = await first_row.text_content()
-            assert len(row_text) > 5, "Table rows should have actual data"
+        # Should have channel data (real modem data has 32 channels)
+        assert downstream_rows >= 20, f"Expected at least 20 downstream channels, got {downstream_rows}"
+
+        # Verify data is populated (not just empty rows)
+        first_row = downstream_table.locator('tr').first
+        row_text = await first_row.text_content()
+        assert len(row_text) > 5, "Table rows should have actual data"
+
+        # Verify specific data values are present (SNR, power, frequency)
+        cells = first_row.locator('td')
+        cell_count = await cells.count()
+        assert cell_count >= 6, f"Expected at least 6 columns per row, got {cell_count}"
 
     @pytest.mark.asyncio
     async def test_viewer_trend_view_renders_charts(self, browser_with_real_data):
@@ -922,12 +937,24 @@ class TestViewerWithRealData:
         # Verify trend view is active
         await expect(trend_btn).to_have_class(re.compile(r"active"))
 
-        # Check for chart containers
+        # Verify trend view section is visible
+        trend_section = page.locator('#trendViewSection, .trend-view-content')
+        await expect(trend_section.first).to_be_visible()
+
+        # Check for chart headings (Speed, Ping, Uptime, Power, SNR, Error Rates, Upstream)
+        speed_heading = page.locator('h2:has-text("Speed Trends")')
+        await expect(speed_heading).to_be_visible()
+
+        ping_heading = page.locator('h2:has-text("Ping Latency")')
+        await expect(ping_heading).to_be_visible()
+
+        power_heading = page.locator('h2:has-text("Downstream Power")')
+        await expect(power_heading).to_be_visible()
+
+        # Check for chart containers/canvas elements
         chart_containers = page.locator('.chart-container, canvas')
         container_count = await chart_containers.count()
-
-        # Should have at least some chart elements if data was loaded
-        assert container_count >= 0, "Chart containers should be present in trend view"
+        assert container_count >= 4, f"Expected at least 4 chart containers, got {container_count}"
 
     @pytest.mark.asyncio
     async def test_viewer_date_filter_limits_results(self, browser_with_real_data):
@@ -1036,10 +1063,19 @@ class TestAdminWithRealData:
         await page.click('button:has-text("Load Checks")')
         await page.wait_for_timeout(2000)
 
-        # Check for loaded checks in the table
-        checks_table = page.locator('#deleteChecksTable tbody')
-        rows = await checks_table.locator('tr').count()
+        # Check for loaded checks - the container should show check items
+        checks_container = page.locator('#checksListContainer')
+        await expect(checks_container).to_be_visible()
 
-        # Should have loaded some checks (we have 75 in the database)
-        # UI may paginate, so check for at least some rows
-        assert rows >= 0, "Delete checks table should be present"
+        # Look for check items in the list (could be cards or table rows)
+        check_items = page.locator('#checksListContainer .check-item, #deleteChecksTable tbody tr')
+        item_count = await check_items.count()
+
+        # Should have loaded checks from the fixture data (75 checks across 3 modems)
+        assert item_count > 0, f"Expected to load some checks, but got {item_count}"
+
+        # Verify each item has a checkbox for selection
+        if item_count > 0:
+            first_item = check_items.first
+            item_text = await first_item.text_content()
+            assert len(item_text) > 5, "Check items should have content (modem ID, date, etc.)"

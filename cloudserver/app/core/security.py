@@ -9,12 +9,15 @@ Provides:
 - Account lockout after failed logins
 - Common password checking
 """
+import asyncio
 import secrets
 import hashlib
 import re
 import json
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, Dict
+
+from app.core.utils import utc_now
 from pathlib import Path
 
 from passlib.hash import argon2, pbkdf2_sha256
@@ -41,6 +44,7 @@ PBKDF2_LEGACY_ITERATIONS = 100_000  # Old default, always needs upgrade
 
 _redis_pool: Optional[aioredis.ConnectionPool] = None
 _test_redis_pool: Optional[aioredis.ConnectionPool] = None  # Separate pool for tests
+_redis_pool_lock = asyncio.Lock()  # Protects pool initialization
 
 
 async def get_redis() -> aioredis.Redis:
@@ -58,35 +62,37 @@ async def get_redis() -> aioredis.Redis:
     """
     global _redis_pool, _test_redis_pool
 
-    # Test mode: Use connection pool with reasonable max_connections
-    if settings.is_test():
-        if _test_redis_pool is None:
+    # Use lock to prevent race condition during pool initialization
+    async with _redis_pool_lock:
+        # Test mode: Use connection pool with reasonable max_connections
+        if settings.is_test():
+            if _test_redis_pool is None:
+                redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
+                _test_redis_pool = aioredis.ConnectionPool.from_url(
+                    redis_url,
+                    password=settings.redis_password,
+                    encoding="utf-8",
+                    decode_responses=True,
+                    max_connections=25,  # Enough for concurrent test scenarios
+                    socket_connect_timeout=5,
+                    socket_timeout=5,
+                )
+            return aioredis.Redis(connection_pool=_test_redis_pool)
+
+        # Production mode: Use connection pool
+        if _redis_pool is None:
             redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-            _test_redis_pool = aioredis.ConnectionPool.from_url(
+            _redis_pool = aioredis.ConnectionPool.from_url(
                 redis_url,
                 password=settings.redis_password,
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=25,  # Enough for concurrent test scenarios
+                max_connections=20,  # Allow up to 20 concurrent Redis connections
                 socket_connect_timeout=5,
                 socket_timeout=5,
             )
-        return aioredis.Redis(connection_pool=_test_redis_pool)
 
-    # Production mode: Use connection pool
-    if _redis_pool is None:
-        redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-        _redis_pool = aioredis.ConnectionPool.from_url(
-            redis_url,
-            password=settings.redis_password,
-            encoding="utf-8",
-            decode_responses=True,
-            max_connections=20,  # Allow up to 20 concurrent Redis connections
-            socket_connect_timeout=5,
-            socket_timeout=5,
-        )
-
-    return aioredis.Redis(connection_pool=_redis_pool)
+        return aioredis.Redis(connection_pool=_redis_pool)
 
 
 async def close_redis():
@@ -148,7 +154,8 @@ def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
                 is_valid = argon2.verify(password, stored_hash)
                 needs_upgrade = argon2.needs_update(stored_hash)
                 return (is_valid, needs_upgrade)
-            except Exception:
+            except (ValueError, TypeError) as e:
+                # Invalid hash format or type error during verification
                 return (False, False)
 
         elif stored_hash.startswith('$pbkdf2-sha256$'):
@@ -158,7 +165,8 @@ def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
                 is_valid = pbkdf2_sha256.verify(password, stored_hash)
                 # PBKDF2 always needs upgrade to Argon2id
                 return (is_valid, True)
-            except Exception:
+            except (ValueError, TypeError) as e:
+                # Invalid hash format or type error during verification
                 return (False, False)
 
         elif stored_hash.startswith('pbkdf2:'):
@@ -205,7 +213,8 @@ def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
             # Unknown format
             return (False, False)
 
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
+        # Catch remaining edge cases: malformed hashes, None values, etc.
         return (False, False)
 
 
@@ -228,8 +237,8 @@ def load_common_passwords() -> set:
             if passwords_file.exists():
                 with open(passwords_file, 'r') as f:
                     _common_passwords = {line.strip().lower() for line in f if line.strip()}
-        except Exception:
-            # Fallback to minimal list if file not found
+        except (IOError, OSError, UnicodeDecodeError) as e:
+            # Fallback to minimal list if file not found or read error
             _common_passwords = {
                 'password', 'admin', '123456', 'password123', 'admin123',
                 'changeme', 'welcome', 'test', 'demo', 'root'
@@ -717,8 +726,13 @@ def validate_request_timestamp_datetime(
     """
     from datetime import timezone
 
-    server_time = datetime.now(timezone.utc)
-    time_diff = abs((server_time - request_time).total_seconds())
+    server_time = utc_now()
+    # Normalize request_time to naive UTC if it has timezone info
+    if request_time.tzinfo is not None:
+        request_time_naive = request_time.replace(tzinfo=None)
+    else:
+        request_time_naive = request_time
+    time_diff = abs((server_time - request_time_naive).total_seconds())
 
     if time_diff > window_seconds:
         return False, f"Clock skew too large (diff={time_diff:.1f}s, max={window_seconds}s)", server_time

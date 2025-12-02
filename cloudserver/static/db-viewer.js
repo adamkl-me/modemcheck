@@ -492,20 +492,22 @@ async function loadModemList() {
 function setupSearchableDropdown() {
     const searchInput = document.getElementById('modemSearchInput');
     const dropdown = document.getElementById('modemDropdown');
-    
+    const wrapper = searchInput.closest('.searchable-select');
+
     // Show dropdown when clicking on input
     searchInput.addEventListener('click', () => {
         dropdown.classList.add('show');
+        wrapper.classList.add('open');
         searchInput.removeAttribute('readonly');
         searchInput.focus();
         searchInput.select();
     });
-    
+
     // Filter options as user types
     searchInput.addEventListener('input', () => {
         const searchTerm = searchInput.value.toLowerCase();
         const options = dropdown.querySelectorAll('.searchable-option');
-        
+
         options.forEach(option => {
             const text = option.textContent.toLowerCase();
             if (text.includes(searchTerm)) {
@@ -514,14 +516,16 @@ function setupSearchableDropdown() {
                 option.classList.add('hidden');
             }
         });
-        
+
         dropdown.classList.add('show');
+        wrapper.classList.add('open');
     });
-    
+
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
         if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.classList.remove('show');
+            wrapper.classList.remove('open');
             // Reset to selected value if user clicked away
             const hiddenSelect = document.getElementById('modemSelect');
             if (hiddenSelect.value) {
@@ -543,12 +547,14 @@ function selectModem(modemId, modemText) {
     const searchInput = document.getElementById('modemSearchInput');
     const dropdown = document.getElementById('modemDropdown');
     const hiddenSelect = document.getElementById('modemSelect');
-    
+    const wrapper = searchInput.closest('.searchable-select');
+
     searchInput.value = modemText;
     hiddenSelect.value = modemId;
     dropdown.classList.remove('show');
+    wrapper.classList.remove('open');
     searchInput.setAttribute('readonly', 'readonly');
-    
+
     // Update selected styling
     dropdown.querySelectorAll('.searchable-option').forEach(opt => {
         opt.classList.remove('selected');
@@ -557,7 +563,7 @@ function selectModem(modemId, modemText) {
     if (selectedOption) {
         selectedOption.classList.add('selected');
     }
-    
+
     onModemChanged();
 }
 

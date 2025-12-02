@@ -14,11 +14,11 @@ Version 3.0: Updated for simplified 3-state model with single-track versioning.
 """
 
 import hashlib
-from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Set, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.client_config import ConfigAuditLog, ConfigStatus, SyncStatus
+from app.core.utils import utc_now
 from app.core.errors import InternalServerError
 
 
@@ -173,7 +173,7 @@ async def log_config_sync(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=None,  # Client-initiated (no user)
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -237,7 +237,7 @@ async def log_config_update(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -289,7 +289,7 @@ async def log_config_rollback(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -348,7 +348,7 @@ async def log_status_change(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,

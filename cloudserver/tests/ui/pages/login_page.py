@@ -21,14 +21,16 @@ class LoginPage:
     async def navigate(self):
         """Navigate to login page."""
         await self.page.goto(f"{self.base_url}{self.URL}")
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        await self.page.wait_for_timeout(500)
 
     async def login(self, username: str, password: str):
         """Perform login with given credentials."""
         await self.username_input.fill(username)
         await self.password_input.fill(password)
         await self.login_button.click()
-        await self.page.wait_for_load_state("networkidle", timeout=15000)
+        await self.page.wait_for_load_state("domcontentloaded", timeout=15000)
+        await self.page.wait_for_timeout(1000)
 
     async def login_as_admin(self):
         """Login as admin user."""

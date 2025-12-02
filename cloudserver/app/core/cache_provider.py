@@ -20,7 +20,9 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+
+from app.core.utils import utc_now
 from typing import Any, Dict, Optional, Set
 from collections import OrderedDict
 
@@ -513,7 +515,7 @@ class FallbackCache(ICacheProvider):
                 "Data will NOT be shared across workers."
             )
             self.using_fallback = True
-            self._failover_time = datetime.now(timezone.utc)
+            self._failover_time = utc_now()
             self._failure_count = 0
 
     async def _activate_fallback(self) -> None:
@@ -651,7 +653,7 @@ class FallbackCache(ICacheProvider):
         if self._failover_time:
             stats["failover_time"] = self._failover_time.isoformat()
             stats["failover_duration_seconds"] = (
-                datetime.now(timezone.utc) - self._failover_time
+                utc_now() - self._failover_time
             ).total_seconds()
 
         if self.using_fallback:
@@ -664,6 +666,7 @@ class FallbackCache(ICacheProvider):
 
 # Global cache instance
 _cache_instance: Optional[ICacheProvider] = None
+_cache_instance_lock = asyncio.Lock()  # Protects cache instance initialization
 
 
 async def get_cache() -> ICacheProvider:
@@ -694,21 +697,29 @@ async def init_cache(redis_client: aioredis.Redis, enable_fallback: bool = True)
     """
     global _cache_instance
 
-    if enable_fallback:
-        _cache_instance = FallbackCache(redis_client)
-        logger.info("Cache initialized with fallback support (FallbackCache)")
-    else:
-        _cache_instance = RedisCache(redis_client)
-        logger.warning("Cache initialized WITHOUT fallback support (RedisCache only)")
+    # Use lock to prevent race condition during initialization
+    async with _cache_instance_lock:
+        if _cache_instance is not None:
+            logger.warning("Cache already initialized, returning existing instance")
+            return _cache_instance
 
-    return _cache_instance
+        if enable_fallback:
+            _cache_instance = FallbackCache(redis_client)
+            logger.info("Cache initialized with fallback support (FallbackCache)")
+        else:
+            _cache_instance = RedisCache(redis_client)
+            logger.warning("Cache initialized WITHOUT fallback support (RedisCache only)")
+
+        return _cache_instance
 
 
 async def close_cache() -> None:
     """Close global cache instance."""
     global _cache_instance
 
-    if _cache_instance is not None:
-        await _cache_instance.close()
-        _cache_instance = None
-        logger.info("Global cache instance closed")
+    # Use lock to prevent race condition during close
+    async with _cache_instance_lock:
+        if _cache_instance is not None:
+            await _cache_instance.close()
+            _cache_instance = None
+            logger.info("Global cache instance closed")

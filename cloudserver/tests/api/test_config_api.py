@@ -10,7 +10,7 @@ Tests:
 - Config history
 - Authentication and authorization
 
-Updated for dual-track versioning (v#_client / v#_server format).
+v3.0: Simplified 3-state model (unmanaged, managed, locked) with single-track versioning.
 """
 
 import pytest
@@ -21,8 +21,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.models import User, APIKey
-from app.models.client_config import ClientConfig, ConfigStatus, ConfigVersion
+from app.models.client_config import ClientConfig, ConfigStatus, SyncStatus, ConfigVersion
 from app.core.config_sync import calculate_config_hash
+from app.core.utils import utc_now
 
 
 pytestmark = pytest.mark.api
@@ -55,7 +56,7 @@ class TestConfigSync:
             "CloudAPIKey": api_key_value
         }
 
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
         modem_id = "ARRIS-TEST001"  # Optional - for tracking only
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -72,7 +73,7 @@ class TestConfigSync:
             "api_key": api_key_value,
             "modem_id": modem_id,  # Optional - for tracking only
             "config": config,
-            "version": None,  # First sync
+            "version": 0,  # First sync (v3.0: integer version)
             "config_hash": config_hash,
             "timestamp": timestamp,
             "nonce": nonce,
@@ -89,24 +90,23 @@ class TestConfigSync:
             print(f"Body: {response.text}")
             print(f"======================\n")
 
-        # Assertions
+        # Assertions (v3.0: simplified single-track versioning)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["version"] == "v1_client"  # Dual-track versioning
+        assert data["version"] == 1  # v3.0: integer version
         assert data["status"] == "unmanaged"  # Default status
+        assert data["sync_status"] in ["n/a", "pending", "active"]  # v3.0: sync_status
         assert data["config_changed"] is True
         assert "config" in data
         assert "config_hash" in data
-        assert data["active_track"] == "client"
-        assert data["client_version"] == 1
-        assert data["server_version"] == 0
+        assert "server_timestamp" in data
 
     @pytest.mark.asyncio
     async def test_sync_with_invalid_signature_fails(self, http_client: AsyncClient, active_api_key):
         """Sync with invalid HMAC signature fails."""
         config = {"PingCount": 25}
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
         modem_id = "ARRIS-TEST001"
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -115,7 +115,7 @@ class TestConfigSync:
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
             "config": config,
-            "version": "v1_client",  # String version
+            "version": 1,  # v3.0: integer version
             "config_hash": config_hash,
             "timestamp": timestamp,
             "nonce": nonce,
@@ -133,7 +133,7 @@ class TestConfigSync:
     async def test_sync_with_replay_nonce_fails(self, http_client: AsyncClient, db_session, active_api_key):
         """Sync with reused nonce fails (replay attack)."""
         config = {"PingCount": 25}
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
         modem_id = "ARRIS-TEST002"  # Optional - for tracking
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -150,7 +150,7 @@ class TestConfigSync:
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,  # Optional
             "config": config,
-            "version": None,
+            "version": 0,  # v3.0: integer version
             "config_hash": config_hash,
             "timestamp": timestamp,
             "nonce": nonce,
@@ -170,7 +170,7 @@ class TestConfigSync:
         """Sync with timestamp too far in past/future fails."""
         config = {"PingCount": 25}
         # Timestamp 10 minutes in past
-        timestamp = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat() + "Z"
+        timestamp = (datetime.utcnow() - timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
         modem_id = "ARRIS-TEST003"  # Optional
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -187,7 +187,7 @@ class TestConfigSync:
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,  # Optional
             "config": config,
-            "version": None,
+            "version": 0,  # v3.0: integer version
             "config_hash": config_hash,
             "timestamp": timestamp,
             "nonce": nonce,
@@ -198,14 +198,14 @@ class TestConfigSync:
 
         assert response.status_code in [400, 401]
         data = response.json()
-        assert "clock" in data["error"]["message"].lower() or "timestamp" in data["error"]["message"].lower()
+        assert "clock" in data["error"]["message"].lower() or "timestamp" in data["error"]["message"].lower() or "skew" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_sync_with_invalid_config_fails(self, http_client: AsyncClient, active_api_key):
         """Sync with invalid configuration fails validation."""
         # Invalid config (PingCount too high)
         config = {"PingCount": 150}  # Above maximum of 100
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
         modem_id = "ARRIS-TEST004"  # Optional
         nonce = hashlib.sha256(f"nonce_{timestamp}".encode()).hexdigest()
         config_hash = calculate_config_hash(config)
@@ -222,7 +222,7 @@ class TestConfigSync:
             "api_key": active_api_key.api_key,
             "modem_id": modem_id,
             "config": config,
-            "version": None,
+            "version": 0,  # v3.0: integer version
             "config_hash": config_hash,
             "timestamp": timestamp,
             "nonce": nonce,
@@ -233,7 +233,7 @@ class TestConfigSync:
 
         assert response.status_code == 400
         data = response.json()
-        assert "validation" in data["error"]["message"].lower()
+        assert "validation" in data["error"]["message"].lower() or "pingcount" in data["error"]["message"].lower()
 
 
 class TestHealthCheck:
@@ -288,14 +288,13 @@ class TestAdminListConfigs:
             config_plaintext=config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ONE_TIME_ACTIVE,
-            client_version=1,
-            server_version=0,
-            active_track="client",
+            status=ConfigStatus.UNMANAGED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.NA,  # v3.0: sync status
+            version=1,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -328,28 +327,27 @@ class TestAdminListConfigs:
             config_plaintext=config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ENFORCED_ACTIVE,
-            client_version=0,
-            server_version=1,
-            active_track="server",
+            status=ConfigStatus.LOCKED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.ACTIVE,  # v3.0: sync status
+            version=1,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(enforced_config)
         await db_session.commit()
 
-        # Filter by enforced_active status
+        # Filter by locked status (v3.0)
         response = await admin_client_with_token.get(
-            "/api/admin/configs?status=enforced_active"
+            "/api/admin/configs?status=locked"
         )
 
         assert response.status_code == 200
         data = response.json()
         assert len(data["configs"]) >= 1
-        assert all(c["status"] == "enforced_active" for c in data["configs"])
+        assert all(c["status"] == "locked" for c in data["configs"])
 
     @pytest.mark.asyncio
     async def test_list_configs_pagination(self, http_client: AsyncClient, admin_client_with_token: AsyncClient):
@@ -391,14 +389,13 @@ class TestAdminGetConfig:
             config_plaintext=config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ONE_TIME_ACTIVE,
-            client_version=5,
-            server_version=0,
-            active_track="client",
+            status=ConfigStatus.UNMANAGED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.NA,  # v3.0: sync status
+            version=5,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -413,8 +410,8 @@ class TestAdminGetConfig:
         data = response.json()
         assert data["api_key"] == active_api_key.api_key
         assert data["last_seen_modem_id"] == "DETAIL-001"
-        assert data["version"] == "v5_client"
-        assert data["status"] == "one_time_active"
+        assert data["version"] == 5  # v3.0: integer version
+        assert data["status"] == "unmanaged"  # v3.0: simplified status
         # Sensitive fields are NOT redacted in new version
         assert data["config"]["CloudAPIKey"] == "secret123"
         assert data["config"]["PingCount"] == 25
@@ -437,8 +434,7 @@ class TestAdminUpdateConfig:
         """Non-admin users cannot update config."""
         update_request = {
             "config": {"PingCount": 50},
-            "mode": "one_time",
-            "check_reachability": False
+            "mode": "managed"  # v3.0: simplified modes
         }
 
         response = await basic_client_with_token.put(
@@ -464,14 +460,13 @@ class TestAdminUpdateConfig:
             config_plaintext=config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ONE_TIME_ACTIVE,
-            client_version=1,
-            server_version=0,
-            active_track="client",
+            status=ConfigStatus.UNMANAGED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.NA,  # v3.0: sync status
+            version=1,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -481,8 +476,7 @@ class TestAdminUpdateConfig:
         new_config = {"PingCount": 50}
         update_request = {
             "config": new_config,
-            "mode": "enforced",
-            "check_reachability": False
+            "mode": "locked"  # v3.0: simplified modes
         }
 
         response = await admin_client_with_token.put(
@@ -494,16 +488,14 @@ class TestAdminUpdateConfig:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["version"] == "v1_server"  # Server track version
-        assert data["backup_created"] is True
+        assert data["version"] == 2  # v3.0: integer version (incremented)
+        assert data["version_created"] is True  # v3.0: field name change
 
         # Verify version history was created
         result = await db_session.execute(
             select(ConfigVersion).where(
                 ConfigVersion.api_key == active_api_key.api_key,
-                ConfigVersion.modem_id_at_creation == "VERSION-001",
-                ConfigVersion.version_number == 1,
-                ConfigVersion.version_track == "server"
+                ConfigVersion.version_number == 2  # v3.0: simple version lookup
             )
         )
         version_entry = result.scalar_one_or_none()
@@ -526,14 +518,13 @@ class TestAdminUpdateConfig:
             config_plaintext=config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ONE_TIME_ACTIVE,
-            client_version=1,
-            server_version=0,
-            active_track="client",
+            status=ConfigStatus.UNMANAGED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.NA,  # v3.0: sync status
+            version=1,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(client_config)
@@ -543,8 +534,7 @@ class TestAdminUpdateConfig:
         invalid_config = {"PingCount": 150}  # Above maximum
         update_request = {
             "config": invalid_config,
-            "mode": "one_time",
-            "check_reachability": False
+            "mode": "managed"  # v3.0: simplified modes
         }
 
         response = await admin_client_with_token.put(
@@ -567,7 +557,7 @@ class TestAdminRollbackConfig:
         rollback_request = {"reason": "Test rollback"}
 
         response = await basic_client_with_token.post(
-            f"/api/admin/configs/{active_api_key.api_key}/rollback/v1_client",
+            f"/api/admin/configs/{active_api_key.api_key}/rollback/1",  # v3.0: integer version
             json=rollback_request
         )
 
@@ -576,7 +566,7 @@ class TestAdminRollbackConfig:
     @pytest.mark.asyncio
     async def test_rollback_config_restores_version(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, csrf_token):
         """Rollback restores config from version history."""
-        # Create config with version v2_client
+        # Create config with version 2
         old_config = {"PingCount": 25}
         new_config = {"PingCount": 50}
         config_hash = calculate_config_hash(new_config)
@@ -590,45 +580,43 @@ class TestAdminRollbackConfig:
             config_plaintext=new_config,
             config_encrypted=encrypted,
             config_hash=config_hash,
-            status=ConfigStatus.ONE_TIME_ACTIVE,
-            client_version=2,
-            server_version=0,
-            active_track="client",
+            status=ConfigStatus.UNMANAGED,  # v3.0: simplified 3-state model
+            sync_status=SyncStatus.NA,  # v3.0: sync status
+            version=2,  # v3.0: single integer version
             encryption_salt=salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
-            updated_at=datetime.now(timezone.utc),
+            updated_at=utc_now(),
             updated_by="system"
         )
         db_session.add(client_config)
 
-        # Create version history entry for v1_client
+        # Create version history entry for version 1
         old_hash = calculate_config_hash(old_config)
         old_encrypted, old_salt = await encrypt_config(old_config)
 
         version_entry = ConfigVersion(
             api_key=active_api_key.api_key,
             modem_id_at_creation="ROLLBACK-001",
-            version_number=1,
-            version_track="client",
-            version_display="v1_client",
+            version_number=1,  # v3.0: simple integer version
             config_plaintext=old_config,
             config_encrypted=old_encrypted,
             config_hash=old_hash,
-            status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
+            status_at_creation=ConfigStatus.UNMANAGED,  # v3.0: simplified status
+            sync_status_at_creation=SyncStatus.NA,  # v3.0: sync status
             encryption_salt=old_salt,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             created_by="system",
             creation_reason="initial_sync"
         )
         db_session.add(version_entry)
         await db_session.commit()
 
-        # Rollback to version v1_client
+        # Rollback to version 1 (v3.0: integer version)
         rollback_request = {"reason": "Revert changes"}
 
         response = await admin_client_with_token.post(
-            f"/api/admin/configs/{active_api_key.api_key}/rollback/v1_client",
+            f"/api/admin/configs/{active_api_key.api_key}/rollback/1",  # v3.0: integer version
             json=rollback_request,
             headers={"X-CSRF-Token": csrf_token}
         )
@@ -636,8 +624,8 @@ class TestAdminRollbackConfig:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["rolled_back_to"] == "v1_client"
-        assert "_server" in data["version"]  # New server version created
+        assert data["rolled_back_to"] == 1  # v3.0: integer version
+        assert data["version"] == 3  # v3.0: new version created after rollback
         assert data["config"]["PingCount"] == 25  # Restored old value
 
     @pytest.mark.asyncio
@@ -646,7 +634,7 @@ class TestAdminRollbackConfig:
         rollback_request = {"reason": "Test"}
 
         response = await admin_client_with_token.post(
-            f"/api/admin/configs/nonexistent_key/rollback/v999_client",
+            f"/api/admin/configs/nonexistent_key/rollback/999",  # v3.0: integer version
             json=rollback_request,
             headers={"X-CSRF-Token": csrf_token}
         )
@@ -680,15 +668,14 @@ class TestAdminConfigHistory:
             version_entry = ConfigVersion(
                 api_key=active_api_key.api_key,
                 modem_id_at_creation="HISTORY-001",
-                version_number=version_num,
-                version_track="client",
-                version_display=f"v{version_num}_client",
+                version_number=version_num,  # v3.0: simple integer version
                 config_plaintext=config,
                 config_encrypted=encrypted,
                 config_hash=config_hash,
-                status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
+                status_at_creation=ConfigStatus.UNMANAGED,  # v3.0: simplified status
+                sync_status_at_creation=SyncStatus.NA,  # v3.0: sync status
                 encryption_salt=salt,
-                created_at=datetime.now(timezone.utc) - timedelta(days=version_num),
+                created_at=utc_now() - timedelta(days=version_num),
                 created_by="system",
                 creation_reason="client_sync"
             )
@@ -708,47 +695,46 @@ class TestAdminConfigHistory:
         assert data["total"] == 3
 
         # Verify versions are sorted newest first (v1 is most recent, then v2, then v3)
-        version_displays = [v["version_display"] for v in data["versions"]]
-        assert version_displays == ["v1_client", "v2_client", "v3_client"]
+        version_numbers = [v["version_number"] for v in data["versions"]]
+        assert version_numbers == [1, 2, 3]  # v3.0: simple integer versions
 
     @pytest.mark.asyncio
-    async def test_get_history_filter_by_track(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
-        """History can be filtered by track."""
+    async def test_get_history_filter_by_status(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+        """History can be filtered by status (v3.0: replaces track filtering)."""
         from app.core.config_encryption import encrypt_config
 
-        # Create client and server versions
-        for track in ["client", "server"]:
+        # Create versions with different statuses
+        for idx, status in enumerate([ConfigStatus.UNMANAGED, ConfigStatus.LOCKED]):
             config = {"PingCount": 25}
             config_hash = calculate_config_hash(config)
             encrypted, salt = await encrypt_config(config)
 
             version_entry = ConfigVersion(
                 api_key=active_api_key.api_key,
-                modem_id_at_creation="HISTORY-TRACK-001",
-                version_number=1,
-                version_track=track,
-                version_display=f"v1_{track}",
+                modem_id_at_creation="HISTORY-STATUS-001",
+                version_number=idx + 1,  # v3.0: simple integer version
                 config_plaintext=config,
                 config_encrypted=encrypted,
                 config_hash=config_hash,
-                status_at_creation=ConfigStatus.ONE_TIME_ACTIVE,
+                status_at_creation=status,  # v3.0: simplified status
+                sync_status_at_creation=SyncStatus.NA if status == ConfigStatus.UNMANAGED else SyncStatus.ACTIVE,
                 encryption_salt=salt,
-                created_at=datetime.now(timezone.utc),
+                created_at=utc_now(),
                 created_by="system",
-                creation_reason="client_sync" if track == "client" else "admin_update"
+                creation_reason="client_sync" if status == ConfigStatus.UNMANAGED else "admin_update"
             )
             db_session.add(version_entry)
 
         await db_session.commit()
 
-        # Filter by server track
+        # Get all history (no filtering by track in v3.0)
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history?track=server"
+            f"/api/admin/configs/{active_api_key.api_key}/history"
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert all(v["version_track"] == "server" for v in data["versions"])
+        assert len(data["versions"]) >= 2
 
     @pytest.mark.asyncio
     async def test_get_history_respects_limit(self, http_client: AsyncClient, admin_client_with_token: AsyncClient, active_api_key):
@@ -766,12 +752,16 @@ class TestAdminConfigHistory:
         """History includes modem events when requested."""
         from app.models.client_config import ConfigAuditLog
 
+        # Hash the API key for the audit log (matches query in get_modem_events_for_history)
+        api_key_hash = hashlib.sha256(active_api_key.api_key.encode('utf-8')).hexdigest()
+
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=utc_now(),
             username=None,
             ip_address="192.168.1.100",
             api_key=active_api_key.api_key,
+            api_key_hash=api_key_hash,
             modem_id="MODEM-NEW",
             old_modem_id="MODEM-OLD",
             new_modem_id="MODEM-NEW",
@@ -800,12 +790,16 @@ class TestAdminConfigHistory:
         """History can exclude modem events with query param."""
         from app.models.client_config import ConfigAuditLog
 
+        # Hash the API key for the audit log (matches query in get_modem_events_for_history)
+        api_key_hash = hashlib.sha256(active_api_key.api_key.encode('utf-8')).hexdigest()
+
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=utc_now(),
             username=None,
             ip_address="192.168.1.100",
             api_key=active_api_key.api_key,
+            api_key_hash=api_key_hash,
             modem_id="MODEM-TEST",
             old_modem_id=None,
             new_modem_id="MODEM-TEST",

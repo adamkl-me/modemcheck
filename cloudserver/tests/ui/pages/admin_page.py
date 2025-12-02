@@ -71,8 +71,9 @@ class AdminPage:
     async def navigate(self):
         """Navigate to admin page."""
         await self.page.goto(f"{self.base_url}{self.URL}")
-        await self.page.wait_for_load_state("networkidle")
-        await self.page.wait_for_timeout(1000)  # Wait for JS init
+        # Use domcontentloaded instead of networkidle as admin page may have polling
+        await self.page.wait_for_load_state("domcontentloaded")
+        await self.page.wait_for_timeout(1500)  # Wait for JS init
 
     async def is_admin_page(self) -> bool:
         """Check if currently on admin page."""

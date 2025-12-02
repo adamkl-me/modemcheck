@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     # Rate Limiting
     # SCALING CONSIDERATIONS: Rate limits are per-IP. At scale (1000+ clients):
     # - upload_rate_limit: 1000 clients × 60/min = 60k uploads/min capacity
-    # - config_sync_rate_limit: 1000 clients × 5/hr = 5000 syncs/hr - increase if clients retry frequently
+    # - config_sync_rate_limit: 1000 clients × 15/hr = 15000 syncs/hr - increase if clients retry frequently
     # - During deployments or bulk config pushes, temporarily increase limits or disable rate limiting
     # Format: "{count}/{period}" where period is: second, minute, hour, day
     upload_rate_limit: str = Field(default="60/minute", description="Upload endpoint rate limit per IP")
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     api_admin_rate_limit: str = Field(default="100/minute", description="Admin endpoint rate limit")
     api_data_mgmt_rate_limit: str = Field(default="50/minute", description="Data management endpoint rate limit (bulk ops)")
     config_preflight_rate_limit: str = Field(default="10/hour", description="Config preflight check rate limit per client IP")
-    config_sync_rate_limit: str = Field(default="5/hour", description="Config sync endpoint rate limit per client IP")
+    config_sync_rate_limit: str = Field(default="15/hour", description="Config sync endpoint rate limit per client IP")
     config_sse_rate_limit: str = Field(default="10/minute", description="Config SSE stream endpoint rate limit")
 
     # File Upload Limits

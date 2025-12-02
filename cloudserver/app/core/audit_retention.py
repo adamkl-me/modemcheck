@@ -6,8 +6,10 @@ while maintaining compliance requirements.
 
 Default retention: 90 days
 """
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.utils import utc_now
 from sqlalchemy import delete, select, func
 from typing import Tuple
 
@@ -29,7 +31,7 @@ async def cleanup_old_user_activity_logs(
     Returns:
         (deleted_count, total_before): Number of logs deleted and total before cleanup
     """
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    cutoff_date = utc_now() - timedelta(days=retention_days)
 
     # Count total before deletion
     result = await db.execute(select(func.count()).select_from(UserActivityLog))
@@ -59,7 +61,7 @@ async def cleanup_old_client_submission_logs(
     Returns:
         (deleted_count, total_before): Number of logs deleted and total before cleanup
     """
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    cutoff_date = utc_now() - timedelta(days=retention_days)
 
     # Count total before deletion
     result = await db.execute(select(func.count()).select_from(ClientSubmissionLog))
@@ -108,7 +110,7 @@ async def cleanup_all_audit_logs(
             "retention_days": client_retention_days
         },
         "total_deleted": user_deleted + client_deleted,
-        "cleanup_timestamp": datetime.now(timezone.utc).isoformat()
+        "cleanup_timestamp": utc_now().isoformat()
     }
 
 
@@ -155,14 +157,14 @@ async def get_audit_log_statistics(db: AsyncSession) -> dict:
             "total_count": user_count,
             "oldest_timestamp": user_oldest.isoformat() if user_oldest else None,
             "newest_timestamp": user_newest.isoformat() if user_newest else None,
-            "age_days": (datetime.now(timezone.utc) - user_oldest).days if user_oldest else 0
+            "age_days": (utc_now() - user_oldest).days if user_oldest else 0
         },
         "client_submission_logs": {
             "total_count": client_count,
             "oldest_timestamp": client_oldest.isoformat() if client_oldest else None,
             "newest_timestamp": client_newest.isoformat() if client_newest else None,
-            "age_days": (datetime.now(timezone.utc) - client_oldest).days if client_oldest else 0
+            "age_days": (utc_now() - client_oldest).days if client_oldest else 0
         },
         "total_logs": user_count + client_count,
-        "statistics_timestamp": datetime.now(timezone.utc).isoformat()
+        "statistics_timestamp": utc_now().isoformat()
     }

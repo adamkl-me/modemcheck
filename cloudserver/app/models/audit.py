@@ -1,10 +1,10 @@
 """
 Audit logging models for tracking user activity and client submissions.
 """
-from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Index
 
 from app.core.database import Base
+from app.core.utils import utc_now
 
 
 class UserActivityLog(Base):
@@ -16,7 +16,7 @@ class UserActivityLog(Base):
     __tablename__ = "user_activity_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(DateTime, nullable=False, default=utc_now, index=True)
     username = Column(String(255), nullable=False, index=True)
     user_role = Column(String(50), nullable=True)
     action_type = Column(String(100), nullable=False, index=True)
@@ -46,7 +46,7 @@ class ClientSubmissionLog(Base):
     __tablename__ = "client_submission_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(DateTime, nullable=False, default=utc_now, index=True)
     ip_address = Column(String(45), nullable=False, index=True)  # IPv6 compatible
     api_key_hash = Column(String(255), nullable=False, index=True)  # SHA256 hash of API key
     api_key_name = Column(String(255), nullable=True)

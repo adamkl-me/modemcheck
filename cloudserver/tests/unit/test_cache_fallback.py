@@ -12,6 +12,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+from app.core.utils import utc_now
 from app.core.cache import (
     InMemoryBackend,
     InMemoryCacheEntry,
@@ -33,13 +34,13 @@ class TestInMemoryCacheEntry:
 
     def test_entry_not_expired(self):
         """Entry should not be expired before expiration time."""
-        future = datetime.now(timezone.utc) + timedelta(seconds=60)
+        future = utc_now() + timedelta(seconds=60)
         entry = InMemoryCacheEntry("value", expires_at=future)
         assert entry.is_expired() is False
 
     def test_entry_expired(self):
         """Entry should be expired after expiration time."""
-        past = datetime.now(timezone.utc) - timedelta(seconds=1)
+        past = utc_now() - timedelta(seconds=1)
         entry = InMemoryCacheEntry("value", expires_at=past)
         assert entry.is_expired() is True
 

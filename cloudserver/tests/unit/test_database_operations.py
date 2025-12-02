@@ -92,11 +92,11 @@ class TestModemCheckOperations:
 
     async def test_create_modem_check(self, db_session):
         """Test creating a new modem check record."""
-        from datetime import datetime, timezone
+        from datetime import datetime
         check = ModemCheck(
             modem_id="XB8-AABBCCDDEEFF",
             filename="XB8-AABBCCDDEEFF_2023-11-13_182640.json",
-            check_time=datetime.fromtimestamp(1699900000, tz=timezone.utc),
+            check_time=datetime.utcfromtimestamp(1699900000),  # Naive UTC datetime
             full_data={"test": "data"},
             firmware="v1.2.3",
             uptime_seconds=172800  # 2 days in seconds
@@ -143,13 +143,13 @@ class TestModemCheckOperations:
 
     async def test_query_by_modem_id(self, db_session):
         """Test querying modem checks by modem_id."""
-        from datetime import datetime, timezone
+        from datetime import datetime
         # Create multiple checks
         for i in range(5):
             check = ModemCheck(
                 modem_id="XB8-TEST001",
                 filename=f"XB8-TEST001_{1699900000 + i}.json",
-                check_time=datetime.fromtimestamp(1699900000 + i, tz=timezone.utc),
+                check_time=datetime.utcfromtimestamp(1699900000 + i),  # Naive UTC datetime
                 full_data={"index": i}
             )
             db_session.add(check)
@@ -166,14 +166,14 @@ class TestModemCheckOperations:
 
     async def test_query_by_time_range(self, db_session):
         """Test querying modem checks by time range."""
-        from datetime import datetime, timezone
+        from datetime import datetime
         # Create checks with different timestamps
         timestamps = [1699900000, 1699900100, 1699900200, 1699900300]
         for ts in timestamps:
             check = ModemCheck(
                 modem_id="XB8-TEST002",
                 filename=f"XB8-TEST002_{ts}.json",
-                check_time=datetime.fromtimestamp(ts, tz=timezone.utc),
+                check_time=datetime.utcfromtimestamp(ts),  # Naive UTC datetime
                 full_data={}
             )
             db_session.add(check)
@@ -183,8 +183,8 @@ class TestModemCheckOperations:
         # Query time range
         result = await db_session.execute(
             select(ModemCheck).where(
-                ModemCheck.check_time >= datetime.fromtimestamp(1699900100, tz=timezone.utc),
-                ModemCheck.check_time <= datetime.fromtimestamp(1699900200, tz=timezone.utc)
+                ModemCheck.check_time >= datetime.utcfromtimestamp(1699900100),
+                ModemCheck.check_time <= datetime.utcfromtimestamp(1699900200)
             )
         )
         checks = result.scalars().all()
@@ -543,15 +543,16 @@ class TestErrorHandling:
 async def sample_modem_check(db_session):
     """Create a sample modem check for testing."""
     import uuid
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    timestamp = int(datetime.now(timezone.utc).timestamp())
+    from app.core.utils import utc_now
+    timestamp = int(utc_now().timestamp())
     unique_id = uuid.uuid4().hex[:8]
 
     check = ModemCheck(
         modem_id="XB8-TESTCHECK",
         filename=f"XB8-TESTCHECK_{timestamp}_{unique_id}.json",
-        check_time=datetime.fromtimestamp(1699900000, tz=timezone.utc),
+        check_time=datetime.utcfromtimestamp(1699900000),  # Naive UTC datetime
         full_data={"test": "data"}
     )
     db_session.add(check)

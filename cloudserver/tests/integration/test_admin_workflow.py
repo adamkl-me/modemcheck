@@ -367,13 +367,14 @@ class TestDataManagement:
         import time
 
         # Create test data
-        today = datetime.now().strftime("%Y-%m-%d")
-        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        from app.core.utils import utc_now
+        today = utc_now().strftime("%Y-%m-%d")
+        tomorrow = (utc_now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         for i in range(5):
             check = ModemCheck(
                 modem_id="XB8-QUERY",
-                check_time=datetime.fromtimestamp(int(time.time()) + i),
+                check_time=datetime.utcfromtimestamp(int(time.time()) + i),  # Naive UTC
                 filename=f"XB8-QUERY/query_test_{i}_{int(time.time())}.json",
                 full_data={"index": i}
             )
@@ -404,7 +405,7 @@ class TestDataManagement:
         old_timestamp = int(time.time()) - (100 * 24 * 3600)
         old_check = ModemCheck(
             modem_id="XB8-OLD",
-            check_time=datetime.fromtimestamp(old_timestamp),
+            check_time=datetime.utcfromtimestamp(old_timestamp),  # Naive UTC
             filename=f"XB8-OLD/old_test_{old_timestamp}.json",
             full_data={}
         )

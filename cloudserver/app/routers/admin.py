@@ -2,11 +2,13 @@
 Admin router for API key management, audit logs, and configuration.
 """
 import secrets
+from datetime import datetime, timedelta
 from typing import List
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+
+from app.core.utils import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, and_, func, Integer
+from sqlalchemy import select, delete, update, and_, func, Integer, case
 
 from app.core.database import get_db
 from app.core.audit import log_user_activity
@@ -60,7 +62,7 @@ async def create_api_key(
     api_key = APIKey(
         api_key=new_api_key,
         name=key_data.name,
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         is_active=True
     )
 
@@ -368,7 +370,6 @@ async def get_user_activity_logs(
         try:
             end_dt = datetime.fromisoformat(end_date)
             # Add one day to include the entire end date
-            from datetime import timedelta
             end_dt = end_dt + timedelta(days=1)
             conditions.append(UserActivityLog.timestamp < end_dt)
         except ValueError:
@@ -387,9 +388,10 @@ async def get_user_activity_logs(
     total_count = count_result.scalar()
 
     # Calculate statistics
+    # Use CASE expression instead of bitwise NOT (~) which doesn't work with PostgreSQL boolean columns
     stats_query = select(
         func.count(UserActivityLog.id).label('total_actions'),
-        func.sum(func.cast(~UserActivityLog.success, Integer)).label('failed_actions'),
+        func.sum(case((UserActivityLog.success == False, 1), else_=0)).label('failed_actions'),
         func.count(func.distinct(UserActivityLog.username)).label('unique_users')
     )
     if conditions:
@@ -471,7 +473,6 @@ async def get_client_submission_logs(
         try:
             end_dt = datetime.fromisoformat(end_date)
             # Add one day to include the entire end date
-            from datetime import timedelta
             end_dt = end_dt + timedelta(days=1)
             conditions.append(ClientSubmissionLog.timestamp < end_dt)
         except ValueError:

@@ -390,12 +390,14 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	state.ServerConfigHash = syncResponse.ConfigHash
 	state.LastSync = time.Now()
 
-	// If config changed or in locked status with pending sync, apply server config
+	// Apply server config if:
+	// 1. Status is "locked" - server always controls config
+	// 2. Status is "managed" AND config changed - server pushed new config
 	isLocked := syncResponse.Status == "locked"
 	isManaged := syncResponse.Status == "managed"
-	hasPendingConfig := syncResponse.SyncStatus == "pending"
+	shouldApplyConfig := isLocked || (isManaged && configChanged)
 
-	if (isLocked || (isManaged && hasPendingConfig)) && configChanged {
+	if shouldApplyConfig {
 		// Apply server config to our config struct
 		if err := mapToConfig(syncResponse.Config, config); err != nil {
 			return false, fmt.Errorf("failed to apply server config: %w", err)

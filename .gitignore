@@ -22,6 +22,7 @@ Playground-Test/
 .upload_queue.json
 rebuild-docker.sh
 commandstuff.md
+ModemCheck-Results/
 
 # Go build artifacts
 modem-check
@@ -43,6 +44,11 @@ config.json
 
 # Claude AI
 .claude/
+
+# Node.js (not used, prevent accidental creation)
+node_modules/
+package-lock.json
+package.json
 
 # CloudServer specific
 cloudserver/.env

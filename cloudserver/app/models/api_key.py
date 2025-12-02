@@ -1,10 +1,10 @@
 """
 API Key model for client authentication.
 """
-from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, Index
 
 from app.core.database import Base
+from app.core.utils import utc_now
 
 
 class APIKey(Base):
@@ -18,7 +18,7 @@ class APIKey(Base):
 
     api_key = Column(String(255), primary_key=True, nullable=False)
     name = Column(String(255), nullable=False, index=True)
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=utc_now)
     last_used = Column(DateTime, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
 
@@ -33,4 +33,4 @@ class APIKey(Base):
 
     def update_last_used(self):
         """Update the last_used timestamp to current time."""
-        self.last_used = datetime.now(timezone.utc)
+        self.last_used = utc_now()

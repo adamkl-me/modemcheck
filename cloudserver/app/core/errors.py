@@ -9,7 +9,8 @@ Provides:
 """
 import uuid
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
+
+from app.core.utils import utc_now
 
 
 class ModemCheckError(Exception):
@@ -38,7 +39,7 @@ class ModemCheckError(Exception):
         self.status_code = status_code
         self.details = details or {}
         self.error_id = str(uuid.uuid4())
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = utc_now().isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert error to standardized response format."""

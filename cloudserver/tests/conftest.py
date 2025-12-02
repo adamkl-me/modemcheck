@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.database import Base, get_db
 from app.core.security import hash_password, create_session
+from app.core.utils import utc_now
 from app.models import User, APIKey, ModemCheck
 from app.core.config import settings
 
@@ -214,7 +215,7 @@ async def admin_user(db_session: AsyncSession, admin_user_credentials: Dict[str,
         username=admin_user_credentials["username"],
         password_hash=hash_password(admin_user_credentials["password"]),
         role="admin",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         must_change_password=False
     )
     db_session.add(user)
@@ -250,7 +251,7 @@ async def elevated_user(db_session: AsyncSession, elevated_user_credentials: Dic
         username=elevated_user_credentials["username"],
         password_hash=hash_password(elevated_user_credentials["password"]),
         role="elevated",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         must_change_password=False
     )
     db_session.add(user)
@@ -286,7 +287,7 @@ async def basic_user(db_session: AsyncSession, basic_user_credentials: Dict[str,
         username=basic_user_credentials["username"],
         password_hash=hash_password(basic_user_credentials["password"]),
         role="basic",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         must_change_password=False
     )
     db_session.add(user)
@@ -314,7 +315,7 @@ async def test_user_must_change_password(db_session: AsyncSession) -> User:
         username=test_username,
         password_hash=hash_password(test_password),
         role="basic",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         must_change_password=True
     )
     db_session.add(user)
@@ -407,7 +408,7 @@ async def active_api_key(db_session: AsyncSession, test_api_key: str) -> APIKey:
     api_key = APIKey(
         api_key=test_api_key,
         name="test_key_active",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         is_active=True
     )
     db_session.add(api_key)
@@ -423,7 +424,7 @@ async def inactive_api_key(db_session: AsyncSession) -> APIKey:
     api_key = APIKey(
         api_key=secrets.token_hex(32),
         name="test_key_inactive",
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         is_active=False
     )
     db_session.add(api_key)
@@ -489,16 +490,16 @@ async def sample_modem_check(db_session: AsyncSession, sample_modem_check_data: 
 
     # Use unique filename with UUID to prevent duplicate key violations
     unique_id = str(uuid.uuid4())[:8]
-    timestamp = datetime.fromtimestamp(sysinfo["checktime"]).strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.utcfromtimestamp(sysinfo["checktime"]).strftime("%Y-%m-%d_%H-%M-%S")
     unique_filename = f"{modem_id}/{timestamp}_{unique_id}.json"
 
     check = ModemCheck(
         modem_id=modem_id,
         modem_type=sysinfo["modemtype"],
-        check_time=datetime.fromtimestamp(sysinfo["checktime"]),
+        check_time=datetime.utcfromtimestamp(sysinfo["checktime"]),
         filename=unique_filename,
         full_data=sample_modem_check_data,
-        created_at=datetime.now(timezone.utc)
+        created_at=utc_now()
     )
     db_session.add(check)
     await db_session.commit()
@@ -522,7 +523,7 @@ async def sample_modem_checks_in_db(db_session: AsyncSession, sample_modem_check
 
         # Use unique filename with UUID to prevent duplicate key violations
         unique_id = str(uuid.uuid4())[:8]
-        dt = datetime.fromtimestamp(timestamp)
+        dt = datetime.utcfromtimestamp(timestamp)
         unique_filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
 
         check = ModemCheck(
@@ -531,7 +532,7 @@ async def sample_modem_checks_in_db(db_session: AsyncSession, sample_modem_check
             check_time=dt,
             filename=unique_filename,
             full_data=sample_modem_check_data,
-            created_at=datetime.now(timezone.utc)
+            created_at=utc_now()
         )
         db_session.add(check)
         checks.append(check)
@@ -583,7 +584,7 @@ async def populated_modem_database(
 
             # Create unique filename
             unique_id = str(uuid.uuid4())[:8]
-            dt = datetime.fromtimestamp(check_time)
+            dt = datetime.utcfromtimestamp(check_time)  # Naive UTC
             filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
 
             # Determine modem type from data or ID
@@ -595,7 +596,7 @@ async def populated_modem_database(
                 check_time=dt,
                 filename=filename,
                 full_data=check_data,
-                created_at=datetime.now(timezone.utc)
+                created_at=utc_now()
             )
             db_session.add(check)
             result[modem_type].append(check)
@@ -633,7 +634,7 @@ async def single_modem_populated(
 
         # Create unique filename
         unique_id = str(uuid.uuid4())[:8]
-        dt = datetime.fromtimestamp(check_time)
+        dt = datetime.utcfromtimestamp(check_time)  # Naive UTC
         filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
 
         check = ModemCheck(
@@ -642,7 +643,7 @@ async def single_modem_populated(
             check_time=dt,
             filename=filename,
             full_data=check_data,
-            created_at=datetime.now(timezone.utc)
+            created_at=utc_now()
         )
         db_session.add(check)
         checks.append(check)
@@ -847,7 +848,7 @@ def ensure_ui_test_users():
                         username=user_data["username"],
                         password_hash=hash_password(user_data["password"]),
                         role=user_data["role"],
-                        created_at=datetime.now(timezone.utc),
+                        created_at=utc_now(),
                         must_change_password=False
                     )
                     session.add(user)

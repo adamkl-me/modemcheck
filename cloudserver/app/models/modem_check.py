@@ -1,11 +1,11 @@
 """
 Modem Check model for storing cable modem diagnostic data.
 """
-from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Index, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
+from app.core.utils import utc_now
 
 
 class ModemCheck(Base):
@@ -75,7 +75,7 @@ class ModemCheck(Base):
     full_data = Column(JSONB, nullable=False)
 
     # Metadata
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=utc_now)
 
     __table_args__ = (
         Index('idx_modem_check_modem_time', 'modem_id', 'check_time'),

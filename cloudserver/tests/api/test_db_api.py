@@ -131,11 +131,12 @@ class TestQueryPerformance:
             "system_time": "2024-01-01 12:00:00"
         }
 
+        from app.core.utils import utc_now
         for i in range(10):
             check = ModemCheck(
                 modem_id=f"TEST-{i:03d}",
                 filename=f"test-{i}.json",
-                check_time=datetime.now(),
+                check_time=utc_now(),
                 modem_type="Arris XB8",
                 full_data=json.dumps(sample_data)
             )

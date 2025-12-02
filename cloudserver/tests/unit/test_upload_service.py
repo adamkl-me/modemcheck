@@ -18,6 +18,7 @@ from app.services.upload_service import (
     UploadService,
     UploadValidationError
 )
+from app.core.utils import utc_now
 
 
 class TestInputValidator:
@@ -276,7 +277,7 @@ class TestUploadPersistenceService:
                 db=mock_db,
                 modem_id="XB8-AA:BB:CC:DD:EE:FF",
                 modem_type="XB8",
-                check_time=datetime.now(timezone.utc),
+                check_time=utc_now(),
                 filename="2024-01-01_12-00-00.json",
                 json_data=json_data
             )
@@ -300,7 +301,7 @@ class TestUploadPersistenceService:
                 db=mock_db,
                 modem_id="XB8-AA:BB:CC:DD:EE:FF",
                 modem_type="XB8",
-                check_time=datetime.now(timezone.utc),
+                check_time=utc_now(),
                 filename="2024-01-01_12-00-00.json",
                 json_data=json_data
             )

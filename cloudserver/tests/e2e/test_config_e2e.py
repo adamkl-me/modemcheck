@@ -40,7 +40,7 @@ class TestClientSyncWorkflow:
             "EnableCloud": True
         }
 
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_1".encode()).hexdigest()
         config_hash = calculate_config_hash(initial_config)
 
@@ -78,7 +78,7 @@ class TestClientSyncWorkflow:
             "EnableCloud": True
         }
 
-        timestamp2 = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp2 = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce2 = hashlib.sha256(f"nonce_{timestamp2}_2".encode()).hexdigest()
         config_hash2 = calculate_config_hash(updated_config)
 
@@ -125,7 +125,7 @@ class TestClientSyncWorkflow:
             "EnableCloud": True
         }
 
-        timestamp3 = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp3 = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce3 = hashlib.sha256(f"nonce_{timestamp3}_3".encode()).hexdigest()
         config_hash3 = calculate_config_hash(attempted_config)
 
@@ -192,7 +192,7 @@ class TestManagedSyncWorkflow:
 
         # Client syncs with old/different config
         client_config = {"PingCount": 25}  # Different from server
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_m1".encode()).hexdigest()
         config_hash = calculate_config_hash(client_config)
 
@@ -250,7 +250,7 @@ class TestManagedSyncWorkflow:
 
         # Client sends updated config (PingCount max is 100, so use valid value)
         updated_config = {"PingCount": 75, "EnableCloud": True}
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_m2".encode()).hexdigest()
         config_hash = calculate_config_hash(updated_config)
 
@@ -315,7 +315,7 @@ class TestLockedMode:
 
         # Client tries to change
         client_config = {"PingCount": 999, "EnableCloud": False}
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_l1".encode()).hexdigest()
         config_hash = calculate_config_hash(client_config)
 
@@ -396,7 +396,7 @@ class TestAdminWorkflow:
 
         # Step 2: Client syncs
         client_config = {"PingCount": 25}  # Different
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_a1".encode()).hexdigest()
         config_hash = calculate_config_hash(client_config)
 
@@ -442,7 +442,7 @@ class TestUnmanagedMode:
             "SpeedTestEnabled": False
         }
 
-        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce = hashlib.sha256(f"nonce_{timestamp}_u1".encode()).hexdigest()
         config_hash = calculate_config_hash(client_config)
 
@@ -490,7 +490,7 @@ class TestUnmanagedMode:
 
         # First sync
         config1 = {"PingCount": 10}
-        timestamp1 = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp1 = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce1 = hashlib.sha256(f"nonce_{timestamp1}_u2a".encode()).hexdigest()
         hash1 = calculate_config_hash(config1)
         msg1 = f"{timestamp1}|{nonce1}|{hash1}"
@@ -511,7 +511,7 @@ class TestUnmanagedMode:
 
         # Second update
         config2 = {"PingCount": 20}
-        timestamp2 = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp2 = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce2 = hashlib.sha256(f"nonce_{timestamp2}_u2b".encode()).hexdigest()
         hash2 = calculate_config_hash(config2)
         msg2 = f"{timestamp2}|{nonce2}|{hash2}"
@@ -533,7 +533,7 @@ class TestUnmanagedMode:
 
         # Third update
         config3 = {"PingCount": 30}
-        timestamp3 = datetime.now(timezone.utc).isoformat() + "Z"
+        timestamp3 = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         nonce3 = hashlib.sha256(f"nonce_{timestamp3}_u2c".encode()).hexdigest()
         hash3 = calculate_config_hash(config3)
         msg3 = f"{timestamp3}|{nonce3}|{hash3}"

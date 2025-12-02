@@ -2,11 +2,12 @@
 Audit logging utilities for tracking user activity and client submissions.
 """
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import UserActivityLog, ClientSubmissionLog
+from app.core.utils import utc_now
 
 
 async def log_user_activity(
@@ -37,7 +38,7 @@ async def log_user_activity(
         failure_reason: Reason for failure if success=False
     """
     log_entry = UserActivityLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=username,
         user_role=user_role,
         action_type=action_type,
@@ -91,7 +92,7 @@ async def log_client_submission(
         processing_time_ms: Processing time in milliseconds
     """
     log_entry = ClientSubmissionLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         ip_address=ip_address,
         api_key_hash=api_key_hash,
         api_key_name=api_key_name,

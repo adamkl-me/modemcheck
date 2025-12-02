@@ -83,11 +83,12 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     metrics['firmware'] = sysinfo.get('firmware')
     metrics['uptime_seconds'] = safe_int(sysinfo.get('uptime'))
 
-    # Parse system time if present
+    # Parse system time if present (naive UTC for PostgreSQL asyncpg compatibility)
     system_time_str = sysinfo.get('systemtime')
     if system_time_str:
         try:
-            metrics['system_time'] = datetime.fromisoformat(system_time_str.replace('Z', '+00:00'))
+            aware_dt = datetime.fromisoformat(system_time_str.replace('Z', '+00:00'))
+            metrics['system_time'] = aware_dt.replace(tzinfo=None)  # Convert to naive UTC
         except (ValueError, TypeError, AttributeError) as e:
             # Log the error but continue processing other metrics
             metrics['system_time'] = None

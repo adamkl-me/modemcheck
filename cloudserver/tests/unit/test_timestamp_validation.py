@@ -20,6 +20,7 @@ from app.core.security import (
     validate_request_timestamp_datetime,
     TIMESTAMP_WINDOW_SECONDS
 )
+from app.core.utils import utc_now
 
 
 pytestmark = pytest.mark.unit
@@ -160,7 +161,8 @@ class TestValidateRequestTimestampDatetime:
         _, _, server_time = validate_request_timestamp_datetime(old_time)
 
         # Server time should be close to now (within 1 second)
-        time_diff = abs((datetime.now(timezone.utc) - server_time).total_seconds())
+        # Note: server_time is now timezone-naive, so compare with utc_now()
+        time_diff = abs((utc_now() - server_time).total_seconds())
         assert time_diff < 1
 
     def test_custom_window(self):

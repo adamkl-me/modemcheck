@@ -11,9 +11,8 @@ import logging
 import secrets
 import hashlib
 from typing import Optional, Dict, List, Tuple
-from datetime import datetime, timezone
-
 from app.core.cache_provider import get_cache
+from app.core.utils import utc_now
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -146,7 +145,7 @@ class APIKeyCache:
                 await session.execute(
                     update(APIKey)
                     .where(APIKey.api_key == api_key)
-                    .values(last_used=datetime.now(timezone.utc))
+                    .values(last_used=utc_now())
                 )
                 # Commit is handled by the context manager
         except Exception as e:
@@ -161,7 +160,7 @@ class APIKeyCacheStats:
     def __init__(self):
         self.hits = 0
         self.misses = 0
-        self.last_reset = datetime.now(timezone.utc)
+        self.last_reset = utc_now()
 
     @property
     def hit_rate(self) -> float:
@@ -183,7 +182,7 @@ class APIKeyCacheStats:
         """Reset statistics."""
         self.hits = 0
         self.misses = 0
-        self.last_reset = datetime.now(timezone.utc)
+        self.last_reset = utc_now()
 
 
 # Global stats instance

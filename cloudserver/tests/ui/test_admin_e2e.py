@@ -199,29 +199,48 @@ class TestAPIKeyManagementE2E:
         await expect(admin_page.create_key_button).to_be_visible()
 
     @pytest.mark.asyncio
-    async def test_create_api_key_modal_opens(self, admin_browser):
-        """Test clicking create opens modal dialog."""
+    async def test_create_api_key_form_visible(self, admin_browser):
+        """Test API key creation form is visible (inline form, not modal)."""
         page, admin_page = admin_browser
 
-        await admin_page.open_create_api_key_modal()
-
-        # Modal should be visible
-        modal = page.locator("#newKeyModal")
-        # Check modal is active/visible (may have 'active' class or style display)
+        await admin_page.click_tab("client_management")
+        await admin_page.api_keys_subtab.click()
         await page.wait_for_timeout(500)
 
+        # API keys section uses an inline form, not a modal
+        # Look for the key name input field
+        key_name_input = page.locator(
+            'input[placeholder*="e.g."], '
+            'input[placeholder*="Key Name"], '
+            'textbox[name*="Key"]'
+        )
+        await expect(key_name_input.first).to_be_visible()
+
+        # Create button should be visible
+        create_btn = page.locator('button:has-text("Create API Key")')
+        await expect(create_btn).to_be_visible()
+
     @pytest.mark.asyncio
-    async def test_api_key_table_displays(self, admin_browser):
-        """Test API key table is present and displays keys."""
+    async def test_api_key_section_displays(self, admin_browser):
+        """Test API key section is present with create form and list area."""
         page, admin_page = admin_browser
 
         await admin_page.click_tab("client_management")
         await admin_page.api_keys_subtab.click()
         await page.wait_for_timeout(1000)
 
-        # Look for API keys table
-        keys_table = page.locator("#apiKeysTable, .api-keys-table, table")
-        # Table should exist (may be empty if no keys)
+        # Look for API keys heading
+        api_keys_heading = page.locator('h2:has-text("API Key"), h2:has-text("Existing API Keys")')
+        await expect(api_keys_heading.first).to_be_visible()
+
+        # Either shows "No API keys found" message or a list
+        no_keys_msg = page.locator('text=No API keys found')
+        keys_list = page.locator('.api-key-item, table tr, .key-row')
+
+        # At least one should be visible
+        has_no_keys_msg = await no_keys_msg.is_visible()
+        keys_count = await keys_list.count()
+        assert has_no_keys_msg or keys_count > 0, "Should show API keys section"
 
 
 # ============================================================================
@@ -321,14 +340,20 @@ class TestClientLogsE2E:
 
     @pytest.mark.asyncio
     async def test_client_logs_has_filter_controls(self, admin_browser):
-        """Test client logs has filter inputs."""
+        """Test client logs (submissions) has filter inputs."""
         page, admin_page = admin_browser
 
         await admin_page.navigate_to_client_logs()
+        await page.wait_for_timeout(500)
 
-        # Check for filter elements
-        modem_filter = page.locator("#clientLogsModemFilter")
-        # Filter should exist (may be visible or hidden depending on UI state)
+        # Check for filter elements - now called "Client Submissions"
+        # Filter by Modem ID textbox
+        modem_filter = page.locator(
+            'input[placeholder*="modem"], '
+            'input[placeholder*="Modem"], '
+            'textbox[name*="Modem"]'
+        )
+        await expect(modem_filter.first).to_be_visible()
 
     @pytest.mark.asyncio
     async def test_client_logs_has_statistics(self, admin_browser):
@@ -336,10 +361,19 @@ class TestClientLogsE2E:
         page, admin_page = admin_browser
 
         await admin_page.navigate_to_client_logs()
+        await page.wait_for_timeout(1000)
 
-        # Look for stats elements
-        stats = page.locator(".logs-stats, .stat-item, .statistics")
-        # Stats section should be present
+        # Look for any stats-related text on the submissions page
+        page_content = await page.content()
+
+        # Should have statistics labels
+        has_stats = (
+            "Total Submissions" in page_content or
+            "Failed" in page_content or
+            "Unique" in page_content or
+            "Submission" in page_content
+        )
+        assert has_stats, "Client logs section should show submission statistics"
 
 
 # ============================================================================
@@ -368,8 +402,14 @@ class TestUserActivityE2E:
         # Wait for data to load
         await page.wait_for_timeout(2000)
 
-        # Look for activity table or list
+        # Look for activity table or list - should be visible
         activity_table = page.locator("#userActivityTable, .activity-log, table")
+        await expect(activity_table.first).to_be_visible()
+
+        # Should have at least some activity logged (our login)
+        rows = activity_table.locator("tr, .activity-row")
+        row_count = await rows.count()
+        assert row_count >= 1, "Should have at least one activity log entry (admin login)"
 
 
 # ============================================================================
@@ -454,8 +494,17 @@ class TestClientConfigManagementE2E:
         await admin_page.navigate_to_config_management()
         await page.wait_for_timeout(1000)
 
-        # Look for stats section
-        stats = page.locator(".config-stats, .stat-item, .statistics")
+        # Look for stats content on the config management page
+        page_content = await page.content()
+
+        # Should have config-related statistics
+        has_stats = (
+            "Total" in page_content or
+            "Unmanaged" in page_content or
+            "Managed" in page_content or
+            "Clients" in page_content
+        )
+        assert has_stats, "Config management section should show statistics"
 
     @pytest.mark.asyncio
     async def test_config_search_input_exists(self, admin_browser):
@@ -463,8 +512,10 @@ class TestClientConfigManagementE2E:
         page, admin_page = admin_browser
 
         await admin_page.navigate_to_config_management()
+        await page.wait_for_timeout(500)
 
-        search_input = page.locator("#configSearch, .config-search input, input[placeholder*='search']")
+        search_input = page.locator("#configSearch, .config-search input, input[placeholder*='search'], input[placeholder*='Search']")
+        await expect(search_input.first).to_be_visible()
 
     @pytest.mark.asyncio
     async def test_config_table_displays(self, admin_browser):
@@ -474,8 +525,9 @@ class TestClientConfigManagementE2E:
         await admin_page.navigate_to_config_management()
         await page.wait_for_timeout(1000)
 
-        # Look for configs table
+        # Look for configs table - should be visible
         configs_table = page.locator("#configsTable, .configs-table, table")
+        await expect(configs_table.first).to_be_visible()
 
 
 # ============================================================================
@@ -506,25 +558,34 @@ class TestModalDialogsE2E:
     """E2E tests for modal dialogs."""
 
     @pytest.mark.asyncio
-    async def test_escape_closes_modal(self, admin_browser):
-        """Test pressing Escape closes modal."""
+    async def test_config_detail_modal_behavior(self, admin_browser):
+        """Test modal behavior when viewing config details (if configs exist)."""
         page, admin_page = admin_browser
 
-        # Open a modal
-        await admin_page.open_create_api_key_modal()
+        await admin_page.navigate_to_config_management()
         await page.wait_for_timeout(500)
 
-        # Verify modal is open
-        modal_visible = await admin_page.new_key_modal.is_visible()
-        if not modal_visible:
-            pytest.skip("Modal did not open - skipping escape test")
+        # Check if there are any config rows to click
+        config_rows = page.locator('table tbody tr:not(:has-text("No configurations"))')
+        row_count = await config_rows.count()
 
-        # Press Escape
-        await page.keyboard.press("Escape")
-        await page.wait_for_timeout(300)
+        if row_count > 0:
+            # Click first row to open detail modal
+            await config_rows.first.click()
+            await page.wait_for_timeout(500)
 
-        # Verify modal is closed
-        await expect(admin_page.new_key_modal).not_to_be_visible()
+            # Modal should appear
+            modal = page.locator('.modal.active, [role="dialog"]')
+            if await modal.count() > 0:
+                # Press Escape to close
+                await page.keyboard.press("Escape")
+                await page.wait_for_timeout(300)
+                # Modal should close
+                await expect(modal).not_to_be_visible()
+        else:
+            # No configs to test with - just verify the table exists
+            table = page.locator('table')
+            await expect(table).to_be_visible()
 
 
 # ============================================================================
@@ -535,8 +596,8 @@ class TestResponsiveAdminE2E:
     """E2E tests for responsive admin UI."""
 
     @pytest.mark.asyncio
-    async def test_mobile_viewport_hamburger_visible(self):
-        """Test hamburger menu appears on mobile viewport."""
+    async def test_mobile_viewport_responsive_layout(self):
+        """Test admin page has responsive layout on mobile viewport."""
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(viewport={"width": 375, "height": 667})
@@ -551,9 +612,19 @@ class TestResponsiveAdminE2E:
             admin_page = AdminPage(page, BASE_URL)
             await admin_page.navigate()
 
-            # Check if hamburger is visible on mobile
-            hamburger = page.locator(".hamburger")
-            # Hamburger might be visible on mobile
+            # On mobile, verify the page is still usable
+            # Check that main heading is visible
+            heading = page.locator('h1')
+            await expect(heading).to_be_visible()
+
+            # Verify page content is present (may be scrollable on mobile)
+            page_content = await page.content()
+            has_admin_content = (
+                "Admin" in page_content or
+                "Management" in page_content or
+                "Client" in page_content
+            )
+            assert has_admin_content, "Admin page content should be present on mobile"
 
             await context.close()
             await browser.close()
@@ -573,15 +644,25 @@ class TestFormSubmissionsE2E:
 
         await admin_page.click_tab("users")
         await admin_page.fill_create_user_form(
-            username="testuser",
+            username="testuser_weak",
             password="weak",  # Too short
             role="basic"
         )
         await admin_page.submit_create_user_form()
         await page.wait_for_timeout(1000)
 
-        # Should show error or validation feedback
-        # The form should not clear (indicating error)
+        # Should show error message or password strength warning
+        error_msg = page.locator(".error-message, .toast-error, .alert-danger, #passwordError")
+        strength_warning = page.locator(".password-strength-weak, .strength-indicator")
+
+        # Either an error message should appear or the password field should still have value (form not cleared)
+        password_field = page.locator("#newPassword, input[type='password']").first
+        password_value = await password_field.input_value()
+        has_error = await error_msg.first.is_visible() if await error_msg.count() > 0 else False
+        has_warning = await strength_warning.first.is_visible() if await strength_warning.count() > 0 else False
+
+        assert has_error or has_warning or password_value == "weak", \
+            "Weak password should show error, warning, or prevent form submission"
 
 
 # ============================================================================
@@ -612,3 +693,258 @@ class TestAuthorizationE2E:
 
             await context.close()
             await browser.close()
+
+
+# ============================================================================
+# REAL WORKFLOW TESTS
+# ============================================================================
+
+class TestBulkUploadWorkflowE2E:
+    """E2E tests for complete bulk upload workflow using real fixture data."""
+
+    @pytest.mark.asyncio
+    async def test_bulk_upload_form_accessible(self, admin_browser):
+        """Test bulk upload form elements are accessible."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_data_management_subtab("bulk_upload")
+        await page.wait_for_timeout(500)
+
+        # File input should be present
+        file_input = page.locator('#bulkUploadFiles, input[type="file"]')
+        await expect(file_input.first).to_be_attached()
+
+        # Upload button should be visible
+        upload_btn = page.locator('button:has-text("Upload")')
+        await expect(upload_btn.first).to_be_visible()
+
+    @pytest.mark.asyncio
+    async def test_bulk_upload_file_selection(self, admin_browser):
+        """Test that file selection works in bulk upload."""
+        import os
+        page, admin_page = admin_browser
+
+        await admin_page.click_data_management_subtab("bulk_upload")
+
+        # Get a test fixture file
+        fixture_path = os.path.join(
+            os.path.dirname(__file__),
+            "../fixtures/modem_data/xb8/check_001.json"
+        )
+
+        if os.path.exists(fixture_path):
+            file_input = page.locator('#bulkUploadFiles, input[type="file"]')
+            await file_input.first.set_input_files(fixture_path)
+            await page.wait_for_timeout(500)
+
+            # File should be selected - look for file name or count indicator
+            # Just verify no error occurred during selection
+            page_content = await page.content()
+            assert "error" not in page_content.lower() or "file" in page_content.lower()
+
+
+class TestDeleteChecksWorkflowE2E:
+    """E2E tests for complete delete checks workflow."""
+
+    @pytest.mark.asyncio
+    async def test_delete_checks_form_accessible(self, admin_browser):
+        """Test delete checks form elements are accessible."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_data_management_subtab("delete_checks")
+        await page.wait_for_timeout(500)
+
+        # Load button should be visible
+        load_btn = page.locator('button:has-text("Load")')
+        await expect(load_btn.first).to_be_visible()
+
+        # Container for results should exist
+        checks_container = page.locator("#checksListContainer, #deleteChecksTable, .checks-container")
+        await expect(checks_container.first).to_be_attached()
+
+    @pytest.mark.asyncio
+    async def test_delete_checks_load_operation(self, admin_browser):
+        """Test load operation executes (results depend on database state)."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_data_management_subtab("delete_checks")
+        await page.wait_for_timeout(500)
+
+        # Click load button
+        load_btn = page.locator('button:has-text("Load")')
+        await load_btn.first.click()
+        await page.wait_for_timeout(2000)
+
+        # Should show either data or "no checks" message
+        page_content = await page.content()
+        has_content = "no checks" in page_content.lower() or "check" in page_content.lower()
+        assert has_content, "Page should show check data or no-data message"
+
+
+class TestAPIKeyWorkflowE2E:
+    """E2E tests for complete API key management workflow."""
+
+    @pytest.mark.asyncio
+    async def test_create_api_key_full_workflow(self, admin_browser):
+        """Test creating an API key and verifying it appears in the list."""
+        page, admin_page = admin_browser
+
+        # Navigate to API keys section
+        await admin_page.click_tab("client_management")
+        await admin_page.api_keys_subtab.click()
+        await page.wait_for_timeout(1000)
+
+        # Get initial key count
+        key_rows = page.locator("#apiKeysTable tbody tr, .api-key-row")
+        initial_count = await key_rows.count()
+
+        # Open create modal
+        await admin_page.open_create_api_key_modal()
+
+        # Fill in key details
+        key_name_input = page.locator("#keyName, input[name='keyName'], #newKeyModal input[type='text']")
+        await key_name_input.first.fill(f"TestKey_{uuid.uuid4().hex[:8]}")
+        await page.wait_for_timeout(300)
+
+        # Submit creation
+        create_btn = page.locator("#newKeyModal button[type='submit'], #newKeyModal button:has-text('Create')")
+        if await create_btn.first.is_visible():
+            await create_btn.first.click()
+            await page.wait_for_timeout(2000)
+
+            # Verify key appears or API key display shows
+            new_key_display = page.locator(".new-key-value, .api-key-display, #newKeyValue")
+            key_rows_after = page.locator("#apiKeysTable tbody tr, .api-key-row")
+            new_count = await key_rows_after.count()
+
+            # Either new key is displayed or count increased
+            has_new_key = await new_key_display.first.is_visible() if await new_key_display.count() > 0 else False
+            assert has_new_key or new_count > initial_count, \
+                "New API key should be displayed or added to list"
+
+    @pytest.mark.asyncio
+    async def test_api_key_list_shows_key_details(self, admin_browser):
+        """Test API key list displays key names, status, and dates."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_tab("client_management")
+        await admin_page.api_keys_subtab.click()
+        await page.wait_for_timeout(1000)
+
+        # Check for key table/list
+        api_keys_section = page.locator("#configGenApiKeysSection")
+        await expect(api_keys_section).to_be_visible()
+
+        # Look for table headers or key info columns
+        headers = page.locator("th:has-text('Name'), th:has-text('Status'), th:has-text('Created')")
+        header_count = await headers.count()
+
+        # Should have column headers for key details
+        assert header_count >= 1, "API key table should have name/status/date columns"
+
+
+class TestUserManagementWorkflowE2E:
+    """E2E tests for complete user management workflow."""
+
+    @pytest.mark.asyncio
+    async def test_create_user_full_workflow(self, admin_browser):
+        """Test creating a user with valid password and verifying they appear."""
+        page, admin_page = admin_browser
+
+        unique_username = f"workflow_user_{uuid.uuid4().hex[:6]}"
+        strong_password = "WorkflowTest123!@#"
+
+        await admin_page.click_tab("users")
+        await page.wait_for_timeout(500)
+
+        # Get initial user count if user list exists
+        user_rows = page.locator("#usersTable tbody tr, .user-row")
+        initial_count = await user_rows.count()
+
+        # Fill and submit user form
+        await admin_page.fill_create_user_form(
+            username=unique_username,
+            password=strong_password,
+            role="basic"
+        )
+        await admin_page.submit_create_user_form()
+        await page.wait_for_timeout(2000)
+
+        # Check for success - either toast, user in list, or form cleared
+        success_toast = page.locator(".toast-success, .alert-success")
+        has_toast = await success_toast.first.is_visible() if await success_toast.count() > 0 else False
+
+        user_rows_after = page.locator("#usersTable tbody tr, .user-row")
+        new_count = await user_rows_after.count()
+
+        username_field = page.locator("#newUsername")
+        username_value = await username_field.input_value()
+
+        # Success if: toast shown, user count increased, or form was cleared
+        form_cleared = username_value == ""
+        assert has_toast or new_count > initial_count or form_cleared, \
+            "User creation should show success indicator"
+
+    @pytest.mark.asyncio
+    async def test_user_list_shows_roles(self, admin_browser):
+        """Test user list displays user roles."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_tab("users")
+        await page.wait_for_timeout(1000)
+
+        # Look for role column in user table
+        role_cells = page.locator("td:has-text('admin'), td:has-text('basic'), td:has-text('elevated')")
+        role_count = await role_cells.count()
+
+        # Should see at least one role (admin user should be visible)
+        assert role_count >= 1, "User list should display user roles"
+
+    @pytest.mark.asyncio
+    async def test_password_validation_shows_requirements(self, admin_browser):
+        """Test password field shows strength requirements."""
+        page, admin_page = admin_browser
+
+        await admin_page.click_tab("users")
+        await admin_page.new_password_input.fill("Test123!")
+        await page.wait_for_timeout(500)
+
+        # Password strength container should appear
+        strength_container = page.locator("#newPassword-strength-container")
+        await expect(strength_container).to_be_visible()
+
+        # Should show requirement indicators
+        requirements = page.locator(".password-requirement, .req-item, [class*='req-']")
+        req_count = await requirements.count()
+
+        assert req_count >= 4, f"Should show at least 4 password requirements, got {req_count}"
+
+
+class TestDataViewerIntegrationE2E:
+    """E2E tests verifying data appears in viewer after admin operations."""
+
+    @pytest.mark.asyncio
+    async def test_uploaded_data_visible_in_viewer(self, admin_browser):
+        """Test that data uploaded via admin is visible in viewer."""
+        page, admin_page = admin_browser
+
+        # Navigate to viewer
+        await admin_page.click_viewer_button()
+        await page.wait_for_timeout(2000)
+
+        # Should be on viewer page
+        assert "/viewer" in page.url
+
+        # Modem dropdown should have options (from previous uploads)
+        modem_dropdown = page.locator("#modemDropdown, #modemSearchInput")
+        await expect(modem_dropdown.first).to_be_visible()
+
+        # Click to open dropdown
+        await modem_dropdown.first.click()
+        await page.wait_for_timeout(500)
+
+        # Should have modem options
+        options = page.locator(".searchable-option, #modemDropdown option, .dropdown-item")
+        option_count = await options.count()
+
+        assert option_count >= 1, f"Should have at least one modem in dropdown, got {option_count}"

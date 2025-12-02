@@ -27,9 +27,10 @@ import logging
 import random
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.utils import utc_now
 from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError
 
@@ -206,7 +207,7 @@ async def create_config_version(
         encryption_salt=encryption_salt,
         status_at_creation=status,
         sync_status_at_creation=sync_status,
-        created_at=datetime.now(timezone.utc),
+        created_at=utc_now(),
         created_by=created_by,
         creation_reason=reason,
         ip_address=ip_address
@@ -377,7 +378,7 @@ async def _log_modem_change(
     api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     audit_entry = ConfigAuditLog(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=utc_now(),
         username=None,  # Client-initiated
         api_key_hash=api_key_hash,
         ip_address=ip_address,
@@ -428,10 +429,10 @@ async def _handle_first_sync(
         sync_status=SyncStatus.NA,
         version=1,
         encryption_salt=salt,
-        last_sync=datetime.now(timezone.utc),
-        created_at=datetime.now(timezone.utc),
+        last_sync=utc_now(),
+        created_at=utc_now(),
         created_by="client",
-        updated_at=datetime.now(timezone.utc),
+        updated_at=utc_now(),
         updated_by="client"
     )
 
@@ -487,10 +488,11 @@ async def _handle_unmanaged_sync(
     - Same config: No version change
     - Different config: Create new version
     """
-    existing_config.last_sync = datetime.now(timezone.utc)
+    existing_config.last_sync = utc_now()
 
     # Check if config actually changed
-    stored_hash = calculate_config_hash(existing_config.config_plaintext)
+    # Use stored hash directly to avoid Go/Python JSON serialization differences
+    stored_hash = existing_config.config_hash
     if config_hash == stored_hash:
         # No change - just update last_sync
         return SyncResult(
@@ -520,7 +522,7 @@ async def _handle_unmanaged_sync(
     existing_config.config_hash = config_hash
     existing_config.encryption_salt = salt
     existing_config.version = new_version
-    existing_config.updated_at = datetime.now(timezone.utc)
+    existing_config.updated_at = utc_now()
     existing_config.updated_by = "client"
 
     # Create version history
@@ -573,7 +575,7 @@ async def _handle_managed_sync(
     - ACTIVE + same config: Stay MANAGED/ACTIVE
     - ACTIVE + different config: Client modified, transition to UNMANAGED
     """
-    existing_config.last_sync = datetime.now(timezone.utc)
+    existing_config.last_sync = utc_now()
 
     if existing_config.sync_status == SyncStatus.PENDING:
         # Push server config to client, transition to ACTIVE
@@ -638,7 +640,7 @@ async def _handle_managed_sync(
     existing_config.version = new_version
     existing_config.status = ConfigStatus.UNMANAGED
     existing_config.sync_status = SyncStatus.NA
-    existing_config.updated_at = datetime.now(timezone.utc)
+    existing_config.updated_at = utc_now()
     existing_config.updated_by = "client"
 
     await create_config_version(
@@ -705,7 +707,7 @@ async def _handle_locked_sync(
 
     Client config changes are NOT recorded as new versions (per requirements).
     """
-    existing_config.last_sync = datetime.now(timezone.utc)
+    existing_config.last_sync = utc_now()
 
     if existing_config.sync_status == SyncStatus.PENDING:
         # Push server config to client, transition to ACTIVE

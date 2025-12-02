@@ -24,7 +24,7 @@ const (
 
 	// Test configuration
 	DefaultPingCount            = 100 // Number of pings for latency testing
-	DefaultSpeedTestConnections = 1   // Parallel connections for speed tests
+	DefaultSpeedTestConnections = 4   // Parallel connections for speed tests
 
 	// Network limits
 	MaxHostnameLength = 253 // RFC 1035 DNS hostname max length
@@ -79,7 +79,7 @@ func LoadConfigFile(path string, config *Configuration) error {
 
 	// Set default for SpeedTestConnections if not specified
 	if config.SpeedTestConnections == 0 {
-		config.SpeedTestConnections = DefaultSpeedTestConnections // Default: 1 parallel connection
+		config.SpeedTestConnections = DefaultSpeedTestConnections // Default: 4 parallel connections
 	}
 	if config.SpeedTestConnections < 1 || config.SpeedTestConnections > 16 {
 		return fmt.Errorf("SpeedTestConnections must be between 1 and 16 (got: %d)", config.SpeedTestConnections)
@@ -107,6 +107,12 @@ func LoadConfigFile(path string, config *Configuration) error {
 	validChannels := map[string]bool{"stable": true, "beta": true, "test": true}
 	if !validChannels[config.UpdateChannel] {
 		return fmt.Errorf("UpdateChannel must be 'stable', 'beta', or 'test' (got: %s)", config.UpdateChannel)
+	}
+
+	// Auto-enable cloud mode when CloudHost is provided
+	// This improves UX - users don't need to set both CloudHost and EnableCloud
+	if config.CloudHost != "" && !config.EnableCloud {
+		config.EnableCloud = true
 	}
 
 	// Validate critical configuration

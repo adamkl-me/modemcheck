@@ -248,6 +248,13 @@
                 cursor: text;
             }
 
+            /* When dropdown is open, flatten bottom corners of input */
+            .searchable-select.open input[type="text"] {
+                border-radius: 8px 8px 0 0;
+                border-color: #667eea;
+                border-bottom-color: #667eea;
+            }
+
             .searchable-select::after {
                 content: '▼';
                 position: absolute;

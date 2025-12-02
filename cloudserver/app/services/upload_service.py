@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.utils import utc_now
 from app.models import ModemCheck
 from app.core.metric_extraction import extract_metrics
 
@@ -164,18 +165,20 @@ class FileProcessor:
         check_time_raw = sysinfo.get('checktime')
 
         # Parse check_time (handle both Unix timestamp and ISO string formats)
+        # NOTE: Return naive UTC datetime for PostgreSQL asyncpg compatibility
         check_time = None
         check_time_str = None
         if check_time_raw:
             try:
-                # If it's a Unix timestamp (integer), convert to datetime and ISO string
+                # If it's a Unix timestamp (integer), convert to naive UTC datetime and ISO string
                 if isinstance(check_time_raw, int):
-                    check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc)
-                    check_time_str = check_time.isoformat().replace('+00:00', 'Z')
+                    check_time = datetime.utcfromtimestamp(check_time_raw)  # Naive UTC
+                    check_time_str = check_time.isoformat() + 'Z'
                 else:
-                    # If it's already an ISO string
+                    # If it's already an ISO string, parse and convert to naive UTC
                     check_time_str = str(check_time_raw)
-                    check_time = datetime.fromisoformat(check_time_str.replace('Z', '+00:00'))
+                    aware_dt = datetime.fromisoformat(check_time_str.replace('Z', '+00:00'))
+                    check_time = aware_dt.replace(tzinfo=None)  # Convert to naive UTC
             except Exception:
                 check_time = None
                 check_time_str = None
@@ -221,10 +224,10 @@ class UploadPersistenceService:
         new_check = ModemCheck(
             modem_id=modem_id,
             modem_type=modem_type,
-            check_time=check_time or datetime.now(timezone.utc),
+            check_time=check_time or utc_now(),
             filename=db_filename,
             full_data=json_data,
-            created_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
             # Extracted metrics for efficient querying
             **extracted_metrics
         )

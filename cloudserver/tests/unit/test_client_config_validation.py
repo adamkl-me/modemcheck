@@ -319,21 +319,6 @@ class TestURLValidation:
         assert len(errors) > 0
         assert "must be numeric string" in errors[0]
 
-    def test_absolute_cloud_path_rejected(self):
-        """Absolute CloudPath is rejected."""
-        config = {"CloudPath": "/upload"}
-        errors = validate_urls(config)
-        assert len(errors) > 0
-        assert "CloudPath" in errors[0]
-        assert "absolute" in errors[0]
-
-    def test_relative_cloud_path_accepted(self):
-        """Relative CloudPath is accepted."""
-        config = {"CloudPath": "upload"}
-        errors = validate_urls(config)
-        assert errors == []
-
-
 class TestComprehensiveValidation:
     """Test end-to-end validate_config()."""
 

@@ -8,11 +8,12 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from collections import OrderedDict
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.utils import utc_now
 
 
 logger = logging.getLogger(__name__)
@@ -198,7 +199,7 @@ class InMemoryCacheEntry:
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return utc_now() > self.expires_at
 
 
 class InMemoryBackend(CacheBackend):
@@ -265,7 +266,7 @@ class InMemoryBackend(CacheBackend):
 
         expires_at = None
         if ttl:
-            expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+            expires_at = utc_now() + timedelta(seconds=ttl)
 
         async with self.lock:
             self.cache[key] = InMemoryCacheEntry(value, expires_at)
@@ -320,7 +321,7 @@ class InMemoryBackend(CacheBackend):
             if entry is None:
                 return False
 
-            entry.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+            entry.expires_at = utc_now() + timedelta(seconds=ttl)
             return True
 
     async def ttl(self, key: str) -> int:
@@ -337,7 +338,7 @@ class InMemoryBackend(CacheBackend):
             if entry.expires_at is None:
                 return -1  # No expiration
 
-            remaining = (entry.expires_at - datetime.now(timezone.utc)).total_seconds()
+            remaining = (entry.expires_at - utc_now()).total_seconds()
             return max(0, int(remaining))
 
     async def ping(self) -> bool:
@@ -403,7 +404,7 @@ class CacheManager:
         self.memory_backend: InMemoryBackend = InMemoryBackend()
         self.current_backend: CacheBackend = self.memory_backend
         self.redis_check_interval = 60  # seconds
-        self.last_redis_check = datetime.now(timezone.utc)
+        self.last_redis_check = utc_now()
         self._redis_available = False
 
     async def initialize(self, redis_client: aioredis.Redis):
@@ -422,7 +423,7 @@ class CacheManager:
 
     async def _check_redis_health(self):
         """Periodically check Redis health and reconnect if available."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         if (now - self.last_redis_check).total_seconds() < self.redis_check_interval:
             return
 
@@ -469,22 +470,28 @@ class CacheManager:
 
 # Global cache manager instance
 _cache_manager: Optional[CacheManager] = None
+_cache_manager_lock = asyncio.Lock()  # Protects cache manager initialization
 
 
 async def get_cache_manager() -> CacheManager:
     """Get global cache manager instance."""
     global _cache_manager
 
-    if _cache_manager is None:
-        from app.core.security import get_redis
-        _cache_manager = CacheManager()
+    # Use lock to prevent race condition during initialization
+    async with _cache_manager_lock:
+        if _cache_manager is None:
+            from app.core.security import get_redis
+            _cache_manager = CacheManager()
 
-        try:
-            redis_client = await get_redis()
-            await _cache_manager.initialize(redis_client)
-        except Exception as e:
-            logger.error(f"Failed to initialize cache with Redis: {e}")
-            # Cache manager will use in-memory fallback
+            try:
+                redis_client = await get_redis()
+                await _cache_manager.initialize(redis_client)
+            except (ConnectionError, TimeoutError, OSError) as e:
+                logger.error(f"Failed to initialize cache with Redis (connection issue): {e}")
+                # Cache manager will use in-memory fallback
+            except aioredis.RedisError as e:
+                logger.error(f"Failed to initialize cache with Redis: {e}")
+                # Cache manager will use in-memory fallback
 
     return _cache_manager
 

@@ -162,7 +162,7 @@ Create a `config.json` file in the same directory as the binary:
   "IgnitePassword": "",
   "SpeedTestEnabled": true,
   "SpeedTestInterval": 1,
-  "SpeedTestConnections": 1,
+  "SpeedTestConnections": 4,
   "PingCount": 100,
   "AutoUpdateEnabled": true,
   "UpdateChannel": "stable",
@@ -187,7 +187,7 @@ Create a `config.json` file in the same directory as the binary:
 | `IgnitePassword` | string | Password for Ignite/Xfinity modems | `""` |
 | `SpeedTestEnabled` | bool | Enable speed tests | `true` |
 | `SpeedTestInterval` | int | Run speed test every N runs (1-1000) | `1` |
-| `SpeedTestConnections` | int | Parallel connections (1-16) | `1` |
+| `SpeedTestConnections` | int | Parallel connections (1-16) | `4` |
 | `PingCount` | int | Number of pings (1-100) | `100` |
 | `AutoUpdateEnabled` | bool | Enable automatic updates | `true` |
 | `UpdateChannel` | string | `"stable"` or `"beta"` | `"stable"` |

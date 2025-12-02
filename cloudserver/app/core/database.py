@@ -78,14 +78,24 @@ def init_db():
 
 async def create_tables():
     """Create all database tables (for development/testing)."""
+    from sqlalchemy.exc import ProgrammingError, OperationalError, IntegrityError
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-    except Exception as e:
+    except ProgrammingError as e:
         # Ignore "table already exists" errors from concurrent workers
         # This can happen when multiple gunicorn workers start simultaneously
         if "already exists" not in str(e).lower():
             raise
+    except IntegrityError as e:
+        # Ignore duplicate key errors from concurrent workers creating types/tables
+        # PostgreSQL type system can throw IntegrityError when multiple workers
+        # try to create the same type (e.g., enum) simultaneously
+        if "duplicate key" not in str(e).lower() and "already exists" not in str(e).lower():
+            raise
+    except OperationalError as e:
+        # Connection issues during startup - let it propagate
+        raise
 
 
 async def drop_tables():

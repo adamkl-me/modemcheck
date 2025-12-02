@@ -8,7 +8,9 @@ import tempfile
 import zipfile
 from io import BytesIO
 from typing import List
-from datetime import datetime, timezone
+from datetime import datetime
+
+from app.core.utils import utc_now
 
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
@@ -224,17 +226,18 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
         if not filename or filename == 'unknown.json':
             filename = sysinfo.get('filename', 'unknown.json')
 
-        # Parse check_time
+        # Parse check_time (naive UTC for PostgreSQL asyncpg compatibility)
         check_time_raw = sysinfo.get('checktime')
         check_time = None
         if check_time_raw:
             try:
                 if isinstance(check_time_raw, int):
                     if check_time_raw > 0:
-                        check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc)
+                        check_time = datetime.utcfromtimestamp(check_time_raw)  # Naive UTC
                 else:
                     check_time_str = str(check_time_raw).replace('Z', '+00:00')
-                    check_time = datetime.fromisoformat(check_time_str)
+                    aware_dt = datetime.fromisoformat(check_time_str)
+                    check_time = aware_dt.replace(tzinfo=None)  # Convert to naive UTC
             except (ValueError, TypeError, OSError) as e:
                 # Log but continue with default timestamp
                 logger.debug(f"Failed to parse check_time '{check_time_raw}' in {filename}: {e}")
@@ -245,9 +248,9 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             modem_id=modem_id,
             modem_type=modem_type,
             filename=db_filename,
-            check_time=check_time or datetime.now(timezone.utc),
+            check_time=check_time or utc_now(),
             full_data=data,
-            created_at=datetime.now(timezone.utc)
+            created_at=utc_now()
         )
         db.add(new_check)
 
@@ -422,10 +425,19 @@ async def bulk_download_checks(
     """
     Bulk download modem checks as a ZIP file.
 
+    Uses streaming with batched database queries to minimize memory usage:
+    - Fetches records in batches of 500
+    - Writes to disk-backed temp file after 10MB
+    - Streams response to client
+
     Requires: elevated or admin role
     """
-    # Build query
-    query = select(ModemCheck)
+    from sqlalchemy.orm import load_only
+
+    # Build query with load_only to reduce memory per record
+    query = select(ModemCheck).options(
+        load_only(ModemCheck.id, ModemCheck.modem_id, ModemCheck.filename, ModemCheck.full_data)
+    )
     conditions = []
 
     if modem_id:
@@ -433,14 +445,16 @@ async def bulk_download_checks(
 
     if start_date:
         try:
-            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            aware_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            start_dt = aware_dt.replace(tzinfo=None)  # Naive UTC for comparison
             conditions.append(ModemCheck.check_time >= start_dt)
         except ValueError as e:
             logger.debug(f"Invalid start_date format '{start_date}', ignoring filter: {e}")
 
     if end_date:
         try:
-            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            aware_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            end_dt = aware_dt.replace(tzinfo=None)  # Naive UTC for comparison
             conditions.append(ModemCheck.check_time <= end_dt)
         except ValueError as e:
             logger.debug(f"Invalid end_date format '{end_date}', ignoring filter: {e}")
@@ -448,27 +462,33 @@ async def bulk_download_checks(
     if conditions:
         query = query.where(and_(*conditions))
 
-    # Execute query
-    result = await db.execute(query.limit(10000))  # Limit to prevent memory issues
-    checks = result.scalars().all()
-
-    if not checks:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No checks found matching criteria"
-        )
+    # Order by ID for consistent batching
+    query = query.order_by(ModemCheck.id).limit(10000)
 
     # Create ZIP using temp file (spills to disk automatically after 10MB)
     # This prevents memory exhaustion with large downloads
     tmp = tempfile.SpooledTemporaryFile(max_size=10*1024*1024)
+    files_count = 0
+
     with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for check in checks:
+        # Stream results in batches using yield_per for memory efficiency
+        result = await db.stream(query)
+
+        async for check in result.scalars():
             # Use filename from database or generate one
             filename = check.filename or f"{check.modem_id}_{check.id}.json"
 
             # Add JSON data to ZIP
             json_content = json.dumps(check.full_data, indent=2)
             zip_file.writestr(filename, json_content)
+            files_count += 1
+
+    if files_count == 0:
+        tmp.close()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No checks found matching criteria"
+        )
 
     # Log action
     await log_user_activity(
@@ -482,7 +502,7 @@ async def bulk_download_checks(
             "modem_id": modem_id,
             "start_date": start_date,
             "end_date": end_date,
-            "files_count": len(checks)
+            "files_count": files_count
         },
         user_agent=get_user_agent(request)
     )

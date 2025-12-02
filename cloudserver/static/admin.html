@@ -615,6 +615,100 @@
             transform: translateY(-2px);
         }
 
+        /* Searchable dropdown for API key selection */
+        .config-searchable-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .config-searchable-select input[type="text"] {
+            width: 100%;
+            padding: 10px 35px 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .config-searchable-select input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            cursor: text;
+        }
+
+        /* When dropdown is open, flatten bottom corners of input */
+        .config-searchable-select.open input[type="text"] {
+            border-radius: 8px 8px 0 0;
+            border-color: #667eea;
+        }
+
+        .config-searchable-select::after {
+            content: '▼';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .config-searchable-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+            margin-top: -2px;
+        }
+
+        .config-searchable-dropdown.show {
+            display: block;
+        }
+
+        .config-api-key-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .config-api-key-option:hover {
+            background-color: #f0f2ff;
+        }
+
+        .config-api-key-option.selected {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .config-api-key-option.hidden {
+            display: none;
+        }
+
+        .config-searchable-dropdown::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .config-searchable-dropdown::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .config-searchable-dropdown::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
         .loading {
             text-align: center;
             padding: 20px;
@@ -1307,7 +1401,7 @@
 
                             <div class="form-group">
                                 <label for="defaultSpeedTestConnections">Speed Test Connections</label>
-                                <input type="number" id="defaultSpeedTestConnections" value="1" min="1" max="16" placeholder="1">
+                                <input type="number" id="defaultSpeedTestConnections" value="4" min="1" max="16" placeholder="4">
                                 <small style="color: #6b7280;">Parallel connections for speed tests (1-16)</small>
                             </div>
                         </div>
@@ -1916,7 +2010,7 @@
                 configSseConnection.addEventListener('config_update', (e) => {
                     const update = JSON.parse(e.data);
                     updateConfigTableRow(update);
-                    showMessage(`Config updated: ${update.modem_id}`, 'info');
+                    // Silent update - table row flashes green to indicate change
                 });
 
                 configSseConnection.addEventListener('keepalive', (e) => {
@@ -3326,37 +3420,55 @@
             // Build config object, then filter out empty string values
             const config = {};
 
+            // Helper to safely get element value
+            const getVal = (id, defaultVal = '') => {
+                const el = document.getElementById(id);
+                return el ? el.value : defaultVal;
+            };
+            const getChecked = (id, defaultVal = false) => {
+                const el = document.getElementById(id);
+                return el ? el.checked : defaultVal;
+            };
+
+            // Check if config form exists (may not be visible on initial load)
+            if (!document.getElementById('cfgModemAddress')) {
+                return; // Config form not loaded yet, skip preview update
+            }
+
             // Required/always-include fields (booleans and numbers)
-            config.ModemAddress = document.getElementById('cfgModemAddress').value || "autodetect";
-            config.SpeedTestEnabled = document.getElementById('cfgSpeedTestEnabled').checked;
-            config.SpeedTestInterval = parseInt(document.getElementById('cfgSpeedTestInterval').value) || 1;
-            config.SpeedTestConnections = parseInt(document.getElementById('cfgSpeedTestConnections').value) || 1;
-            config.PingCount = parseInt(document.getElementById('cfgPingCount').value) || 100;
-            config.AutoUpdateEnabled = document.getElementById('cfgAutoUpdateEnabled').checked;
-            config.UpdateChannel = document.getElementById('cfgUpdateChannel').value || "stable";
-            config.Silent = document.getElementById('cfgSilent').checked;
-            config.NoLogs = document.getElementById('cfgNoLogs').checked;
-            config.LocalCleanupEnabled = document.getElementById('cfgLocalCleanupEnabled').checked;
-            config.LocalRetentionDays = parseInt(document.getElementById('cfgLocalRetentionDays').value) || 90;
-            config.EnableCloud = document.getElementById('cfgEnableCloud').checked;
+            config.ModemAddress = getVal('cfgModemAddress') || "autodetect";
+            config.SpeedTestEnabled = getChecked('cfgSpeedTestEnabled');
+            config.SpeedTestInterval = parseInt(getVal('cfgSpeedTestInterval')) || 1;
+            config.SpeedTestConnections = parseInt(getVal('cfgSpeedTestConnections')) || 4;
+            config.PingCount = parseInt(getVal('cfgPingCount')) || 100;
+            config.AutoUpdateEnabled = getChecked('cfgAutoUpdateEnabled');
+            config.UpdateChannel = getVal('cfgUpdateChannel') || "stable";
+            config.Silent = getChecked('cfgSilent');
+            config.NoLogs = getChecked('cfgNoLogs');
+            config.LocalCleanupEnabled = getChecked('cfgLocalCleanupEnabled');
+            config.LocalRetentionDays = parseInt(getVal('cfgLocalRetentionDays')) || 90;
+            config.EnableCloud = getChecked('cfgEnableCloud');
 
             // Optional string fields - only include if not empty
-            const ignitePassword = document.getElementById('cfgIgnitePassword').value;
+            const ignitePassword = getVal('cfgIgnitePassword');
             if (ignitePassword) config.IgnitePassword = ignitePassword;
 
-            const cloudHost = document.getElementById('cfgCloudHost').value;
+            const cloudHost = getVal('cfgCloudHost');
             if (cloudHost) config.CloudHost = cloudHost;
 
-            const cloudPort = document.getElementById('cfgCloudPort').value;
+            const cloudPort = getVal('cfgCloudPort');
             if (cloudPort) config.CloudPort = cloudPort;
 
-            const cloudPath = document.getElementById('cfgCloudPath').value;
+            const cloudPath = getVal('cfgCloudPath');
             if (cloudPath) config.CloudPath = cloudPath;
 
-            const cloudAPIKey = document.getElementById('cfgCloudAPIKey').value;
+            const cloudAPIKey = getVal('cfgCloudAPIKey');
             if (cloudAPIKey) config.CloudAPIKey = cloudAPIKey;
 
-            document.getElementById('configPreview').textContent = JSON.stringify(config, null, 2);
+            const previewEl = document.getElementById('configPreview');
+            if (previewEl) {
+                previewEl.textContent = JSON.stringify(config, null, 2);
+            }
         }
 
         function downloadConfig() {
@@ -3662,7 +3774,7 @@
                 IgnitePassword: document.getElementById('defaultIgnitePassword').value || '',
                 SpeedTestEnabled: document.getElementById('defaultSpeedTestEnabled').checked,
                 SpeedTestInterval: parseInt(document.getElementById('defaultSpeedTestInterval').value) || 1,
-                SpeedTestConnections: parseInt(document.getElementById('defaultSpeedTestConnections').value) || 1,
+                SpeedTestConnections: parseInt(document.getElementById('defaultSpeedTestConnections').value) || 4,
                 PingCount: parseInt(document.getElementById('defaultPingCount').value) || 100,
                 AutoUpdateEnabled: document.getElementById('defaultAutoUpdateEnabled').checked,
                 UpdateChannel: document.getElementById('defaultUpdateChannel').value || 'stable',
@@ -3720,7 +3832,7 @@
                     document.getElementById('defaultIgnitePassword').value = defaults.IgnitePassword || '';
                     document.getElementById('defaultSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== undefined ? defaults.SpeedTestEnabled : true;
                     document.getElementById('defaultSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
-                    document.getElementById('defaultSpeedTestConnections').value = defaults.SpeedTestConnections || 1;
+                    document.getElementById('defaultSpeedTestConnections').value = defaults.SpeedTestConnections || 4;
                     document.getElementById('defaultPingCount').value = defaults.PingCount || 100;
                     document.getElementById('defaultAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== undefined ? defaults.AutoUpdateEnabled : true;
                     document.getElementById('defaultUpdateChannel').value = defaults.UpdateChannel || 'stable';
@@ -3736,7 +3848,7 @@
                     document.getElementById('defaultIgnitePassword').value = '';
                     document.getElementById('defaultSpeedTestEnabled').checked = true;
                     document.getElementById('defaultSpeedTestInterval').value = 1;
-                    document.getElementById('defaultSpeedTestConnections').value = 1;
+                    document.getElementById('defaultSpeedTestConnections').value = 4;
                     document.getElementById('defaultPingCount').value = 100;
                     document.getElementById('defaultAutoUpdateEnabled').checked = true;
                     document.getElementById('defaultUpdateChannel').value = 'stable';
@@ -3754,7 +3866,7 @@
                 document.getElementById('defaultIgnitePassword').value = '';
                 document.getElementById('defaultSpeedTestEnabled').checked = true;
                 document.getElementById('defaultSpeedTestInterval').value = 1;
-                document.getElementById('defaultSpeedTestConnections').value = 1;
+                document.getElementById('defaultSpeedTestConnections').value = 4;
                 document.getElementById('defaultPingCount').value = 100;
                 document.getElementById('defaultAutoUpdateEnabled').checked = true;
                 document.getElementById('defaultUpdateChannel').value = 'stable';
@@ -3785,7 +3897,7 @@
                     document.getElementById('cfgIgnitePassword').value = defaults.IgnitePassword || '';
                     document.getElementById('cfgSpeedTestEnabled').checked = defaults.SpeedTestEnabled !== undefined ? defaults.SpeedTestEnabled : true;
                     document.getElementById('cfgSpeedTestInterval').value = defaults.SpeedTestInterval || 1;
-                    document.getElementById('cfgSpeedTestConnections').value = defaults.SpeedTestConnections || 1;
+                    document.getElementById('cfgSpeedTestConnections').value = defaults.SpeedTestConnections || 4;
                     document.getElementById('cfgPingCount').value = defaults.PingCount || 100;
                     document.getElementById('cfgAutoUpdateEnabled').checked = defaults.AutoUpdateEnabled !== undefined ? defaults.AutoUpdateEnabled : true;
                     document.getElementById('cfgUpdateChannel').value = defaults.UpdateChannel || 'stable';
@@ -3870,7 +3982,7 @@
                     setVal('cfgIgnitePassword', defaults.IgnitePassword || '');
                     setChecked('cfgSpeedTestEnabled', defaults.SpeedTestEnabled !== false);
                     setVal('cfgSpeedTestInterval', defaults.SpeedTestInterval || 1);
-                    setVal('cfgSpeedTestConnections', defaults.SpeedTestConnections || 1);
+                    setVal('cfgSpeedTestConnections', defaults.SpeedTestConnections || 4);
                     setVal('cfgPingCount', defaults.PingCount || 100);
                     setChecked('cfgAutoUpdateEnabled', defaults.AutoUpdateEnabled !== false);
                     setVal('cfgUpdateChannel', defaults.UpdateChannel || 'stable');
@@ -3890,7 +4002,7 @@
                         setVal('defaultIgnitePassword', defaults.IgnitePassword || '');
                         setChecked('defaultSpeedTestEnabled', defaults.SpeedTestEnabled !== false);
                         setVal('defaultSpeedTestInterval', defaults.SpeedTestInterval || 1);
-                        setVal('defaultSpeedTestConnections', defaults.SpeedTestConnections || 1);
+                        setVal('defaultSpeedTestConnections', defaults.SpeedTestConnections || 4);
                         setVal('defaultPingCount', defaults.PingCount || 100);
                         setChecked('defaultAutoUpdateEnabled', defaults.AutoUpdateEnabled !== false);
                         setVal('defaultUpdateChannel', defaults.UpdateChannel || 'stable');
@@ -4420,7 +4532,8 @@
             const syncConfig = {
                 'n/a': { bg: '#9ca3af', label: 'N/A' },
                 'pending': { bg: '#f59e0b', label: '⏳ Pending' },
-                'active': { bg: '#10b981', label: '✅ Active' }
+                'active': { bg: '#10b981', label: '✅ Active' },
+                'deprecated': { bg: '#6b7280', label: '📦 Deprecated' }
             };
 
             const cfg = syncConfig[syncStatus] || syncConfig['n/a'];
@@ -4539,8 +4652,8 @@
                     <tr>
                         <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(config.api_key)}</code></td>
                         <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(lastSeenModem)}</code></td>
-                        <td>${statusBadge}</td>
-                        <td>${syncStatusBadge}</td>
+                        <td style="white-space: nowrap;">${statusBadge}</td>
+                        <td style="white-space: nowrap;">${syncStatusBadge}</td>
                         <td>v${versionDisplay}</td>
                         <td style="${syncClass}">${lastSync}</td>
                         <td>
@@ -4550,6 +4663,14 @@
                             <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='openConfigEditModal(${JSON.stringify(config).replace(/'/g, "&#39;")})'>
                                 ✏️ Edit
                             </button>
+                            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='openConfigHistoryModal("${config.api_key_full}")'>
+                                📜 History
+                            </button>
+                            ${currentUserRole === 'admin' ? `
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='deleteConfig("${config.api_key_full}", "${escapeHtml(config.api_key)}")'>
+                                    Delete
+                                </button>
+                            ` : ''}
                         </td>
                     </tr>
                 `;
@@ -4612,6 +4733,35 @@
             closeConfigModal();
         }
 
+        // Delete config (admin only)
+        async function deleteConfig(apiKeyFull, apiKeyDisplay) {
+            if (!confirm(`Are you sure you want to delete the configuration for API key "${apiKeyDisplay}"?\n\nThis will remove the server-managed config. The API key will remain active.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/configs/${encodeURIComponent(apiKeyFull)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to delete configuration');
+                }
+
+                showNotification('Configuration deleted successfully', 'success');
+                loadConfigMgmt(); // Refresh the config list
+            } catch (error) {
+                console.error('Delete config error:', error);
+                showNotification(`Failed to delete configuration: ${error.message}`, 'error');
+            }
+        }
+
         // View config modal - uses unified configModalState
         async function openConfigViewModal(config) {
             const apiKey = config.api_key_full || config.api_key;
@@ -4637,7 +4787,9 @@
                 configModalState.originalApiKey = apiKey;
                 configModalState.lastSeenModem = fullConfig.last_seen_modem_id || 'Never synced';
                 configModalState.version = fullConfig.version || 1;
+                configModalState.currentVersion = fullConfig.version || 1;
                 configModalState.syncStatus = fullConfig.sync_status || 'n/a';
+                configModalState.versionSyncStatus = fullConfig.sync_status || 'n/a';
                 configModalState.versions = historyData.versions || [];
                 configModalState.selectedVersion = null;
 
@@ -4649,7 +4801,7 @@
                     modemAddress: cfg.ModemAddress || 'autodetect',
                     speedTestEnabled: cfg.SpeedTestEnabled !== false,
                     speedTestInterval: cfg.SpeedTestInterval || 1,
-                    speedTestConnections: cfg.SpeedTestConnections || 1,
+                    speedTestConnections: cfg.SpeedTestConnections || 4,
                     autoUpdateEnabled: cfg.AutoUpdateEnabled !== false,
                     updateChannel: cfg.UpdateChannel || 'stable',
                     pingCount: cfg.PingCount || 100,
@@ -4676,6 +4828,9 @@
                 // Hide version info
                 const versionInfo = document.getElementById('configVersionInfo');
                 if (versionInfo) versionInfo.style.display = 'none';
+                // Reset sync status to current
+                configModalState.versionSyncStatus = configModalState.syncStatus;
+                updateVersionSyncStatusBadge();
                 return;
             }
 
@@ -4684,6 +4839,27 @@
 
             const version = configModalState.versions[idx];
             configModalState.selectedVersion = version;
+
+            // Determine effective sync status for this version
+            let effectiveSyncStatus = version.sync_status_at_creation || 'n/a';
+            const statusAtCreation = version.status_at_creation || 'unmanaged';
+
+            // If unmanaged, always N/A
+            if (statusAtCreation === 'unmanaged') {
+                effectiveSyncStatus = 'n/a';
+            }
+            // If this is NOT the latest version and was server-managed, mark as deprecated
+            else if (version.version_number < configModalState.currentVersion &&
+                     (statusAtCreation === 'managed' || statusAtCreation === 'locked')) {
+                effectiveSyncStatus = 'deprecated';
+            }
+            // Latest managed/locked version shows actual current sync status
+            else if (version.version_number === configModalState.currentVersion) {
+                effectiveSyncStatus = configModalState.syncStatus;
+            }
+
+            configModalState.versionSyncStatus = effectiveSyncStatus;
+            updateVersionSyncStatusBadge();
 
             // Show version info
             const versionInfo = document.getElementById('configVersionInfo');
@@ -4698,7 +4874,7 @@
                     'rejected_sync': 'Rejected Sync'
                 };
                 const reason = reasonLabels[version.creation_reason] || version.creation_reason;
-                versionInfo.innerHTML = `<strong>Version ${version.version_display}</strong> • ${reason} • ${timestamp} • by ${version.created_by || 'system'}`;
+                versionInfo.innerHTML = `<strong>Version v${version.version_number}</strong> • ${reason} • ${timestamp} • by ${version.created_by || 'system'}`;
                 versionInfo.style.display = 'block';
             }
 
@@ -4712,7 +4888,7 @@
                     modemAddress: cfg.ModemAddress || 'autodetect',
                     speedTestEnabled: cfg.SpeedTestEnabled !== false,
                     speedTestInterval: cfg.SpeedTestInterval || 1,
-                    speedTestConnections: cfg.SpeedTestConnections || 1,
+                    speedTestConnections: cfg.SpeedTestConnections || 4,
                     autoUpdateEnabled: cfg.AutoUpdateEnabled !== false,
                     updateChannel: cfg.UpdateChannel || 'stable',
                     pingCount: cfg.PingCount || 100,
@@ -4723,6 +4899,14 @@
                     ignitePassword: cfg.IgnitePassword || ''
                 };
                 renderConfigModalContent();
+            }
+        }
+
+        // Update the sync status badge in the info bar when viewing versions
+        function updateVersionSyncStatusBadge() {
+            const badge = document.getElementById('configVersionSyncBadge');
+            if (badge) {
+                badge.innerHTML = getSyncStatusBadge(configModalState.versionSyncStatus || configModalState.syncStatus);
             }
         }
 
@@ -4939,7 +5123,9 @@
                 configModalState.apiKeyName = '';
                 configModalState.lastSeenModem = fullConfig.last_seen_modem_id || 'Never synced';
                 configModalState.version = fullConfig.version || 1;
+                configModalState.currentVersion = fullConfig.version || 1;
                 configModalState.syncStatus = fullConfig.sync_status || 'n/a';
+                configModalState.versionSyncStatus = fullConfig.sync_status || 'n/a';
                 configModalState.data = {
                     status: fullConfig.status || 'managed',
                     cloudHost: cfg.CloudHost || '',
@@ -4947,7 +5133,7 @@
                     modemAddress: cfg.ModemAddress || 'autodetect',
                     speedTestEnabled: cfg.SpeedTestEnabled !== false,
                     speedTestInterval: cfg.SpeedTestInterval || 1,
-                    speedTestConnections: cfg.SpeedTestConnections || 1,
+                    speedTestConnections: cfg.SpeedTestConnections || 4,
                     autoUpdateEnabled: cfg.AutoUpdateEnabled !== false,
                     updateChannel: cfg.UpdateChannel || 'stable',
                     pingCount: cfg.PingCount || 100,
@@ -4985,7 +5171,7 @@
                 modemAddress: 'autodetect',
                 speedTestEnabled: true,
                 speedTestInterval: 1,
-                speedTestConnections: 1,
+                speedTestConnections: 4,
                 autoUpdateEnabled: true,
                 updateChannel: 'stable',
                 pingCount: 100,
@@ -5064,6 +5250,10 @@
                     configModalState.apiKeys = data.api_keys;
                     configModalState.filterText = '';  // Reset filter when loading
                     renderConfigModalContent();
+                    // Setup dropdown after re-rendering (for create mode)
+                    if (configModalState.mode === 'create') {
+                        setupConfigApiKeyDropdown();
+                    }
                 }
             } catch (error) {
                 console.error('Error loading API keys:', error);
@@ -5072,65 +5262,121 @@
 
         // Render filterable API key dropdown
         function renderApiKeyDropdown() {
-            const filterText = configModalState.filterText.toLowerCase();
-            const filtered = filterText
-                ? configModalState.apiKeys.filter(k =>
-                    k.name.toLowerCase().includes(filterText) ||
-                    (k.api_key_preview || k.api_key || '').toLowerCase().includes(filterText)
-                )
-                : configModalState.apiKeys;
-
-            const listItems = filtered.length === 0
-                ? `<div style="padding: 12px; color: #666; text-align: center;">No matching API keys</div>`
-                : filtered.map(k => {
-                    const originalIndex = configModalState.apiKeys.indexOf(k);
+            // Build option elements for all API keys
+            const options = configModalState.apiKeys.length === 0
+                ? `<div style="padding: 12px; color: #666; text-align: center;">No API keys available</div>`
+                : configModalState.apiKeys.map((k, index) => {
+                    const preview = (k.api_key_preview || k.api_key || '').substring(0, 8);
+                    const isSelected = configModalState.apiKey === (k.api_key_full || k.api_key);
                     return `
-                        <div class="api-key-item"
-                             onclick="selectConfigModalApiKey(${originalIndex})"
-                             style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; transition: background 0.15s;"
-                             onmouseover="this.style.background='#f0f9ff'"
-                             onmouseout="this.style.background='white'">
-                            <strong>${k.name}</strong>
-                            <span style="color: #666; margin-left: 10px; font-family: monospace; font-size: 0.85em;">${(k.api_key_preview || k.api_key || '').substring(0, 8)}...</span>
+                        <div class="config-api-key-option ${isSelected ? 'selected' : ''}"
+                             data-index="${index}"
+                             data-name="${escapeHtml(k.name)}"
+                             data-preview="${preview}">
+                            <strong>${escapeHtml(k.name)}</strong>
+                            <span style="color: inherit; opacity: 0.7; margin-left: 10px; font-family: monospace; font-size: 0.85em;">${preview}...</span>
                         </div>
                     `;
                 }).join('');
 
+            // Determine placeholder/value for the input
+            const displayValue = configModalState.apiKeyName
+                ? `${configModalState.apiKeyName} (${(configModalState.apiKey || '').substring(0, 8)}...)`
+                : '';
+            const placeholder = configModalState.apiKeys.length > 0
+                ? 'Select an API key or start typing to filter'
+                : 'No API keys available';
+
             return `
-                <input type="text"
-                       id="apiKeyFilter"
-                       placeholder="Type to filter ${configModalState.apiKeys.length} API keys..."
-                       value="${configModalState.filterText}"
-                       oninput="filterApiKeys(this.value)"
-                       style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px 6px 0 0; border-bottom: none;">
-                <div class="api-key-list" style="max-height: 180px; overflow-y: auto; border: 2px solid #e0e0e0; border-top: 1px solid #eee; border-radius: 0 0 6px 6px; background: white;">
-                    ${listItems}
+                <div class="config-searchable-select">
+                    <input type="text"
+                           id="configApiKeySearchInput"
+                           placeholder="${placeholder}"
+                           value="${displayValue}"
+                           autocomplete="off"
+                           readonly>
+                    <div class="config-searchable-dropdown" id="configApiKeyDropdown">
+                        ${options}
+                    </div>
                 </div>
             `;
         }
 
-        // Filter API keys by search text
-        function filterApiKeys(text) {
-            configModalState.filterText = text;
-            const container = document.getElementById('apiKeyDropdownContainer');
-            if (container) {
-                container.innerHTML = renderApiKeyDropdown();
-                // Restore focus to the filter input
-                const input = document.getElementById('apiKeyFilter');
-                if (input) {
-                    input.focus();
-                    input.setSelectionRange(text.length, text.length);
+        // Setup event listeners for the API key dropdown
+        function setupConfigApiKeyDropdown() {
+            const searchInput = document.getElementById('configApiKeySearchInput');
+            const dropdown = document.getElementById('configApiKeyDropdown');
+            const wrapper = searchInput ? searchInput.closest('.config-searchable-select') : null;
+
+            if (!searchInput || !dropdown) return;
+
+            // Click handler for options
+            dropdown.querySelectorAll('.config-api-key-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const index = parseInt(option.dataset.index);
+                    selectConfigModalApiKey(index);
+                });
+            });
+
+            // Show dropdown when clicking input
+            searchInput.addEventListener('click', () => {
+                dropdown.classList.add('show');
+                if (wrapper) wrapper.classList.add('open');
+                searchInput.removeAttribute('readonly');
+                searchInput.focus();
+                searchInput.select();
+            });
+
+            // Filter options as user types
+            searchInput.addEventListener('input', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                const options = dropdown.querySelectorAll('.config-api-key-option');
+
+                options.forEach(option => {
+                    const name = (option.dataset.name || '').toLowerCase();
+                    const preview = (option.dataset.preview || '').toLowerCase();
+                    if (name.includes(searchTerm) || preview.includes(searchTerm)) {
+                        option.classList.remove('hidden');
+                    } else {
+                        option.classList.add('hidden');
+                    }
+                });
+
+                dropdown.classList.add('show');
+                if (wrapper) wrapper.classList.add('open');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function configDropdownClickOutside(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                    if (wrapper) wrapper.classList.remove('open');
+                    // Reset to selected value
+                    if (configModalState.apiKeyName) {
+                        searchInput.value = `${configModalState.apiKeyName} (${(configModalState.apiKey || '').substring(0, 8)}...)`;
+                    } else {
+                        searchInput.value = '';
+                    }
+                    searchInput.setAttribute('readonly', 'readonly');
+                    // Show all options again
+                    dropdown.querySelectorAll('.config-api-key-option').forEach(opt => {
+                        opt.classList.remove('hidden');
+                    });
                 }
-            }
+            });
         }
 
         // Update config modal field
         function updateConfigModalField(field, value) {
             if (field === 'status') {
                 configModalState.data.status = value;
-                // Update mode card selection
+                // Update mode card selection AND visual styles
                 document.querySelectorAll('.config-mode-card').forEach(card => {
-                    card.classList.toggle('selected', card.dataset.mode === value);
+                    const isSelected = card.dataset.mode === value;
+                    card.classList.toggle('selected', isSelected);
+                    // Update inline styles to match render-time styling
+                    card.style.borderColor = isSelected ? '#667eea' : '#e0e0e0';
+                    card.style.background = isSelected ? '#f0f4ff' : 'white';
                 });
             } else if (field === 'apiKey') {
                 configModalState.apiKey = value;
@@ -5143,26 +5389,115 @@
         }
 
         // Select API key from dropdown
-        function selectConfigModalApiKey(index) {
+        async function selectConfigModalApiKey(index) {
             const key = configModalState.apiKeys[index];
-            if (key) {
-                configModalState.apiKey = key.api_key_full || key.api_key;
-                configModalState.apiKeyName = key.name;
+            if (!key) return;
 
-                const input = document.getElementById('configModalApiKeyInput');
-                const display = document.getElementById('configModalSelectedKey');
-                const nameSpan = document.getElementById('configModalSelectedKeyName');
+            const searchInput = document.getElementById('configApiKeySearchInput');
+            const dropdown = document.getElementById('configApiKeyDropdown');
+            const wrapper = searchInput ? searchInput.closest('.config-searchable-select') : null;
+            const input = document.getElementById('configModalApiKeyInput');
+            const display = document.getElementById('configModalSelectedKey');
+            const nameSpan = document.getElementById('configModalSelectedKeyName');
 
-                if (input) input.value = configModalState.apiKey;
-                if (nameSpan) nameSpan.textContent = key.name;
-                if (display) display.style.display = 'block';
+            // Close dropdown immediately for better UX
+            if (dropdown) {
+                dropdown.classList.remove('show');
+                dropdown.querySelectorAll('.config-api-key-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                    opt.classList.remove('hidden');
+                });
+                const selectedOpt = dropdown.querySelector(`[data-index="${index}"]`);
+                if (selectedOpt) selectedOpt.classList.add('selected');
+            }
+            if (wrapper) wrapper.classList.remove('open');
+            if (searchInput) {
+                searchInput.value = `${key.name} (loading...)`;
+                searchInput.setAttribute('readonly', 'readonly');
+            }
+
+            // Reveal the full API key from preview
+            try {
+                const response = await fetch(`/api/admin/api_keys/reveal/${key.api_key_preview}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.success && data.api_key) {
+                    configModalState.apiKey = data.api_key;
+                    configModalState.apiKeyName = key.name;
+
+                    // Update the hidden input field
+                    if (input) input.value = configModalState.apiKey;
+                    if (nameSpan) nameSpan.textContent = key.name;
+                    if (display) display.style.display = 'block';
+
+                    // Update dropdown display with revealed key
+                    if (searchInput) {
+                        searchInput.value = `${key.name} (${configModalState.apiKey.substring(0, 8)}...)`;
+                    }
+                } else {
+                    showMessage('Error revealing API key: ' + (data.error || 'Unknown error'), 'error');
+                    if (searchInput) searchInput.value = '';
+                }
+            } catch (error) {
+                showMessage('Error revealing API key: ' + error.message, 'error');
+                if (searchInput) searchInput.value = '';
             }
         }
 
         // Generate new API key for config modal
-        async function generateConfigModalApiKey() {
-            const name = prompt('Enter a name for the new API key:');
-            if (!name) return;
+        // Show modal to generate new API key (styled, not browser prompt)
+        function generateConfigModalApiKey() {
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.id = 'configGenerateKeyModal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Generate New API Key</h2>
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 15px;">Enter a descriptive name for this API key:</p>
+                        <div class="form-group">
+                            <label for="configNewKeyName">Key Name</label>
+                            <input type="text" id="configNewKeyName" placeholder="e.g., Home Router, Office Modem" autofocus
+                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeConfigGenerateKeyModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="createConfigModalApiKey()">Create API Key</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            window.currentConfigGenerateKeyModal = modal;
+
+            // Focus the input field
+            setTimeout(() => {
+                const input = document.getElementById('configNewKeyName');
+                if (input) input.focus();
+            }, 100);
+        }
+
+        // Close the generate key modal
+        function closeConfigGenerateKeyModal() {
+            if (window.currentConfigGenerateKeyModal) {
+                document.body.removeChild(window.currentConfigGenerateKeyModal);
+                window.currentConfigGenerateKeyModal = null;
+            }
+        }
+
+        // Create API key from modal input
+        async function createConfigModalApiKey() {
+            const nameInput = document.getElementById('configNewKeyName');
+            const name = nameInput ? nameInput.value.trim() : '';
+
+            if (!name) {
+                showMessage('Please enter a name for the API key', 'error');
+                return;
+            }
 
             try {
                 if (!csrfToken) await refreshCsrfToken();
@@ -5188,6 +5523,9 @@
                 configModalState.apiKey = data.api_key;
                 configModalState.apiKeyName = name;
 
+                // Close the generate key modal
+                closeConfigGenerateKeyModal();
+
                 // Refresh API keys list and update UI
                 await loadApiKeysForModal();
 
@@ -5198,6 +5536,13 @@
                 if (input) input.value = data.api_key;
                 if (nameSpan) nameSpan.textContent = name;
                 if (display) display.style.display = 'block';
+
+                // Update the dropdown display
+                const searchInput = document.getElementById('configApiKeySearchInput');
+                if (searchInput) {
+                    searchInput.value = `${name} (${data.api_key.substring(0, 8)}...)`;
+                    searchInput.setAttribute('readonly', 'readonly');
+                }
 
                 showMessage(`API key "${name}" created`, 'success');
             } catch (error) {
@@ -5220,7 +5565,7 @@
             const versionOptions = isView && configModalState.versions.length > 0
                 ? configModalState.versions.map((v, idx) => {
                     const timestamp = new Date(v.created_at).toLocaleString();
-                    const label = `${v.version_display} - ${timestamp}`;
+                    const label = `v${v.version_number} - ${timestamp}`;
                     return `<option value="${idx}">${label}</option>`;
                 }).join('')
                 : '';
@@ -5256,7 +5601,7 @@
                     </div>
                     <div class="config-info-item">
                         <span class="label">Sync:</span>
-                        ${getSyncStatusBadge(configModalState.syncStatus)}
+                        <span id="configVersionSyncBadge">${getSyncStatusBadge(configModalState.versionSyncStatus || configModalState.syncStatus)}</span>
                     </div>
                 </div>
                 ` : ''}
@@ -5284,36 +5629,40 @@
                 </div>
                 ` : ''}
 
-                <!-- Management Mode -->
+                <!-- Management Mode (hidden in view mode) -->
+                ${!isView ? `
                 <div class="config-section">
                     <h3>📋 Management Mode</h3>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                    <div style="display: grid; grid-template-columns: repeat(${isCreate ? '3' : '2'}, 1fr); gap: 15px;">
+                        ${isCreate ? `
                         <div class="config-mode-card ${d.status === 'unmanaged' ? 'selected' : ''}"
                              data-mode="unmanaged"
-                             onclick="${isView ? '' : "updateConfigModalField('status', 'unmanaged')"}"
-                             style="padding: 15px; border: 2px solid ${d.status === 'unmanaged' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'unmanaged' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'unmanaged')"
+                             style="padding: 15px; border: 2px solid ${d.status === 'unmanaged' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'unmanaged' ? '#f0f4ff' : 'white'};">
                             <div style="font-size: 1.5em;">📝</div>
                             <div style="font-weight: 600; margin: 8px 0;">Unmanaged</div>
                             <div style="font-size: 0.8em; color: #666;">Client controls config</div>
                         </div>
+                        ` : ''}
                         <div class="config-mode-card ${d.status === 'managed' ? 'selected' : ''}"
                              data-mode="managed"
-                             onclick="${isView ? '' : "updateConfigModalField('status', 'managed')"}"
-                             style="padding: 15px; border: 2px solid ${d.status === 'managed' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'managed' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'managed')"
+                             style="padding: 15px; border: 2px solid ${d.status === 'managed' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'managed' ? '#f0f4ff' : 'white'};">
                             <div style="font-size: 1.5em;">🔄</div>
                             <div style="font-weight: 600; margin: 8px 0;">Managed</div>
                             <div style="font-size: 0.8em; color: #666;">Server pushes once</div>
                         </div>
                         <div class="config-mode-card ${d.status === 'locked' ? 'selected' : ''}"
                              data-mode="locked"
-                             onclick="${isView ? '' : "updateConfigModalField('status', 'locked')"}"
-                             style="padding: 15px; border: 2px solid ${d.status === 'locked' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: ${isView ? 'default' : 'pointer'}; text-align: center; background: ${d.status === 'locked' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'locked')"
+                             style="padding: 15px; border: 2px solid ${d.status === 'locked' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'locked' ? '#f0f4ff' : 'white'};">
                             <div style="font-size: 1.5em;">🔒</div>
                             <div style="font-weight: 600; margin: 8px 0;">Locked</div>
                             <div style="font-size: 0.8em; color: #666;">Server enforces</div>
                         </div>
                     </div>
                 </div>
+                ` : ''}
 
                 <!-- Cloud Settings -->
                 <div class="config-section">
@@ -5383,7 +5732,7 @@
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Connections</label>
                             <input type="number" value="${d.speedTestConnections}" ${isView ? 'disabled' : ''}
-                                   onchange="updateConfigModalField('speedTestConnections', parseInt(this.value) || 1)"
+                                   onchange="updateConfigModalField('speedTestConnections', parseInt(this.value) || 4)"
                                    min="1" max="32"
                                    style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
                         </div>
@@ -5460,7 +5809,9 @@
             configModalState.apiKey = '';
             configModalState.apiKeyName = '';
             configModalState.version = 1;
+            configModalState.currentVersion = 1;
             configModalState.syncStatus = 'n/a';
+            configModalState.versionSyncStatus = 'n/a';
             configModalState.data = {
                 status: 'managed',
                 cloudHost: '',
@@ -5468,7 +5819,7 @@
                 modemAddress: 'autodetect',
                 speedTestEnabled: true,
                 speedTestInterval: 1,
-                speedTestConnections: 1,
+                speedTestConnections: 4,
                 autoUpdateEnabled: true,
                 updateChannel: 'stable',
                 pingCount: 100,
@@ -5499,6 +5850,11 @@
 
             // Render content
             renderConfigModalContent();
+
+            // Setup dropdown event listeners (for create mode)
+            if (configModalState.mode === 'create') {
+                setupConfigApiKeyDropdown();
+            }
 
             // Clear any previous errors
             const errorEl = document.getElementById('configModalError');
@@ -5922,7 +6278,7 @@
                             <div style="font-size: 0.85em; color: #666;">${timestamp}</div>
                             <div style="font-weight: 600; color: #333; margin: 5px 0;">${icon} ${reasonLabel} ${statusBadge}</div>
                             <div style="font-size: 0.85em; color: #666;">
-                                <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">${version.version_display}</span>${trackBadge}
+                                <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">v${version.version_number}</span>${trackBadge}
                                 • by ${version.created_by || 'system'}
                             </div>
                         </div>

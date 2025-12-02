@@ -9,6 +9,7 @@ These tests cover:
 import pytest
 from datetime import datetime, timedelta, timezone
 
+from app.core.utils import utc_now
 from app.core.api_key_cache import APIKeyCacheStats
 
 
@@ -99,9 +100,9 @@ class TestAPIKeyCacheStats:
 
     def test_last_reset_timestamp(self):
         """Last reset timestamp should be set on initialization and reset."""
-        before = datetime.now(timezone.utc)
+        before = utc_now()
         stats = APIKeyCacheStats()
-        after = datetime.now(timezone.utc)
+        after = utc_now()
 
         # Should be set during initialization
         assert before <= stats.last_reset <= after
@@ -110,9 +111,9 @@ class TestAPIKeyCacheStats:
         stats.record_hit()
 
         # Reset and check timestamp updated
-        before_reset = datetime.now(timezone.utc)
+        before_reset = utc_now()
         stats.reset()
-        after_reset = datetime.now(timezone.utc)
+        after_reset = utc_now()
 
         assert before_reset <= stats.last_reset <= after_reset
 
