@@ -16,7 +16,7 @@ _is_testing = settings.is_test() or os.getenv("TESTING", "").lower() in ("true",
 
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri=f"redis://{settings.redis_host}:{settings.redis_port}/1",  # Use DB 1 for rate limits
+    storage_uri=f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/1" if settings.redis_password else f"redis://{settings.redis_host}:{settings.redis_port}/1",  # Use DB 1 for rate limits
     default_limits=[] , # No default limits - apply per-endpoint
     enabled=not _is_testing  # Disable rate limiting during tests
 )
