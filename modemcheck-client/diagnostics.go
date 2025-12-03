@@ -102,65 +102,35 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 		return false
 	}
 
-	// Find nearby servers
-	targets, err := serverList.FindServer([]int{})
-	if err != nil {
-		m.Log(fmt.Sprintf("Failed to find servers: %v", err))
-		data.SpeedTestUpload = -1
-		data.SpeedTestDownload = -1
-		return false
-	}
-
-	if len(targets) == 0 {
+	// Use all available servers (already sorted by distance and pre-pinged by FetchServers)
+	servers := serverList
+	if len(servers) == 0 {
 		m.Log("No speed test servers found")
 		data.SpeedTestUpload = -1
 		data.SpeedTestDownload = -1
 		return false
 	}
 
+	// Select server with lowest latency for reporting (servers already have latency from FetchServers ping)
 	var server *speedtest.Server
-
-	// Multi-server mode: test latency on top servers when using 2+ connections
-	// Single connection tests use closest server (faster)
-	if m.config.SpeedTestConnections >= 2 && len(targets) >= 2 {
-		maxServers := min(3, len(targets))
-		m.Log(fmt.Sprintf("Multi-server mode: testing latency on %d servers", maxServers))
-
-		var bestServer *speedtest.Server
-		var bestLatency time.Duration = time.Hour // Start with high value
-
-		for i := range maxServers {
-			candidate := targets[i]
-
-			// Quick latency test only (no download)
-			if err := candidate.PingTest(nil); err != nil {
-				m.Log(fmt.Sprintf("Server %s (%s) ping failed, skipping", candidate.Name, candidate.Sponsor))
-				continue
-			}
-
-			latency := candidate.Latency
-			m.Log(fmt.Sprintf("Server %d/%d: %s (%s) - %.1fms",
-				i+1, maxServers, candidate.Name, candidate.Sponsor,
-				float64(latency)/float64(time.Millisecond)))
-
-			if latency < bestLatency {
-				bestLatency = latency
-				bestServer = candidate
-			}
+	var bestLatency time.Duration = time.Hour
+	for _, s := range servers {
+		if s.Latency > 0 && s.Latency < bestLatency {
+			bestLatency = s.Latency
+			server = s
 		}
+	}
+	if server == nil {
+		server = servers[0] // Fallback to first (closest by distance) if no valid latency
+	}
 
-		if bestServer == nil {
-			m.Log("All multi-server latency tests failed, using closest server")
-			server = targets[0]
-		} else {
-			server = bestServer
-			m.Log(fmt.Sprintf("Best server selected: %s (%.1fms latency)",
-				server.Name, float64(bestLatency)/float64(time.Millisecond)))
-		}
+	// Log mode and server info
+	if m.config.SpeedTestConnections > 1 && len(servers) > 1 {
+		m.Log(fmt.Sprintf("Multi-server mode: %d servers available, best: %s (%.1fms)",
+			len(servers), server.Name, float64(server.Latency)/float64(time.Millisecond)))
 	} else {
-		// Single connection mode or only 1 server available
-		server = targets[0]
-		m.Log("Single-server mode: using closest server")
+		m.Log(fmt.Sprintf("Single-server mode: %s (%.1fms)",
+			server.Name, float64(server.Latency)/float64(time.Millisecond)))
 	}
 
 	m.Log(fmt.Sprintf("Testing with server: %s (%s, %s)", server.Name, server.Sponsor, server.Country))
@@ -180,7 +150,11 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 
 	// Run download test
 	m.Log("Running download test...")
-	err = server.DownloadTest()
+	if m.config.SpeedTestConnections > 1 && len(servers) > 1 {
+		err = server.MultiDownloadTestContext(context.Background(), servers)
+	} else {
+		err = server.DownloadTest()
+	}
 	if err != nil {
 		m.Log(fmt.Sprintf("Download test failed: %v", err))
 		data.SpeedTestDownload = -1
@@ -193,7 +167,11 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 
 	// Run upload test
 	m.Log("Running upload test...")
-	err = server.UploadTest()
+	if m.config.SpeedTestConnections > 1 && len(servers) > 1 {
+		err = server.MultiUploadTestContext(context.Background(), servers)
+	} else {
+		err = server.UploadTest()
+	}
 	if err != nil {
 		m.Log(fmt.Sprintf("Upload test failed: %v", err))
 		data.SpeedTestUpload = -1
