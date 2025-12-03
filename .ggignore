@@ -1,0 +1,50 @@
+# GitGuardian Ignore File
+# https://docs.gitguardian.com/ggshield-docs/reference/ggignore
+
+# =============================================================================
+# TEST ENVIRONMENT CREDENTIALS (intentionally committed for CI/local testing)
+# =============================================================================
+
+# Docker Compose test configuration with hardcoded test-only passwords
+# These run on isolated ports (6380, 5433, 22560) separate from production
+cloudserver/docker-compose.test.yml
+
+# All test files contain test credentials like "TestPass123!", "test-secret-key"
+cloudserver/tests/**
+
+# =============================================================================
+# EXAMPLE/TEMPLATE FILES (contain placeholder values, not real secrets)
+# =============================================================================
+
+# Example env file with "CHANGE_THIS_REQUIRED" placeholders
+cloudserver/.env.example
+
+# =============================================================================
+# DOCUMENTATION (contains example commands and placeholder values)
+# =============================================================================
+
+# Documentation showing how to generate secrets (not actual secrets)
+cloudserver/DOCKER_SECRETS.md
+cloudserver/README.md
+README.md
+
+# =============================================================================
+# SECRET DETECTION BASELINES
+# =============================================================================
+
+# detect-secrets baseline (contains hashed secrets for auditing)
+.secrets.baseline
+
+# =============================================================================
+# BUILD ARTIFACTS
+# =============================================================================
+
+# Minisign signatures (public, not secrets)
+*.minisig
+
+# =============================================================================
+# VENDORED/THIRD-PARTY CODE
+# =============================================================================
+
+# zxcvbn password strength library (contains entropy strings)
+cloudserver/static/zxcvbn.js
