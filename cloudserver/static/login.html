@@ -135,7 +135,8 @@
             <button type="submit" id="login-btn">Login</button>
         </form>
     </div>
-    
+
+    <script src="/static/error-utils.js"></script>
     <script>
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('error');
@@ -149,6 +150,20 @@
         function hideError() {
             errorDiv.classList.remove('show');
         }
+
+        // Check for session timeout message on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('timeout') === '1') {
+                showError('Your session has timed out. Please log in again.');
+                // Clean up URL - remove timeout param but keep return param
+                const returnParam = urlParams.get('return');
+                const newUrl = returnParam
+                    ? window.location.pathname + '?return=' + encodeURIComponent(returnParam)
+                    : window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        });
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -173,10 +188,6 @@
                     credentials: 'same-origin'
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-                }
-
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
@@ -185,6 +196,18 @@
                 }
 
                 const data = await response.json();
+
+                if (!response.ok) {
+                    // Handle account lockout specially
+                    if (isAccountLocked(data)) {
+                        showError(formatLockoutMessage(data));
+                    } else {
+                        showError(getErrorMessage(response, data));
+                    }
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                    return;
+                }
 
                 if (data.success) {
                     // Check if password change is required
@@ -202,7 +225,7 @@
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showError(error.message || 'Network error. Please try again.');
+                showError('Unable to connect to server. Please check your connection.');
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
             }

@@ -101,7 +101,8 @@ class TestUpload:
 
         assert response.status_code == 401
         result = response.json()
-        assert "Invalid or inactive API key" in result["detail"]
+        assert result.get("success") is False
+        assert "Invalid or inactive API key" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_inactive_api_key(self, http_client: httpx.AsyncClient, inactive_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -138,7 +139,8 @@ class TestUpload:
 
         assert response.status_code == 401
         result = response.json()
-        assert "Invalid or inactive API key" in result["detail"]
+        assert result.get("success") is False
+        assert "Invalid or inactive API key" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_invalid_signature(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -168,7 +170,8 @@ class TestUpload:
         
         assert response.status_code == 401
         result = response.json()
-        assert "Signature validation failed" in result["detail"]
+        assert result.get("success") is False
+        assert "Signature validation failed" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_expired_timestamp(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -206,7 +209,9 @@ class TestUpload:
         assert response.status_code == 401
         result = response.json()
         # Error message includes specific failure reason for debugging
-        assert "signature validation failed" in result["detail"].lower() or "expired" in result["detail"].lower()
+        assert result.get("success") is False
+        error_msg = result["error"]["message"].lower()
+        assert "signature validation failed" in error_msg or "expired" in error_msg
     
     @pytest.mark.asyncio
     async def test_upload_invalid_checksum(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -243,7 +248,8 @@ class TestUpload:
 
         assert response.status_code == 400
         result = response.json()
-        assert "Checksum validation failed" in result["detail"]
+        assert result.get("success") is False
+        assert "Checksum validation failed" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_missing_checksum(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -279,7 +285,8 @@ class TestUpload:
 
         assert response.status_code == 400
         result = response.json()
-        assert "Missing checksum" in result["detail"]
+        assert result.get("success") is False
+        assert "Missing checksum" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_invalid_json(self, http_client: httpx.AsyncClient, active_api_key):
@@ -315,7 +322,8 @@ class TestUpload:
 
         assert response.status_code == 400
         result = response.json()
-        assert "Invalid JSON" in result["detail"]
+        assert result.get("success") is False
+        assert "Invalid JSON" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_invalid_modem_id_format(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -351,7 +359,8 @@ class TestUpload:
 
         assert response.status_code == 400
         result = response.json()
-        assert "Invalid modem_id format" in result["detail"]
+        assert result.get("success") is False
+        assert "Invalid modem_id format" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_invalid_filename_format(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
@@ -387,7 +396,8 @@ class TestUpload:
 
         assert response.status_code == 400
         result = response.json()
-        assert "Invalid filename format" in result["detail"]
+        assert result.get("success") is False
+        assert "Invalid filename format" in result["error"]["message"]
     
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -430,7 +440,8 @@ class TestUpload:
 
         assert response.status_code == 413
         result = response.json()
-        assert "File size exceeds" in result["detail"]
+        assert result.get("success") is False
+        assert "File size exceeds" in result["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_upload_duplicate_check(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check):
@@ -467,4 +478,5 @@ class TestUpload:
 
         assert response.status_code == 409
         result = response.json()
-        assert "already exists" in result["detail"].lower()
+        assert result.get("success") is False
+        assert "already exists" in result["error"]["message"].lower()

@@ -116,6 +116,11 @@ async function checkAuth() {
         // Show the page content now that auth is verified
         document.querySelector('.container').classList.add('authenticated');
 
+        // Initialize session timeout monitor
+        if (typeof initSessionMonitor === 'function') {
+            initSessionMonitor();
+        }
+
         // Show admin button for elevated and admin users (both desktop and mobile)
         const userRole = (data.role || '').toUpperCase();
         if (userRole === 'ADMIN' || userRole === 'ELEVATED') {
@@ -449,8 +454,14 @@ async function loadModemList() {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API returned status ${response.status}: ${errorText}`);
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (e) {
+                // Response is not JSON
+            }
+            showStatus(getErrorMessage(response, data), 'error');
+            return;
         }
 
         const data = await response.json();
@@ -484,7 +495,8 @@ async function loadModemList() {
         // Setup searchable dropdown event listeners
         setupSearchableDropdown();
     } catch (error) {
-        showStatus(`Error loading modem list: ${error.message}`, 'error');
+        console.error('Error loading modem list:', error);
+        showStatus('Unable to load modem list. Please try again.', 'error');
     }
 }
 
@@ -579,6 +591,7 @@ function showStatus(message, type = 'info') {
 }
 
 // Load data for selected modem and date range
+// Uses progressive loading: fast trend data first, then full data for single-check view
 async function loadData() {
     const modemId = document.getElementById('modemSelect').value;
     const startDate = document.getElementById('startDate').value;
@@ -588,12 +601,16 @@ async function loadData() {
         showStatus('Please select a modem', 'error');
         return;
     }
-    
+
     showStatus('Loading data...', 'info');
     document.getElementById('loadBtn').disabled = true;
-    
+
+    // Reset data arrays
+    trendData = [];
+    allChecks = [];
+
     try {
-        // Prepare request body for get_all_checks endpoint
+        // Prepare request body
         const requestBody = {
             modem_id: modemId,
             start_date: startDate || '2020-01-01',
@@ -601,60 +618,75 @@ async function loadData() {
             limit: 10000
         };
 
-        showStatus('Loading data...', 'info');
+        // Start both requests in parallel for faster loading
+        // Trend data is smaller (~500 bytes/check) and faster to load
+        // Full data is larger (~15-50KB/check) but needed for single-check view
+        const [trendResponse, fullResponse] = await Promise.all([
+            fetch('/api/db/get_trend_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                credentials: 'same-origin'
+            }),
+            fetch('/api/db/get_all_checks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                credentials: 'same-origin'
+            })
+        ]);
 
-        const response = await fetch('/api/db/get_all_checks', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody),
-            credentials: 'same-origin'
-        });
-        const data = await response.json();
-
-        if (!data.success || !data.checks || data.checks.length === 0) {
-            showStatus('No data found for the selected criteria', 'error');
-            document.getElementById('loadBtn').disabled = false;
-            return;
+        // Process trend data (arrives faster due to smaller size)
+        const trendResult = await trendResponse.json();
+        if (trendResult.success && trendResult.data && trendResult.data.length > 0) {
+            trendData = trendResult.data;
+            showStatus(`Loaded ${trendData.length} check(s) for trends`, 'success');
         }
 
-        showStatus(`Loaded ${data.checks.length} check(s)`, 'success');
+        // Process full data for single-check view
+        const fullResult = await fullResponse.json();
+        if (!fullResult.success || !fullResult.checks || fullResult.checks.length === 0) {
+            if (trendData.length === 0) {
+                showStatus('No data found for the selected criteria', 'error');
+                document.getElementById('loadBtn').disabled = false;
+                return;
+            }
+            // We have trend data but no full data - can still show trends
+            showStatus('Warning: Full check data unavailable, trends only', 'warning');
+        } else {
+            // Extract full_data from each check
+            allChecks = fullResult.checks.map(check => check.full_data);
 
-        // Extract full_data from each check (single request now includes everything)
-        allChecks = data.checks.map(check => check.full_data);
-        
-        if (allChecks.length === 0) {
-            showStatus('Failed to load data', 'error');
-            document.getElementById('loadBtn').disabled = false;
-            return;
+            // Sort by check time (ascending for timeline navigation)
+            allChecks.sort((a, b) => {
+                const timeA = a.sysinfo?.checktime || 0;
+                const timeB = b.sysinfo?.checktime || 0;
+                return timeA - timeB;
+            });
+
+            currentCheckIndex = allChecks.length - 1; // Start with most recent
+            updateTimelineNav();
         }
-        
-        // Sort by check time (numeric comparison for int64 timestamps)
-        allChecks.sort((a, b) => {
-            const timeA = a.sysinfo?.checktime || 0;
-            const timeB = b.sysinfo?.checktime || 0;
-            return timeA - timeB;
-        });
-        
-        currentCheckIndex = allChecks.length - 1; // Start with most recent
-        updateTimelineNav();
-        
+
         // Hide welcome message once data is loaded
         const welcomeMsg = document.getElementById('welcomeMessage');
         if (welcomeMsg) {
             welcomeMsg.style.display = 'none';
         }
-        
-        // Always show Single View by default
-        showSingleView();
-        
-        displayCurrentCheck();
-        showStatus(`Loaded ${allChecks.length} check(s) successfully`, 'success');
-        
+
+        // Show Single View by default (if we have full data)
+        if (allChecks.length > 0) {
+            showSingleView();
+            displayCurrentCheck();
+            showStatus(`Loaded ${allChecks.length} check(s) successfully`, 'success');
+        } else if (trendData.length > 0) {
+            // Only trend data available - show trends view
+            showTrendsView();
+        }
+
     } catch (error) {
         console.error('Error loading data:', error);
-        showStatus('Error loading data: ' + error.message, 'error');
+        showStatus('Unable to load data. Please try again.', 'error');
     } finally {
         document.getElementById('loadBtn').disabled = false;
     }
@@ -678,10 +710,16 @@ function showTrendsView() {
     document.getElementById('trendsView').classList.add('active');
     document.querySelectorAll('.view-btn')[0].classList.remove('active');
     document.querySelectorAll('.view-btn')[1].classList.add('active');
-    
+
     document.getElementById('timelineNav').classList.remove('active');
-    
-    renderTrendChartsFromChecks();
+
+    // Use pre-aggregated data if available (much faster rendering)
+    // Falls back to client-side aggregation if trendData is empty
+    if (trendData.length > 0) {
+        renderTrendChartsFromPreAggregated();
+    } else if (allChecks.length > 0) {
+        renderTrendChartsFromChecks();
+    }
 }
 
 // Timeline navigation
@@ -1207,6 +1245,116 @@ function renderTrendChartsFromChecks() {
     renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
             }
 
+// Global variable to store pre-aggregated trend data
+let trendData = [];
+
+/**
+ * Render trend charts using pre-aggregated data from /api/db/get_trend_data.
+ * This is significantly faster than renderTrendChartsFromChecks() because:
+ * 1. Data transfer is ~500 bytes per check instead of ~15-50KB
+ * 2. No client-side aggregation needed (server pre-computes min/avg/max)
+ */
+function renderTrendChartsFromPreAggregated() {
+    if (trendData.length < 1) {
+        showStatus('No data available to display trends', 'error');
+        return;
+    }
+
+    // Destroy all existing charts to prevent canvas reuse errors
+    Object.keys(charts).forEach(key => {
+        if (charts[key]) {
+            charts[key].destroy();
+            charts[key] = null;
+        }
+    });
+
+    // Data is already pre-aggregated - just extract arrays directly
+    const timestamps = trendData.map(c => c.check_time);
+
+    // Speed data (already parsed to Mbps by server)
+    const uploadSpeeds = trendData.map(c => c.upload_speed);
+    const downloadSpeeds = trendData.map(c => c.download_speed);
+    const uploadLimits = trendData.map(c => c.upload_limit);
+    const downloadLimits = trendData.map(c => c.download_limit);
+
+    // Ping data
+    const googlePingAvg = trendData.map(c => c.ping_google_avg);
+    const googlePingLoss = trendData.map(c => c.ping_google_loss);
+    const cloudflarePingAvg = trendData.map(c => c.ping_cloudflare_avg);
+    const cloudflarePingLoss = trendData.map(c => c.ping_cloudflare_loss);
+    const speedtestLatency = trendData.map(c => c.speedtest_latency);
+    const speedtestMaxLatency = trendData.map(c => c.speedtest_max_latency);
+    const googleMaxLatency = trendData.map(c => c.ping_google_max);
+    const cloudflareMaxLatency = trendData.map(c => c.ping_cloudflare_max);
+
+    // Uptime data (already in days from server)
+    const uptimeData = trendData.map(c => c.uptime_days);
+
+    // RX data - already aggregated by server!
+    // Map from server format (min_power/avg_power/max_power) to chart format (min/avg/max)
+    const rxScqamPowerData = trendData.map(c => ({
+        min: c.rx_scqam?.min_power ?? null,
+        avg: c.rx_scqam?.avg_power ?? null,
+        max: c.rx_scqam?.max_power ?? null
+    }));
+    const rxOfdmPowerData = trendData.map(c => ({
+        min: c.rx_ofdm?.min_power ?? null,
+        avg: c.rx_ofdm?.avg_power ?? null,
+        max: c.rx_ofdm?.max_power ?? null
+    }));
+    const rxScqamSnrData = trendData.map(c => ({
+        min: c.rx_scqam?.min_snr ?? null,
+        avg: c.rx_scqam?.avg_snr ?? null,
+        max: c.rx_scqam?.max_snr ?? null
+    }));
+    const rxOfdmSnrData = trendData.map(c => ({
+        min: c.rx_ofdm?.min_snr ?? null,
+        avg: c.rx_ofdm?.avg_snr ?? null,
+        max: c.rx_ofdm?.max_snr ?? null
+    }));
+
+    // BER data - already calculated by server
+    const rxScqamBerData = trendData.map(c => ({
+        avg: c.rx_scqam?.avg_ber ?? null,
+        max: c.rx_scqam?.max_ber ?? null
+    }));
+    const rxOfdmBerData = trendData.map(c => ({
+        avg: c.rx_ofdm?.avg_ber ?? null,
+        max: c.rx_ofdm?.max_ber ?? null
+    }));
+    const rxScqamCorrectedData = trendData.map(c => ({
+        avg: c.rx_scqam?.avg_corrected_rate ?? null,
+        max: c.rx_scqam?.max_corrected_rate ?? null
+    }));
+    const rxOfdmCorrectedData = trendData.map(c => ({
+        avg: c.rx_ofdm?.avg_corrected_rate ?? null,
+        max: c.rx_ofdm?.max_corrected_rate ?? null
+    }));
+
+    // TX data - already aggregated by server
+    const txScqamData = trendData.map(c => ({
+        min: c.tx_scqam?.min_power ?? null,
+        avg: c.tx_scqam?.avg_power ?? null,
+        max: c.tx_scqam?.max_power ?? null,
+        bonded: c.tx_scqam?.bonded_count ?? 0
+    }));
+    const txOfdmaData = trendData.map(c => ({
+        avgPower: c.tx_ofdma?.avg_power ?? null,
+        bonded: c.tx_ofdma?.bonded_count ?? 0,
+        impaired: c.tx_ofdma?.impaired_count ?? 0
+    }));
+
+    // Render all charts using existing render functions
+    renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
+    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss,
+                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
+    renderUptimeChart(timestamps, uptimeData);
+    renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
+    renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
+    renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
+    renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
+}
+
             // Old API function - can be removed if no longer needed
             function renderTrendCharts(speedData, signalData) {
                 // Debug logging
@@ -1354,7 +1502,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -1495,7 +1651,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -1599,7 +1763,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -1728,7 +1900,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -1838,7 +2018,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -1966,7 +2154,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },
@@ -2119,7 +2315,15 @@ function renderTrendChartsFromChecks() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
                         plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
                             legend: {
                                 position: 'top',
                             },

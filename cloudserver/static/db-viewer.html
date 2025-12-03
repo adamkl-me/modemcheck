@@ -693,6 +693,7 @@
                 }
             }
         </style>
+        <link rel="stylesheet" href="/static/session-monitor.css">
     </head>
     <body>
         <div class="container">
@@ -848,12 +849,12 @@
                         <div class="speed-card">
                             <label>🌐 Ping Google</label>
                             <div id="ping_google" class="value">-</div>
-                            <div id="ping_google_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div id="ping_google_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
                         </div>
                         <div class="speed-card">
                             <label>☁️ Ping Cloudflare</label>
                             <div id="ping_cloudflare" class="value">-</div>
-                            <div id="ping_cloudflare_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div id="ping_cloudflare_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
                         </div>
                     </div>
 
@@ -1024,7 +1025,9 @@
         </div>
 
         <script>console.log("DEBUG: Page loaded, about to load db-viewer.js"); window.debugMode = true;</script>
+        <script src="/static/error-utils.js"></script>
         <script src="/static/api-config.js"></script>
         <script src="/static/db-viewer.js"></script>
+        <script src="/static/session-monitor.js"></script>
     </body>
 </html>

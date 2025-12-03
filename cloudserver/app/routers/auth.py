@@ -1,7 +1,7 @@
 """
 Authentication router for login, logout, session management, and password changes.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Cookie
+from fastapi import APIRouter, Depends, Request, Response, Cookie
 
 from app.core.utils import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +45,9 @@ from app.core.errors import (
     InvalidCredentialsError,
     AccountLockedError,
     RateLimitError,
+    UserNotFoundError,
+    PasswordIncorrectError,
+    ValidationError,
 )
 from sqlalchemy import select, update
 
@@ -281,10 +284,7 @@ async def change_password(
     # Get user from database
     user = await get_user_from_db(username, db)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(username)
 
     # Verify current password
     is_valid, _ = verify_password(password_data.current_password, user.password_hash)
@@ -299,10 +299,7 @@ async def change_password(
             user_agent=user_agent,
             failure_reason="Invalid current password"
         )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
-        )
+        raise PasswordIncorrectError()
 
     # Validate new password
     is_valid_password, error_message = validate_password(password_data.new_password)
@@ -317,10 +314,7 @@ async def change_password(
             user_agent=user_agent,
             failure_reason=f"Password policy violation: {error_message}"
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_message
-        )
+        raise ValidationError(message=error_message, details={"field": "new_password"})
 
     # Hash new password
     new_hash = hash_password(password_data.new_password)
@@ -377,10 +371,7 @@ async def change_own_password(
     # Get user from database
     user = await get_user_from_db(username, db)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(username)
 
     # Validate new password
     is_valid_password, error_message = validate_password(new_password)
@@ -395,10 +386,7 @@ async def change_own_password(
             user_agent=user_agent,
             failure_reason=error_message
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_message
-        )
+        raise ValidationError(message=error_message, details={"field": "new_password"})
 
     # Hash new password
     new_hash = hash_password(new_password)

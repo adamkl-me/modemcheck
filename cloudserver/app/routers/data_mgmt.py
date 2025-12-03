@@ -13,7 +13,7 @@ from datetime import datetime
 from app.core.utils import utc_now
 
 logger = logging.getLogger(__name__)
-from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +28,13 @@ from app.core.zip_security import (
     check_zip_bomb,
     sanitize_zip_path,
     validate_utf8
+)
+from app.core.errors import (
+    CheckNotFoundError,
+    NoChecksFoundError,
+    ZipValidationError,
+    ZipBombError,
+    ValidationError,
 )
 from app.models import ModemCheck
 from app.schemas.modem_check import DeleteCheckRequest, DeleteAllChecksRequest
@@ -67,10 +74,7 @@ async def delete_check(
     check = result.scalars().first()
 
     if not check:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Check not found"
-        )
+        raise CheckNotFoundError(check_id=delete_data.check_id)
 
     # Delete check
     await db.execute(
@@ -120,10 +124,7 @@ async def delete_all_modem_checks(
     check_count = len(count_result.scalars().all())
 
     if check_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No checks found for this modem"
-        )
+        raise NoChecksFoundError(modem_id=delete_data.modem_id)
 
     # Delete all checks
     await db.execute(
@@ -313,20 +314,14 @@ async def bulk_upload_checks(
         # Validate ZIP file
         is_valid, error = validate_zip_file(content)
         if not is_valid:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid ZIP file: {error}"
-            )
+            raise ZipValidationError(reason=error)
 
         zip_buffer = BytesIO(content)
 
         # Check for ZIP bombs
         is_safe, error = check_zip_bomb(zip_buffer, max_ratio=100.0, max_uncompressed_size=100 * 1024 * 1024)
         if not is_safe:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=error
-            )
+            raise ZipBombError(reason=error)
 
         # Extract and process files from ZIP
         zip_buffer.seek(0)
@@ -336,9 +331,9 @@ async def bulk_upload_checks(
             # Check file count
             json_files = [f for f in file_list if not f.is_dir() and not f.filename.endswith('.zip')]
             if len(json_files) > settings.max_bulk_upload_files:
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"Too many files in ZIP. Maximum is {settings.max_bulk_upload_files}"
+                raise ValidationError(
+                    message=f"Too many files in ZIP. Maximum is {settings.max_bulk_upload_files}",
+                    details={"max_files": settings.max_bulk_upload_files, "actual_files": len(json_files)}
                 )
 
             for file_info in file_list:
@@ -485,10 +480,7 @@ async def bulk_download_checks(
 
     if files_count == 0:
         tmp.close()
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No checks found matching criteria"
-        )
+        raise NoChecksFoundError(criteria="provided filters")
 
     # Log action
     await log_user_activity(

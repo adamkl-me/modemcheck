@@ -1,7 +1,7 @@
 """
 User management router for admin operations.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.core.utils import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,13 @@ from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.security import hash_password, validate_password, delete_user_sessions, contains_null_byte
 from app.core.audit import log_user_activity
+from app.core.errors import (
+    ValidationError,
+    DuplicateResourceError,
+    SelfDeletionError,
+    UserNotFoundError,
+    InvalidRoleError,
+)
 from app.models import User
 from app.schemas.user import (
     UserCreate,
@@ -53,10 +60,7 @@ async def create_user(
     """
     # Check for null bytes in username (security check)
     if contains_null_byte(user_data.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username contains invalid characters"
-        )
+        raise ValidationError(message="Username contains invalid characters")
 
     # Check if user already exists
     result = await db.execute(
@@ -65,18 +69,12 @@ async def create_user(
     existing_user = result.scalars().first()
 
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User already exists"
-        )
+        raise DuplicateResourceError(resource="User", identifier=user_data.username)
 
     # Validate password
     is_valid, error_msg = validate_password(user_data.password)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
+        raise ValidationError(message=error_msg, details={"field": "password"})
 
     # Hash password
     password_hash = hash_password(user_data.password)
@@ -157,10 +155,7 @@ async def delete_user(
     """
     # Prevent self-deletion
     if delete_data.username == session_data["username"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
-        )
+        raise SelfDeletionError()
 
     # Delete user
     result = await db.execute(
@@ -169,10 +164,7 @@ async def delete_user(
     await db.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(delete_data.username)
 
     # Delete all sessions for this user
     await delete_user_sessions(delete_data.username)
@@ -217,10 +209,7 @@ async def change_user_role(
     await db.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(role_data.username)
 
     # Log action
     await log_user_activity(
@@ -256,10 +245,7 @@ async def admin_reset_password(
     # Validate new password
     is_valid, error_msg = validate_password(reset_data.new_password)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
+        raise ValidationError(message=error_msg, details={"field": "new_password"})
 
     # Hash password
     password_hash = hash_password(reset_data.new_password)
@@ -276,10 +262,7 @@ async def admin_reset_password(
     await db.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(reset_data.username)
 
     # Log action
     await log_user_activity(
@@ -350,10 +333,7 @@ async def delete_user_by_username(
     """
     # Prevent self-deletion
     if username == session_data["username"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
-        )
+        raise SelfDeletionError()
 
     # Delete user
     result = await db.execute(
@@ -362,10 +342,7 @@ async def delete_user_by_username(
     await db.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(username)
 
     # Delete all sessions for this user
     await delete_user_sessions(username)
@@ -408,10 +385,7 @@ async def change_user_role_by_username(
     try:
         new_role = UserRole(role_data.get("role"))
     except (ValueError, KeyError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role specified"
-        )
+        raise InvalidRoleError()
 
     # Update role
     result = await db.execute(
@@ -422,10 +396,7 @@ async def change_user_role_by_username(
     await db.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise UserNotFoundError(username)
 
     # Log action
     await log_user_activity(

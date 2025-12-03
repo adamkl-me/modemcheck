@@ -47,7 +47,8 @@ class TestDeletePermissions:
         )
         assert response.status_code == 403
         data = response.json()
-        assert "admin" in data.get("detail", "").lower()
+        assert data.get("success") is False
+        assert "admin" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_delete_check_as_basic_user_forbidden(
@@ -77,7 +78,8 @@ class TestDeletePermissions:
         )
         assert response.status_code == 403
         data = response.json()
-        assert "admin" in data.get("detail", "").lower()
+        assert data.get("success") is False
+        assert "admin" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_bulk_delete_as_admin_success(

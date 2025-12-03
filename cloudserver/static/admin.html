@@ -916,7 +916,10 @@
         .req-unmet { color: #ef4444; }
         .req-unmet::before { content: '❌ '; }
     </style>
+    <link rel="stylesheet" href="/static/session-monitor.css">
 
+    <!-- Error handling utilities -->
+    <script src="/static/error-utils.js"></script>
     <!-- Password Strength Library -->
     <script src="/static/zxcvbn.js"></script>
 </head>
@@ -1735,6 +1738,11 @@
                 // Show the page content now that auth is verified
                 document.querySelector('.container').classList.add('authenticated');
 
+                // Initialize session timeout monitor
+                if (typeof initSessionMonitor === 'function') {
+                    initSessionMonitor();
+                }
+
                 // Check if password change is required
                 if (data.must_change_password || sessionStorage.getItem('must_change_password') === 'true') {
                     sessionStorage.removeItem('must_change_password');
@@ -1875,16 +1883,17 @@
                     });
                     
                     const data = await response.json();
-                    
-                    if (data.success) {
-                        document.body.removeChild(dialog);
-                        showMessage('Password changed successfully!', 'success');
-                    } else {
-                        errorDiv.textContent = data.error || 'Failed to change password';
+
+                    if (!response.ok || !data.success) {
+                        errorDiv.textContent = getErrorMessage(response, data);
                         errorDiv.style.display = 'block';
+                        return;
                     }
+
+                    document.body.removeChild(dialog);
+                    showMessage('Password changed successfully!', 'success');
                 } catch (error) {
-                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.textContent = error.message || 'Network error. Please try again.';
                     errorDiv.style.display = 'block';
                 }
             });
@@ -2168,15 +2177,15 @@
                 });
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load keys');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 displayKeys(data.api_keys);
             } catch (error) {
                 document.getElementById('keysContainer').innerHTML = `
                     <div class="empty-state">
-                        <p>Error loading API keys: ${error.message}</p>
+                        <p>Error loading API keys: ${escapeHtml(error.message)}</p>
                     </div>
                 `;
             }
@@ -2272,8 +2281,9 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to create key');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 // Show the new key in a modal
@@ -2287,7 +2297,7 @@
                 // Reload keys
                 loadKeys();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2338,15 +2348,16 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to update key');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage('API key updated successfully', 'success');
                 closeEditModal();
                 loadKeys();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2380,14 +2391,15 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || `Failed to ${action} key`);
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage(`API key ${action}d successfully`, 'success');
                 loadKeys();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2417,14 +2429,15 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to delete key');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage('API key deleted successfully', 'success');
                 loadKeys();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2490,15 +2503,15 @@
                 });
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load users');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 displayUsers(data.users);
             } catch (error) {
                 document.getElementById('usersContainer').innerHTML = `
                     <div class="empty-state">
-                        <p>Error loading users: ${error.message}</p>
+                        <p>Error loading users: ${escapeHtml(error.message)}</p>
                     </div>
                 `;
             }
@@ -2603,20 +2616,7 @@
 
                 // Handle HTTP errors
                 if (!response.ok) {
-                    let errorMsg = 'Unknown error';
-                    if (data.detail) {
-                        // FastAPI validation errors
-                        if (Array.isArray(data.detail)) {
-                            errorMsg = data.detail.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
-                        } else if (typeof data.detail === 'string') {
-                            errorMsg = data.detail;
-                        } else {
-                            errorMsg = JSON.stringify(data.detail);
-                        }
-                    } else if (data.message || data.error) {
-                        errorMsg = data.message || data.error;
-                    }
-                    throw new Error(errorMsg);
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 if (data.success) {
@@ -2630,7 +2630,7 @@
                         loadUserActivity();
                     }
                 } else {
-                    showMessage('Failed to change role: ' + escapeHtml(data.error || data.message || 'Unknown error'), 'error');
+                    showMessage('Failed to change role: ' + escapeHtml(getErrorMessage(null, data)), 'error');
                     select.value = oldRole;
                 }
             } catch (error) {
@@ -2680,12 +2680,8 @@
                 const data = await response.json();
 
                 // Handle both success/error format and HTTP error format
-                if (!response.ok) {
-                    throw new Error(data.detail || data.message || data.error || `HTTP ${response.status}`);
-                }
-
-                if (!data.success) {
-                    throw new Error(data.message || data.detail || data.error || 'Failed to create user');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 showMessage('User created successfully', 'success');
@@ -2780,14 +2776,16 @@
 
                     const data = await response.json();
 
-                    if (!data.success) {
-                        throw new Error(data.error || 'Failed to change password');
+                    if (!response.ok || !data.success) {
+                        errorDiv.textContent = getErrorMessage(response, data);
+                        errorDiv.style.display = 'block';
+                        return;
                     }
 
                     document.body.removeChild(dialog);
                     showMessage('Password changed successfully', 'success');
                 } catch (error) {
-                    errorDiv.textContent = error.message;
+                    errorDiv.textContent = error.message || 'An error occurred';
                     errorDiv.style.display = 'block';
                 }
             });
@@ -2819,14 +2817,15 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to delete user');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage('User deleted successfully', 'success');
                 loadUsers();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2856,14 +2855,15 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to logout user');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage(data.message || 'User logged out successfully', 'success');
                 loadUsers();
             } catch (error) {
-                showMessage(`Error: ${error.message}`, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -2893,8 +2893,8 @@
                 });
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load activity log');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 // Update stats
@@ -3098,8 +3098,8 @@
                 });
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load submission log');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 // Update stats
@@ -3380,36 +3380,31 @@
                     body: JSON.stringify({ name: name })
                 });
 
-                // Check for HTTP errors before parsing JSON
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}`);
-                }
-
                 const data = await response.json();
 
-                if (data.success) {
-                    // Set the API key in the hidden field
-                    document.getElementById('cfgCloudAPIKey').value = data.api_key;
-
-                    // Show the key name in the display field
-                    document.getElementById('selectedKeyName').textContent = name;
-                    document.getElementById('selectedKeyDisplay').style.display = 'block';
-
-                    // Update preview
-                    updateConfigPreview();
-
-                    // Close modal
-                    closeGenerateKeyModal();
-
-                    showMessage('API key generated successfully!', 'success');
-
-                    // Reload API keys list in the API Keys tab
-                    loadKeys();
-                } else {
-                    // Use message field (server returns message, not error)
-                    showMessage('Error: ' + (data.message || data.error || 'Unknown error'), 'error');
+                // Check for HTTP errors
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
+
+                // Set the API key in the hidden field
+                document.getElementById('cfgCloudAPIKey').value = data.api_key;
+
+                // Show the key name in the display field
+                document.getElementById('selectedKeyName').textContent = name;
+                document.getElementById('selectedKeyDisplay').style.display = 'block';
+
+                // Update preview
+                updateConfigPreview();
+
+                // Close modal
+                closeGenerateKeyModal();
+
+                showMessage('API key generated successfully!', 'success');
+
+                // Reload API keys list in the API Keys tab
+                loadKeys();
             } catch (error) {
                 showMessage('Error creating API key: ' + error.message, 'error');
             }
@@ -3637,37 +3632,34 @@
                     body: JSON.stringify({ name: name })
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Server error (${response.status}): ${errorText.substring(0, 100)}`);
-                }
-
                 const data = await response.json();
 
-                if (data.success) {
-                    // Update the wizard UI
-                    const apiKeyInput = document.getElementById('wizardApiKey');
-                    if (apiKeyInput) {
-                        apiKeyInput.value = data.api_key;
-                    }
-
-                    const keyDisplay = document.getElementById('wizardSelectedKeyDisplay');
-                    const keyName = document.getElementById('wizardSelectedKeyName');
-                    if (keyDisplay && keyName) {
-                        keyName.textContent = name;
-                        keyDisplay.style.display = 'block';
-                    }
-
-                    // Close modal
-                    closeWizardGenerateKeyModal();
-
-                    showMessage('API key generated successfully!', 'success');
-
-                    // Reload API keys list in the API Keys tab
-                    loadKeys();
-                } else {
-                    showMessage('Error: ' + (data.message || data.error || 'Unknown error'), 'error');
+                // Check for HTTP errors
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
+
+                // Update the wizard UI
+                const apiKeyInput = document.getElementById('wizardApiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.value = data.api_key;
+                }
+
+                const keyDisplay = document.getElementById('wizardSelectedKeyDisplay');
+                const keyName = document.getElementById('wizardSelectedKeyName');
+                if (keyDisplay && keyName) {
+                    keyName.textContent = name;
+                    keyDisplay.style.display = 'block';
+                }
+
+                // Close modal
+                closeWizardGenerateKeyModal();
+
+                showMessage('API key generated successfully!', 'success');
+
+                // Reload API keys list in the API Keys tab
+                loadKeys();
             } catch (error) {
                 showMessage('Error creating API key: ' + error.message, 'error');
             }
@@ -3805,13 +3797,14 @@
 
                 const data = await response.json();
 
-                if (data.success) {
-                    showMessage('Config defaults saved successfully! These will be used when creating new configurations.', 'success');
-                } else {
-                    showMessage('Error: ' + (data.error || 'Failed to save defaults'), 'error');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
+
+                showMessage('Config defaults saved successfully! These will be used when creating new configurations.', 'success');
             } catch (error) {
-                showMessage('Error saving defaults: ' + error.message, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -4363,12 +4356,8 @@
                 });
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.detail || data.error || 'Failed to load checks');
-                }
-
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load checks');
+                if (!response.ok || !data.success) {
+                    throw new Error(getErrorMessage(response, data));
                 }
 
                 const container = document.getElementById('checksListContainer');
@@ -4442,19 +4431,16 @@
 
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.detail || data.error || 'Delete failed');
-                }
-
-                if (!data.success) {
-                    throw new Error(data.error || 'Delete failed');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage('Check deleted successfully', 'success');
                 loadChecksForDeletion();
 
             } catch (error) {
-                showMessage('Delete failed: ' + error.message, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -4489,12 +4475,9 @@
 
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.detail || data.error || 'Bulk delete failed');
-                }
-
-                if (!data.success) {
-                    throw new Error(data.error || 'Bulk delete failed');
+                if (!response.ok || !data.success) {
+                    showMessage(getErrorMessage(response, data), 'error');
+                    return;
                 }
 
                 showMessage(`Successfully deleted ${data.count} checks`, 'success');
@@ -4504,7 +4487,7 @@
                 document.getElementById('checksListContainer').innerHTML = '<div class="empty-state">Select a modem and click "Load Checks" to view checks</div>';
 
             } catch (error) {
-                showMessage('Bulk delete failed: ' + error.message, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
             }
         }
 
@@ -5423,25 +5406,26 @@
                 });
                 const data = await response.json();
 
-                if (data.success && data.api_key) {
-                    configModalState.apiKey = data.api_key;
-                    configModalState.apiKeyName = key.name;
-
-                    // Update the hidden input field
-                    if (input) input.value = configModalState.apiKey;
-                    if (nameSpan) nameSpan.textContent = key.name;
-                    if (display) display.style.display = 'block';
-
-                    // Update dropdown display with revealed key
-                    if (searchInput) {
-                        searchInput.value = `${key.name} (${configModalState.apiKey.substring(0, 8)}...)`;
-                    }
-                } else {
-                    showMessage('Error revealing API key: ' + (data.error || 'Unknown error'), 'error');
+                if (!response.ok || !data.success || !data.api_key) {
+                    showMessage(getErrorMessage(response, data), 'error');
                     if (searchInput) searchInput.value = '';
+                    return;
+                }
+
+                configModalState.apiKey = data.api_key;
+                configModalState.apiKeyName = key.name;
+
+                // Update the hidden input field
+                if (input) input.value = configModalState.apiKey;
+                if (nameSpan) nameSpan.textContent = key.name;
+                if (display) display.style.display = 'block';
+
+                // Update dropdown display with revealed key
+                if (searchInput) {
+                    searchInput.value = `${key.name} (${configModalState.apiKey.substring(0, 8)}...)`;
                 }
             } catch (error) {
-                showMessage('Error revealing API key: ' + error.message, 'error');
+                showMessage(error.message || 'An error occurred', 'error');
                 if (searchInput) searchInput.value = '';
             }
         }
@@ -6363,5 +6347,6 @@
         }
 
     </script>
+    <script src="/static/session-monitor.js"></script>
 </body>
 </html>

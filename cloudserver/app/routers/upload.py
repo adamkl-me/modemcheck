@@ -13,7 +13,7 @@ import asyncio
 from typing import Optional
 
 logger = logging.getLogger(__name__)
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, File, UploadFile, Header
+from fastapi import APIRouter, Depends, Request, Form, File, UploadFile, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -26,6 +26,17 @@ from app.models.client_config import ClientConfig
 from app.schemas.modem_check import ModemCheckUploadResponse
 from app.middleware.auth import get_client_ip, get_user_agent
 from app.services.upload_service import UploadService, UploadValidationError
+from app.core.errors import (
+    MissingSignatureError,
+    SignatureValidationError,
+    AccountLockedError,
+    InvalidAPIKeyError,
+    ValidationError,
+    ChecksumValidationError,
+    InvalidJSONError,
+    FileTooLargeError,
+    DuplicateResourceError,
+)
 
 router = APIRouter(prefix="/api/upload", tags=["Upload"])
 
@@ -150,40 +161,28 @@ async def upload_check(
     # Step 1: Validate HMAC signature BEFORE any database operations
     # This rejects invalid requests early without expensive DB queries
     if not x_request_timestamp or not x_request_signature:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing HMAC signature headers (X-Request-Timestamp and X-Request-Signature required)"
-        )
+        raise MissingSignatureError()
 
     # Validate the signature (no DB needed)
     is_valid_sig, sig_error = validate_request_signature(
         api_key, x_request_timestamp, modem_id, filename, checksum, x_request_signature
     )
     if not is_valid_sig:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Signature validation failed: {sig_error}"
-        )
+        raise SignatureValidationError(reason=sig_error)
 
     # Step 2: API key brute force protection (Redis only, no DB)
     from app.core.security import check_api_key_lockout, record_failed_api_key, clear_failed_api_keys
 
     is_locked, remaining_seconds = await check_api_key_lockout(client_ip)
     if is_locked:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Too many failed API key attempts. Try again in {remaining_seconds} seconds."
-        )
+        raise AccountLockedError(remaining_seconds=remaining_seconds)
 
     # Step 3: Validate API key (FIRST DATABASE OPERATION - only after signature validated)
     is_valid, key_name = await validate_and_get_api_key(api_key, db)
     if not is_valid:
         # Record failed attempt in Redis (even in test mode, for brute force tests to verify)
         await record_failed_api_key(client_ip)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or inactive API key"
-        )
+        raise InvalidAPIKeyError()
 
     # Step 4: Read file data (before service layer processing)
     file_data = await file.read(settings.max_upload_size + 1)
@@ -200,11 +199,17 @@ async def upload_check(
             db=db
         )
     except UploadValidationError as e:
-        # Convert service layer errors to HTTP exceptions
-        raise HTTPException(
-            status_code=e.status_code,
-            detail=e.message
-        )
+        # Map service layer errors to appropriate ModemCheckError subclasses
+        if "checksum" in e.message.lower():
+            raise ChecksumValidationError(detail=e.message)
+        elif "json" in e.message.lower():
+            raise InvalidJSONError(parse_error=e.message)
+        elif "size" in e.message.lower() or "too large" in e.message.lower():
+            raise FileTooLargeError(actual_size=0, max_size=settings.max_upload_size)
+        elif "already exists" in e.message.lower() or e.status_code == 409:
+            raise DuplicateResourceError(resource="File", identifier=filename)
+        else:
+            raise ValidationError(message=e.message)
 
     # All validation passed - clear failed API key attempts
     await clear_failed_api_keys(client_ip)

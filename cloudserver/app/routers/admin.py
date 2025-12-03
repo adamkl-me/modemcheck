@@ -4,7 +4,7 @@ Admin router for API key management, audit logs, and configuration.
 import secrets
 from datetime import datetime, timedelta
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, Request
 
 from app.core.utils import utc_now
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.audit import log_user_activity
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.core.errors import InvalidAPIKeyPreviewError, APIKeyNotFoundError
 from app.models import APIKey, UserActivityLog, ClientSubmissionLog, ConfigDefaults
 from app.schemas.api_key import (
     APIKeyCreate,
@@ -141,10 +142,7 @@ async def reveal_api_key(
     # Find API key by preview - extract the pattern from preview
     # Preview format is "first4...last4", so we need to extract these parts
     if "..." not in api_key_preview or len(api_key_preview) != 11:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid API key preview format"
-        )
+        raise InvalidAPIKeyPreviewError()
 
     first_part = api_key_preview[:4]
     last_part = api_key_preview[-4:]
@@ -164,10 +162,7 @@ async def reveal_api_key(
     target_key = result.scalar_one_or_none()
 
     if not target_key:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key not found"
-        )
+        raise APIKeyNotFoundError()
 
     # Log this access for audit purposes
     await log_user_activity(
@@ -203,10 +198,7 @@ async def toggle_api_key(
     """
     # Find API key by preview - extract the pattern from preview
     if "..." not in toggle_data.api_key_preview or len(toggle_data.api_key_preview) != 11:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid API key preview format"
-        )
+        raise InvalidAPIKeyPreviewError()
 
     first_part = toggle_data.api_key_preview[:4]
     last_part = toggle_data.api_key_preview[-4:]
@@ -225,10 +217,7 @@ async def toggle_api_key(
     target_key = result.scalar_one_or_none()
 
     if not target_key:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key not found"
-        )
+        raise APIKeyNotFoundError()
 
     # Update status
     await db.execute(
@@ -275,10 +264,7 @@ async def delete_api_key(
     """
     # Find API key by preview - extract the pattern from preview
     if "..." not in delete_data.api_key_preview or len(delete_data.api_key_preview) != 11:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid API key preview format"
-        )
+        raise InvalidAPIKeyPreviewError()
 
     first_part = delete_data.api_key_preview[:4]
     last_part = delete_data.api_key_preview[-4:]
@@ -297,10 +283,7 @@ async def delete_api_key(
     target_key = result.scalar_one_or_none()
 
     if not target_key:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key not found"
-        )
+        raise APIKeyNotFoundError()
 
     # Delete key
     await db.execute(

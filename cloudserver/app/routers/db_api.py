@@ -3,13 +3,14 @@ Database API router for querying modem check data.
 """
 from datetime import datetime
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, over
 
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.core.errors import InvalidDateRangeError
 from app.models import ModemCheck
 from app.schemas.modem_check import (
     ModemInfo,
@@ -20,8 +21,10 @@ from app.schemas.modem_check import (
     DateRangeRequest,
     CheckWithFullData,
     CheckListWithDataResponse,
+    TrendDataResponse,
 )
 from app.middleware.auth import require_authenticated_user
+from app.core.trend_aggregation import aggregate_check_for_trends
 
 router = APIRouter(prefix="/api/db", tags=["Database"])
 
@@ -95,10 +98,7 @@ async def list_checks(
         start_dt = datetime.fromisoformat(f"{start_date}T00:00:00")
         end_dt = datetime.fromisoformat(f"{end_date}T23:59:59")
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid date format. Use YYYY-MM-DD"
-        )
+        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
 
     # Optimized: Use a single query with window function to get both data and count
     # This avoids executing the same WHERE clause twice
@@ -189,10 +189,7 @@ async def get_all_checks(
         start_dt = datetime.fromisoformat(f"{date_range.start_date}T00:00:00")
         end_dt = datetime.fromisoformat(f"{date_range.end_date}T23:59:59")
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid date format. Use YYYY-MM-DD"
-        )
+        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
 
     # Build query
     conditions = [
@@ -230,5 +227,61 @@ async def get_all_checks(
     return CheckListWithDataResponse(
         success=True,
         checks=check_items,
+        total_count=total_count
+    )
+
+
+@router.post("/get_trend_data", response_model=TrendDataResponse)
+@limiter.limit("300/second")
+async def get_trend_data(
+    request: Request,
+    date_range: DateRangeRequest,
+    session_data: dict = Depends(require_authenticated_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get pre-aggregated trend data for charts.
+
+    Returns lightweight aggregated metrics instead of full JSONB data.
+    Significantly reduces transfer size (~500 bytes vs ~15-50KB per check)
+    and eliminates client-side aggregation.
+
+    This endpoint is optimized for the dashboard trend view charts.
+    """
+    # Parse dates
+    try:
+        start_dt = datetime.fromisoformat(f"{date_range.start_date}T00:00:00")
+        end_dt = datetime.fromisoformat(f"{date_range.end_date}T23:59:59")
+    except ValueError:
+        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
+
+    # Build query conditions
+    conditions = [
+        ModemCheck.check_time >= start_dt,
+        ModemCheck.check_time <= end_dt
+    ]
+
+    if date_range.modem_id:
+        conditions.append(ModemCheck.modem_id == date_range.modem_id)
+
+    # Query checks ordered by time ascending (for chart rendering)
+    query = select(ModemCheck).where(
+        and_(*conditions)
+    ).order_by(ModemCheck.check_time.asc()).limit(date_range.limit)
+
+    result = await db.execute(query)
+    checks = result.scalars().all()
+
+    # Aggregate each check for trend display
+    trend_items = [aggregate_check_for_trends(check) for check in checks]
+
+    # Count total matching records
+    count_query = select(func.count(ModemCheck.id)).where(and_(*conditions))
+    total_result = await db.execute(count_query)
+    total_count = total_result.scalar()
+
+    return TrendDataResponse(
+        success=True,
+        data=trend_items,
         total_count=total_count
     )

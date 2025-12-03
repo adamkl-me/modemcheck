@@ -95,6 +95,79 @@ class MissingParameterError(ModemCheckError):
         )
 
 
+class InvalidDateRangeError(ValidationError):
+    """Date format is invalid."""
+
+    def __init__(self, message: str = "Invalid date format"):
+        super().__init__(
+            message=message,
+            details={"expected_format": "YYYY-MM-DD", "hint": "Use ISO date format"}
+        )
+
+
+class SelfDeletionError(ValidationError):
+    """User attempted to delete their own account."""
+
+    def __init__(self):
+        super().__init__(
+            message="Cannot delete your own account",
+            details={"hint": "Ask another admin to delete this account"}
+        )
+
+
+class InvalidAPIKeyPreviewError(ValidationError):
+    """Invalid API key preview format."""
+
+    def __init__(self):
+        super().__init__(
+            message="Invalid API key preview format",
+            details={"expected_format": "first4...last4"}
+        )
+
+
+class InvalidRoleError(ValidationError):
+    """Invalid user role specified."""
+
+    def __init__(self):
+        super().__init__(
+            message="Invalid role specified",
+            details={"valid_roles": ["basic", "elevated", "admin"]}
+        )
+
+
+class ZipValidationError(ValidationError):
+    """ZIP file validation failed."""
+
+    def __init__(self, reason: str):
+        super().__init__(
+            message=f"Invalid ZIP file: {reason}",
+            details={"hint": "Ensure the ZIP file is not corrupted"}
+        )
+
+
+class ChecksumValidationError(ValidationError):
+    """File checksum validation failed."""
+
+    def __init__(self, detail: str = None):
+        msg = "Checksum validation failed"
+        if detail:
+            msg = f"{msg}: {detail}"
+        super().__init__(
+            message=msg,
+            details={"hint": "Verify file integrity and recalculate checksum"}
+        )
+
+
+class InvalidJSONError(ValidationError):
+    """Uploaded file contains invalid JSON."""
+
+    def __init__(self, parse_error: str = None):
+        super().__init__(
+            message="Invalid JSON in uploaded file",
+            details={"parse_error": parse_error} if parse_error else None
+        )
+
+
 # ============================================================================
 # Authentication Errors (401)
 # ============================================================================
@@ -141,6 +214,42 @@ class InvalidAPIKeyError(AuthenticationError):
         )
 
 
+class PasswordIncorrectError(AuthenticationError):
+    """Current password verification failed during password change."""
+
+    def __init__(self):
+        super().__init__(
+            message="Current password is incorrect",
+            details={"hint": "Verify your current password and try again"}
+        )
+
+
+class SignatureValidationError(AuthenticationError):
+    """HMAC signature validation failed."""
+
+    def __init__(self, reason: str = None):
+        msg = "Signature validation failed"
+        if reason:
+            msg = f"{msg}: {reason}"
+        super().__init__(
+            message=msg,
+            details={"hint": "Verify timestamp is within 5 minutes and signature calculation"}
+        )
+
+
+class MissingSignatureError(AuthenticationError):
+    """Required HMAC signature headers missing."""
+
+    def __init__(self):
+        super().__init__(
+            message="Missing HMAC signature headers",
+            details={
+                "required_headers": ["X-Request-Timestamp", "X-Request-Signature"],
+                "hint": "Include both signature headers in the request"
+            }
+        )
+
+
 # ============================================================================
 # Authorization Errors (403)
 # ============================================================================
@@ -164,6 +273,16 @@ class InsufficientPermissionsError(AuthorizationError):
         super().__init__(
             message=f"This operation requires '{required_role}' role",
             details={"required_role": required_role, "current_role": current_role}
+        )
+
+
+class PasswordChangeRequiredError(AuthorizationError):
+    """User must change password before accessing resources."""
+
+    def __init__(self):
+        super().__init__(
+            message="Password change required before continuing",
+            details={"hint": "Please change your password to access this feature"}
         )
 
 
@@ -193,6 +312,41 @@ class NotFoundError(ModemCheckError):
             status_code=404,
             details={"resource": resource, "identifier": identifier}
         )
+
+
+class UserNotFoundError(NotFoundError):
+    """User does not exist."""
+
+    def __init__(self, username: str = None):
+        identifier = f"username '{username}'" if username else "specified user"
+        super().__init__(resource="User", identifier=identifier)
+
+
+class CheckNotFoundError(NotFoundError):
+    """Modem check record not found."""
+
+    def __init__(self, check_id: int):
+        super().__init__(resource="Check", identifier=str(check_id))
+
+
+class NoChecksFoundError(NotFoundError):
+    """No checks found for the specified criteria."""
+
+    def __init__(self, modem_id: str = None, criteria: str = None):
+        if modem_id:
+            identifier = f"modem '{modem_id}'"
+        elif criteria:
+            identifier = f"criteria: {criteria}"
+        else:
+            identifier = "specified criteria"
+        super().__init__(resource="Checks", identifier=identifier)
+
+
+class APIKeyNotFoundError(NotFoundError):
+    """API key not found."""
+
+    def __init__(self):
+        super().__init__(resource="API key", identifier="provided preview")
 
 
 # ============================================================================
@@ -234,6 +388,35 @@ class RateLimitError(ModemCheckError):
             message="Too many requests - rate limit exceeded",
             status_code=429,
             details={"retry_after_seconds": retry_after}
+        )
+
+
+# ============================================================================
+# Payload Too Large Errors (413)
+# ============================================================================
+
+class FileTooLargeError(ModemCheckError):
+    """Uploaded file exceeds size limit."""
+
+    def __init__(self, actual_size: int, max_size: int):
+        max_mb = max_size // (1024 * 1024)
+        super().__init__(
+            error_code="FILE_TOO_LARGE",
+            message=f"File size exceeds {max_mb}MB limit",
+            status_code=413,
+            details={"actual_size_bytes": actual_size, "max_size_bytes": max_size}
+        )
+
+
+class ZipBombError(ModemCheckError):
+    """Potential ZIP bomb detected."""
+
+    def __init__(self, reason: str):
+        super().__init__(
+            error_code="ZIP_BOMB_DETECTED",
+            message=reason,
+            status_code=413,
+            details={"hint": "File compression ratio or size exceeds security limits"}
         )
 
 

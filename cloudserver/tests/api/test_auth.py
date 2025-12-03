@@ -191,7 +191,8 @@ class TestChangePassword:
 
         assert response.status_code == 401
         data = response.json()
-        assert "Current password is incorrect" in data["detail"]
+        assert data.get("success") is False
+        assert "Current password is incorrect" in data["error"]["message"]
     
     @pytest.mark.asyncio
     async def test_change_password_weak_new_password(self, admin_client_with_token: httpx.AsyncClient, admin_user_credentials: Dict[str, str], csrf_token: str):
@@ -242,7 +243,8 @@ class TestChangeOwnPassword:
 
         assert response.status_code == 400
         data = response.json()
-        assert "password" in data["detail"].lower()
+        assert data.get("success") is False
+        assert "password" in data["error"]["message"].lower()
     
     @pytest.mark.asyncio
     async def test_change_own_password_unauthenticated(self, http_client: httpx.AsyncClient):
@@ -280,7 +282,8 @@ class TestPasswordChangeRequiredFlow:
         response = await http_client.get("/api/db/list_modems")
         assert response.status_code == 403
         data = response.json()
-        assert "password" in data.get("detail", "").lower()
+        assert data.get("success") is False
+        assert "password" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_password_change_clears_requirement(

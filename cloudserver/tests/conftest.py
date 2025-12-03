@@ -94,8 +94,17 @@ async def clear_redis():
     from app.core.security import get_redis
     from app.core.cache_provider import init_cache, close_cache
 
+    # Build Redis URL with optional password
+    # Note: Test environment may have REDIS_PASSWORD set from .env file,
+    # so we need to include password if configured
+    if settings.redis_password:
+        redis_url_db0 = f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/0"
+        redis_url_db1 = f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/1"
+    else:
+        redis_url_db0 = f"redis://{settings.redis_host}:{settings.redis_port}/0"
+        redis_url_db1 = f"redis://{settings.redis_host}:{settings.redis_port}/1"
+
     # Clear DB 0 (sessions, API keys, brute force tracking)
-    redis_url_db0 = f"redis://{settings.redis_host}:{settings.redis_port}/0"
     redis_db0 = await Redis.from_url(
         redis_url_db0,
         encoding="utf-8",
@@ -103,7 +112,6 @@ async def clear_redis():
     )
 
     # Clear DB 1 (rate limiting - though disabled in tests)
-    redis_url_db1 = f"redis://{settings.redis_host}:{settings.redis_port}/1"
     redis_db1 = await Redis.from_url(
         redis_url_db1,
         encoding="utf-8",
@@ -656,6 +664,89 @@ async def single_modem_populated(
 
 
 # ============================================================================
+# UI TEST DATA FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope="function")
+async def ui_modem_data(real_modem_data: Dict[str, list[Dict[str, Any]]]) -> list[str]:
+    """Populate database with real modem data for UI tests.
+
+    This fixture creates its own database connection and commits data directly,
+    making it visible to the Docker web server. Cleans up data after test.
+
+    Returns list of modem IDs that were populated.
+    """
+    import asyncio
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy import delete
+    import uuid
+    import os
+
+    from app.models import ModemCheck
+    from app.core.utils import utc_now
+    from tests.fixtures.modem_data.loader import get_modem_ids
+
+    # Create async engine for test database
+    db_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://modemcheck:modemcheck_test_password@localhost:5433/modemcheck_test"
+    )
+    engine = create_async_engine(db_url, echo=False)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    modem_ids_map = get_modem_ids()
+    created_ids = list(modem_ids_map.values())
+
+    async with async_session() as session:
+        # Clean up any existing test modem data first
+        for modem_type, modem_id in modem_ids_map.items():
+            await session.execute(
+                delete(ModemCheck).where(ModemCheck.modem_id == modem_id)
+            )
+
+        # Insert real modem data
+        for modem_type, checks in real_modem_data.items():
+            modem_id = modem_ids_map[modem_type]
+
+            for i, check_data in enumerate(checks):
+                sysinfo = check_data.get("sysinfo", {})
+                check_time = sysinfo.get("checktime", int(time.time()) + i)
+
+                # Create unique filename
+                unique_id = str(uuid.uuid4())[:8]
+                dt = datetime.utcfromtimestamp(check_time)
+                filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
+
+                # Determine modem type from data or ID
+                detected_type = sysinfo.get("modemtype", modem_type.upper())
+
+                check = ModemCheck(
+                    modem_id=modem_id,
+                    modem_type=detected_type,
+                    check_time=dt,
+                    filename=filename,
+                    full_data=check_data,
+                    created_at=utc_now()
+                )
+                session.add(check)
+
+        await session.commit()
+
+    yield created_ids
+
+    # Cleanup: remove test data after test completes
+    async with async_session() as session:
+        for modem_id in created_ids:
+            await session.execute(
+                delete(ModemCheck).where(ModemCheck.modem_id == modem_id)
+            )
+        await session.commit()
+
+    await engine.dispose()
+
+
+# ============================================================================
 # CSRF TOKEN FIXTURES
 # ============================================================================
 
@@ -730,6 +821,48 @@ def upload_form_data(sample_modem_check_data: Dict[str, Any], test_api_key: str,
         "timestamp": timestamp,
         "signature": signature
     }
+
+
+# ============================================================================
+# ERROR RESPONSE HELPERS
+# ============================================================================
+
+def assert_error_response(response, expected_code: str, expected_status: int) -> Dict[str, Any]:
+    """Assert response is a ModemCheckError with expected code and status.
+
+    Args:
+        response: The HTTP response object
+        expected_code: Expected error code (e.g., "AUTHENTICATION_ERROR")
+        expected_status: Expected HTTP status code
+
+    Returns:
+        The error dict for further assertions
+    """
+    assert response.status_code == expected_status, (
+        f"Expected status {expected_status}, got {response.status_code}: {response.text}"
+    )
+    data = response.json()
+    assert data.get("success") is False, f"Expected success=False, got: {data}"
+    assert "error" in data, f"No 'error' field in response: {data}"
+    assert data["error"]["code"] == expected_code, (
+        f"Expected error code '{expected_code}', got '{data['error'].get('code')}': {data}"
+    )
+    assert "error_id" in data["error"], f"No error_id in error response: {data}"
+    assert "timestamp" in data["error"], f"No timestamp in error response: {data}"
+    return data["error"]
+
+
+def assert_error_message_contains(error: Dict[str, Any], substring: str) -> None:
+    """Assert error message contains expected text (case-insensitive).
+
+    Args:
+        error: The error dict from assert_error_response
+        substring: Text that should appear in the message
+    """
+    message = error.get("message", "")
+    assert substring.lower() in message.lower(), (
+        f"Expected '{substring}' in message, got: '{message}'"
+    )
 
 
 # ============================================================================
@@ -888,25 +1021,44 @@ async def test_cache():
 
     Uses in-memory backend to avoid Redis dependency in unit tests.
     Automatically initializes and cleans up cache manager.
+
+    Note: This fixture mocks BOTH cache systems:
+    - app.core.cache (CacheManager with InMemoryBackend)
+    - app.core.cache_provider (InMemoryCache)
+
+    The security functions (check_account_locked, record_failed_login, etc.)
+    use app.core.cache_provider, so we must mock both to avoid Redis dependency.
     """
     from app.core.cache import CacheManager, InMemoryBackend
     import app.core.cache as cache_module
+    from app.core.cache_provider import InMemoryCache, close_cache
+    import app.core.cache_provider as cache_provider_module
 
-    # Create cache manager with in-memory backend
+    # Close any existing cache_provider instance first
+    await close_cache()
+
+    # Setup app.core.cache (CacheManager)
     manager = CacheManager()
     manager.memory_backend = InMemoryBackend(max_size=1000)
     manager.current_backend = manager.memory_backend
     manager._redis_available = False
 
-    # Set as global instance for tests
     original_manager = cache_module._cache_manager
     cache_module._cache_manager = manager
 
+    # Setup app.core.cache_provider (InMemoryCache)
+    # This is used by security functions like check_account_locked()
+    in_memory_cache = InMemoryCache(max_size=1000, default_ttl=3600)
+    original_cache_instance = cache_provider_module._cache_instance
+    cache_provider_module._cache_instance = in_memory_cache
+
     yield manager
 
-    # Cleanup
+    # Cleanup both cache systems
     cache_module._cache_manager = original_manager
+    cache_provider_module._cache_instance = original_cache_instance
     await manager.current_backend.close()
+    await in_memory_cache.close()
 
 
 @pytest.fixture(scope="function")

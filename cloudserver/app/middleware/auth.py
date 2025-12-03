@@ -2,11 +2,16 @@
 Authentication and authorization dependencies for FastAPI routes.
 """
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Request, Cookie
+from fastapi import Depends, Request, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import verify_session
+from app.core.errors import (
+    AuthenticationError,
+    PasswordChangeRequiredError,
+    InsufficientPermissionsError,
+)
 from app.models import User, UserRole
 from sqlalchemy import select
 
@@ -43,21 +48,14 @@ async def require_authenticated_user(
     Raises 403 if user must change password before continuing.
     """
     if not session_data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
-        )
+        raise AuthenticationError(message="Authentication required")
 
     # Check if user must change password (for default admin accounts)
     username = session_data.get("username")
     if username:
         user = await get_user_from_db(username, db)
         if user and user.must_change_password:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Password change required. You must change your password before accessing other features.",
-                headers={"X-Password-Change-Required": "true"}
-            )
+            raise PasswordChangeRequiredError()
 
     return session_data
 
@@ -79,9 +77,10 @@ async def require_role(
     user_role = session_data.get("role")
 
     if user_role not in [role.value for role in required_roles]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Requires one of: {', '.join([r.value for r in required_roles])}"
+        required_roles_str = ", ".join([r.value for r in required_roles])
+        raise InsufficientPermissionsError(
+            required_role=required_roles_str,
+            current_role=user_role or "none"
         )
 
     return session_data
@@ -143,10 +142,7 @@ async def require_authenticated_user_bypass_password_check(
     Raises 401 if not authenticated.
     """
     if not session_data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
-        )
+        raise AuthenticationError(message="Authentication required")
 
     return session_data
 
