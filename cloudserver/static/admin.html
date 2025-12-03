@@ -350,6 +350,26 @@
             letter-spacing: 0.5px;
         }
 
+        .keys-table th.sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .keys-table th.sortable-header:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sort-indicator {
+            margin-left: 5px;
+            opacity: 0.5;
+            font-size: 0.8em;
+        }
+
+        .sort-indicator.active {
+            opacity: 1;
+        }
+
         .keys-table td {
             padding: 12px;
             border-bottom: 1px solid #e5e7eb;
@@ -1283,9 +1303,17 @@
                             <div id="configStatStale" style="font-size: 1.8em; font-weight: bold;">-</div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Controls -->
-                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+                <!-- Config Table -->
+                <div class="keys-section">
+                    <h2>Client Configurations</h2>
+                    <div id="configSseStatus" style="display: none; padding: 5px 10px; background: #d4edda; color: #155724; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px;">
+                        🔴 Real-time updates: Disconnected
+                    </div>
+
+                    <!-- Search/Filter Controls -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
                         <input type="text" id="configSearchBox" class="form-control" style="flex: 1; min-width: 300px; padding: 10px 15px;" placeholder="🔍 Search by API key or modem ID...">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <span style="font-weight: 600; color: #555;">Status:</span>
@@ -1305,24 +1333,17 @@
                         </div>
                         <button class="btn btn-success" onclick="showCreateConfigModal()">➕ Create Config</button>
                     </div>
-                </div>
 
-                <!-- Config Table -->
-                <div class="keys-section">
-                    <h2>Client Configurations</h2>
-                    <div id="configSseStatus" style="display: none; padding: 5px 10px; background: #d4edda; color: #155724; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px;">
-                        🔴 Real-time updates: Disconnected
-                    </div>
                     <div style="overflow-x: auto; border-radius: 12px; border: 1px solid #e0e0e0;">
                         <table class="keys-table" style="width: 100%; margin-top: 0;">
                             <thead>
                                 <tr>
-                                    <th>API Key</th>
-                                    <th>Last Seen Modem</th>
-                                    <th>Status</th>
-                                    <th>Sync</th>
-                                    <th>Version</th>
-                                    <th>Last Sync</th>
+                                    <th class="sortable-header" onclick="sortConfigTable('api_key')">API Key <span class="sort-indicator active" id="config-sort-api_key">▲</span></th>
+                                    <th class="sortable-header" onclick="sortConfigTable('last_seen_modem_id')">Last Seen Modem <span class="sort-indicator" id="config-sort-last_seen_modem_id"></span></th>
+                                    <th class="sortable-header" onclick="sortConfigTable('status')">Status <span class="sort-indicator" id="config-sort-status"></span></th>
+                                    <th class="sortable-header" onclick="sortConfigTable('sync_status')">Sync <span class="sort-indicator" id="config-sort-sync_status"></span></th>
+                                    <th class="sortable-header" onclick="sortConfigTable('version')">Version <span class="sort-indicator" id="config-sort-version"></span></th>
+                                    <th class="sortable-header" onclick="sortConfigTable('last_sync')">Last Sync <span class="sort-indicator" id="config-sort-last_sync"></span></th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -1515,6 +1536,25 @@
         </div>
     </div>
 
+    <!-- Modal for delete config confirmation -->
+    <div id="deleteConfigModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; color: #dc3545;">Delete Configuration</h2>
+                <button class="btn btn-secondary" onclick="closeDeleteConfigModal()" style="padding: 5px 12px; font-size: 16px;">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px;">Are you sure you want to delete the configuration for:</p>
+                <p style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: monospace; word-break: break-all;" id="deleteConfigApiKeyDisplay"></p>
+                <p style="color: #666; font-size: 0.9em; margin-top: 15px;">This will remove the server-managed config. The API key will remain active.</p>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeDeleteConfigModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirmDeleteConfigBtn" onclick="confirmDeleteConfig()">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/admin';
         const USER_API_BASE = '/api/users';
@@ -1524,6 +1564,10 @@
         let newKeyValue = null;
         let currentUserRole = null;
         let csrfToken = null;
+
+        // Sorting state for tables
+        let configSortState = { column: 'api_key', direction: 'asc' };
+        let apiKeysSortState = { column: 'api_key_preview', direction: 'asc' };
 
         /**
          * Update CSRF token from response headers if present.
@@ -2203,22 +2247,25 @@
                 return;
             }
 
+            // Apply sorting
+            const sortedKeys = sortData(keys, apiKeysSortState);
+
             let html = `
                 <table class="keys-table">
                     <thead>
                         <tr>
-                            <th>Key</th>
-                            <th>Name</th>
-                            <th>Created</th>
-                            <th>Last Used</th>
-                            <th>Status</th>
+                            <th class="sortable-header" onclick="sortApiKeysTable('api_key_preview')">Key <span class="sort-indicator ${apiKeysSortState.column === 'api_key_preview' ? 'active' : ''}" id="keys-sort-api_key_preview">${apiKeysSortState.column === 'api_key_preview' ? (apiKeysSortState.direction === 'asc' ? '▲' : '▼') : ''}</span></th>
+                            <th class="sortable-header" onclick="sortApiKeysTable('name')">Name <span class="sort-indicator ${apiKeysSortState.column === 'name' ? 'active' : ''}" id="keys-sort-name">${apiKeysSortState.column === 'name' ? (apiKeysSortState.direction === 'asc' ? '▲' : '▼') : ''}</span></th>
+                            <th class="sortable-header" onclick="sortApiKeysTable('created_at')">Created <span class="sort-indicator ${apiKeysSortState.column === 'created_at' ? 'active' : ''}" id="keys-sort-created_at">${apiKeysSortState.column === 'created_at' ? (apiKeysSortState.direction === 'asc' ? '▲' : '▼') : ''}</span></th>
+                            <th class="sortable-header" onclick="sortApiKeysTable('last_used')">Last Used <span class="sort-indicator ${apiKeysSortState.column === 'last_used' ? 'active' : ''}" id="keys-sort-last_used">${apiKeysSortState.column === 'last_used' ? (apiKeysSortState.direction === 'asc' ? '▲' : '▼') : ''}</span></th>
+                            <th class="sortable-header" onclick="sortApiKeysTable('is_active')">Status <span class="sort-indicator ${apiKeysSortState.column === 'is_active' ? 'active' : ''}" id="keys-sort-is_active">${apiKeysSortState.column === 'is_active' ? (apiKeysSortState.direction === 'asc' ? '▲' : '▼') : ''}</span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
 
-            keys.forEach(key => {
+            sortedKeys.forEach(key => {
                 const createdDate = new Date(key.created_at).toLocaleString();
                 const lastUsed = key.last_used
                     ? new Date(key.last_used).toLocaleString()
@@ -4520,7 +4567,7 @@
             };
 
             const cfg = syncConfig[syncStatus] || syncConfig['n/a'];
-            return `<span style="padding: 4px 10px; border-radius: 15px; font-size: 0.8em; font-weight: 500; background: ${cfg.bg}; color: white;">${cfg.label}</span>`;
+            return `<span style="padding: 4px 10px; border-radius: 15px; font-size: 0.8em; font-weight: 500; background: ${cfg.bg}; color: white; white-space: nowrap;">${cfg.label}</span>`;
         }
 
         // Load config management data from API
@@ -4541,7 +4588,8 @@
                 params.append('limit', '1000');
 
                 const response = await fetch(`/api/admin/configs?${params}`, {
-                    credentials: 'include'
+                    credentials: 'include',
+                    cache: 'no-store'
                 });
 
                 if (!response.ok) {
@@ -4603,11 +4651,91 @@
             document.getElementById('configStatStale').textContent = stale;
         }
 
+        // Sorting functions for Config table
+        function sortConfigTable(column) {
+            if (configSortState.column === column) {
+                configSortState.direction = configSortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                configSortState.column = column;
+                configSortState.direction = 'asc';
+            }
+            updateConfigSortIndicators();
+            loadConfigMgmtData();
+        }
+
+        function updateConfigSortIndicators() {
+            // Clear all config sort indicators
+            document.querySelectorAll('[id^="config-sort-"]').forEach(el => {
+                el.textContent = '';
+                el.classList.remove('active');
+            });
+            // Set active indicator
+            const indicator = document.getElementById(`config-sort-${configSortState.column}`);
+            if (indicator) {
+                indicator.textContent = configSortState.direction === 'asc' ? '▲' : '▼';
+                indicator.classList.add('active');
+            }
+        }
+
+        // Sorting functions for API Keys table
+        function sortApiKeysTable(column) {
+            if (apiKeysSortState.column === column) {
+                apiKeysSortState.direction = apiKeysSortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                apiKeysSortState.column = column;
+                apiKeysSortState.direction = 'asc';
+            }
+            updateApiKeysSortIndicators();
+            fetchKeys();
+        }
+
+        function updateApiKeysSortIndicators() {
+            // Clear all API keys sort indicators
+            document.querySelectorAll('[id^="keys-sort-"]').forEach(el => {
+                el.textContent = '';
+                el.classList.remove('active');
+            });
+            // Set active indicator
+            const indicator = document.getElementById(`keys-sort-${apiKeysSortState.column}`);
+            if (indicator) {
+                indicator.textContent = apiKeysSortState.direction === 'asc' ? '▲' : '▼';
+                indicator.classList.add('active');
+            }
+        }
+
+        // Generic sort function for arrays
+        function sortData(data, sortState) {
+            return [...data].sort((a, b) => {
+                let aVal = a[sortState.column];
+                let bVal = b[sortState.column];
+
+                // Handle null/undefined
+                if (aVal == null) aVal = '';
+                if (bVal == null) bVal = '';
+
+                // Handle dates
+                if (sortState.column.includes('created') || sortState.column.includes('last') || sortState.column.includes('sync')) {
+                    aVal = aVal ? new Date(aVal).getTime() : 0;
+                    bVal = bVal ? new Date(bVal).getTime() : 0;
+                } else if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return sortState.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortState.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
         // Render config management table with simplified versioning
         function renderConfigMgmtTable(configs) {
             const tbody = document.getElementById('configTableBody');
 
-            if (configs.length === 0) {
+            // Apply sorting
+            const sortedConfigs = sortData(configs, configSortState);
+
+            if (sortedConfigs.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
@@ -4619,7 +4747,7 @@
                 return;
             }
 
-            tbody.innerHTML = configs.map(config => {
+            tbody.innerHTML = sortedConfigs.map(config => {
                 const lastSync = formatConfigTimestamp(config.last_sync);
                 const syncClass = getConfigSyncStatusClass(config.last_sync, config.status, config.sync_status);
                 const statusBadge = getStatusBadge(config.status);
@@ -4650,7 +4778,7 @@
                                 📜 History
                             </button>
                             ${currentUserRole === 'admin' ? `
-                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='deleteConfig("${config.api_key_full}", "${escapeHtml(config.api_key)}")'>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em; margin-left: 5px;" onclick='showDeleteConfigModal("${config.api_key_full}", "${escapeHtml(config.api_key)}")'>
                                     Delete
                                 </button>
                             ` : ''}
@@ -4716,11 +4844,27 @@
             closeConfigModal();
         }
 
-        // Delete config (admin only)
-        async function deleteConfig(apiKeyFull, apiKeyDisplay) {
-            if (!confirm(`Are you sure you want to delete the configuration for API key "${apiKeyDisplay}"?\n\nThis will remove the server-managed config. The API key will remain active.`)) {
-                return;
-            }
+        // Delete config modal state and functions (admin only)
+        let deleteConfigState = { apiKeyFull: null, apiKeyDisplay: null };
+
+        function showDeleteConfigModal(apiKeyFull, apiKeyDisplay) {
+            deleteConfigState = { apiKeyFull, apiKeyDisplay };
+            document.getElementById('deleteConfigApiKeyDisplay').textContent = apiKeyDisplay;
+            document.getElementById('deleteConfigModal').classList.add('active');
+        }
+
+        function closeDeleteConfigModal() {
+            document.getElementById('deleteConfigModal').classList.remove('active');
+            deleteConfigState = { apiKeyFull: null, apiKeyDisplay: null };
+        }
+
+        async function confirmDeleteConfig() {
+            const { apiKeyFull } = deleteConfigState;
+            if (!apiKeyFull) return;
+
+            const btn = document.getElementById('confirmDeleteConfigBtn');
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
 
             try {
                 const response = await fetch(`/api/admin/configs/${encodeURIComponent(apiKeyFull)}`, {
@@ -4737,11 +4881,15 @@
                     throw new Error(error.message || 'Failed to delete configuration');
                 }
 
+                closeDeleteConfigModal();
                 showNotification('Configuration deleted successfully', 'success');
-                loadConfigMgmt(); // Refresh the config list
+                loadConfigMgmtData(); // Refresh table immediately
             } catch (error) {
                 console.error('Delete config error:', error);
                 showNotification(`Failed to delete configuration: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
             }
         }
 
@@ -4814,6 +4962,11 @@
                 // Reset sync status to current
                 configModalState.versionSyncStatus = configModalState.syncStatus;
                 updateVersionSyncStatusBadge();
+                // Reset displayed version number to current
+                const versionSpan = document.getElementById('configVersionNumber');
+                if (versionSpan) {
+                    versionSpan.textContent = `v${configModalState.currentVersion}`;
+                }
                 return;
             }
 
@@ -4843,6 +4996,12 @@
 
             configModalState.versionSyncStatus = effectiveSyncStatus;
             updateVersionSyncStatusBadge();
+
+            // Update displayed version number
+            const versionSpan = document.getElementById('configVersionNumber');
+            if (versionSpan) {
+                versionSpan.textContent = `v${version.version_number}`;
+            }
 
             // Show version info
             const versionInfo = document.getElementById('configVersionInfo');
@@ -5581,7 +5740,7 @@
                     </div>
                     <div class="config-info-item">
                         <span class="label">Version:</span>
-                        <span style="font-weight: 600;">v${configModalState.version}</span>
+                        <span id="configVersionNumber" style="font-weight: 600;">v${configModalState.version}</span>
                     </div>
                     <div class="config-info-item">
                         <span class="label">Sync:</span>
@@ -5787,7 +5946,7 @@
         }
 
         // Show create config modal (single-page)
-        function showCreateConfigModal() {
+        async function showCreateConfigModal() {
             // Reset state
             configModalState.mode = 'create';
             configModalState.apiKey = '';
@@ -5815,21 +5974,21 @@
             };
 
             // Show the unified config modal
-            showConfigModal();
+            await showConfigModal();
         }
 
         // Show the unified config modal (works for create, edit, view modes)
-        function showConfigModal() {
+        async function showConfigModal() {
             // Ensure modal exists
             ensureConfigModalExists();
 
             // Update modal header and footer based on mode
             updateConfigModalHeader();
 
-            // Load defaults for create mode
+            // Load defaults for create mode (await to ensure data is ready before rendering)
             if (configModalState.mode === 'create') {
-                loadConfigDefaults();
-                loadApiKeysForModal();
+                await loadConfigDefaults();
+                await loadApiKeysForModal();
             }
 
             // Render content

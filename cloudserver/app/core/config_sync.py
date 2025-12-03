@@ -607,8 +607,14 @@ async def _handle_managed_sync(
         )
 
     # ACTIVE state - check if client modified config
-    if config_hash == existing_config.config_hash:
-        # Client still using server config
+    # Normalize client config to only include fields present in server's stored config
+    # This handles cases where client sends extra fields (e.g., IgnitePassword, EnableCloud)
+    server_fields = set(existing_config.config_plaintext.keys())
+    normalized_client_config = {k: v for k, v in client_config.items() if k in server_fields}
+    normalized_client_hash = calculate_config_hash(normalized_client_config)
+
+    if normalized_client_hash == existing_config.config_hash:
+        # Client still using server config (for the fields server tracks)
         return SyncResult(
             config=existing_config.config_plaintext,
             version=existing_config.version,

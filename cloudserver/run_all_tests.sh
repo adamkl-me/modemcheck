@@ -150,6 +150,7 @@ run_tests() {
     export DATABASE_URL="postgresql+asyncpg://modemcheck:modemcheck_test_password@localhost:5433/modemcheck_test"
     export REDIS_HOST="localhost"
     export REDIS_PORT="6380"
+    export REDIS_PASSWORD="modemcheck_redis_test_only"
     export APP_ENV="test"
     export DEBUG="true"
     export ALLOWED_ORIGINS="*"

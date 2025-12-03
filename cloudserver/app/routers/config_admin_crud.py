@@ -16,7 +16,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Request, Body, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 
 from app.core.database import get_db
 from app.core.config import settings
@@ -24,7 +24,7 @@ from app.core.limiter import limiter
 from app.core.utils import utc_now
 from app.middleware.auth import require_elevated_or_admin, get_client_ip
 from app.middleware.csrf import verify_csrf
-from app.models import ClientConfig, APIKey
+from app.models import ClientConfig, ConfigVersion, APIKey
 from app.models.client_config import ConfigStatus, SyncStatus
 from app.schemas.config import (
     ConfigCreateRequest,
@@ -487,6 +487,11 @@ async def delete_config(
             old_sync_status=config.sync_status,
             new_sync_status=SyncStatus.NA,  # N/A after deletion
             success=True
+        )
+
+        # Delete version history first (no FK cascade)
+        await db.execute(
+            delete(ConfigVersion).where(ConfigVersion.api_key == api_key)
         )
 
         await db.delete(config)
