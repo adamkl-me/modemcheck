@@ -920,13 +920,40 @@ class TestUserManagementWorkflowE2E:
         assert req_count >= 4, f"Should show at least 4 password requirements, got {req_count}"
 
 
+@pytest.fixture(scope="function")
+async def admin_browser_with_data(ui_modem_data):
+    """Create authenticated admin browser session with modem data populated.
+
+    Uses the shared ui_modem_data fixture from conftest.py which:
+    - Creates a direct database connection (visible to Docker web server)
+    - Cleans up data after test completes
+    - Is function-scoped for proper test isolation
+    """
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+
+        # Login as admin using direct approach
+        await _login_as_admin(page)
+
+        # Navigate to admin
+        admin_page = AdminPage(page, BASE_URL)
+        await admin_page.navigate()
+
+        yield page, admin_page, ui_modem_data
+
+        await context.close()
+        await browser.close()
+
+
 class TestDataViewerIntegrationE2E:
     """E2E tests verifying data appears in viewer after admin operations."""
 
     @pytest.mark.asyncio
-    async def test_uploaded_data_visible_in_viewer(self, admin_browser):
+    async def test_uploaded_data_visible_in_viewer(self, admin_browser_with_data):
         """Test that data uploaded via admin is visible in viewer."""
-        page, admin_page = admin_browser
+        page, admin_page, modem_ids = admin_browser_with_data
 
         # Navigate to viewer
         await admin_page.click_viewer_button()

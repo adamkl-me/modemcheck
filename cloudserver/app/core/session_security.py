@@ -15,6 +15,7 @@ from fastapi import Request
 
 from app.core.config import settings
 from app.core.security import get_redis, delete_session
+from app.core.utils import utc_now
 
 
 def generate_device_fingerprint(request: Request) -> str:
@@ -54,7 +55,7 @@ def extract_session_metadata(request: Request) -> dict:
         "user_agent": request.headers.get("user-agent", "unknown"),
         "ip_address": request.client.host if request.client else "unknown",
         "fingerprint": generate_device_fingerprint(request),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": utc_now().isoformat()
     }
 
 
@@ -258,10 +259,10 @@ async def log_session_anomaly(
         details: Additional details
     """
     redis = await get_redis()
-    anomaly_key = f"session_anomaly:{username}:{datetime.now().strftime('%Y%m%d')}"
+    anomaly_key = f"session_anomaly:{username}:{utc_now().strftime('%Y%m%d')}"
 
     anomaly_data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "session_id": session_id[:16],  # Truncated for security
         "type": anomaly_type,
         "details": details
@@ -297,7 +298,7 @@ async def get_session_anomalies(
 
     # Check each day
     for day_offset in range(days):
-        date = datetime.now() - timedelta(days=day_offset)
+        date = utc_now() - timedelta(days=day_offset)
         date_str = date.strftime("%Y%m%d")
         anomaly_key = f"session_anomaly:{username}:{date_str}"
 

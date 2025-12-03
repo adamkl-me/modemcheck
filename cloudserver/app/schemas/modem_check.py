@@ -108,3 +108,65 @@ class DeleteCheckRequest(BaseModel):
 class DeleteAllChecksRequest(BaseModel):
     """Request schema for deleting all checks for a modem."""
     modem_id: str = Field(..., min_length=1)
+
+
+# Trend data schemas for optimized dashboard performance
+class RxAggregates(BaseModel):
+    """Aggregated RX channel metrics for trend charts."""
+    min_power: Optional[float] = None
+    avg_power: Optional[float] = None
+    max_power: Optional[float] = None
+    min_snr: Optional[float] = None
+    avg_snr: Optional[float] = None
+    max_snr: Optional[float] = None
+    avg_ber: Optional[float] = None
+    max_ber: Optional[float] = None
+    avg_corrected_rate: Optional[float] = None
+    max_corrected_rate: Optional[float] = None
+
+
+class TxAggregates(BaseModel):
+    """Aggregated TX channel metrics for trend charts."""
+    min_power: Optional[float] = None
+    avg_power: Optional[float] = None
+    max_power: Optional[float] = None
+    bonded_count: int = 0
+    impaired_count: int = 0
+
+
+class TrendDataItem(BaseModel):
+    """Lightweight check data for trend charts with pre-computed aggregates."""
+    id: int
+    check_time: int  # Unix timestamp (epoch seconds)
+
+    # Speed test metrics
+    upload_speed: Optional[float] = None
+    download_speed: Optional[float] = None
+    upload_limit: Optional[float] = None
+    download_limit: Optional[float] = None
+
+    # Ping/latency metrics
+    ping_google_avg: Optional[float] = None
+    ping_google_loss: Optional[float] = None
+    ping_google_max: Optional[float] = None
+    ping_cloudflare_avg: Optional[float] = None
+    ping_cloudflare_loss: Optional[float] = None
+    ping_cloudflare_max: Optional[float] = None
+    speedtest_latency: Optional[float] = None
+    speedtest_max_latency: Optional[float] = None
+
+    # Uptime
+    uptime_days: Optional[float] = None
+
+    # Pre-aggregated signal metrics
+    rx_scqam: Optional[RxAggregates] = None
+    rx_ofdm: Optional[RxAggregates] = None
+    tx_scqam: Optional[TxAggregates] = None
+    tx_ofdma: Optional[TxAggregates] = None
+
+
+class TrendDataResponse(BaseModel):
+    """Response schema for trend data endpoint."""
+    success: bool
+    data: List[TrendDataItem]
+    total_count: int

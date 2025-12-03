@@ -239,6 +239,7 @@ class TestUploadPersistenceService:
         """Successfully save modem check to database."""
         # Mock database session
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()  # db.add() is synchronous in SQLAlchemy
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 
@@ -266,6 +267,7 @@ class TestUploadPersistenceService:
         """Duplicate check should raise appropriate error."""
         # Mock database session that raises IntegrityError
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()  # db.add() is synchronous in SQLAlchemy
         mock_db.commit.side_effect = IntegrityError("", "", "unique constraint failed")
         mock_db.rollback = AsyncMock()
 
@@ -290,6 +292,7 @@ class TestUploadPersistenceService:
         """Database error should raise appropriate error."""
         # Mock database session that raises generic exception
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()  # db.add() is synchronous in SQLAlchemy
         mock_db.commit.side_effect = Exception("Database connection failed")
         mock_db.rollback = AsyncMock()
 
@@ -318,6 +321,7 @@ class TestUploadService:
         """Complete upload workflow should succeed."""
         # Mock database session
         mock_db = AsyncMock()
+        mock_db.add = MagicMock()  # db.add() is synchronous in SQLAlchemy
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 

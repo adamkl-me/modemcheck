@@ -341,8 +341,8 @@ async def create_session(username: str, role: str, max_sessions: int = 5) -> str
     session_data = {
         'username': username,
         'role': role,
-        'created': datetime.now().isoformat(),
-        'expires': (datetime.now() + timedelta(seconds=settings.session_ttl)).isoformat()
+        'created': utc_now().isoformat(),
+        'expires': (utc_now() + timedelta(seconds=settings.session_ttl)).isoformat()
     }
 
     # Lua script for atomic session creation with concurrent limit enforcement
@@ -407,14 +407,14 @@ async def verify_session(session_id: str, refresh_ttl: bool = True) -> Optional[
 
     # Redis TTL handles expiration, but double-check for safety
     expires = datetime.fromisoformat(session_data['expires'])
-    if datetime.now() > expires:
+    if utc_now() > expires:
         await r.delete(session_key)
         return None
 
     # SECURITY: Sliding window session refresh
     # Refresh TTL on each successful verification to keep active sessions alive
     if refresh_ttl:
-        new_expires = datetime.now() + timedelta(seconds=settings.session_ttl)
+        new_expires = utc_now() + timedelta(seconds=settings.session_ttl)
         session_data['expires'] = new_expires.isoformat()
 
         # Update Redis with new TTL (atomic operation)
@@ -519,6 +519,23 @@ async def validate_csrf_token(csrf_token: str, session_id: str) -> bool:
 
     Uses cache abstraction with automatic Redis fallback.
 
+    SECURITY NOTE - Race Condition in Fallback Mode:
+        When using in-memory fallback cache (Redis unavailable), the get/delete
+        operations are not atomic. This creates a theoretical race window where
+        a CSRF token could be used twice if:
+        1. Request A reads token (valid)
+        2. Request B reads same token before A deletes it (also valid)
+        3. Both requests succeed
+
+        Mitigations in place:
+        - Race window is extremely small (microseconds)
+        - Requires attacker to have valid token AND timing control
+        - Each worker has isolated in-memory cache (no cross-worker replay)
+        - Redis (primary mode) uses atomic operations
+
+        Risk assessment: Low - exploitation requires token theft + precise timing,
+        at which point attacker already has session access.
+
     Args:
         csrf_token: CSRF token from request
         session_id: Current session ID
@@ -533,7 +550,7 @@ async def validate_csrf_token(csrf_token: str, session_id: str) -> bool:
     csrf_key = f"csrf:{csrf_token}"
 
     # Get and delete CSRF token (one-time use)
-    # Note: Not atomic in fallback mode, but race window is negligible
+    # See docstring for race condition analysis in fallback mode
     stored_session_id = await cache.get(csrf_key)
 
     if not stored_session_id:

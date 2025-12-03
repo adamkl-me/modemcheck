@@ -134,11 +134,28 @@ async def get_user_request_stats(username: str) -> dict:
     redis = await get_redis()
     pattern = f"endpoint_rate_limit:{username}:*"
 
-    stats = {}
+    # First, collect all keys (scan_iter is efficient for iteration)
+    keys = []
     async for key in redis.scan_iter(match=pattern):
+        keys.append(key)
+
+    if not keys:
+        return {}
+
+    # Batch fetch counts and TTLs using pipeline (avoids N+1 queries)
+    pipe = redis.pipeline()
+    for key in keys:
+        pipe.get(key)
+        pipe.ttl(key)
+
+    results = await pipe.execute()
+
+    # Parse results (alternating count, ttl pairs)
+    stats = {}
+    for i, key in enumerate(keys):
         endpoint = key.split(":")[-1]
-        count = await redis.get(key)
-        ttl = await redis.ttl(key)
+        count = results[i * 2]
+        ttl = results[i * 2 + 1]
         stats[endpoint] = {
             "count": int(count) if count else 0,
             "ttl": ttl

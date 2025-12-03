@@ -31,6 +31,8 @@ def create_mock_session():
     mock_scalars.first.return_value = None  # Default: no users exist
     mock_result.scalars.return_value = mock_scalars
     mock_session.execute.return_value = mock_result
+    # session.add() is synchronous in SQLAlchemy, so use MagicMock not AsyncMock
+    mock_session.add = MagicMock()
     return mock_session
 
 

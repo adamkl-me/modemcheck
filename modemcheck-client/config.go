@@ -20,7 +20,8 @@ const (
 	// HTTP timeouts
 	DefaultHTTPTimeout = 10 * time.Second
 	SpeedTestTimeout   = 60 * time.Second
-	PingTimeout        = 30 * time.Second
+	PingTimeout        = 60 * time.Second
+	PingInterval       = 500 * time.Millisecond
 
 	// Test configuration
 	DefaultPingCount            = 100 // Number of pings for latency testing
@@ -188,7 +189,8 @@ func SaveLastSuccessfulModem(modemType, modemMAC, modemAddress string) error {
 		return fmt.Errorf("failed to marshal state: %w", err)
 	}
 
-	if err := os.WriteFile(stateFile, data, 0644); err != nil {
+	// Use 0600 permissions - state file contains modem MAC address
+	if err := os.WriteFile(stateFile, data, 0600); err != nil {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}
 
@@ -260,7 +262,8 @@ func SaveIPInfoCache(publicIP, asn, ispName, ipCity, ipCountry string) error {
 		return fmt.Errorf("failed to marshal cache: %w", err)
 	}
 
-	if err := os.WriteFile(cacheFile, data, 0644); err != nil {
+	// Use 0600 permissions - cache contains public IP and ISP info (privacy sensitive)
+	if err := os.WriteFile(cacheFile, data, 0600); err != nil {
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 
@@ -332,7 +335,8 @@ func (s *SpeedTestState) Save() error {
 		return fmt.Errorf("failed to marshal state: %w", err)
 	}
 
-	if err := os.WriteFile(s.StateFilePath, data, 0644); err != nil {
+	// Use 0600 permissions for consistency with other state files
+	if err := os.WriteFile(s.StateFilePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}
 

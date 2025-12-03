@@ -98,3 +98,7 @@ API: `GET/PUT /api/admin/configs/{api_key}/{modem_id}`, `/rollback/{version}`, `
 ## Docker Resources
 
 API: 2 CPU/2GB | Postgres: 2 CPU/2GB | Redis: 0.5 CPU/512MB
+
+## Safety Rules
+
+Ask before: deleting data, modifying `.signing-keys/`, production database ops, pushing to Github, making releases

@@ -23,7 +23,6 @@ from app.core.cache import (
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.asyncio
 class TestInMemoryCacheEntry:
     """Test cache entry expiration logic."""
 

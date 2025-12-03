@@ -4,7 +4,9 @@ services:
   redis-test:
     container_name: modemcheck-redis-test
     image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # Use password authentication to match production setup
+    # WARNING: This is a test-only password - never use in production!
+    command: redis-server --requirepass modemcheck_redis_test_only --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     environment:
       - TZ=America/Toronto
     ports:
@@ -14,7 +16,7 @@ services:
     networks:
       - modemcheck-test
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "modemcheck_redis_test_only", "ping"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -58,6 +60,7 @@ services:
       # Redis
       - REDIS_HOST=redis-test
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=modemcheck_redis_test_only
       # Application
       - APP_ENV=test
       - DEBUG=true

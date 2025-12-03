@@ -287,6 +287,7 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 	// Configure the pinger
 	pinger.Count = count
 	pinger.Timeout = PingTimeout
+	pinger.Interval = PingInterval
 
 	// On Linux, use unprivileged mode by default (doesn't require root)
 	// On Windows, use privileged mode (works without admin)
@@ -306,6 +307,7 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 			}
 			pinger.Count = count
 			pinger.Timeout = PingTimeout
+			pinger.Interval = PingInterval
 			pinger.SetPrivileged(false)
 
 			err = pinger.Run()
@@ -323,6 +325,7 @@ func (m *ModemCheck) runGoPing(host string, count int) (avg string, loss string,
 			}
 			pinger.Count = count
 			pinger.Timeout = PingTimeout
+			pinger.Interval = PingInterval
 			pinger.SetPrivileged(true)
 
 			err = pinger.Run()

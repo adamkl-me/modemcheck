@@ -21,6 +21,18 @@ from app.core.cache_provider import (
 )
 
 
+@pytest.fixture(autouse=True)
+async def reset_cache_state():
+    """Reset cache provider global state before and after each test.
+
+    This ensures test isolation by clearing the global _cache_instance
+    which persists across tests and can cause false positives/negatives.
+    """
+    await close_cache()
+    yield
+    await close_cache()
+
+
 class TestInMemoryCache:
     """Tests for InMemoryCache implementation."""
 

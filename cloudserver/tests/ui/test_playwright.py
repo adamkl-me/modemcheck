@@ -308,8 +308,8 @@ class TestViewerUI:
         # Click admin button
         await browser_page.click('#adminBtn')
 
-        # Wait for navigation to complete
-        await browser_page.wait_for_load_state("networkidle", timeout=10000)
+        # Wait for URL to contain /admin (more reliable than networkidle which can timeout)
+        await browser_page.wait_for_url("**/admin**", timeout=15000)
 
         # Should navigate to admin page
         assert "/admin" in browser_page.url, f"Should navigate to admin, got: {browser_page.url}"
@@ -688,99 +688,15 @@ class TestResponsiveUI:
 # REAL MODEM DATA UI TESTS
 # ============================================================================
 
-def _populate_real_modem_data():
-    """Populate database with real modem data (sync wrapper for session fixture).
-
-    This runs outside the async test context to ensure data is committed
-    to the database before UI tests interact with the web server.
-    """
-    import asyncio
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy import select, delete
-    from datetime import datetime
-    import uuid
-    import os
-
-    from app.models import ModemCheck
-    from app.core.utils import utc_now
-    from tests.fixtures.modem_data.loader import load_all_fixture_data, get_modem_ids
-    import time
-    from datetime import timezone
-
-    async def populate():
-        # Create async engine for test database
-        db_url = os.getenv(
-            "DATABASE_URL",
-            "postgresql+asyncpg://modemcheck:modemcheck_test_password@localhost:5433/modemcheck_test"
-        )
-        engine = create_async_engine(db_url, echo=False)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-        modem_ids = get_modem_ids()
-        real_data = load_all_fixture_data()
-        created_ids = []
-
-        async with async_session() as session:
-            # Clean up any existing test modem data first
-            for modem_type, modem_id in modem_ids.items():
-                await session.execute(
-                    delete(ModemCheck).where(ModemCheck.modem_id == modem_id)
-                )
-
-            # Insert real modem data
-            for modem_type, checks in real_data.items():
-                modem_id = modem_ids[modem_type]
-                created_ids.append(modem_id)
-
-                for i, check_data in enumerate(checks):
-                    sysinfo = check_data.get("sysinfo", {})
-                    check_time = sysinfo.get("checktime", int(time.time()) + i)
-
-                    # Create unique filename
-                    unique_id = str(uuid.uuid4())[:8]
-                    dt = datetime.fromtimestamp(check_time)
-                    filename = f"{modem_id}/{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{unique_id}.json"
-
-                    # Determine modem type from data or ID
-                    detected_type = sysinfo.get("modemtype", modem_type.upper())
-
-                    check = ModemCheck(
-                        modem_id=modem_id,
-                        modem_type=detected_type,
-                        check_time=dt,
-                        filename=filename,
-                        full_data=check_data,
-                        created_at=utc_now()
-                    )
-                    session.add(check)
-
-            await session.commit()
-            print(f"\n✓ Real modem data populated: {len(created_ids)} modems")
-
-        await engine.dispose()
-        return created_ids
-
-    # Run async function synchronously
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(populate())
-    finally:
-        loop.close()
-
-
-@pytest.fixture(scope="module")
-def real_modem_data_in_db():
-    """Module-scoped fixture to populate real modem data once per test module."""
-    modem_ids = _populate_real_modem_data()
-    yield modem_ids
-    # Data cleanup happens in _populate_real_modem_data at the start
-
-
 @pytest.fixture(scope="function")
-async def browser_with_real_data(real_modem_data_in_db):
-    """Create browser with real modem data populated in database."""
+async def browser_with_real_data(ui_modem_data):
+    """Create browser with real modem data populated in database.
+
+    Uses the shared ui_modem_data fixture from conftest.py which:
+    - Creates a direct database connection (visible to Docker web server)
+    - Cleans up data after test completes
+    - Is function-scoped for proper test isolation
+    """
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
@@ -789,7 +705,7 @@ async def browser_with_real_data(real_modem_data_in_db):
         # Login as admin
         await login_as_admin(page)
 
-        yield page, real_modem_data_in_db
+        yield page, ui_modem_data
 
         await context.close()
         await browser.close()
@@ -881,20 +797,51 @@ class TestViewerWithRealData:
 
         await page.wait_for_timeout(2000)
 
-        # Select first modem and load data
+        # Verify we have modem data populated
+        assert len(modem_ids) >= 1, f"No modem data populated, got: {modem_ids}"
+
+        # Open dropdown and select our test modem
         search_input = page.locator('#modemSearchInput')
         await search_input.click()
         await page.wait_for_timeout(1000)
 
-        first_modem = page.locator('#modemDropdown .searchable-option').first
-        await first_modem.click()
+        # Get all available options
+        options = page.locator('#modemDropdown .searchable-option')
+        option_count = await options.count()
+        assert option_count >= 1, "Dropdown should have at least one modem option"
+
+        # Collect all option texts for debugging
+        available_modems = []
+        for i in range(option_count):
+            text = await options.nth(i).text_content()
+            available_modems.append(text)
+
+        # Select the first option that matches one of our test modems
+        # (handles case where other tests may have created modems)
+        # Note: UI displays "XB8 - AABBCC010203" but our IDs are "XB8-AABBCC010203"
+        found_our_modem = False
+        for target_modem_id in modem_ids:
+            # Normalize for comparison: remove spaces and compare case-insensitively
+            target_normalized = target_modem_id.replace(" ", "").lower()
+            for i, text in enumerate(available_modems):
+                text_normalized = text.replace(" ", "").lower()
+                if target_normalized in text_normalized:
+                    await options.nth(i).click()
+                    found_our_modem = True
+                    break
+            if found_our_modem:
+                break
+
+        assert found_our_modem, f"Could not find any of our test modems {modem_ids} in dropdown options: {available_modems}"
+
         await page.wait_for_timeout(500)
 
         await page.click('#loadBtn')
         await page.wait_for_timeout(3000)
 
         # Look for downstream table - real modem data has 32 channels
-        downstream_table = page.locator('#downstreamTable tbody')
+        # Note: HTML uses #rxTable for "RX Data (Downstream SC-QAM)"
+        downstream_table = page.locator('#rxTable tbody')
         downstream_rows = await downstream_table.locator('tr').count()
 
         # Should have channel data (real modem data has 32 channels)
@@ -917,13 +864,42 @@ class TestViewerWithRealData:
 
         await page.wait_for_timeout(2000)
 
-        # Select modem and load data first
+        # Verify we have modem data populated
+        assert len(modem_ids) >= 1, f"No modem data populated, got: {modem_ids}"
+
+        # Open dropdown and select our test modem
         search_input = page.locator('#modemSearchInput')
         await search_input.click()
         await page.wait_for_timeout(1000)
 
-        first_modem = page.locator('#modemDropdown .searchable-option').first
-        await first_modem.click()
+        # Get all available options
+        options = page.locator('#modemDropdown .searchable-option')
+        option_count = await options.count()
+        assert option_count >= 1, "Dropdown should have at least one modem option"
+
+        # Collect all option texts and find our test modem
+        available_modems = []
+        for i in range(option_count):
+            text = await options.nth(i).text_content()
+            available_modems.append(text)
+
+        # Select the first option that matches one of our test modems
+        # Note: UI displays "XB8 - AABBCC010203" but our IDs are "XB8-AABBCC010203"
+        found_our_modem = False
+        for target_modem_id in modem_ids:
+            # Normalize for comparison: remove spaces and compare case-insensitively
+            target_normalized = target_modem_id.replace(" ", "").lower()
+            for i, text in enumerate(available_modems):
+                text_normalized = text.replace(" ", "").lower()
+                if target_normalized in text_normalized:
+                    await options.nth(i).click()
+                    found_our_modem = True
+                    break
+            if found_our_modem:
+                break
+
+        assert found_our_modem, f"Could not find any of our test modems {modem_ids} in dropdown options: {available_modems}"
+
         await page.wait_for_timeout(500)
 
         await page.click('#loadBtn')
@@ -937,9 +913,9 @@ class TestViewerWithRealData:
         # Verify trend view is active
         await expect(trend_btn).to_have_class(re.compile(r"active"))
 
-        # Verify trend view section is visible
-        trend_section = page.locator('#trendViewSection, .trend-view-content')
-        await expect(trend_section.first).to_be_visible()
+        # Verify trend view section is visible (HTML uses #trendsView)
+        trend_section = page.locator('#trendsView')
+        await expect(trend_section).to_be_visible()
 
         # Check for chart headings (Speed, Ping, Uptime, Power, SNR, Error Rates, Upstream)
         speed_heading = page.locator('h2:has-text("Speed Trends")')
@@ -1059,7 +1035,24 @@ class TestAdminWithRealData:
         await page.click('#deleteChecksSubTab')
         await page.wait_for_timeout(500)
 
-        # Click Load Checks button (without filter to load all)
+        # Wait for modem dropdown to be populated
+        modem_select = page.locator('#deleteModemIdFilter')
+        await page.wait_for_timeout(1000)
+
+        # Select the first modem from the dropdown (required before loading checks)
+        # The loadChecksForDeletion() function requires a modem_id to be selected
+        if len(modem_ids) > 0:
+            await modem_select.select_option(modem_ids[0])
+        else:
+            # Fallback: select first non-empty option
+            first_option = page.locator('#deleteModemIdFilter option:not([value=""])')
+            first_value = await first_option.first.get_attribute('value')
+            if first_value:
+                await modem_select.select_option(first_value)
+
+        await page.wait_for_timeout(500)
+
+        # Click Load Checks button
         await page.click('button:has-text("Load Checks")')
         await page.wait_for_timeout(2000)
 
@@ -1067,8 +1060,9 @@ class TestAdminWithRealData:
         checks_container = page.locator('#checksListContainer')
         await expect(checks_container).to_be_visible()
 
-        # Look for check items in the list (could be cards or table rows)
-        check_items = page.locator('#checksListContainer .check-item, #deleteChecksTable tbody tr')
+        # Look for check items in the list (dynamically generated table rows)
+        # The loadChecksForDeletion() function creates a table with .keys-table class inside #checksListContainer
+        check_items = page.locator('#checksListContainer tbody tr')
         item_count = await check_items.count()
 
         # Should have loaded checks from the fixture data (75 checks across 3 modems)

@@ -39,7 +39,7 @@ router = APIRouter(tags=["Config Management"])
 
 
 @router.post("/api/config/sync", response_model=ConfigSyncResponse)
-@limiter.limit(lambda: settings.config_sync_rate_limit)
+@limiter.limit(lambda: f"{settings.config_sync_burst_limit}; {settings.config_sync_hourly_limit}")
 async def sync_config(
     request: Request,
     sync_request: ConfigSyncRequest = Body(...),
@@ -56,7 +56,9 @@ async def sync_config(
     2. MANAGED: Server pushes config once, client can modify after
     3. LOCKED: Server enforces config, client cannot modify
 
-    Rate limited (configurable via CONFIG_SYNC_RATE_LIMIT, default: 15/hour).
+    Rate limited with two-tier limits:
+    - Burst: CONFIG_SYNC_BURST_LIMIT (default: 10/5minutes)
+    - Sustained: CONFIG_SYNC_HOURLY_LIMIT (default: 100/hour)
 
     Security:
     - HMAC-SHA256 signature validation

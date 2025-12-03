@@ -20,7 +20,7 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.core.utils import utc_now
 from typing import Any, Dict, Optional, Set
@@ -201,18 +201,24 @@ class InMemoryCache(ICacheProvider):
         return value is not None
 
     async def incr(self, key: str) -> int:
-        """Increment counter, initializes to 1 if key doesn't exist."""
+        """Increment counter, initializes to 1 if key doesn't exist.
+
+        Note: Like Redis INCR, this preserves existing TTL when incrementing.
+        Only new keys get the default_ttl applied.
+        """
         async with self._lock:
             await self._cleanup_expired()
 
             # Access data directly to avoid deadlock (don't call get() while holding lock)
+            existing_expiration = None
             if key in self._data:
-                value, expiration = self._data[key]
+                value, existing_expiration = self._data[key]
 
                 # Check if expired
-                if expiration is not None and expiration < time.time():
+                if existing_expiration is not None and existing_expiration < time.time():
                     del self._data[key]
                     new_value = 1
+                    existing_expiration = None  # Key expired, treat as new
                 else:
                     try:
                         new_value = int(value) + 1
@@ -223,9 +229,14 @@ class InMemoryCache(ICacheProvider):
 
             # Set new value directly (avoid calling set() while holding lock)
             await self._evict_if_needed()
-            expiration = None
-            if self.default_ttl is not None:
+
+            # Preserve existing expiration if key existed, otherwise use default_ttl
+            if existing_expiration is not None:
+                expiration = existing_expiration
+            elif self.default_ttl is not None:
                 expiration = time.time() + self.default_ttl
+            else:
+                expiration = None
 
             self._data[key] = (str(new_value), expiration)
             self._data.move_to_end(key)
@@ -286,8 +297,9 @@ class InMemoryCache(ICacheProvider):
                 return False  # Key already exists
 
             # Key doesn't exist, set it
-            expiry_time = datetime.now() + timedelta(seconds=ttl) if ttl else None
-            self._data[key] = (value, expiry_time)
+            # Use time.time() float for consistency with other methods (get, set, incr)
+            expiration = time.time() + ttl if ttl else None
+            self._data[key] = (value, expiration)
             return True
 
     async def close(self) -> None:

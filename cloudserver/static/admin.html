@@ -5989,6 +5989,35 @@
             return config;
         }
 
+        // Display validation errors in the config modal
+        function displayValidationErrors(errorEl, errorData) {
+            const fieldErrors = errorData.error?.details?.errors;
+
+            if (fieldErrors && Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+                // Format field-specific errors as a list
+                const errorCount = fieldErrors.length;
+                const header = errorCount === 1
+                    ? 'Validation failed:'
+                    : `Validation failed (${errorCount} errors):`;
+
+                // Clean up error messages - remove "Field " prefix for cleaner display
+                const formattedErrors = fieldErrors.map(err => {
+                    // Convert "Field PingCount: value 150 exceeds maximum 100"
+                    // to "PingCount: value 150 exceeds maximum 100"
+                    return err.replace(/^Field\s+/, '');
+                });
+
+                const errorList = formattedErrors.map(err => `<li>${escapeHtml(err)}</li>`).join('');
+                errorEl.innerHTML = `<strong>${header}</strong><ul style="margin: 5px 0 0 20px; padding: 0;">${errorList}</ul>`;
+            } else {
+                // Fall back to generic message
+                const message = errorData.error?.message || 'Configuration validation failed';
+                errorEl.textContent = message;
+            }
+
+            errorEl.style.display = 'block';
+        }
+
         // Save config from modal
         async function saveConfigFromModal(downloadAfter = false) {
             const errorEl = document.getElementById('configModalError');
@@ -6050,8 +6079,9 @@
                 updateCsrfFromResponse(response);
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error?.message || `Save failed: ${response.status}`);
+                    const errorData = await response.json();
+                    displayValidationErrors(errorEl, errorData);
+                    return;
                 }
 
                 if (downloadAfter) {
@@ -6076,7 +6106,8 @@
 
             } catch (error) {
                 console.error('Save failed:', error);
-                errorEl.textContent = error.message;
+                // Network or unexpected errors (validation errors handled above)
+                errorEl.textContent = error.message || 'An unexpected error occurred';
                 errorEl.style.display = 'block';
             }
         }

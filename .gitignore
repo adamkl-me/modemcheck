@@ -18,7 +18,7 @@ __pycache__/
 # Test data, logs, test scripts, and personal notes
 ModemWebUIDataExamples/
 Playground/
-Playground-Test/
+TestPlayground/
 .upload_queue.json
 rebuild-docker.sh
 commandstuff.md

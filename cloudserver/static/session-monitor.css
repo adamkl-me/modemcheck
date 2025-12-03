@@ -1,0 +1,170 @@
+/**
+ * Session Timeout Warning Modal Styles
+ *
+ * Provides styling for the session timeout warning overlay that appears
+ * when a user's session is about to expire.
+ */
+
+.session-timeout-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.session-timeout-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.session-timeout-modal {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.session-timeout-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.session-timeout-modal h2 {
+    color: #667eea;
+    font-size: 24px;
+    margin: 0 0 12px 0;
+    font-weight: 600;
+}
+
+.session-timeout-modal p {
+    color: #4a5568;
+    font-size: 16px;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+}
+
+.session-timeout-subtext {
+    color: #718096 !important;
+    font-size: 14px !important;
+    margin-bottom: 20px !important;
+}
+
+.session-countdown {
+    font-size: 28px;
+    font-weight: 700;
+    color: #667eea;
+    font-family: monospace;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.session-countdown.urgent {
+    color: #e53e3e;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.session-timeout-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.session-btn {
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    border: none;
+}
+
+.session-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.session-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.session-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.session-btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.session-btn-secondary:hover {
+    background: #cbd5e0;
+}
+
+.session-extend-status {
+    margin-top: 16px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    min-height: 20px;
+}
+
+.session-extend-status:empty {
+    display: none;
+}
+
+.session-extend-status.success {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.session-extend-status.error {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .session-timeout-modal {
+        padding: 24px 20px;
+        margin: 0 10px;
+    }
+
+    .session-timeout-modal h2 {
+        font-size: 20px;
+    }
+
+    .session-countdown {
+        font-size: 24px;
+    }
+
+    .session-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}
