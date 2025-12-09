@@ -156,37 +156,37 @@ function showPasswordChangeDialog() {
     }
 
     const dialog = document.createElement('div');
-    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.className = 'pwd-dialog-overlay';
     dialog.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 450px; width: 90%;">
-            <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password Required</h2>
-            <p style="margin: 0 0 20px 0; color: #666;">You must change your password before continuing.</p>
-            <div id="pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+        <div class="pwd-dialog-content">
+            <h2 class="pwd-dialog-title">Change Password Required</h2>
+            <p class="pwd-dialog-text">You must change your password before continuing.</p>
+            <div id="pwd-error" class="pwd-dialog-error"></div>
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password</label>
-                <input type="password" id="new-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                <label class="pwd-dialog-label">New Password</label>
+                <input type="password" id="new-password" class="pwd-dialog-input" />
                 <div id="pwd-strength-container" style="display: none; margin-top: 8px;">
-                    <div style="height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-bottom: 4px;">
-                        <div id="pwd-strength-bar" style="height: 100%; transition: width 0.3s, background-color 0.3s; width: 0%; background-color: #e0e0e0;"></div>
+                    <div class="pwd-strength-bar-container">
+                        <div id="pwd-strength-bar" class="pwd-strength-bar"></div>
                     </div>
-                    <div id="pwd-strength-text" style="font-size: 11px; text-align: right; margin-bottom: 8px; color: #999;"></div>
+                    <div id="pwd-strength-text" class="pwd-strength-text"></div>
                 </div>
-                <div id="pwd-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                <div id="pwd-requirements" class="pwd-requirements">
                     <strong>Password Requirements:</strong>
-                    <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
-                        <li id="pwd-req-length" style="margin: 2px 0; color: #ef4444;">❌ At least 12 characters</li>
-                        <li id="pwd-req-uppercase" style="margin: 2px 0; color: #ef4444;">❌ One uppercase letter</li>
-                        <li id="pwd-req-lowercase" style="margin: 2px 0; color: #ef4444;">❌ One lowercase letter</li>
-                        <li id="pwd-req-digit" style="margin: 2px 0; color: #ef4444;">❌ One digit</li>
-                        <li id="pwd-req-special" style="margin: 2px 0; color: #ef4444;">❌ One special character (!@#$%^&*(),.?":{}|<>)</li>
+                    <ul>
+                        <li id="pwd-req-length" class="pwd-req-unmet">❌ At least 12 characters</li>
+                        <li id="pwd-req-uppercase" class="pwd-req-unmet">❌ One uppercase letter</li>
+                        <li id="pwd-req-lowercase" class="pwd-req-unmet">❌ One lowercase letter</li>
+                        <li id="pwd-req-digit" class="pwd-req-unmet">❌ One digit</li>
+                        <li id="pwd-req-special" class="pwd-req-unmet">❌ One special character (!@#$%^&*(),.?":{}|<>)</li>
                     </ul>
                 </div>
             </div>
             <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Confirm Password</label>
-                <input type="password" id="confirm-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                <label class="pwd-dialog-label">Confirm Password</label>
+                <input type="password" id="confirm-password" class="pwd-dialog-input" />
             </div>
-            <button id="change-pwd-btn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
+            <button id="change-pwd-btn" class="pwd-dialog-btn">Change Password</button>
         </div>
     `;
     document.body.appendChild(dialog);
@@ -209,23 +209,23 @@ function showPasswordChangeDialog() {
         const specialEl = document.getElementById('pwd-req-special');
 
         if (lengthEl) {
-            lengthEl.style.color = requirements.length ? '#10b981' : '#ef4444';
+            lengthEl.className = requirements.length ? 'pwd-req-met' : 'pwd-req-unmet';
             lengthEl.textContent = (requirements.length ? '✔️ ' : '❌ ') + 'At least 12 characters';
         }
         if (uppercaseEl) {
-            uppercaseEl.style.color = requirements.uppercase ? '#10b981' : '#ef4444';
+            uppercaseEl.className = requirements.uppercase ? 'pwd-req-met' : 'pwd-req-unmet';
             uppercaseEl.textContent = (requirements.uppercase ? '✔️ ' : '❌ ') + 'One uppercase letter';
         }
         if (lowercaseEl) {
-            lowercaseEl.style.color = requirements.lowercase ? '#10b981' : '#ef4444';
+            lowercaseEl.className = requirements.lowercase ? 'pwd-req-met' : 'pwd-req-unmet';
             lowercaseEl.textContent = (requirements.lowercase ? '✔️ ' : '❌ ') + 'One lowercase letter';
         }
         if (digitEl) {
-            digitEl.style.color = requirements.digit ? '#10b981' : '#ef4444';
+            digitEl.className = requirements.digit ? 'pwd-req-met' : 'pwd-req-unmet';
             digitEl.textContent = (requirements.digit ? '✔️ ' : '❌ ') + 'One digit';
         }
         if (specialEl) {
-            specialEl.style.color = requirements.special ? '#10b981' : '#ef4444';
+            specialEl.className = requirements.special ? 'pwd-req-met' : 'pwd-req-unmet';
             specialEl.textContent = (requirements.special ? '✔️ ' : '❌ ') + 'One special character (!@#$%^&*(),.?":{}|<>)';
         }
 
@@ -264,9 +264,20 @@ function showPasswordChangeDialog() {
         const meetsRequirements = checkPasswordRequirements(password);
         const score = calculateBasicStrength(password);
 
+        // Get theme-aware colors from CSS variables
+        const style = getComputedStyle(document.documentElement);
+        const themeColors = {
+            neutral: style.getPropertyValue('--border-color').trim() || '#e0e0e0',
+            error: style.getPropertyValue('--error').trim() || '#ef4444',
+            warning: style.getPropertyValue('--warning').trim() || '#f59e0b',
+            success: style.getPropertyValue('--success').trim() || '#10b981',
+            successDark: '#059669', // Keep dark green for very strong
+            muted: style.getPropertyValue('--text-muted').trim() || '#999'
+        };
+
         // Update strength bar
         const widths = ['0%', '25%', '50%', '75%', '100%'];
-        const colors = ['#e0e0e0', '#ef4444', '#f59e0b', '#10b981', '#059669'];
+        const colors = [themeColors.neutral, themeColors.error, themeColors.warning, themeColors.success, themeColors.successDark];
         if (strengthBar) {
             strengthBar.style.width = widths[score];
             strengthBar.style.backgroundColor = colors[score];
@@ -274,7 +285,7 @@ function showPasswordChangeDialog() {
 
         // Update strength text
         const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-        const textColors = ['#999', '#ef4444', '#f59e0b', '#10b981', '#059669'];
+        const textColors = [themeColors.muted, themeColors.error, themeColors.warning, themeColors.success, themeColors.successDark];
         let strengthMessage = strengthLabels[score];
 
         if (!meetsRequirements && score > 0) {
@@ -587,7 +598,12 @@ function onModemChanged() {
 function showStatus(message, type = 'info') {
     const statusDiv = document.getElementById('statusMessage');
     statusDiv.textContent = message;
-    statusDiv.style.color = type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#555';
+    // Use CSS variables for theme-aware status colors
+    const style = getComputedStyle(document.documentElement);
+    const errorColor = style.getPropertyValue('--error').trim() || '#f56565';
+    const successColor = style.getPropertyValue('--success').trim() || '#48bb78';
+    const infoColor = style.getPropertyValue('--text-muted').trim() || '#555';
+    statusDiv.style.color = type === 'error' ? errorColor : type === 'success' ? successColor : infoColor;
 }
 
 // Load data for selected modem and date range
@@ -1444,6 +1460,7 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderSpeedChart(timestamps, uploadData, downloadData, uploadLimits, downloadLimits) {
                 const ctx = document.getElementById('speedChart');
+                const colors = getChartColors();
 
                 if (charts.speed) {
                     charts.speed.destroy();
@@ -1518,6 +1535,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1534,22 +1552,28 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 beginAtZero: true,
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Speed (Mbps)'
-                                }
+                                    text: 'Speed (Mbps)',
+                                    color: colors.text
+                                },
+                                ticks: { color: colors.text }
                             }
                         },
                         interaction: {
@@ -1564,6 +1588,7 @@ function renderTrendChartsFromPreAggregated() {
             function renderLatencyChart(timestamps, googleAvg, cloudflareAvg,
                                        speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency) {
                 const ctx = document.getElementById('latencyChart');
+                const colors = getChartColors();
 
                 if (charts.latency) {
                     charts.latency.destroy();
@@ -1641,6 +1666,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1669,24 +1695,30 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Latency (ms)'
+                                    text: 'Latency (ms)',
+                                    color: colors.text
                                 },
+                                ticks: { color: colors.text },
                                 beginAtZero: true,
                                 suggestedMax: 50
                             }
@@ -1702,6 +1734,7 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderPacketLossChart(timestamps, googleLoss, cloudflareLoss) {
                 const ctx = document.getElementById('packetLossChart');
+                const colors = getChartColors();
 
                 if (charts.packetLoss) {
                     charts.packetLoss.destroy();
@@ -1744,6 +1777,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1772,24 +1806,30 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Packet Loss (%)'
+                                    text: 'Packet Loss (%)',
+                                    color: colors.text
                                 },
+                                ticks: { color: colors.text },
                                 beginAtZero: true,
                                 grace: '10%'  // Auto-scale with padding above data
                             }
@@ -1805,7 +1845,8 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderUptimeChart(timestamps, uptimeData) {
                 const ctx = document.getElementById('uptimeChart');
-                
+                const colors = getChartColors();
+
                 if (charts.uptime) {
                     charts.uptime.destroy();
                 }
@@ -1838,6 +1879,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1868,23 +1910,29 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 beginAtZero: true,
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Uptime (days)'
+                                    text: 'Uptime (days)',
+                                    color: colors.text
                                 },
                                 ticks: {
+                                    color: colors.text,
                                     callback: function(value) {
                                         return value.toFixed(1) + 'd';
                                     }
@@ -1902,7 +1950,8 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderRxPowerChart(timestamps, rxScqamData, rxOfdmData) {
                 const ctx = document.getElementById('rxPowerChart');
-                
+                const colors = getChartColors();
+
                 if (charts.rxPower) {
                     charts.rxPower.destroy();
                 }
@@ -1975,6 +2024,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -1991,21 +2041,27 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Power (dBmV)'
+                                    text: 'Power (dBmV)',
+                                    color: colors.text
                                 },
+                                ticks: { color: colors.text },
                                 // Auto-scale to data range for better visibility
                                 grace: '5%'  // Add 5% padding above/below data range
                             }
@@ -2021,7 +2077,8 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderRxSnrChart(timestamps, rxScqamData, rxOfdmData) {
                 const ctx = document.getElementById('rxSnrChart');
-                
+                const colors = getChartColors();
+
                 if (charts.rxSnr) {
                     charts.rxSnr.destroy();
                 }
@@ -2093,6 +2150,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -2109,21 +2167,27 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'SNR (dB)'
+                                    text: 'SNR (dB)',
+                                    color: colors.text
                                 },
+                                ticks: { color: colors.text },
                                 // Auto-scale to data range for better visibility
                                 grace: '5%'  // Add 5% padding above/below data range
                             }
@@ -2139,7 +2203,8 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData) {
                 const ctx = document.getElementById('berChart');
-                
+                const colors = getChartColors();
+
                 if (charts.ber) {
                     charts.ber.destroy();
                 }
@@ -2229,6 +2294,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -2265,23 +2331,29 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 type: 'logarithmic',
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Error Rate (%)'
+                                    text: 'Error Rate (%)',
+                                    color: colors.text
                                 },
                                 ticks: {
+                                    color: colors.text,
                                     callback: function(value) {
                                         // Use fixed decimal notation instead of scientific
                                         if (value >= 0.01) {
@@ -2306,6 +2378,7 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderTxChannelsChart(timestamps, txScqamData, txOfdmaData) {
                 const ctx = document.getElementById('txChannelsChart');
+                const colors = getChartColors();
 
                 if (charts.txChannels) {
                     charts.txChannels.destroy();
@@ -2354,6 +2427,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -2370,27 +2444,33 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Channel Count'
+                                    text: 'Channel Count',
+                                    color: colors.text
                                 },
                                 beginAtZero: true,
                                 ticks: {
-                                    stepSize: 1
+                                    stepSize: 1,
+                                    color: colors.text
                                 }
                             }
                         },
@@ -2405,6 +2485,7 @@ function renderTrendChartsFromPreAggregated() {
 
             function renderTxPowerChart(timestamps, txScqamData, txOfdmaData) {
                 const ctx = document.getElementById('txPowerChart');
+                const colors = getChartColors();
 
                 if (charts.txPower) {
                     charts.txPower.destroy();
@@ -2461,6 +2542,7 @@ function renderTrendChartsFromPreAggregated() {
                             },
                             legend: {
                                 position: 'top',
+                                labels: { color: colors.text }
                             },
                             tooltip: {
                                 mode: 'index',
@@ -2477,24 +2559,30 @@ function renderTrendChartsFromPreAggregated() {
                                     },
                                     tooltipFormat: 'MMM d, yyyy HH:mm:ss'
                                 },
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Time'
+                                    text: 'Time',
+                                    color: colors.text
                                 },
                                 ticks: {
                                     maxRotation: 45,
                                     minRotation: 45,
-                                    autoSkip: true
+                                    autoSkip: true,
+                                    color: colors.text
                                 }
                             },
                             y: {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
+                                grid: { color: colors.grid },
                                 title: {
                                     display: true,
-                                    text: 'Power (dBmV)'
+                                    text: 'Power (dBmV)',
+                                    color: colors.text
                                 },
+                                ticks: { color: colors.text },
                                 grace: '5%'
                             }
                         },
@@ -2503,6 +2591,39 @@ function renderTrendChartsFromPreAggregated() {
                             axis: 'x',
                             intersect: false
                         }
+                    }
+                });
+            }
+
+            // Update chart colors when theme changes
+            function updateChartColors() {
+                const colors = getChartColors();
+
+                Object.values(charts).forEach(chart => {
+                    if (chart && chart.options) {
+                        // Update scale colors (grid, ticks, titles)
+                        if (chart.options.scales) {
+                            Object.values(chart.options.scales).forEach(scale => {
+                                if (scale.grid) {
+                                    scale.grid.color = colors.grid;
+                                }
+                                if (scale.ticks) {
+                                    scale.ticks.color = colors.text;
+                                }
+                                if (scale.title) {
+                                    scale.title.color = colors.text;
+                                }
+                            });
+                        }
+
+                        // Update legend text color
+                        if (chart.options.plugins?.legend?.labels) {
+                            chart.options.plugins.legend.labels.color = colors.text;
+                        } else if (chart.options.plugins?.legend) {
+                            chart.options.plugins.legend.labels = { color: colors.text };
+                        }
+
+                        chart.update();
                     }
                 });
             }

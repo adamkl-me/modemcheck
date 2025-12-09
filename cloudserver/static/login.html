@@ -5,139 +5,300 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
     <title>Login - ModemCheck Cloud</title>
+    <!-- Blocking script to prevent FOUC -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('modemcheck-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <style>
+        /* Light Theme (Classic Aero Blue) */
+        :root, [data-theme="light"] {
+            --primary: #0078D4;
+            --primary-hover: #106EBE;
+            --accent: #00B4D8;
+            --glass-tint: rgba(232, 244, 252, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: rgba(0, 120, 212, 0.1);
+            --surface: #F8FAFC;
+            --surface-elevated: rgba(255, 255, 255, 0.85);
+            --bg: #F8FAFC;
+            --bg-gradient: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 50%, #E0F2FE 100%);
+            --text: #1E293B;
+            --text-muted: #64748B;
+            --success: #14B8A6;
+            --warning: #F59E0B;
+            --error: #F43F5E;
+            --input-bg: #FFFFFF;
+            --input-border: #E2E8F0;
+            --error-bg: rgba(244, 63, 94, 0.1);
+        }
+
+        /* Dark Theme (Dark Instrument Panel) - Default */
+        [data-theme="dark"] {
+            --primary: #3B82F6;
+            --primary-hover: #2563EB;
+            --accent: #22D3EE;
+            --glass-tint: rgba(30, 58, 95, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: rgba(59, 130, 246, 0.2);
+            --surface: #1F2937;
+            --surface-elevated: rgba(31, 41, 55, 0.9);
+            --bg: #111827;
+            --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+            --text: #E2E8F0;
+            --text-muted: #94A3B8;
+            --success: #22C55E;
+            --warning: #FB923C;
+            --error: #F87171;
+            --input-bg: #1F2937;
+            --input-border: rgba(255, 255, 255, 0.1);
+            --error-bg: rgba(248, 113, 113, 0.15);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            transition: background 0.3s ease;
         }
-        
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--glass-tint);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            box-shadow:
+                0 4px 6px -1px var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 8px 12px -2px var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="light"] .theme-icon-light { display: none; }
+        [data-theme="light"] .theme-icon-dark { display: inline; }
+        [data-theme="dark"] .theme-icon-light { display: inline; }
+        [data-theme="dark"] .theme-icon-dark { display: none; }
+
         .login-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: var(--glass-tint);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
             padding: 40px;
             max-width: 400px;
             width: 100%;
+            transition: all 0.3s ease;
         }
-        
+
+        /* Fallback for browsers without backdrop-filter */
+        @supports not (backdrop-filter: blur(16px)) {
+            .login-container {
+                background: var(--surface-elevated);
+            }
+            .theme-toggle {
+                background: var(--surface);
+            }
+        }
+
         .logo {
             text-align: center;
             margin-bottom: 30px;
         }
-        
+
         .logo h1 {
-            color: #667eea;
+            color: var(--primary);
             font-size: 28px;
             margin-bottom: 5px;
+            text-shadow: 0 2px 4px var(--glass-shadow);
         }
-        
+
         .logo p {
-            color: #666;
+            color: var(--text-muted);
             font-size: 14px;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: var(--text);
             font-weight: 500;
             font-size: 14px;
         }
-        
+
         input[type="text"],
         input[type="password"] {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            background: var(--input-bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
+
+        input[type="text"]::placeholder,
+        input[type="password"]::placeholder {
+            color: var(--text-muted);
+        }
+
         input[type="text"]:focus,
         input[type="password"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow:
+                inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                0 0 0 3px var(--glass-shadow);
         }
-        
-        button {
+
+        button[type="submit"] {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.3s;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 4px 12px var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
-        
-        button:hover {
-            opacity: 0.9;
+
+        button[type="submit"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+            pointer-events: none;
         }
-        
-        button:disabled {
+
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 8px 20px var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        button[type="submit"]:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
-        
+
         .error-message {
-            background: #fee;
-            color: #c33;
+            background: var(--error-bg);
+            color: var(--error);
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
             font-size: 14px;
             display: none;
+            border: 1px solid var(--error);
+            backdrop-filter: blur(4px);
         }
-        
+
         .error-message.show {
             display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 24px;
+            }
+
+            .theme-toggle {
+                top: 15px;
+                right: 15px;
+                padding: 8px 12px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <span class="theme-icon-light">&#9728;</span>
+        <span class="theme-icon-dark">&#9790;</span>
+    </button>
+
     <div class="login-container">
         <div class="logo">
             <h1>ModemCheck Cloud</h1>
             <p>Login</p>
         </div>
-        
+
         <div id="error" class="error-message"></div>
-        
+
         <form id="login-form">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required autocomplete="username">
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
-            
+
             <button type="submit" id="login-btn">Login</button>
         </form>
     </div>
 
     <script src="/static/error-utils.js"></script>
     <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('modemcheck-theme', next);
+        }
+
         const form = document.getElementById('login-form');
         const errorDiv = document.getElementById('error');
         const loginBtn = document.getElementById('login-btn');

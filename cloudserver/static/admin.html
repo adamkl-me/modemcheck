@@ -5,7 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
     <title>ModemCheck - Admin Dashboard</title>
+    <!-- Blocking script to prevent FOUC -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('modemcheck-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <style>
+        /* Light Theme (Classic Aero Blue) */
+        :root, [data-theme="light"] {
+            --primary: #0078D4;
+            --primary-hover: #106EBE;
+            --accent: #00B4D8;
+            --glass-tint: rgba(232, 244, 252, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: rgba(0, 120, 212, 0.1);
+            --surface: #F8FAFC;
+            --surface-elevated: rgba(255, 255, 255, 0.85);
+            --bg: #F8FAFC;
+            --bg-gradient: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 50%, #E0F2FE 100%);
+            --header-gradient: linear-gradient(135deg, #0078D4 0%, #00B4D8 100%);
+            --text: #1E293B;
+            --text-muted: #64748B;
+            --success: #14B8A6;
+            --warning: #F59E0B;
+            --error: #F43F5E;
+            --border-color: #E2E8F0;
+            --input-bg: #FFFFFF;
+            --input-border: #E2E8F0;
+            --table-header-bg: linear-gradient(135deg, #0078D4, #106EBE);
+            --table-row-hover: rgba(0, 120, 212, 0.05);
+            --table-row-alt: rgba(0, 120, 212, 0.02);
+            --tab-inactive-bg: rgba(0, 0, 0, 0.03);
+            --tab-active-bg: #FFFFFF;
+            --modal-overlay: rgba(0, 0, 0, 0.5);
+            /* Selection and highlight colors */
+            --selected-bg: rgba(0, 120, 212, 0.1);
+            --text-inverse: #FFFFFF;
+            /* Shadow variables */
+            --shadow-light: rgba(0, 0, 0, 0.1);
+            --shadow-medium: rgba(0, 0, 0, 0.15);
+            --shadow-heavy: rgba(0, 0, 0, 0.2);
+            --shadow-overlay: rgba(0, 0, 0, 0.5);
+            /* Glass highlight variables */
+            --glass-highlight: rgba(255, 255, 255, 0.3);
+            --glass-highlight-strong: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Dark Theme (Dark Instrument Panel) - Default */
+        [data-theme="dark"] {
+            --primary: #3B82F6;
+            --primary-hover: #2563EB;
+            --accent: #22D3EE;
+            --glass-tint: rgba(30, 58, 95, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: rgba(59, 130, 246, 0.2);
+            --surface: #1F2937;
+            --surface-elevated: rgba(31, 41, 55, 0.9);
+            --bg: #111827;
+            --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+            --header-gradient: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+            --text: #E2E8F0;
+            --text-muted: #94A3B8;
+            --success: #22C55E;
+            --warning: #FB923C;
+            --error: #F87171;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --input-bg: #1F2937;
+            --input-border: rgba(255, 255, 255, 0.1);
+            --table-header-bg: linear-gradient(135deg, #3B82F6, #2563EB);
+            --table-row-hover: rgba(59, 130, 246, 0.1);
+            --table-row-alt: rgba(59, 130, 246, 0.05);
+            --tab-inactive-bg: rgba(255, 255, 255, 0.03);
+            --tab-active-bg: var(--surface);
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+            /* Selection and highlight colors */
+            --selected-bg: rgba(59, 130, 246, 0.15);
+            --text-inverse: #FFFFFF;
+            /* Shadow variables */
+            --shadow-light: rgba(0, 0, 0, 0.2);
+            --shadow-medium: rgba(0, 0, 0, 0.3);
+            --shadow-heavy: rgba(0, 0, 0, 0.4);
+            --shadow-overlay: rgba(0, 0, 0, 0.7);
+            /* Glass highlight variables */
+            --glass-highlight: rgba(255, 255, 255, 0.1);
+            --glass-highlight-strong: rgba(255, 255, 255, 0.2);
+        }
         * {
             box-sizing: border-box;
             margin: 0;
@@ -14,19 +100,31 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-gradient);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .container {
             max-width: 1600px;
             margin: 0 auto;
-            background: white;
+            background: var(--glass-tint);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
             overflow: hidden;
             display: none; /* Hidden until auth verified */
+        }
+
+        /* Fallback for browsers without backdrop-filter */
+        @supports not (backdrop-filter: blur(16px)) {
+            .container {
+                background: var(--surface-elevated);
+            }
         }
 
         .container.authenticated {
@@ -34,7 +132,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--header-gradient);
             color: white;
             padding: 30px;
             text-align: center;
@@ -43,6 +141,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .header h1 {
@@ -50,44 +149,81 @@
             font-weight: 700;
             margin: 0;
             color: white;
+            text-shadow: 0 2px 4px var(--glass-shadow);
         }
 
         /* Header navigation buttons */
         .header-nav {
             position: absolute;
             top: 30px;
+            left: 30px;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .header-nav-right {
+            position: absolute;
+            top: 30px;
             right: 30px;
             display: flex;
-            flex-direction: column-reverse;
+            flex-direction: row;
             gap: 10px;
-            align-items: flex-end;
+            align-items: center;
         }
 
         .header-nav-btn {
             padding: 10px 20px;
             background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.8);
+            border: 1px solid var(--glass-border);
             color: white;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .header-nav-btn.viewer {
-            background: rgba(102, 126, 234, 0.9);
+            background: rgba(59, 130, 246, 0.8);
         }
 
         .header-nav-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.25);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px var(--glass-shadow),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .header-nav-btn.viewer:hover {
-            background: rgba(86, 110, 220, 0.95);
+            background: rgba(59, 130, 246, 0.95);
         }
+
+        /* Theme toggle in header */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        [data-theme="light"] .theme-icon-light { display: none; }
+        [data-theme="light"] .theme-icon-dark { display: inline; }
+        [data-theme="dark"] .theme-icon-light { display: inline; }
+        [data-theme="dark"] .theme-icon-dark { display: none; }
 
         /* Hamburger menu (mobile only) */
         .hamburger {
@@ -130,7 +266,9 @@
             right: -100%;
             width: 250px;
             height: 100vh;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b0764 100%);
+            background: var(--glass-tint);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             box-shadow: -4px 0 12px rgba(0,0,0,0.3);
             z-index: 1000;
             padding: 80px 20px 20px 20px;
@@ -145,9 +283,9 @@
             width: 100%;
             margin-bottom: 10px;
             padding: 15px 20px;
-            background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.8);
-            color: white;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--text);
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
@@ -156,16 +294,17 @@
         }
 
         .mobile-menu button.viewer {
-            background: rgba(102, 126, 234, 0.9);
+            background: rgba(59, 130, 246, 0.8);
+            color: white;
         }
 
         .mobile-menu button:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
             transform: translateX(-5px);
         }
 
         .mobile-menu button.viewer:hover {
-            background: rgba(86, 110, 220, 0.95);
+            background: rgba(59, 130, 246, 0.95);
         }
 
         /* Mobile overlay */
@@ -176,7 +315,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: var(--modal-overlay);
             z-index: 999;
         }
 
@@ -185,25 +324,29 @@
         }
 
         .action-section {
-            background: white;
+            background: var(--glass-tint);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
             border-radius: 12px;
             padding: 30px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .action-section h2,
         .keys-section h2 {
-            color: #2d3748;
+            color: var(--text);
             margin-bottom: 15px;
             font-size: 1.6em;
             padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
+            border-bottom: 3px solid var(--primary);
             display: inline-block;
         }
 
         .action-section h3 {
-            color: #667eea;
+            color: var(--primary);
             margin-bottom: 15px;
             font-size: 1.2em;
         }
@@ -215,7 +358,7 @@
         label {
             display: block;
             margin-bottom: 5px;
-            color: #333;
+            color: var(--text);
             font-weight: 500;
         }
 
@@ -226,11 +369,13 @@
         select {
             width: 100%;
             padding: 10px;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--input-border);
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.3s ease;
-            background-color: white;
+            background-color: var(--input-bg);
+            color: var(--text);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         input[type="text"]:focus,
@@ -239,8 +384,9 @@
         input[type="date"]:focus,
         select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                        0 0 0 3px var(--glass-shadow);
         }
 
         input[type="text"]:disabled,
@@ -248,69 +394,93 @@
         input[type="password"]:disabled,
         input[type="date"]:disabled,
         select:disabled {
-            background-color: #f3f4f6;
-            color: #9ca3af;
+            background-color: var(--surface);
+            color: var(--text-muted);
             cursor: not-allowed;
+            opacity: 0.6;
         }
 
         .btn {
             padding: 10px 25px;
-            border: 2px solid transparent;
+            border: none;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+            pointer-events: none;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
-            border-color: transparent;
+            box-shadow: 0 4px 12px var(--glass-shadow),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
         .btn-primary:hover {
-            background: #5568d3;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--glass-shadow),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .btn-danger {
-            background: #ef4444;
+            background: linear-gradient(135deg, var(--error), #DC2626);
             color: white;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-danger:hover {
-            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
         }
 
         .btn-warning {
-            background: #f59e0b;
+            background: linear-gradient(135deg, var(--warning), #D97706);
             color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
 
         .btn-warning:hover {
-            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
         }
 
         .btn-secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
+            background: var(--surface);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .btn-secondary:hover {
-            background: #f0f2ff;
+            background: var(--glass-tint);
+            transform: translateY(-2px);
         }
 
         .btn:disabled {
-            background: #d1d5db;
-            color: #9ca3af;
+            background: var(--surface);
+            color: var(--text-muted);
             cursor: not-allowed;
             opacity: 0.6;
+            transform: none;
         }
 
         .btn:disabled:hover {
-            background: #d1d5db;
+            background: var(--surface);
+            transform: none;
         }
 
         .btn-small {
@@ -320,10 +490,14 @@
         }
 
         .keys-section {
-            background: white;
+            background: var(--glass-tint);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
             border-radius: 12px;
             padding: 30px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .keys-table {
@@ -335,7 +509,7 @@
         }
 
         .keys-table thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--table-header-bg);
         }
 
         .keys-table th {
@@ -372,11 +546,20 @@
 
         .keys-table td {
             padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text);
         }
 
         .keys-table tbody tr:hover {
-            background: #f9fafb;
+            background: var(--table-row-hover);
+        }
+
+        .keys-table tbody tr:nth-child(even) {
+            background: var(--table-row-alt);
+        }
+
+        .keys-table tbody tr:nth-child(even):hover {
+            background: var(--table-row-hover);
         }
 
         .keys-table thead tr:hover {
@@ -385,11 +568,13 @@
 
         .key-preview {
             font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: var(--surface);
             padding: 6px 10px;
             border-radius: 6px;
             font-size: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            color: var(--text);
+            border: 1px solid var(--border-color);
         }
 
         .status-badge {
@@ -402,13 +587,15 @@
         }
 
         .status-active {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            color: #065f46;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.3));
+            color: var(--success);
+            border: 1px solid var(--success);
         }
 
         .status-inactive {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #991b1b;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.3));
+            color: var(--error);
+            border: 1px solid var(--error);
         }
 
         /* Toast Notification Container */
@@ -484,7 +671,7 @@
         }
 
         .toast.info {
-            background: linear-gradient(135deg, #667eea 0%, #5568d3 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
             color: white;
         }
 
@@ -523,15 +710,16 @@
         .empty-state {
             text-align: center;
             padding: 40px;
-            color: #6b7280;
+            color: var(--text-muted);
             font-style: italic;
         }
 
         .role-select {
             padding: 8px 12px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
-            background-color: white;
+            background-color: var(--input-bg);
+            color: var(--text);
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
@@ -539,28 +727,28 @@
         }
 
         .role-select:hover:not(:disabled) {
-            border-color: #667eea;
+            border-color: var(--primary);
         }
 
         .role-select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--glass-shadow);
         }
 
         .role-select:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            background-color: #f3f4f6;
+            background-color: var(--surface);
         }
 
         .role-select option[value="admin"] {
             font-weight: bold;
-            color: #c53030;
+            color: var(--error);
         }
 
         .role-select option[value="basic"] {
-            color: #2d3748;
+            color: var(--text);
         }
 
         .modal {
@@ -570,7 +758,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: var(--modal-overlay);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -582,7 +770,10 @@
         }
 
         .modal-content {
-            background: white;
+            background: var(--glass-tint);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
             border-radius: 16px;
             padding: 30px;
             max-width: 500px;
@@ -597,7 +788,7 @@
         }
 
         .modal-header h2 {
-            color: #667eea;
+            color: var(--primary);
         }
 
         .modal-footer {
@@ -606,18 +797,20 @@
         }
 
         .key-display {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: var(--surface);
+            border: 1px solid var(--glass-border);
             padding: 15px;
             border-radius: 8px;
             margin: 15px 0;
             word-break: break-all;
             font-family: 'Courier New', monospace;
             font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: var(--text);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .copy-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--header-gradient);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -627,12 +820,12 @@
             font-weight: 600;
             margin-top: 10px;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 12px var(--glass-shadow);
         }
 
         .copy-btn:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #6a4191 100%);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
             transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--glass-shadow);
         }
 
         /* Searchable dropdown for API key selection */
@@ -644,24 +837,25 @@
         .config-searchable-select input[type="text"] {
             width: 100%;
             padding: 10px 35px 10px 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 1em;
-            background: white;
+            background: var(--input-bg);
+            color: var(--text);
             transition: border-color 0.3s ease;
             cursor: pointer;
         }
 
         .config-searchable-select input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
             cursor: text;
         }
 
         /* When dropdown is open, flatten bottom corners of input */
         .config-searchable-select.open input[type="text"] {
             border-radius: 8px 8px 0 0;
-            border-color: #667eea;
+            border-color: var(--primary);
         }
 
         .config-searchable-select::after {
@@ -671,7 +865,7 @@
             top: 50%;
             transform: translateY(-50%);
             pointer-events: none;
-            color: #666;
+            color: var(--text-muted);
             font-size: 0.8em;
         }
 
@@ -682,8 +876,8 @@
             right: 0;
             max-height: 250px;
             overflow-y: auto;
-            background: white;
-            border: 2px solid #667eea;
+            background: var(--surface-elevated);
+            border: 2px solid var(--primary);
             border-top: none;
             border-radius: 0 0 8px 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -699,16 +893,17 @@
         .config-api-key-option {
             padding: 10px 15px;
             cursor: pointer;
+            color: var(--text);
             transition: background-color 0.2s ease;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .config-api-key-option:hover {
-            background-color: #f0f2ff;
+            background-color: var(--table-row-hover);
         }
 
         .config-api-key-option.selected {
-            background-color: #667eea;
+            background-color: var(--primary);
             color: white;
         }
 
@@ -721,29 +916,33 @@
         }
 
         .config-searchable-dropdown::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: var(--surface);
         }
 
         .config-searchable-dropdown::-webkit-scrollbar-thumb {
-            background: #667eea;
+            background: var(--primary);
             border-radius: 4px;
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: #6b7280;
+            color: var(--text-muted);
         }
 
         .tab-navigation {
             display: flex;
             gap: 10px;
-            background: white;
-            border-bottom: 2px solid #e0e0e0;
+            background: var(--glass-tint);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--border-color);
             padding: 20px 30px;
             margin-bottom: 0;
             border-radius: 16px 16px 0 0;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
@@ -751,10 +950,10 @@
 
         .tab-btn {
             padding: 10px 25px;
-            background: white;
-            border: 2px solid #667eea;
+            background: var(--surface);
+            border: 1px solid var(--primary);
             border-radius: 8px;
-            color: #667eea;
+            color: var(--primary);
             font-weight: 600;
             cursor: pointer;
             font-size: 14px;
@@ -762,13 +961,15 @@
         }
 
         .tab-btn:hover {
-            background: #f0f2ff;
+            background: var(--glass-tint);
+            transform: translateY(-2px);
         }
 
         .tab-btn.active {
-            background: #667eea;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--glass-shadow);
         }
 
         .tab-content {
@@ -777,7 +978,11 @@
 
         .tab-content.active {
             display: block;
-            background: white;
+            background: var(--glass-tint);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-top: none;
             border-radius: 0 0 12px 12px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
@@ -789,8 +994,8 @@
         .sub-tab-navigation {
             display: flex;
             gap: 10px;
-            background: #f9fafb;
-            border-bottom: 2px solid #e0e0e0;
+            background: var(--tab-inactive-bg);
+            border-bottom: 1px solid var(--border-color);
             padding: 15px 30px;
             margin: 0;
             border-radius: 12px 12px 0 0;
@@ -798,10 +1003,10 @@
 
         .sub-tab-btn {
             padding: 8px 20px;
-            background: white;
-            border: 2px solid #e0e0e0;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
             border-radius: 6px;
-            color: #6b7280;
+            color: var(--text-muted);
             font-weight: 500;
             cursor: pointer;
             font-size: 14px;
@@ -809,15 +1014,16 @@
         }
 
         .sub-tab-btn:hover {
-            color: #667eea;
-            border-color: #667eea;
-            background: white;
+            color: var(--primary);
+            border-color: var(--primary);
+            background: var(--surface);
         }
 
         .sub-tab-btn.active {
             color: white;
-            border-color: #667eea;
-            background: #667eea;
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            box-shadow: 0 2px 8px var(--glass-shadow);
         }
 
         .sub-tab-content {
@@ -841,7 +1047,8 @@
             }
 
             /* Hide desktop nav, show hamburger and mobile menu */
-            .header-nav {
+            .header-nav,
+            .header-nav-right {
                 display: none;
             }
 
@@ -882,7 +1089,7 @@
 
         .password-strength-bar {
             height: 6px;
-            background-color: #e0e0e0;
+            background-color: var(--border-color);
             border-radius: 3px;
             overflow: hidden;
             margin-bottom: 5px;
@@ -895,29 +1102,29 @@
             border-radius: 3px;
         }
 
-        .password-strength-fill.strength-0 { width: 0%; background-color: #e0e0e0; }
-        .password-strength-fill.strength-1 { width: 25%; background-color: #ef4444; }
-        .password-strength-fill.strength-2 { width: 50%; background-color: #f59e0b; }
-        .password-strength-fill.strength-3 { width: 75%; background-color: #10b981; }
+        .password-strength-fill.strength-0 { width: 0%; background-color: var(--border-color); }
+        .password-strength-fill.strength-1 { width: 25%; background-color: var(--error); }
+        .password-strength-fill.strength-2 { width: 50%; background-color: var(--warning); }
+        .password-strength-fill.strength-3 { width: 75%; background-color: var(--success); }
         .password-strength-fill.strength-4 { width: 100%; background-color: #059669; }
 
         .password-strength-text {
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted);
         }
 
-        .password-strength-text.strength-0 { color: #999; }
-        .password-strength-text.strength-1 { color: #ef4444; font-weight: 600; }
-        .password-strength-text.strength-2 { color: #f59e0b; font-weight: 600; }
-        .password-strength-text.strength-3 { color: #10b981; font-weight: 600; }
+        .password-strength-text.strength-0 { color: var(--text-muted); }
+        .password-strength-text.strength-1 { color: var(--error); font-weight: 600; }
+        .password-strength-text.strength-2 { color: var(--warning); font-weight: 600; }
+        .password-strength-text.strength-3 { color: var(--success); font-weight: 600; }
         .password-strength-text.strength-4 { color: #059669; font-weight: 600; }
 
         .password-requirements {
             font-size: 12px;
-            color: #666;
+            color: var(--text-muted);
             margin-top: 5px;
             padding: 8px;
-            background: #f9fafb;
+            background: var(--surface);
             border-radius: 4px;
         }
 
@@ -931,10 +1138,465 @@
             margin: 2px 0;
         }
 
-        .req-met { color: #10b981; }
+        .req-met { color: var(--success); }
         .req-met::before { content: '✔️ '; }
-        .req-unmet { color: #ef4444; }
+        .req-unmet { color: var(--error); }
         .req-unmet::before { content: '❌ '; }
+
+        /* Utility classes for inline style replacement */
+        .text-muted { color: var(--text-muted); }
+        .text-primary { color: var(--primary); }
+        .text-error { color: var(--error); }
+        .text-success { color: var(--success); }
+        .text-warning { color: var(--warning); }
+        .bg-surface { background: var(--surface); color: var(--text); }
+        .bg-glass { background: var(--glass-tint); color: var(--text); }
+        .border-default { border-color: var(--border-color); }
+
+        /* SSE Status badge classes */
+        .sse-status {
+            display: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+        .sse-status-connected {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+        .sse-status-connecting {
+            background: rgba(251, 146, 60, 0.15);
+            color: var(--warning);
+        }
+        .sse-status-unavailable {
+            background: var(--surface);
+            color: var(--text-muted);
+        }
+
+        /* Inline code styling */
+        .code-inline {
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .input-styled {
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text);
+            width: 100%;
+        }
+        .input-styled:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Config mode selection cards */
+        .config-mode-card {
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            background: var(--input-bg);
+            transition: all 0.2s ease;
+        }
+        .config-mode-card:hover {
+            border-color: var(--primary);
+        }
+        .config-mode-card.selected {
+            border-color: var(--primary);
+            background: var(--selected-bg);
+        }
+        .config-mode-card-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+        .config-mode-card-desc {
+            font-size: 0.8em;
+            color: var(--text-muted);
+        }
+
+        /* Timeline history styles */
+        .timeline-item {
+            position: relative;
+            padding: 15px 0 15px 30px;
+            border-left: 2px solid var(--border-color);
+            margin-left: 20px;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -8px;
+            top: 20px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid var(--surface);
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        .timeline-dot-warning {
+            background: var(--warning);
+            box-shadow: 0 0 0 2px var(--warning);
+        }
+        .timeline-timestamp {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        .timeline-title {
+            font-weight: 600;
+            color: var(--text);
+            margin: 5px 0;
+        }
+        .timeline-details {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+
+        /* Version/status badges */
+        .badge-version {
+            background: var(--surface);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: var(--text);
+        }
+        .badge-server {
+            background: var(--primary);
+            color: var(--text-inverse);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+        }
+        .badge-client {
+            background: var(--success);
+            color: var(--text-inverse);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: var(--selected-bg);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+        .info-box-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+        .info-box-warning {
+            background: rgba(251, 146, 60, 0.15);
+            color: var(--warning);
+        }
+        .info-box-error {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--error);
+        }
+
+        /* Config form inputs */
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text);
+        }
+        .config-input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .config-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Stats card styles for dashboard widgets */
+        .stats-card {
+            background: var(--header-gradient);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .stats-card-sm {
+            padding: 15px;
+        }
+        .stats-card-secondary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+        }
+        .stats-card-purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, var(--primary) 100%);
+        }
+        .stats-card-lavender {
+            background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+        }
+        .stats-card-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .stats-card-neutral {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+        .stats-card-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .stats-card-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .stats-card-error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .stats-card-danger {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        }
+        .stats-card-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .stats-card-label-sm {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        .stats-card-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stats-card-value-sm {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stats-grid-sm {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        }
+
+        /* Config status cards */
+        .status-option {
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            background: var(--input-bg);
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+        .status-option:hover {
+            border-color: var(--primary);
+        }
+        .status-option.selected {
+            border-color: var(--primary);
+            background: var(--table-row-hover);
+        }
+        .status-option-label {
+            font-size: 0.8em;
+            color: var(--text-muted);
+        }
+
+        /* Dialog/Modal overlays (for JS-generated content) */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--modal-overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .dialog-content {
+            background: var(--glass-tint);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .dialog-title {
+            margin: 0 0 10px 0;
+            color: var(--primary);
+        }
+        .dialog-text {
+            margin: 0 0 20px 0;
+            color: var(--text-muted);
+        }
+        .dialog-error {
+            display: none;
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--error);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .dialog-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text);
+        }
+        .dialog-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .dialog-btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--header-gradient);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .dialog-btn-secondary {
+            padding: 12px;
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .dialog-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* Timeline styles for config history */
+        .timeline-container {
+            position: relative;
+            padding: 15px 0 15px 30px;
+            border-left: 2px solid var(--border-color);
+            margin-left: 20px;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -8px;
+            top: 20px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid var(--surface-elevated);
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        .timeline-timestamp {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        .timeline-title {
+            font-weight: 600;
+            color: var(--text);
+            margin: 5px 0;
+        }
+        .timeline-details {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+
+        /* Version info box */
+        .version-info-box {
+            background: var(--table-row-hover);
+            color: var(--text-muted);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        /* Control bar for charts/tables */
+        .control-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--surface-elevated);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Pagination control styles */
+        .pagination-btn {
+            padding: 6px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .pagination-btn:hover {
+            border-color: var(--primary);
+            background: var(--table-row-hover);
+        }
+        .pagination-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+        .pagination-select {
+            padding: 6px 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            background: var(--input-bg);
+            color: var(--text);
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--glass-tint);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid var(--glass-border);
+        }
+        .pagination-info {
+            color: var(--text-muted);
+        }
+        .pagination-label {
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        /* Config header badge */
+        .server-badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            margin-left: 4px;
+        }
     </style>
     <link rel="stylesheet" href="/static/session-monitor.css">
 
@@ -948,8 +1610,16 @@
         <div class="header">
             <h1>🔐 ModemCheck Admin Dashboard</h1>
 
-            <!-- Desktop navigation -->
+            <!-- Desktop navigation - left side -->
             <div class="header-nav">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="theme-icon-light">&#9728;</span>
+                    <span class="theme-icon-dark">&#9790;</span>
+                </button>
+            </div>
+
+            <!-- Desktop navigation - right side -->
+            <div class="header-nav-right">
                 <button id="viewerBtn" class="header-nav-btn viewer">📊 Viewer</button>
                 <button id="logoutBtn" class="header-nav-btn">Logout</button>
             </div>
@@ -967,6 +1637,10 @@
 
         <!-- Mobile slide-out menu -->
         <div class="mobile-menu">
+            <button onclick="toggleTheme(); closeMobileMenu();">
+                <span class="theme-icon-light">&#9728; Light Mode</span>
+                <span class="theme-icon-dark">&#9790; Dark Mode</span>
+            </button>
             <button id="configBtnMobile" onclick="closeMobileMenu(); showTab('configGen'); showConfigSubTab('configMgmt');">⚙️ Config Management</button>
             <button id="viewerBtnMobile" class="viewer">📊 Viewer</button>
             <button id="logoutBtnMobile">Logout</button>
@@ -1001,12 +1675,12 @@
             <div id="bulkUploadContent" class="sub-tab-content active">
                 <div class="action-section">
                     <h2>Bulk Upload Modem Checks</h2>
-                    <p style="color: #666; margin-bottom: 20px;">Upload multiple JSON check files at once. Files will be parsed and inserted into the database.</p>
+                    <p class="text-muted" style="margin-bottom: 20px;">Upload multiple JSON check files at once. Files will be parsed and inserted into the database.</p>
 
                     <div class="form-group">
                         <label for="bulkUploadFiles">Select JSON Files</label>
-                        <input type="file" id="bulkUploadFiles" multiple accept=".json" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
-                        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                        <input type="file" id="bulkUploadFiles" multiple accept=".json" class="input-styled">
+                        <div class="text-muted" style="margin-top: 10px; font-size: 13px;">
                             <strong>Tip:</strong> You can select multiple files at once. Each file should be a valid modem check JSON file.
                         </div>
                     </div>
@@ -1014,7 +1688,7 @@
                     <button class="btn btn-primary" onclick="bulkUploadChecks()">Upload Files</button>
 
                     <div id="bulkUploadProgress" style="display: none; margin-top: 20px;">
-                        <div style="background: #f3f4f6; border-radius: 8px; padding: 15px;">
+                        <div class="bg-surface" style="border-radius: 8px; padding: 15px;">
                             <div style="font-weight: 500; margin-bottom: 10px;">Upload Progress:</div>
                             <div id="bulkUploadStatus"></div>
                         </div>
@@ -1026,11 +1700,11 @@
             <div id="bulkDownloadContent" class="sub-tab-content">
                 <div class="action-section">
                     <h2>Bulk Download Modem Checks</h2>
-                    <p style="color: #666; margin-bottom: 20px;">Download multiple check files as a ZIP archive. Select filters to narrow down your download.</p>
+                    <p class="text-muted" style="margin-bottom: 20px;">Download multiple check files as a ZIP archive. Select filters to narrow down your download.</p>
 
                     <div class="form-group">
                         <label for="downloadModemId">Modem ID (optional - leave empty for all)</label>
-                        <select id="downloadModemId" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;">
+                        <select id="downloadModemId" class="input-styled">
                             <option value="">All Modems</option>
                         </select>
                     </div>
@@ -1060,11 +1734,11 @@
             <div id="deleteChecksContent" class="sub-tab-content">
                 <div class="action-section">
                     <h2>Delete Modem Checks</h2>
-                    <p style="color: #666; margin-bottom: 20px;">View and delete individual checks or bulk delete all checks for a specific modem.</p>
+                    <p class="text-muted" style="margin-bottom: 20px;">View and delete individual checks or bulk delete all checks for a specific modem.</p>
 
                     <div class="form-group">
                         <label for="deleteModemIdFilter">Filter by Modem ID</label>
-                        <select id="deleteModemIdFilter" style="padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; width: 100%;" onchange="loadChecksForDeletion()">
+                        <select id="deleteModemIdFilter" class="input-styled" onchange="loadChecksForDeletion()">
                             <option value="">Select a modem...</option>
                         </select>
                     </div>
@@ -1099,11 +1773,11 @@
                 <h2>Create New User</h2>
                 <div class="form-group">
                     <label for="newUsername">Username</label>
-                    <input type="text" id="newUsername" placeholder="Enter username" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
+                    <input type="text" id="newUsername" placeholder="Enter username" class="input-styled">
                 </div>
                 <div class="form-group">
                     <label for="newPassword">Password</label>
-                    <input type="password" id="newPassword" placeholder="Enter password" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box;">
+                    <input type="password" id="newPassword" placeholder="Enter password" class="input-styled">
                     <div class="password-strength-container" id="newPassword-strength-container" style="display: none;">
                         <div class="password-strength-bar">
                             <div class="password-strength-fill" id="newPassword-strength-bar"></div>
@@ -1123,7 +1797,7 @@
                 </div>
                 <div class="form-group">
                     <label for="newUserRole">Role</label>
-                    <select id="newUserRole" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+                    <select id="newUserRole" class="input-styled">
                         <option value="basic">Basic (Viewer only)</option>
                         <option value="elevated">Elevated (Limited admin access)</option>
                         <option value="admin" id="adminRoleOption" style="display: none;">Admin (Full system access)</option>
@@ -1146,18 +1820,18 @@
                 <h2>User Activity Audit Log</h2>
                 <p class="subtitle">Track all user actions including logins, logouts, and administrative activities</p>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Total Actions</div>
-                        <div id="totalActions" style="font-size: 2em; font-weight: bold;">-</div>
+                <div class="stats-grid">
+                    <div class="stats-card">
+                        <div class="stats-card-label">Total Actions</div>
+                        <div id="totalActions" class="stats-card-value">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Actions</div>
-                        <div id="failedActions" style="font-size: 2em; font-weight: bold;">-</div>
+                    <div class="stats-card stats-card-secondary">
+                        <div class="stats-card-label">Failed Actions</div>
+                        <div id="failedActions" class="stats-card-value">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Users</div>
-                        <div id="uniqueUsers" style="font-size: 2em; font-weight: bold;">-</div>
+                    <div class="stats-card">
+                        <div class="stats-card-label">Unique Users</div>
+                        <div id="uniqueUsers" class="stats-card-value">-</div>
                     </div>
                 </div>
 
@@ -1208,22 +1882,22 @@
                 <h2>Client Submission Audit Log</h2>
                 <p class="subtitle">Monitor all check data submissions from client devices</p>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Total Submissions</div>
-                        <div id="totalSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                <div class="stats-grid">
+                    <div class="stats-card">
+                        <div class="stats-card-label">Total Submissions</div>
+                        <div id="totalSubmissions" class="stats-card-value">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Failed Submissions</div>
-                        <div id="failedSubmissions" style="font-size: 2em; font-weight: bold;">-</div>
+                    <div class="stats-card stats-card-secondary">
+                        <div class="stats-card-label">Failed Submissions</div>
+                        <div id="failedSubmissions" class="stats-card-value">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #667eea 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Unique Modems</div>
-                        <div id="uniqueModems" style="font-size: 2em; font-weight: bold;">-</div>
+                    <div class="stats-card">
+                        <div class="stats-card-label">Unique Modems</div>
+                        <div id="uniqueModems" class="stats-card-value">-</div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                        <div style="font-size: 0.9em; opacity: 0.9;">Unique API Keys</div>
-                        <div id="uniqueApiKeys" style="font-size: 2em; font-weight: bold;">-</div>
+                    <div class="stats-card stats-card-secondary">
+                        <div class="stats-card-label">Unique API Keys</div>
+                        <div id="uniqueApiKeys" class="stats-card-value">-</div>
                     </div>
                 </div>
 
@@ -1273,34 +1947,34 @@
                     <p class="subtitle">Manage remote configurations for all ModemCheck clients</p>
 
                     <!-- Stats Cards - 3-state model with sync status -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0;">
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">Total Clients</div>
-                            <div id="configStatTotal" style="font-size: 1.8em; font-weight: bold;">-</div>
+                    <div class="stats-grid stats-grid-sm">
+                        <div class="stats-card stats-card-sm">
+                            <div class="stats-card-label-sm">Total Clients</div>
+                            <div id="configStatTotal" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">📝 Unmanaged</div>
-                            <div id="configStatUnmanaged" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-neutral">
+                            <div class="stats-card-label-sm">📝 Unmanaged</div>
+                            <div id="configStatUnmanaged" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">🔄 Managed</div>
-                            <div id="configStatManaged" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-blue">
+                            <div class="stats-card-label-sm">🔄 Managed</div>
+                            <div id="configStatManaged" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">🔒 Locked</div>
-                            <div id="configStatLocked" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-danger">
+                            <div class="stats-card-label-sm">🔒 Locked</div>
+                            <div id="configStatLocked" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">⏳ Pending Sync</div>
-                            <div id="configStatPending" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-warning">
+                            <div class="stats-card-label-sm">⏳ Pending Sync</div>
+                            <div id="configStatPending" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">✅ Active</div>
-                            <div id="configStatActive" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-success">
+                            <div class="stats-card-label-sm">✅ Active</div>
+                            <div id="configStatActive" class="stats-card-value-sm">-</div>
                         </div>
-                        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
-                            <div style="font-size: 0.85em; opacity: 0.9;">⚠️ Stale (48h+)</div>
-                            <div id="configStatStale" style="font-size: 1.8em; font-weight: bold;">-</div>
+                        <div class="stats-card stats-card-sm stats-card-error">
+                            <div class="stats-card-label-sm">⚠️ Stale (48h+)</div>
+                            <div id="configStatStale" class="stats-card-value-sm">-</div>
                         </div>
                     </div>
                 </div>
@@ -1308,7 +1982,7 @@
                 <!-- Config Table -->
                 <div class="keys-section">
                     <h2>Client Configurations</h2>
-                    <div id="configSseStatus" style="display: none; padding: 5px 10px; background: #d4edda; color: #155724; border-radius: 4px; font-size: 0.85em; margin-bottom: 10px;">
+                    <div id="configSseStatus" class="sse-status">
                         🔴 Real-time updates: Disconnected
                     </div>
 
@@ -1316,15 +1990,15 @@
                     <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
                         <input type="text" id="configSearchBox" class="form-control" style="flex: 1; min-width: 300px; padding: 10px 15px;" placeholder="🔍 Search by API key or modem ID...">
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <span style="font-weight: 600; color: #555;">Status:</span>
-                            <select id="configStatusFilter" style="padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <span class="text-muted" style="font-weight: 600;">Status:</span>
+                            <select id="configStatusFilter" class="input-styled" style="width: auto; padding: 10px 15px;">
                                 <option value="">All</option>
                                 <option value="unmanaged">📝 Unmanaged</option>
                                 <option value="managed">🔄 Managed</option>
                                 <option value="locked">🔒 Locked</option>
                             </select>
-                            <span style="font-weight: 600; color: #555; margin-left: 10px;">Sync:</span>
-                            <select id="configSyncStatusFilter" style="padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                            <span class="text-muted" style="font-weight: 600; margin-left: 10px;">Sync:</span>
+                            <select id="configSyncStatusFilter" class="input-styled" style="width: auto; padding: 10px 15px;">
                                 <option value="">All</option>
                                 <option value="n/a">N/A</option>
                                 <option value="pending">⏳ Pending</option>
@@ -1334,7 +2008,7 @@
                         <button class="btn btn-success" onclick="showCreateConfigModal()">➕ Create Config</button>
                     </div>
 
-                    <div style="overflow-x: auto; border-radius: 12px; border: 1px solid #e0e0e0;">
+                    <div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color);">
                         <table class="keys-table" style="width: 100%; margin-top: 0;">
                             <thead>
                                 <tr>
@@ -1385,8 +2059,8 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
                         <!-- Left Column: Cloud & Basic Settings -->
                         <div>
-                            <h3 style="margin-bottom: 15px; color: #667eea;">☁️ Cloud Connection Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Server connection defaults</p>
+                            <h3 class="text-primary" style="margin-bottom: 15px;">☁️ Cloud Connection Settings</h3>
+                            <p class="text-muted" style="font-size: 0.85em; margin-bottom: 15px;">Server connection defaults</p>
 
                             <div class="form-group">
                                 <label for="defaultCloudHost">Cloud Host</label>
@@ -1398,8 +2072,8 @@
                                 <input type="text" id="defaultCloudPort" value="443" placeholder="443">
                             </div>
 
-                            <h3 style="margin: 25px 0 15px 0; color: #667eea;">⚙️ Modem & Speed Test Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Modem detection and speed test defaults</p>
+                            <h3 class="text-primary" style="margin: 25px 0 15px 0;">⚙️ Modem & Speed Test Settings</h3>
+                            <p class="text-muted" style="font-size: 0.85em; margin-bottom: 15px;">Modem detection and speed test defaults</p>
 
                             <div class="form-group">
                                 <label for="defaultModemAddress">Modem Address</label>
@@ -1420,20 +2094,20 @@
                             <div class="form-group">
                                 <label for="defaultSpeedTestInterval">Speed Test Interval</label>
                                 <input type="number" id="defaultSpeedTestInterval" value="1" min="1" placeholder="1">
-                                <small style="color: #6b7280;">Run speed test every N checks (1 = every check)</small>
+                                <small class="text-muted">Run speed test every N checks (1 = every check)</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="defaultSpeedTestConnections">Speed Test Connections</label>
                                 <input type="number" id="defaultSpeedTestConnections" value="4" min="1" max="16" placeholder="4">
-                                <small style="color: #6b7280;">Parallel connections for speed tests (1-16)</small>
+                                <small class="text-muted">Parallel connections for speed tests (1-16)</small>
                             </div>
                         </div>
 
                         <!-- Right Column: Network & Logging Settings -->
                         <div>
-                            <h3 style="margin-bottom: 15px; color: #667eea;">🌐 Updates & Logging Settings</h3>
-                            <p style="font-size: 0.85em; color: #6b7280; margin-bottom: 15px;">Auto-update, logging, and diagnostics defaults</p>
+                            <h3 class="text-primary" style="margin-bottom: 15px;">🌐 Updates & Logging Settings</h3>
+                            <p class="text-muted" style="font-size: 0.85em; margin-bottom: 15px;">Auto-update, logging, and diagnostics defaults</p>
 
                             <div class="form-group">
                                 <label>
@@ -1453,33 +2127,33 @@
                                 <label>
                                     <input type="checkbox" id="defaultSilent"> Silent Mode
                                 </label>
-                                <small style="color: #6b7280;">Suppress console output when running</small>
+                                <small class="text-muted">Suppress console output when running</small>
                             </div>
 
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="defaultNoLogs"> Disable Logs
                                 </label>
-                                <small style="color: #6b7280;">Don't write to local log file</small>
+                                <small class="text-muted">Don't write to local log file</small>
                             </div>
 
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="defaultLocalCleanupEnabled" checked> Local Cleanup Enabled
                                 </label>
-                                <small style="color: #6b7280;">Automatically clean up old logs and results</small>
+                                <small class="text-muted">Automatically clean up old logs and results</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="defaultLocalRetentionDays">Retention Days</label>
                                 <input type="number" id="defaultLocalRetentionDays" value="90" min="1" placeholder="90">
-                                <small style="color: #6b7280;">Days to keep local logs and results</small>
+                                <small class="text-muted">Days to keep local logs and results</small>
                             </div>
 
                             <div class="form-group">
                                 <label for="defaultPingCount">Ping Test Count</label>
                                 <input type="number" id="defaultPingCount" value="100" min="1" max="100" placeholder="100">
-                                <small style="color: #6b7280;">Number of pings for network diagnostics</small>
+                                <small class="text-muted">Number of pings for network diagnostics</small>
                             </div>
 
                             <div style="margin-top: 30px;">
@@ -1502,7 +2176,7 @@
                 <h2>API Key Created Successfully!</h2>
             </div>
             <div>
-                <p style="margin-bottom: 15px; color: #374151;">
+                <p style="margin-bottom: 15px;">
                     Your new API key has been created. You can copy it now or retrieve it later from the API Keys list.
                 </p>
                 <div class="key-display" id="newKeyDisplay"></div>
@@ -1545,8 +2219,8 @@
             </div>
             <div style="padding: 20px 0;">
                 <p style="margin-bottom: 15px;">Are you sure you want to delete the configuration for:</p>
-                <p style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: monospace; word-break: break-all;" id="deleteConfigApiKeyDisplay"></p>
-                <p style="color: #666; font-size: 0.9em; margin-top: 15px;">This will remove the server-managed config. The API key will remain active.</p>
+                <p class="code-inline" style="display: block; padding: 12px; word-break: break-all;" id="deleteConfigApiKeyDisplay"></p>
+                <p class="text-muted" style="font-size: 0.9em; margin-top: 15px;">This will remove the server-managed config. The API key will remain active.</p>
             </div>
             <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button class="btn btn-secondary" onclick="closeDeleteConfigModal()">Cancel</button>
@@ -1564,6 +2238,14 @@
         let newKeyValue = null;
         let currentUserRole = null;
         let csrfToken = null;
+
+        // Theme toggle functionality
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('modemcheck-theme', next);
+        }
 
         // Sorting state for tables
         let configSortState = { column: 'api_key', direction: 'asc' };
@@ -1855,22 +2537,22 @@
         // Show password change dialog
         function showPasswordChangeDialog() {
             const dialog = document.createElement('div');
-            dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            dialog.className = 'dialog-overlay';
             dialog.innerHTML = `
-                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
-                    <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password Required</h2>
-                    <p style="margin: 0 0 20px 0; color: #666;">You must change your password before continuing.</p>
-                    <div id="pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+                <div class="dialog-content">
+                    <h2 class="dialog-title">Change Password Required</h2>
+                    <p class="dialog-text">You must change your password before continuing.</p>
+                    <div id="pwd-error" class="dialog-error"></div>
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 12 characters)</label>
-                        <input type="password" id="new-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                        <label class="dialog-label">New Password (min 12 characters)</label>
+                        <input type="password" id="new-password" class="dialog-input" />
                         <div class="password-strength-container" id="dialog-strength-container" style="display: none; margin-top: 8px;">
                             <div class="password-strength-bar">
                                 <div class="password-strength-fill" id="dialog-strength-bar"></div>
                             </div>
                             <div class="password-strength-text" id="dialog-strength-text"></div>
                         </div>
-                        <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                        <div class="password-requirements">
                             <strong>Password Requirements:</strong>
                             <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
                                 <li id="dialog-req-length" class="req-unmet">At least 12 characters</li>
@@ -1882,10 +2564,10 @@
                         </div>
                     </div>
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Confirm Password</label>
-                        <input type="password" id="confirm-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                        <label class="dialog-label">Confirm Password</label>
+                        <input type="password" id="confirm-password" class="dialog-input" />
                     </div>
-                    <button id="change-pwd-btn" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
+                    <button id="change-pwd-btn" class="dialog-btn-primary">Change Password</button>
                 </div>
             `;
             document.body.appendChild(dialog);
@@ -2044,8 +2726,7 @@
             const statusEl = document.getElementById('configSseStatus');
             if (statusEl) {
                 statusEl.style.display = 'block';
-                statusEl.style.background = '#fff3cd';
-                statusEl.style.color = '#856404';
+                statusEl.className = 'sse-status sse-status-connecting';
                 statusEl.textContent = '🟡 Real-time updates: Connecting...';
             }
 
@@ -2054,8 +2735,7 @@
 
                 configSseConnection.addEventListener('connected', (e) => {
                     if (statusEl) {
-                        statusEl.style.background = '#d4edda';
-                        statusEl.style.color = '#155724';
+                        statusEl.className = 'sse-status sse-status-connected';
                         statusEl.textContent = '🟢 Real-time updates: Connected';
                     }
                 });
@@ -2075,8 +2755,7 @@
                     console.warn('SSE connection unavailable - real-time updates disabled');
 
                     if (statusEl) {
-                        statusEl.style.background = '#fff3cd';
-                        statusEl.style.color = '#856404';
+                        statusEl.className = 'sse-status sse-status-connecting';
                         statusEl.textContent = '🟡 Real-time updates: Unavailable';
                     }
 
@@ -2089,8 +2768,7 @@
             } catch (err) {
                 console.warn('SSE not supported or unavailable:', err);
                 if (statusEl) {
-                    statusEl.style.background = '#f8f9fa';
-                    statusEl.style.color = '#6c757d';
+                    statusEl.className = 'sse-status sse-status-unavailable';
                     statusEl.textContent = '⚪ Real-time updates: Not available';
                 }
             }
@@ -2116,7 +2794,7 @@
                 // Match by API key (truncated display)
                 if (apiKeyCell && update.api_key && apiKeyCell.textContent.includes(update.api_key.substring(0, 8))) {
                     // Update last seen modem cell
-                    row.cells[1].innerHTML = `<code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(update.last_seen_modem_id) || 'Never synced'}</code>`;
+                    row.cells[1].innerHTML = `<code class="code-inline">${escapeHtml(update.last_seen_modem_id) || 'Never synced'}</code>`;
                     // Update status cell (3-state)
                     row.cells[2].innerHTML = getStatusBadge(update.status);
                     // Update sync status cell
@@ -2744,22 +3422,22 @@
         async function changePassword(username) {
             // Create modal dialog for password change
             const dialog = document.createElement('div');
-            dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            dialog.className = 'dialog-overlay';
             dialog.innerHTML = `
-                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
-                    <h2 style="margin: 0 0 10px 0; color: #667eea;">Change Password for ${username}</h2>
-                    <p style="margin: 0 0 20px 0; color: #666;">Enter new password for this user</p>
-                    <div id="admin-pwd-error" style="display: none; background: #fee; color: #c33; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px;"></div>
+                <div class="dialog-content">
+                    <h2 class="dialog-title">Change Password for ${username}</h2>
+                    <p class="dialog-text">Enter new password for this user</p>
+                    <div id="admin-pwd-error" class="dialog-error"></div>
                     <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">New Password (min 12 characters)</label>
-                        <input type="password" id="admin-change-password" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;" />
+                        <label class="dialog-label">New Password (min 12 characters)</label>
+                        <input type="password" id="admin-change-password" class="dialog-input" />
                         <div class="password-strength-container" id="adminChange-strength-container" style="display: none; margin-top: 8px;">
                             <div class="password-strength-bar">
                                 <div class="password-strength-fill" id="adminChange-strength-bar"></div>
                             </div>
                             <div class="password-strength-text" id="adminChange-strength-text"></div>
                         </div>
-                        <div class="password-requirements" style="font-size: 12px; color: #666; margin-top: 8px; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                        <div class="password-requirements">
                             <strong>Password Requirements:</strong>
                             <ul style="margin: 5px 0 0 0; padding: 0; list-style: none;">
                                 <li id="adminChange-req-length" class="req-unmet">At least 12 characters</li>
@@ -2771,8 +3449,8 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px;">
-                        <button id="admin-change-pwd-submit-btn" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Change Password</button>
-                        <button id="admin-change-pwd-cancel-btn" style="flex: 1; padding: 12px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>
+                        <button id="admin-change-pwd-submit-btn" class="dialog-btn-primary" style="flex: 1;">Change Password</button>
+                        <button id="admin-change-pwd-cancel-btn" class="dialog-btn-secondary" style="flex: 1;">Cancel</button>
                     </div>
                 </div>
             `;
@@ -3050,18 +3728,18 @@
         function renderPaginationControls(data, containerId, renderFunction) {
             const totalPages = Math.ceil(data.allLogs.length / data.pageSize);
 
-            let html = '<div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
+            let html = '<div class="pagination-container">';
 
             // Page size selector
             html += '<div style="display: flex; align-items: center; gap: 10px;">';
-            html += '<span style="font-weight: 500; color: #4b5563;">Show:</span>';
-            html += `<select onchange="${renderFunction}(this.value, true)" style="padding: 6px 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; cursor: pointer;">`;
+            html += '<span class="pagination-label">Show:</span>';
+            html += `<select onchange="${renderFunction}(this.value, true)" class="pagination-select">`;
             html += `<option value="20" ${data.pageSize === 20 ? 'selected' : ''}>20</option>`;
             html += `<option value="50" ${data.pageSize === 50 ? 'selected' : ''}>50</option>`;
             html += `<option value="100" ${data.pageSize === 100 ? 'selected' : ''}>100</option>`;
             html += `<option value="200" ${data.pageSize === 200 ? 'selected' : ''}>200</option>`;
             html += '</select>';
-            html += '<span style="color: #6b7280;">entries per page</span>';
+            html += '<span class="pagination-info">entries per page</span>';
             html += '</div>';
 
             // Pagination info and controls
@@ -3070,20 +3748,16 @@
             // Info text
             const startEntry = (data.currentPage - 1) * data.pageSize + 1;
             const endEntry = Math.min(data.currentPage * data.pageSize, data.allLogs.length);
-            html += `<span style="color: #6b7280;">Showing ${startEntry}-${endEntry} of ${data.allLogs.length} entries</span>`;
+            html += `<span class="pagination-info">Showing ${startEntry}-${endEntry} of ${data.allLogs.length} entries</span>`;
 
             // Navigation buttons
             html += '<div style="display: flex; gap: 5px;">';
 
             // First page
-            html += `<button onclick="${renderFunction}(1)" ${data.currentPage === 1 ? 'disabled' : ''}
-                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
-                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>«</button>`;
+            html += `<button onclick="${renderFunction}(1)" ${data.currentPage === 1 ? 'disabled' : ''} class="pagination-btn">«</button>`;
 
             // Previous page
-            html += `<button onclick="${renderFunction}(${data.currentPage - 1})" ${data.currentPage === 1 ? 'disabled' : ''}
-                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
-                ${data.currentPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>‹</button>`;
+            html += `<button onclick="${renderFunction}(${data.currentPage - 1})" ${data.currentPage === 1 ? 'disabled' : ''} class="pagination-btn">‹</button>`;
 
             // Page numbers
             const maxPageButtons = 5;
@@ -3096,21 +3770,14 @@
 
             for (let i = startPage; i <= endPage; i++) {
                 const isActive = i === data.currentPage;
-                html += `<button onclick="${renderFunction}(${i})"
-                    style="padding: 6px 12px; border: 2px solid ${isActive ? '#667eea' : '#e0e0e0'}; border-radius: 6px;
-                    background: ${isActive ? '#667eea' : 'white'}; color: ${isActive ? 'white' : '#4b5563'};
-                    cursor: pointer; font-weight: ${isActive ? '600' : '500'}; transition: all 0.2s;">${i}</button>`;
+                html += `<button onclick="${renderFunction}(${i})" class="pagination-btn${isActive ? ' active' : ''}">${i}</button>`;
             }
 
             // Next page
-            html += `<button onclick="${renderFunction}(${data.currentPage + 1})" ${data.currentPage === totalPages ? 'disabled' : ''}
-                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
-                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>›</button>`;
+            html += `<button onclick="${renderFunction}(${data.currentPage + 1})" ${data.currentPage === totalPages ? 'disabled' : ''} class="pagination-btn">›</button>`;
 
             // Last page
-            html += `<button onclick="${renderFunction}(${totalPages})" ${data.currentPage === totalPages ? 'disabled' : ''}
-                style="padding: 6px 12px; border: 2px solid #e0e0e0; border-radius: 6px; background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;"
-                ${data.currentPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>»</button>`;
+            html += `<button onclick="${renderFunction}(${totalPages})" ${data.currentPage === totalPages ? 'disabled' : ''} class="pagination-btn">»</button>`;
 
             html += '</div>'; // Close navigation buttons
             html += '</div>'; // Close pagination info and controls
@@ -3280,9 +3947,9 @@
                         <button class="btn btn-secondary" onclick="closeDownloadClientModal()" style="padding: 5px 10px; font-size: 16px;">&times;</button>
                     </div>
                     <div style="padding: 20px;">
-                        <p id="downloadClientLoading" style="text-align: center; color: #666;">Loading latest release information...</p>
+                        <p id="downloadClientLoading" class="text-muted" style="text-align: center;">Loading latest release information...</p>
                         <div id="downloadClientContent" style="display: none;">
-                            <p style="margin-bottom: 15px; color: #666; text-align: center;">Version: <strong id="downloadClientVersion">-</strong></p>
+                            <p class="text-muted" style="margin-bottom: 15px; text-align: center;">Version: <strong id="downloadClientVersion">-</strong></p>
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
                                 <button class="btn btn-primary" id="downloadWindows" onclick="downloadClientBinary('windows-x64')" style="padding: 15px 10px;">
                                     <div style="font-weight: bold;">Windows</div>
@@ -3301,7 +3968,7 @@
                                 View all versions on GitHub
                             </a>
                         </div>
-                        <div id="downloadClientError" style="display: none; color: #dc3545; text-align: center; padding: 20px;">
+                        <div id="downloadClientError" class="text-error" style="display: none; text-align: center; padding: 20px;">
                             <p>Failed to fetch release information.</p>
                             <a href="https://github.com/adamkl-me/modemcheck/releases/latest" target="_blank" class="btn btn-primary" style="margin-top: 10px;">
                                 Go to GitHub Releases
@@ -3559,7 +4226,7 @@
                         </div>
                         <div>
                             <p style="margin-bottom: 15px;">Choose an API key to use for cloud upload:</p>
-                            <select id="apiKeySelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; margin-bottom: 15px;">
+                            <select id="apiKeySelect" class="config-input" style="margin-bottom: 15px;">
                                 ${data.api_keys.map((key, idx) => `<option value="${idx}">${escapeHtml(key.name)} (${key.api_key_preview})</option>`).join('')}
                             </select>
                         </div>
@@ -3740,7 +4407,7 @@
                         </div>
                         <div>
                             <p style="margin-bottom: 15px;">Choose an API key to use for cloud upload:</p>
-                            <select id="wizardApiKeySelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; margin-bottom: 15px;">
+                            <select id="wizardApiKeySelect" class="config-input" style="margin-bottom: 15px;">
                                 ${data.api_keys.map((key, idx) => `<option value="${idx}">${escapeHtml(key.name)} (${key.api_key_preview})</option>`).join('')}
                             </select>
                         </div>
@@ -4232,16 +4899,16 @@
                 <div style="margin-bottom: 15px;">
                     <strong>Upload Complete:</strong><br>
                     Total: ${overallResults.total} files<br>
-                    Success: <span style="color: #10b981;">${overallResults.success}</span><br>
-                    Failed: <span style="color: #ef4444;">${overallResults.failed}</span>
+                    Success: <span class="text-success">${overallResults.success}</span><br>
+                    Failed: <span class="text-error">${overallResults.failed}</span>
                 </div>
             `;
 
             if (overallResults.errors && overallResults.errors.length > 0) {
-                resultsHtml += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;"><strong>Errors:</strong>';
+                resultsHtml += '<div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;"><strong>Errors:</strong>';
                 overallResults.errors.forEach(error => {
                     resultsHtml += `
-                        <div style="padding: 8px; border-bottom: 1px solid #e5e7eb; color: #ef4444; font-size: 13px;">
+                        <div style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 13px;" class="text-error">
                             ${escapeHtml(error)}
                         </div>
                     `;
@@ -4447,7 +5114,7 @@
                 html += `
                         </tbody>
                     </table>
-                    <div style="margin-top: 15px; color: #666;">
+                    <div class="text-muted" style="margin-top: 15px;">
                         Total: ${data.count} checks
                     </div>
                 `;
@@ -4615,7 +5282,7 @@
                 console.error('Failed to load configs:', error);
                 document.getElementById('configTableBody').innerHTML = `
                     <tr>
-                        <td colspan="7" style="color: #c33; padding: 20px;">
+                        <td colspan="7" class="text-error" style="padding: 20px;">
                             Failed to load configurations: ${error.message}
                         </td>
                     </tr>
@@ -4738,7 +5405,7 @@
             if (sortedConfigs.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                        <td colspan="7" class="text-muted" style="text-align: center; padding: 40px;">
                             <div style="font-size: 3em; margin-bottom: 10px;">📋</div>
                             <div>No configurations found</div>
                         </td>
@@ -4761,8 +5428,8 @@
 
                 return `
                     <tr>
-                        <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(config.api_key)}</code></td>
-                        <td><code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${escapeHtml(lastSeenModem)}</code></td>
+                        <td><code class="code-inline">${escapeHtml(config.api_key)}</code></td>
+                        <td><code class="code-inline">${escapeHtml(lastSeenModem)}</code></td>
                         <td style="white-space: nowrap;">${statusBadge}</td>
                         <td style="white-space: nowrap;">${syncStatusBadge}</td>
                         <td>v${versionDisplay}</td>
@@ -4827,11 +5494,11 @@
             const needsSync = (status === 'managed' || status === 'locked') && syncStatus === 'pending';
 
             if (needsSync && hours > 48) {
-                return 'color: #ff6b6b; font-weight: 600;';
+                return 'color: var(--error); font-weight: 600;';
             } else if (hours < 24) {
-                return 'color: #51cf66; font-weight: 600;';
+                return 'color: var(--success); font-weight: 600;';
             }
-            return 'color: #666;';
+            return 'color: var(--text-muted);';
         }
 
         // Open config edit modal
@@ -5081,8 +5748,8 @@
                     width: 32px;
                     height: 32px;
                     border-radius: 50%;
-                    background: #e0e0e0;
-                    color: #666;
+                    background: var(--border-color);
+                    color: var(--text-muted);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -5091,41 +5758,42 @@
                     transition: all 0.3s ease;
                 }
                 .wizard-step.active .step-number {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: var(--header-gradient);
                     color: white;
                 }
                 .wizard-step.completed .step-number {
-                    background: #10b981;
+                    background: var(--success);
                     color: white;
                 }
                 .wizard-step .step-label {
                     font-size: 0.75em;
-                    color: #666;
+                    color: var(--text-muted);
                 }
                 .mode-card {
-                    border: 2px solid #e0e0e0;
+                    border: 2px solid var(--border-color);
                     border-radius: 12px;
                     padding: 20px;
                     margin-bottom: 15px;
                     cursor: pointer;
                     transition: all 0.2s ease;
+                    background: var(--input-bg);
                 }
                 .mode-card:hover {
-                    border-color: #667eea;
-                    background: #f8f9ff;
+                    border-color: var(--primary);
+                    background: var(--table-row-hover);
                 }
                 .mode-card.selected {
-                    border-color: #667eea;
-                    background: linear-gradient(135deg, #f0f4ff 0%, #faf0ff 100%);
-                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+                    border-color: var(--primary);
+                    background: var(--table-row-hover);
+                    box-shadow: 0 4px 12px var(--glass-shadow);
                 }
                 .mode-card h3 {
                     margin: 0 0 8px 0;
-                    color: #333;
+                    color: var(--text);
                 }
                 .mode-card p {
                     margin: 0;
-                    color: #666;
+                    color: var(--text-muted);
                     font-size: 0.9em;
                 }
                 .wizard-form-group {
@@ -5134,26 +5802,28 @@
                 .wizard-form-group label {
                     display: block;
                     font-weight: 600;
-                    color: #333;
+                    color: var(--text);
                     margin-bottom: 6px;
                 }
                 .wizard-form-group input,
                 .wizard-form-group select {
                     width: 100%;
                     padding: 10px 12px;
-                    border: 2px solid #e0e0e0;
+                    border: 2px solid var(--border-color);
                     border-radius: 8px;
                     font-size: 14px;
                     transition: border-color 0.2s ease;
+                    background: var(--input-bg);
+                    color: var(--text);
                 }
                 .wizard-form-group input:focus,
                 .wizard-form-group select:focus {
-                    border-color: #667eea;
+                    border-color: var(--primary);
                     outline: none;
                 }
                 .wizard-form-group small {
                     display: block;
-                    color: #888;
+                    color: var(--text-muted);
                     font-size: 0.85em;
                     margin-top: 4px;
                 }
@@ -5167,9 +5837,10 @@
                     align-items: center;
                     gap: 10px;
                     padding: 12px;
-                    background: #f7f7f7;
+                    background: var(--surface);
                     border-radius: 8px;
                     cursor: pointer;
+                    color: var(--text);
                 }
                 .wizard-checkbox input {
                     width: 18px;
@@ -5177,31 +5848,31 @@
                     cursor: pointer;
                 }
                 .review-section {
-                    background: #f7f7f7;
+                    background: var(--surface);
                     border-radius: 10px;
                     padding: 15px;
                     margin-bottom: 15px;
                 }
                 .review-section h4 {
                     margin: 0 0 10px 0;
-                    color: #333;
+                    color: var(--text);
                     font-size: 0.95em;
                 }
                 .review-row {
                     display: flex;
                     justify-content: space-between;
                     padding: 6px 0;
-                    border-bottom: 1px solid #e8e8e8;
+                    border-bottom: 1px solid var(--border-color);
                 }
                 .review-row:last-child {
                     border-bottom: none;
                 }
                 .review-label {
-                    color: #666;
+                    color: var(--text-muted);
                     font-size: 0.9em;
                 }
                 .review-value {
-                    color: #333;
+                    color: var(--text);
                     font-weight: 500;
                     font-size: 0.9em;
                 }
@@ -5209,7 +5880,7 @@
                     display: flex;
                     align-items: center;
                     gap: 20px;
-                    background: #f0f4ff;
+                    background: var(--table-row-hover);
                     padding: 12px 15px;
                     border-radius: 8px;
                     margin-bottom: 20px;
@@ -5222,13 +5893,14 @@
                     font-size: 0.9em;
                 }
                 .config-info-item .label {
-                    color: #666;
+                    color: var(--text-muted);
                 }
                 .config-info-item code {
-                    background: #e8e8e8;
+                    background: var(--surface);
                     padding: 2px 6px;
                     border-radius: 4px;
                     font-size: 0.85em;
+                    color: var(--text);
                 }
             `;
             document.head.appendChild(style);
@@ -5406,7 +6078,7 @@
         function renderApiKeyDropdown() {
             // Build option elements for all API keys
             const options = configModalState.apiKeys.length === 0
-                ? `<div style="padding: 12px; color: #666; text-align: center;">No API keys available</div>`
+                ? `<div class="text-muted" style="padding: 12px; text-align: center;">No API keys available</div>`
                 : configModalState.apiKeys.map((k, index) => {
                     const preview = (k.api_key_preview || k.api_key || '').substring(0, 8);
                     const isSelected = configModalState.apiKey === (k.api_key_full || k.api_key);
@@ -5512,13 +6184,10 @@
         function updateConfigModalField(field, value) {
             if (field === 'status') {
                 configModalState.data.status = value;
-                // Update mode card selection AND visual styles
+                // Update mode card selection - CSS handles styling via .selected class
                 document.querySelectorAll('.config-mode-card').forEach(card => {
                     const isSelected = card.dataset.mode === value;
                     card.classList.toggle('selected', isSelected);
-                    // Update inline styles to match render-time styling
-                    card.style.borderColor = isSelected ? '#667eea' : '#e0e0e0';
-                    card.style.background = isSelected ? '#f0f4ff' : 'white';
                 });
             } else if (field === 'apiKey') {
                 configModalState.apiKey = value;
@@ -5605,7 +6274,7 @@
                         <div class="form-group">
                             <label for="configNewKeyName">Key Name</label>
                             <input type="text" id="configNewKeyName" placeholder="e.g., Home Router, Office Modem" autofocus
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -5719,11 +6388,11 @@
                 <div class="config-section" style="margin-bottom: 15px;">
                     <h3>📜 Version History</h3>
                     <select id="configVersionSelect" onchange="loadConfigVersion(this.value)"
-                            style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; cursor: pointer;">
+                            class="config-input" style="cursor: pointer;">
                         <option value="current" ${!configModalState.selectedVersion ? 'selected' : ''}>Current Configuration (v${configModalState.version})</option>
                         ${versionOptions}
                     </select>
-                    <div id="configVersionInfo" style="display: ${configModalState.selectedVersion ? 'block' : 'none'}; background: #f0f4ff; color: #4a5468; padding: 10px 12px; border-radius: 8px; font-size: 0.85em; margin-top: 10px;"></div>
+                    <div id="configVersionInfo" class="info-box" style="display: ${configModalState.selectedVersion ? 'block' : 'none'}; margin-top: 10px;"></div>
                 </div>
                 ` : ''}
 
@@ -5732,11 +6401,11 @@
                 <div class="config-info-bar" style="margin-bottom: 20px;">
                     <div class="config-info-item">
                         <span class="label">API Key:</span>
-                        <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${configModalState.originalApiKey.substring(0, 8)}...</code>
+                        <code class="code-inline">${configModalState.originalApiKey.substring(0, 8)}...</code>
                     </div>
                     <div class="config-info-item">
                         <span class="label">Modem:</span>
-                        <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${configModalState.lastSeenModem || 'Never synced'}</code>
+                        <code class="code-inline">${configModalState.lastSeenModem || 'Never synced'}</code>
                     </div>
                     <div class="config-info-item">
                         <span class="label">Version:</span>
@@ -5761,14 +6430,14 @@
                             ➕ New Key
                         </button>
                     </div>
-                    <div id="configModalSelectedKey" style="display: ${configModalState.apiKeyName ? 'block' : 'none'}; background: #dcfce7; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                        <small style="color: #059669;">✓ Selected:</small>
+                    <div id="configModalSelectedKey" class="info-box info-box-success" style="display: ${configModalState.apiKeyName ? 'block' : 'none'}; margin-bottom: 10px;">
+                        <small>✓ Selected:</small>
                         <span id="configModalSelectedKeyName" style="font-weight: 600; margin-left: 5px;">${configModalState.apiKeyName}</span>
                     </div>
                     <input type="text" id="configModalApiKeyInput" value="${configModalState.apiKey}"
                            placeholder="Or paste an API key directly"
                            oninput="updateConfigModalField('apiKey', this.value)"
-                           style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-family: monospace; font-size: 12px;">
+                           class="config-input" style="font-family: monospace; font-size: 12px;">
                 </div>
                 ` : ''}
 
@@ -5780,28 +6449,25 @@
                         ${isCreate ? `
                         <div class="config-mode-card ${d.status === 'unmanaged' ? 'selected' : ''}"
                              data-mode="unmanaged"
-                             onclick="updateConfigModalField('status', 'unmanaged')"
-                             style="padding: 15px; border: 2px solid ${d.status === 'unmanaged' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'unmanaged' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'unmanaged')">
                             <div style="font-size: 1.5em;">📝</div>
-                            <div style="font-weight: 600; margin: 8px 0;">Unmanaged</div>
-                            <div style="font-size: 0.8em; color: #666;">Client controls config</div>
+                            <div class="config-mode-card-title">Unmanaged</div>
+                            <div class="config-mode-card-desc">Client controls config</div>
                         </div>
                         ` : ''}
                         <div class="config-mode-card ${d.status === 'managed' ? 'selected' : ''}"
                              data-mode="managed"
-                             onclick="updateConfigModalField('status', 'managed')"
-                             style="padding: 15px; border: 2px solid ${d.status === 'managed' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'managed' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'managed')">
                             <div style="font-size: 1.5em;">🔄</div>
-                            <div style="font-weight: 600; margin: 8px 0;">Managed</div>
-                            <div style="font-size: 0.8em; color: #666;">Server pushes once</div>
+                            <div class="config-mode-card-title">Managed</div>
+                            <div class="config-mode-card-desc">Server pushes once</div>
                         </div>
                         <div class="config-mode-card ${d.status === 'locked' ? 'selected' : ''}"
                              data-mode="locked"
-                             onclick="updateConfigModalField('status', 'locked')"
-                             style="padding: 15px; border: 2px solid ${d.status === 'locked' ? '#667eea' : '#e0e0e0'}; border-radius: 8px; cursor: pointer; text-align: center; background: ${d.status === 'locked' ? '#f0f4ff' : 'white'};">
+                             onclick="updateConfigModalField('status', 'locked')">
                             <div style="font-size: 1.5em;">🔒</div>
-                            <div style="font-weight: 600; margin: 8px 0;">Locked</div>
-                            <div style="font-size: 0.8em; color: #666;">Server enforces</div>
+                            <div class="config-mode-card-title">Locked</div>
+                            <div class="config-mode-card-desc">Server enforces</div>
                         </div>
                     </div>
                 </div>
@@ -5816,13 +6482,13 @@
                             <input type="text" value="${d.cloudHost}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('cloudHost', this.value)"
                                    placeholder="e.g., cloud.example.com"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Port</label>
                             <input type="text" value="${d.cloudPort}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('cloudPort', this.value)"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                     </div>
                 </div>
@@ -5836,14 +6502,14 @@
                             <input type="text" value="${d.modemAddress}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('modemAddress', this.value)"
                                    placeholder="autodetect or IP address"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Ping Count</label>
                             <input type="number" value="${d.pingCount}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('pingCount', parseInt(this.value) || 100)"
                                    min="1" max="1000"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                     </div>
                     <div style="margin-top: 15px;">
@@ -5851,7 +6517,7 @@
                         <input type="password" value="${d.ignitePassword || ''}" ${isView ? 'disabled' : ''}
                                onchange="updateConfigModalField('ignitePassword', this.value)"
                                placeholder="For Xfinity/Ignite modems"
-                               style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                               class="config-input">
                     </div>
                 </div>
 
@@ -5870,14 +6536,14 @@
                             <input type="number" value="${d.speedTestInterval}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('speedTestInterval', parseInt(this.value) || 1)"
                                    min="1" max="100"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Connections</label>
                             <input type="number" value="${d.speedTestConnections}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('speedTestConnections', parseInt(this.value) || 4)"
                                    min="1" max="32"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                     </div>
                 </div>
@@ -5895,7 +6561,7 @@
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Update Channel</label>
                             <select onchange="updateConfigModalField('updateChannel', this.value)" ${isView ? 'disabled' : ''}
-                                    style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                    class="config-input">
                                 <option value="stable" ${d.updateChannel === 'stable' ? 'selected' : ''}>Stable</option>
                                 <option value="beta" ${d.updateChannel === 'beta' ? 'selected' : ''}>Beta</option>
                                 <option value="test" ${d.updateChannel === 'test' ? 'selected' : ''}>Test</option>
@@ -5919,7 +6585,7 @@
                             <input type="number" value="${d.localRetentionDays}" ${isView ? 'disabled' : ''}
                                    onchange="updateConfigModalField('localRetentionDays', parseInt(this.value) || 90)"
                                    min="1" max="365"
-                                   style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                                   class="config-input">
                         </div>
                     </div>
                 </div>
@@ -6022,13 +6688,13 @@
                         <button class="btn btn-secondary" onclick="closeConfigModal()" style="padding: 5px 12px; font-size: 18px; border: none;">&times;</button>
                     </div>
 
-                    <div id="configModalError" style="display: none; background: #fee; color: #c33; padding: 10px 20px; margin: 0 20px; border-radius: 6px; flex-shrink: 0;"></div>
+                    <div id="configModalError" class="info-box info-box-error" style="display: none; padding: 10px 20px; margin: 0 20px; flex-shrink: 0;"></div>
 
                     <div id="configModalBody" style="padding: 20px; overflow-y: auto; flex: 1;">
                         <!-- Content rendered by renderConfigModalContent() -->
                     </div>
 
-                    <div id="configModalFooter" class="modal-footer" style="display: flex; justify-content: space-between; flex-shrink: 0; border-top: 1px solid #e0e0e0;">
+                    <div id="configModalFooter" class="modal-footer" style="display: flex; justify-content: space-between; flex-shrink: 0; border-top: 1px solid var(--border-color);">
                         <!-- Footer buttons rendered dynamically -->
                     </div>
                 </div>
@@ -6042,7 +6708,7 @@
                     .config-section {
                         margin-bottom: 25px;
                         padding-bottom: 20px;
-                        border-bottom: 1px solid #e0e0e0;
+                        border-bottom: 1px solid var(--border-color);
                     }
                     .config-section:last-child {
                         border-bottom: none;
@@ -6050,20 +6716,20 @@
                     }
                     .config-section h3 {
                         margin: 0 0 15px 0;
-                        color: #333;
+                        color: var(--text);
                         font-size: 1.1em;
                     }
                     .config-info-bar {
                         display: flex;
                         gap: 20px;
-                        background: #f7f7f7;
+                        background: var(--surface);
                         padding: 10px 15px;
                         border-radius: 6px;
                         margin-bottom: 15px;
                     }
                     .config-info-item .label {
                         font-weight: 600;
-                        color: #666;
+                        color: var(--text-muted);
                         margin-right: 5px;
                     }
                 `;
@@ -6353,7 +7019,7 @@
             } catch (error) {
                 console.error('Failed to load history:', error);
                 historyBody.innerHTML = `
-                    <div style="color: #c33; padding: 20px;">
+                    <div class="text-error" style="padding: 20px;">
                         Failed to load history: ${error.message}
                     </div>
                 `;
@@ -6366,7 +7032,7 @@
 
             if (versions.length === 0 && modemEvents.length === 0) {
                 historyBody.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #999;">
+                    <div class="text-muted" style="text-align: center; padding: 40px;">
                         <div style="font-size: 3em; margin-bottom: 10px;">📜</div>
                         <div>No history available</div>
                     </div>
@@ -6443,37 +7109,37 @@
 
                     // Track badge (client or server)
                     const trackBadge = version.version_track === 'server'
-                        ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 4px;">SERVER</span>'
-                        : '<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 4px;">CLIENT</span>';
+                        ? '<span class="badge-server" style="margin-left: 4px;">SERVER</span>'
+                        : '<span class="badge-client" style="margin-left: 4px;">CLIENT</span>';
 
                     return `
-                        <div style="position: relative; padding: 15px 0 15px 30px; border-left: 2px solid #e0e0e0; margin-left: 20px;">
-                            <div style="position: absolute; left: -8px; top: 20px; width: 14px; height: 14px; border-radius: 50%; background: #667eea; border: 3px solid white; box-shadow: 0 0 0 2px #667eea;"></div>
-                            <div style="font-size: 0.85em; color: #666;">${timestamp}</div>
-                            <div style="font-weight: 600; color: #333; margin: 5px 0;">${icon} ${reasonLabel} ${statusBadge}</div>
-                            <div style="font-size: 0.85em; color: #666;">
-                                <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">v${version.version_number}</span>${trackBadge}
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-timestamp">${timestamp}</div>
+                            <div class="timeline-title">${icon} ${reasonLabel} ${statusBadge}</div>
+                            <div class="timeline-details">
+                                <span class="badge-version">v${version.version_number}</span>${trackBadge}
                                 • by ${version.created_by || 'system'}
                             </div>
                         </div>
                     `;
                 } else {
-                    // Modem event - orange accent to distinguish from config versions
+                    // Modem event - orange/warning accent to distinguish from config versions
                     const modemEvent = event.data;
                     const icon = modemEventIcons[modemEvent.event_type] || '📡';
                     const label = modemEventLabels[modemEvent.event_type] || modemEvent.event_type;
 
                     // Different display for first_seen vs change
                     const modemDetail = modemEvent.event_type === 'modem_change'
-                        ? `<span style="color: #666;">${modemEvent.old_modem_id || 'none'}</span> → <span style="font-weight: 600; color: #ea580c;">${modemEvent.new_modem_id}</span>`
-                        : `<span style="font-weight: 600; color: #ea580c;">${modemEvent.new_modem_id}</span>`;
+                        ? `<span class="text-muted">${modemEvent.old_modem_id || 'none'}</span> → <span style="font-weight: 600;" class="text-warning">${modemEvent.new_modem_id}</span>`
+                        : `<span style="font-weight: 600;" class="text-warning">${modemEvent.new_modem_id}</span>`;
 
                     return `
-                        <div style="position: relative; padding: 15px 0 15px 30px; border-left: 2px solid #e0e0e0; margin-left: 20px;">
-                            <div style="position: absolute; left: -8px; top: 20px; width: 14px; height: 14px; border-radius: 50%; background: #ea580c; border: 3px solid white; box-shadow: 0 0 0 2px #ea580c;"></div>
-                            <div style="font-size: 0.85em; color: #666;">${timestamp}</div>
-                            <div style="font-weight: 600; color: #333; margin: 5px 0;">${icon} ${label}</div>
-                            <div style="font-size: 0.85em; color: #666;">
+                        <div class="timeline-item">
+                            <div class="timeline-dot timeline-dot-warning"></div>
+                            <div class="timeline-timestamp">${timestamp}</div>
+                            <div class="timeline-title">${icon} ${label}</div>
+                            <div class="timeline-details">
                                 Modem: ${modemDetail}
                             </div>
                         </div>

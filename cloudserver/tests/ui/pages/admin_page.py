@@ -17,6 +17,12 @@ class AdminPage:
         self.logout_button = page.locator("#logoutBtn")
         self.hamburger = page.locator(".hamburger")
 
+        # Theme-related locators
+        self.theme_toggle = page.locator(".theme-toggle")
+        self.theme_icon_light = page.locator(".theme-icon-light")
+        self.theme_icon_dark = page.locator(".theme-icon-dark")
+        self.mobile_menu = page.locator(".mobile-menu")
+
         # Main tabs
         self.client_management_tab = page.locator("#configGenTab")
         self.data_management_tab = page.locator("#dataManagementTab")
@@ -248,3 +254,72 @@ class AdminPage:
         """Wait for a toast notification to appear."""
         toast = self.page.locator(".toast, .notification, .alert")
         await toast.wait_for(timeout=timeout)
+
+    # Theme methods
+    async def get_current_theme(self) -> str:
+        """Get current theme from data-theme attribute on html element."""
+        return await self.page.evaluate(
+            "document.documentElement.getAttribute('data-theme')"
+        )
+
+    async def get_stored_theme(self) -> str:
+        """Get theme from localStorage."""
+        return await self.page.evaluate(
+            "localStorage.getItem('modemcheck-theme')"
+        )
+
+    async def toggle_theme(self):
+        """Toggle theme - handles both desktop and mobile toggle buttons."""
+        hamburger_visible = await self.hamburger.is_visible()
+        if hamburger_visible:
+            # On mobile, need to open menu first
+            await self.hamburger.click()
+            await self.page.wait_for_timeout(300)
+            # Find theme toggle in mobile menu
+            mobile_theme_toggle = self.page.locator(".mobile-menu .theme-toggle")
+            if await mobile_theme_toggle.is_visible():
+                await mobile_theme_toggle.click()
+            else:
+                await self.theme_toggle.click()
+        else:
+            await self.theme_toggle.click()
+        await self.page.wait_for_timeout(300)
+
+    async def set_theme(self, theme: str):
+        """Set theme to 'dark' or 'light'."""
+        current = await self.get_current_theme()
+        if current != theme:
+            await self.toggle_theme()
+
+    async def get_background_color(self) -> str:
+        """Get body background color."""
+        return await self.page.evaluate(
+            "getComputedStyle(document.body).backgroundColor"
+        )
+
+    async def get_text_color(self) -> str:
+        """Get body text color."""
+        return await self.page.evaluate(
+            "getComputedStyle(document.body).color"
+        )
+
+    async def is_theme_toggle_visible(self) -> bool:
+        """Check if theme toggle button is visible."""
+        return await self.theme_toggle.is_visible()
+
+    async def is_mobile_menu_visible(self) -> bool:
+        """Check if mobile menu is open."""
+        class_attr = await self.mobile_menu.get_attribute("class") or ""
+        return "active" in class_attr
+
+    async def open_mobile_menu(self):
+        """Open mobile navigation menu."""
+        if not await self.is_mobile_menu_visible():
+            await self.hamburger.click()
+            await self.page.wait_for_timeout(300)
+
+    async def close_mobile_menu(self):
+        """Close mobile navigation menu."""
+        if await self.is_mobile_menu_visible():
+            await self.hamburger.click()
+            await self.page.wait_for_timeout(300)

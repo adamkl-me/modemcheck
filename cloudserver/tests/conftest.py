@@ -1082,3 +1082,202 @@ async def cleanup_redis_connections():
     # After test completes, close any Redis connections created during the test
     from app.core.security import close_redis
     await close_redis()
+
+
+# ============================================================================
+# PLAYWRIGHT / BROWSER FIXTURES
+# ============================================================================
+
+# UI test server URL
+UI_TEST_BASE_URL = os.getenv("UI_TEST_BASE_URL", "http://localhost:23894")
+
+# Viewport configurations for responsive testing
+VIEWPORT_MOBILE_SE = {"width": 375, "height": 667}   # iPhone SE
+VIEWPORT_MOBILE_14 = {"width": 390, "height": 844}   # iPhone 14
+VIEWPORT_TABLET = {"width": 768, "height": 1024}     # iPad
+VIEWPORT_DESKTOP_SM = {"width": 1280, "height": 800}
+VIEWPORT_DESKTOP_LG = {"width": 1920, "height": 1080}
+
+
+@pytest.fixture(scope="function")
+async def browser_page():
+    """Create a basic Playwright browser page for UI testing."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        yield page
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(params=["chromium", "firefox", "webkit"])
+def browser_type_name(request) -> str:
+    """Parametrized browser type for cross-browser testing."""
+    return request.param
+
+
+@pytest.fixture(scope="function")
+async def cross_browser_page(browser_type_name: str):
+    """Create browser page for specified browser type (cross-browser testing)."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser_launcher = getattr(p, browser_type_name)
+        browser = await browser_launcher.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        yield page, browser_type_name
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def firefox_page():
+    """Firefox-specific browser page."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.firefox.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        yield page
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def webkit_page():
+    """WebKit/Safari browser page."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.webkit.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        yield page
+        await context.close()
+        await browser.close()
+
+
+# ============================================================================
+# RESPONSIVE / VIEWPORT FIXTURES
+# ============================================================================
+
+@pytest.fixture(params=[
+    ("mobile_se", VIEWPORT_MOBILE_SE),
+    ("mobile_14", VIEWPORT_MOBILE_14),
+    ("tablet", VIEWPORT_TABLET),
+    ("desktop_sm", VIEWPORT_DESKTOP_SM),
+    ("desktop_lg", VIEWPORT_DESKTOP_LG),
+])
+def viewport_config(request):
+    """Parametrized viewport configuration for responsive testing."""
+    return request.param
+
+
+@pytest.fixture(scope="function")
+async def responsive_page(viewport_config):
+    """Create browser page with specific viewport for responsive testing."""
+    from playwright.async_api import async_playwright
+
+    name, viewport = viewport_config
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport=viewport)
+        page = await context.new_page()
+        yield page, name, viewport
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def mobile_page():
+    """Mobile viewport browser page (iPhone SE)."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport=VIEWPORT_MOBILE_SE)
+        page = await context.new_page()
+        yield page
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def tablet_page():
+    """Tablet viewport browser page (iPad)."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context(viewport=VIEWPORT_TABLET)
+        page = await context.new_page()
+        yield page
+        await context.close()
+        await browser.close()
+
+
+# ============================================================================
+# THEME TESTING FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope="function")
+async def dark_theme_page():
+    """Browser page with dark theme preset via localStorage."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        # Set localStorage before navigation
+        await page.add_init_script("""
+            localStorage.setItem('modemcheck-theme', 'dark');
+        """)
+        yield page
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def light_theme_page():
+    """Browser page with light theme preset via localStorage."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        await page.add_init_script("""
+            localStorage.setItem('modemcheck-theme', 'light');
+        """)
+        yield page
+        await context.close()
+        await browser.close()
+
+
+@pytest.fixture(params=["dark", "light"])
+def theme_name(request) -> str:
+    """Parametrized theme for testing both themes."""
+    return request.param
+
+
+@pytest.fixture(scope="function")
+async def themed_page(theme_name: str):
+    """Browser page with specified theme preset."""
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        await page.add_init_script(f"""
+            localStorage.setItem('modemcheck-theme', '{theme_name}');
+        """)
+        yield page, theme_name
+        await context.close()
+        await browser.close()

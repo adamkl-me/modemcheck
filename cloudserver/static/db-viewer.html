@@ -5,9 +5,130 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
         <title>ModemCheck Cloud Dashboard</title>
+        <!-- Blocking script to prevent FOUC -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('modemcheck-theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+            })();
+        </script>
         <script src="/static/chart.umd.min.js"></script>
         <script src="/static/chartjs-adapter-date-fns.bundle.min.js"></script>
         <style>
+            /* Light Theme (Classic Aero Blue) */
+            :root, [data-theme="light"] {
+                --primary: #0078D4;
+                --primary-hover: #106EBE;
+                --accent: #00B4D8;
+                --glass-tint: rgba(232, 244, 252, 0.7);
+                --glass-border: rgba(255, 255, 255, 0.8);
+                --glass-shadow: rgba(0, 120, 212, 0.1);
+                --surface: #F8FAFC;
+                --surface-elevated: rgba(255, 255, 255, 0.85);
+                --bg: #F8FAFC;
+                --bg-gradient: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 50%, #E0F2FE 100%);
+                --text: #1E293B;
+                --text-muted: #64748B;
+                --text-inverse: #FFFFFF;
+                --success: #14B8A6;
+                --warning: #F59E0B;
+                --error: #F43F5E;
+                --admin-bg: rgba(239, 68, 68, 0.9);
+                --admin-bg-hover: rgba(220, 38, 38, 0.95);
+                --input-bg: #FFFFFF;
+                --input-border: #E2E8F0;
+                --border-color: #E2E8F0;
+                --card-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+                --table-row-alt: #FAFBFC;
+                --table-row-hover: #F0F2F5;
+                --chart-grid: rgba(0, 0, 0, 0.1);
+                --chart-text: #64748B;
+                /* Chart dataset colors - consistent across themes for data continuity */
+                --chart-download: #667eea;
+                --chart-upload: #764ba2;
+                --chart-google: #4285f4;
+                --chart-cloudflare: #f6821f;
+                --chart-speedtest: #34a853;
+                --chart-latency-max: #9c27b0;
+                --chart-google-max: #7baaf7;
+                --chart-cloudflare-max: #fab57f;
+                --chart-packet-google: #ea4335;
+                --chart-packet-cloudflare: #fbbc05;
+                --chart-uptime: #38b2ac;
+                --chart-rx-scqam: #667eea;
+                --chart-rx-ofdm: #48bb78;
+                --chart-snr-scqam: #ed8936;
+                --chart-snr-ofdm: #9f7aea;
+                --chart-ber-uncorr: #f56565;
+                --chart-ber-uncorr-dark: #c53030;
+                --chart-ber-ofdm-uncorr: #ed8936;
+                --chart-ber-ofdm-uncorr-dark: #c05621;
+                --chart-ber-corr: #48bb78;
+                --chart-ber-corr-dark: #38a169;
+                --chart-ber-ofdm-corr: #4299e1;
+                --chart-ber-ofdm-corr-dark: #3182ce;
+                --chart-tx-scqam: #9f7aea;
+                --chart-tx-ofdma: #38b2ac;
+                --chart-tx-impaired: #f56565;
+            }
+
+            /* Dark Theme (Dark Instrument Panel) - Default */
+            [data-theme="dark"] {
+                --primary: #3B82F6;
+                --primary-hover: #2563EB;
+                --accent: #22D3EE;
+                --glass-tint: rgba(30, 58, 95, 0.6);
+                --glass-border: rgba(255, 255, 255, 0.1);
+                --glass-shadow: rgba(59, 130, 246, 0.2);
+                --surface: #1F2937;
+                --surface-elevated: rgba(31, 41, 55, 0.9);
+                --bg: #111827;
+                --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+                --text: #E2E8F0;
+                --text-muted: #94A3B8;
+                --text-inverse: #FFFFFF;
+                --success: #22C55E;
+                --warning: #FB923C;
+                --error: #F87171;
+                --admin-bg: rgba(239, 68, 68, 0.9);
+                --admin-bg-hover: rgba(220, 38, 38, 0.95);
+                --input-bg: #1F2937;
+                --input-border: rgba(255, 255, 255, 0.1);
+                --border-color: rgba(255, 255, 255, 0.1);
+                --card-gradient: linear-gradient(135deg, rgba(30, 58, 95, 0.4) 0%, rgba(30, 41, 59, 0.4) 100%);
+                --table-row-alt: rgba(255, 255, 255, 0.02);
+                --table-row-hover: rgba(255, 255, 255, 0.05);
+                --chart-grid: rgba(255, 255, 255, 0.1);
+                --chart-text: #94A3B8;
+                /* Chart dataset colors - consistent across themes for data continuity */
+                --chart-download: #667eea;
+                --chart-upload: #764ba2;
+                --chart-google: #4285f4;
+                --chart-cloudflare: #f6821f;
+                --chart-speedtest: #34a853;
+                --chart-latency-max: #9c27b0;
+                --chart-google-max: #7baaf7;
+                --chart-cloudflare-max: #fab57f;
+                --chart-packet-google: #ea4335;
+                --chart-packet-cloudflare: #fbbc05;
+                --chart-uptime: #38b2ac;
+                --chart-rx-scqam: #667eea;
+                --chart-rx-ofdm: #48bb78;
+                --chart-snr-scqam: #ed8936;
+                --chart-snr-ofdm: #9f7aea;
+                --chart-ber-uncorr: #f56565;
+                --chart-ber-uncorr-dark: #c53030;
+                --chart-ber-ofdm-uncorr: #ed8936;
+                --chart-ber-ofdm-uncorr-dark: #c05621;
+                --chart-ber-corr: #48bb78;
+                --chart-ber-corr-dark: #38a169;
+                --chart-ber-ofdm-corr: #4299e1;
+                --chart-ber-ofdm-corr-dark: #3182ce;
+                --chart-tx-scqam: #9f7aea;
+                --chart-tx-ofdma: #38b2ac;
+                --chart-tx-impaired: #f56565;
+            }
+
             * {
                 margin: 0;
                 padding: 0;
@@ -16,18 +137,24 @@
 
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: var(--bg-gradient);
                 min-height: 100vh;
                 padding: 20px;
-                color: #333;
+                color: var(--text);
+                transition: background 0.3s ease;
             }
 
             .container {
                 max-width: 1600px;
                 margin: 0 auto;
-                background: white;
+                background: var(--glass-tint);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid var(--glass-border);
                 border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                box-shadow:
+                    0 20px 60px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
                 overflow: hidden;
                 display: none; /* Hidden until auth verified */
             }
@@ -36,9 +163,16 @@
                 display: block;
             }
 
+            /* Fallback for browsers without backdrop-filter */
+            @supports not (backdrop-filter: blur(16px)) {
+                .container {
+                    background: var(--surface-elevated);
+                }
+            }
+
             .header {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                color: var(--text-inverse);
                 padding: 30px;
                 text-align: center;
                 position: relative;
@@ -46,13 +180,42 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
             }
 
             .header h1 {
                 font-size: 2.5em;
                 font-weight: 700;
                 margin: 0;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             }
+
+            /* Theme Toggle Button */
+            .theme-toggle {
+                position: absolute;
+                top: 30px;
+                left: 30px;
+                background: rgba(255, 255, 255, 0.15);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 8px;
+                padding: 8px 12px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: all 0.2s ease;
+                color: white;
+            }
+
+            .theme-toggle:hover {
+                background: rgba(255, 255, 255, 0.25);
+                transform: translateY(-2px);
+            }
+
+            [data-theme="light"] .theme-icon-light { display: none; }
+            [data-theme="light"] .theme-icon-dark { display: inline; }
+            [data-theme="dark"] .theme-icon-light { display: inline; }
+            [data-theme="dark"] .theme-icon-dark { display: none; }
 
             /* Header navigation buttons */
             .header-nav {
@@ -68,27 +231,28 @@
             .header-nav-btn {
                 padding: 10px 20px;
                 background: rgba(255,255,255,0.15);
-                border: 2px solid rgba(255,255,255,0.8);
+                border: 1px solid rgba(255,255,255,0.3);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
                 font-weight: 600;
                 transition: all 0.3s ease;
                 backdrop-filter: blur(10px);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
             }
 
             .header-nav-btn.admin {
-                background: rgba(239, 68, 68, 0.9);
+                background: var(--admin-bg);
             }
 
             .header-nav-btn:hover {
-                background: rgba(255,255,255,0.3);
+                background: rgba(255,255,255,0.25);
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             }
 
             .header-nav-btn.admin:hover {
-                background: rgba(220, 38, 38, 0.95);
+                background: var(--admin-bg-hover);
             }
 
             /* Hamburger menu (mobile only) */
@@ -132,7 +296,7 @@
                 right: -100%;
                 width: 250px;
                 height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
                 box-shadow: -4px 0 12px rgba(0,0,0,0.3);
                 z-index: 1000;
                 padding: 80px 20px 20px 20px;
@@ -148,7 +312,7 @@
                 margin-bottom: 10px;
                 padding: 15px 20px;
                 background: rgba(255,255,255,0.15);
-                border: 2px solid rgba(255,255,255,0.8);
+                border: 1px solid rgba(255,255,255,0.3);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
@@ -158,16 +322,16 @@
             }
 
             .mobile-menu button.admin {
-                background: rgba(239, 68, 68, 0.9);
+                background: var(--admin-bg);
             }
 
             .mobile-menu button:hover {
-                background: rgba(255,255,255,0.3);
+                background: rgba(255,255,255,0.25);
                 transform: translateX(-5px);
             }
 
             .mobile-menu button.admin:hover {
-                background: rgba(220, 38, 38, 0.95);
+                background: var(--admin-bg-hover);
             }
 
             /* Mobile overlay */
@@ -180,6 +344,7 @@
                 height: 100%;
                 background: rgba(0,0,0,0.5);
                 z-index: 999;
+                backdrop-filter: blur(4px);
             }
 
             .menu-overlay.active {
@@ -188,8 +353,8 @@
 
             .filter-section {
                 padding: 30px;
-                background: #f8f9fa;
-                border-bottom: 1px solid #e0e0e0;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border-color);
             }
 
             .filter-grid {
@@ -207,22 +372,27 @@
 
             .filter-group label {
                 font-weight: 600;
-                color: #555;
+                color: var(--text-muted);
                 font-size: 0.95em;
             }
 
             select, input[type="date"] {
                 padding: 10px 15px;
-                border: 2px solid #e0e0e0;
+                border: 1px solid var(--input-border);
                 border-radius: 8px;
                 font-size: 1em;
-                background: white;
-                transition: border-color 0.3s ease;
+                background: var(--input-bg);
+                color: var(--text);
+                transition: all 0.3s ease;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
             }
 
             select:focus, input[type="date"]:focus {
                 outline: none;
-                border-color: #667eea;
+                border-color: var(--primary);
+                box-shadow:
+                    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                    0 0 0 3px var(--glass-shadow);
             }
 
             /* Searchable dropdown styles */
@@ -234,35 +404,43 @@
             .searchable-select input[type="text"] {
                 width: 100%;
                 padding: 10px 35px 10px 15px;
-                border: 2px solid #e0e0e0;
+                border: 1px solid var(--input-border);
                 border-radius: 8px;
                 font-size: 1em;
-                background: white;
-                transition: border-color 0.3s ease;
+                background: var(--input-bg);
+                color: var(--text);
+                transition: all 0.3s ease;
                 cursor: pointer;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .searchable-select input[type="text"]::placeholder {
+                color: var(--text-muted);
             }
 
             .searchable-select input[type="text"]:focus {
                 outline: none;
-                border-color: #667eea;
+                border-color: var(--primary);
                 cursor: text;
+                box-shadow:
+                    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                    0 0 0 3px var(--glass-shadow);
             }
 
             /* When dropdown is open, flatten bottom corners of input */
             .searchable-select.open input[type="text"] {
                 border-radius: 8px 8px 0 0;
-                border-color: #667eea;
-                border-bottom-color: #667eea;
+                border-color: var(--primary);
             }
 
             .searchable-select::after {
-                content: '▼';
+                content: '\25BC';
                 position: absolute;
                 right: 15px;
                 top: 50%;
                 transform: translateY(-50%);
                 pointer-events: none;
-                color: #666;
+                color: var(--text-muted);
                 font-size: 0.8em;
             }
 
@@ -273,14 +451,14 @@
                 right: 0;
                 max-height: 300px;
                 overflow-y: auto;
-                background: white;
-                border: 2px solid #667eea;
+                background: var(--surface);
+                border: 1px solid var(--primary);
                 border-top: none;
                 border-radius: 0 0 8px 8px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                 display: none;
                 z-index: 1000;
-                margin-top: -2px;
+                margin-top: -1px;
             }
 
             .searchable-dropdown.show {
@@ -291,15 +469,16 @@
                 padding: 10px 15px;
                 cursor: pointer;
                 transition: background-color 0.2s ease;
-                border-bottom: 1px solid #f0f0f0;
+                border-bottom: 1px solid var(--border-color);
+                color: var(--text);
             }
 
             .searchable-option:hover {
-                background-color: #f0f2ff;
+                background-color: var(--glass-tint);
             }
 
             .searchable-option.selected {
-                background-color: #667eea;
+                background-color: var(--primary);
                 color: white;
             }
 
@@ -312,11 +491,11 @@
             }
 
             .searchable-dropdown::-webkit-scrollbar-track {
-                background: #f1f1f1;
+                background: var(--surface);
             }
 
             .searchable-dropdown::-webkit-scrollbar-thumb {
-                background: #667eea;
+                background: var(--primary);
                 border-radius: 4px;
             }
 
@@ -324,17 +503,35 @@
                 padding: 12px 30px;
                 border: none;
                 border-radius: 8px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
                 color: white;
                 cursor: pointer;
                 font-size: 1em;
                 font-weight: 600;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                transition: all 0.2s ease;
+                position: relative;
+                overflow: hidden;
+                box-shadow:
+                    0 4px 12px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+
+            .load-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 50%;
+                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+                pointer-events: none;
             }
 
             .load-btn:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                box-shadow:
+                    0 8px 20px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
             }
 
             .load-btn:disabled {
@@ -345,8 +542,8 @@
 
             .view-switcher {
                 padding: 20px 30px;
-                background: #fff;
-                border-bottom: 2px solid #e0e0e0;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border-color);
                 display: flex;
                 gap: 10px;
                 align-items: center;
@@ -356,10 +553,10 @@
 
             .view-btn {
                 padding: 10px 25px;
-                border: 2px solid #667eea;
+                border: 1px solid var(--primary);
                 border-radius: 8px;
-                background: white;
-                color: #667eea;
+                background: transparent;
+                color: var(--primary);
                 cursor: pointer;
                 transition: all 0.3s ease;
                 font-size: 1em;
@@ -367,18 +564,21 @@
             }
 
             .view-btn:hover {
-                background: #f0f2ff;
+                background: var(--glass-tint);
             }
 
             .view-btn.active {
-                background: #667eea;
+                background: var(--primary);
                 color: white;
+                box-shadow:
+                    0 4px 12px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
             }
 
             .timeline-nav {
                 padding: 20px 30px;
-                background: #fff;
-                border-bottom: 2px solid #e0e0e0;
+                background: var(--surface);
+                border-bottom: 1px solid var(--border-color);
                 display: none;
             }
 
@@ -397,10 +597,10 @@
 
             .nav-btn {
                 padding: 10px 20px;
-                border: 2px solid #667eea;
+                border: 1px solid var(--primary);
                 border-radius: 8px;
-                background: white;
-                color: #667eea;
+                background: transparent;
+                color: var(--primary);
                 cursor: pointer;
                 transition: all 0.3s ease;
                 font-size: 1em;
@@ -408,7 +608,7 @@
             }
 
             .nav-btn:hover:not(:disabled) {
-                background: #667eea;
+                background: var(--primary);
                 color: white;
             }
 
@@ -427,7 +627,7 @@
                 width: 100%;
                 height: 8px;
                 border-radius: 4px;
-                background: #e0e0e0;
+                background: var(--border-color);
                 outline: none;
                 -webkit-appearance: none;
             }
@@ -438,27 +638,31 @@
                 width: 20px;
                 height: 20px;
                 border-radius: 50%;
-                background: #667eea;
+                background: var(--primary);
                 cursor: pointer;
+                box-shadow: 0 2px 6px var(--glass-shadow);
             }
 
             .timeline-slider input[type="range"]::-moz-range-thumb {
                 width: 20px;
                 height: 20px;
                 border-radius: 50%;
-                background: #667eea;
+                background: var(--primary);
                 cursor: pointer;
+                border: none;
+                box-shadow: 0 2px 6px var(--glass-shadow);
             }
 
             .timeline-info {
                 text-align: center;
                 margin-top: 10px;
-                color: #555;
+                color: var(--text-muted);
                 font-weight: 600;
             }
 
             .content {
                 padding: 30px;
+                background: var(--surface);
             }
 
             .view-mode {
@@ -477,23 +681,30 @@
             }
 
             .info-card {
-                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                background: var(--glass-tint);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid var(--glass-border);
                 border-radius: 12px;
                 padding: 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                box-shadow:
+                    0 4px 6px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                transition: all 0.2s ease;
             }
 
             .info-card:hover {
                 transform: translateY(-4px);
-                box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+                box-shadow:
+                    0 8px 16px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
             }
 
             .info-card label {
                 display: block;
                 font-size: 0.85em;
                 font-weight: 600;
-                color: #555;
+                color: var(--text-muted);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 margin-bottom: 8px;
@@ -502,7 +713,7 @@
             .info-card .value {
                 font-size: 1.2em;
                 font-weight: 600;
-                color: #2d3748;
+                color: var(--text);
                 word-break: break-word;
             }
 
@@ -514,12 +725,27 @@
             }
 
             .speed-card {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
                 color: white;
                 border-radius: 12px;
                 padding: 25px;
                 text-align: center;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                box-shadow:
+                    0 4px 12px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .speed-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 50%;
+                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+                pointer-events: none;
             }
 
             .speed-card label {
@@ -534,6 +760,7 @@
             .speed-card .value {
                 font-size: 1.8em;
                 font-weight: 700;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             }
 
             .chart-section {
@@ -542,18 +769,23 @@
 
             .chart-section h2 {
                 font-size: 1.6em;
-                color: #2d3748;
+                color: var(--text);
                 margin-bottom: 15px;
                 padding-bottom: 10px;
-                border-bottom: 3px solid #667eea;
+                border-bottom: 3px solid var(--primary);
                 display: inline-block;
             }
 
             .chart-wrapper {
-                background: white;
+                background: var(--glass-tint);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid var(--glass-border);
                 padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 6px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
                 margin-bottom: 20px;
             }
 
@@ -568,28 +800,31 @@
 
             .table-section h2 {
                 font-size: 1.6em;
-                color: #2d3748;
+                color: var(--text);
                 margin-bottom: 15px;
                 padding-bottom: 10px;
-                border-bottom: 3px solid #667eea;
+                border-bottom: 3px solid var(--primary);
                 display: inline-block;
             }
 
             .table-wrapper {
                 overflow-x: auto;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 6px var(--glass-shadow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                border: 1px solid var(--glass-border);
             }
 
             table {
                 width: 100%;
                 border-collapse: collapse;
-                background: white;
+                background: var(--surface);
                 min-width: 600px;
             }
 
             thead {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
                 color: white;
             }
 
@@ -605,8 +840,9 @@
 
             td {
                 padding: 12px;
-                border-bottom: 1px solid #e0e0e0;
+                border-bottom: 1px solid var(--border-color);
                 font-size: 0.95em;
+                color: var(--text);
             }
 
             tbody tr {
@@ -614,42 +850,57 @@
             }
 
             tbody tr:hover {
-                background-color: #f8f9fa;
+                background-color: var(--table-row-hover);
             }
 
             tbody tr:nth-child(even) {
-                background-color: #fafbfc;
+                background-color: var(--table-row-alt);
             }
 
             tbody tr:nth-child(even):hover {
-                background-color: #f0f2f5;
+                background-color: var(--table-row-hover);
             }
 
             .empty-state {
                 text-align: center;
                 padding: 40px;
-                color: #999;
+                color: var(--text-muted);
                 font-style: italic;
+            }
+
+            .empty-state h2 {
+                color: var(--text);
+                margin-bottom: 10px;
             }
 
             .loading {
                 text-align: center;
                 padding: 40px;
-                color: #667eea;
+                color: var(--primary);
                 font-size: 1.2em;
             }
 
             .error {
                 text-align: center;
                 padding: 40px;
-                color: #f56565;
+                color: var(--error);
                 font-size: 1.1em;
+            }
+
+            #statusMessage {
+                color: var(--text-muted);
             }
 
             @media (max-width: 1024px) {
                 .header h1 {
                     font-size: 2em;
                     padding-right: 50px; /* Make room for hamburger */
+                }
+
+                .theme-toggle {
+                    top: auto;
+                    bottom: 30px;
+                    left: 30px;
                 }
 
                 /* Hide desktop nav, show hamburger and mobile menu */
@@ -691,6 +942,130 @@
                 .chart-container {
                     height: 250px;
                 }
+
+                .theme-toggle {
+                    bottom: 20px;
+                    left: 20px;
+                    padding: 6px 10px;
+                    font-size: 14px;
+                }
+            }
+
+            /* Password Change Dialog Styles */
+            .pwd-dialog-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            }
+            .pwd-dialog-content {
+                background: var(--glass-tint);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid var(--glass-border);
+                padding: 30px;
+                border-radius: 12px;
+                max-width: 450px;
+                width: 90%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+            .pwd-dialog-title {
+                margin: 0 0 10px 0;
+                color: var(--primary);
+            }
+            .pwd-dialog-text {
+                margin: 0 0 20px 0;
+                color: var(--text-muted);
+            }
+            .pwd-dialog-error {
+                display: none;
+                background: rgba(248, 113, 113, 0.15);
+                color: var(--error);
+                padding: 10px;
+                border-radius: 6px;
+                margin-bottom: 15px;
+                font-size: 14px;
+            }
+            .pwd-dialog-label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 600;
+                color: var(--text);
+            }
+            .pwd-dialog-input {
+                width: 100%;
+                padding: 10px;
+                border: 2px solid var(--glass-border);
+                border-radius: 6px;
+                font-size: 14px;
+                background: var(--input-bg);
+                color: var(--text);
+            }
+            .pwd-dialog-input:focus {
+                outline: none;
+                border-color: var(--primary);
+            }
+            .pwd-strength-bar-container {
+                height: 8px;
+                background: var(--glass-border);
+                border-radius: 4px;
+                overflow: hidden;
+                margin-bottom: 4px;
+            }
+            .pwd-strength-bar {
+                height: 100%;
+                transition: width 0.3s, background-color 0.3s;
+                width: 0%;
+                background-color: var(--glass-border);
+            }
+            .pwd-strength-text {
+                font-size: 11px;
+                text-align: right;
+                margin-bottom: 8px;
+                color: var(--text-muted);
+            }
+            .pwd-requirements {
+                font-size: 12px;
+                color: var(--text-muted);
+                margin-top: 8px;
+                padding: 8px;
+                background: var(--surface);
+                border-radius: 4px;
+            }
+            .pwd-requirements ul {
+                margin: 5px 0 0 0;
+                padding: 0;
+                list-style: none;
+            }
+            .pwd-requirements li {
+                margin: 2px 0;
+            }
+            .pwd-req-met {
+                color: var(--success);
+            }
+            .pwd-req-unmet {
+                color: var(--error);
+            }
+            .pwd-dialog-btn {
+                width: 100%;
+                padding: 12px;
+                background: var(--header-gradient);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            .pwd-dialog-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px var(--glass-shadow);
             }
         </style>
         <link rel="stylesheet" href="/static/session-monitor.css">
@@ -698,11 +1073,16 @@
     <body>
         <div class="container">
             <div class="header">
-                <h1>☁️ ModemCheck Cloud Dashboard</h1>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                    <span class="theme-icon-light">&#9728;</span>
+                    <span class="theme-icon-dark">&#9790;</span>
+                </button>
+
+                <h1>ModemCheck Cloud Dashboard</h1>
 
                 <!-- Desktop navigation -->
                 <div class="header-nav">
-                    <button id="adminBtn" class="header-nav-btn admin" style="display: none;">🔒 Admin</button>
+                    <button id="adminBtn" class="header-nav-btn admin" style="display: none;">Admin</button>
                     <button id="logoutBtn" class="header-nav-btn">Logout</button>
                 </div>
 
@@ -719,14 +1099,14 @@
 
             <!-- Mobile slide-out menu -->
             <div class="mobile-menu">
-                <button id="adminBtnMobile" class="admin" style="display: none;">🔒 Admin</button>
+                <button id="adminBtnMobile" class="admin" style="display: none;">Admin</button>
                 <button id="logoutBtnMobile">Logout</button>
             </div>
 
             <div class="filter-section">
                 <div class="filter-grid">
                     <div class="filter-group">
-                        <label for="modemSearchInput">📡 Select Modem:</label>
+                        <label for="modemSearchInput">Select Modem:</label>
                         <div class="searchable-select">
                             <input type="text" id="modemSearchInput" placeholder="Select a modem or start typing to filter" autocomplete="off" readonly>
                             <div class="searchable-dropdown" id="modemDropdown"></div>
@@ -734,11 +1114,11 @@
                         <input type="hidden" id="modemSelect" value="">
                     </div>
                     <div class="filter-group">
-                        <label for="startDate">📅 Start Date:</label>
+                        <label for="startDate">Start Date:</label>
                         <input type="date" id="startDate" />
                     </div>
                     <div class="filter-group">
-                        <label for="endDate">📅 End Date:</label>
+                        <label for="endDate">End Date:</label>
                         <input type="date" id="endDate" />
                     </div>
                     <div class="filter-group" style="justify-content: flex-end;">
@@ -746,27 +1126,27 @@
                         <button class="load-btn" onclick="loadData()" id="loadBtn">Load Data</button>
                     </div>
                 </div>
-                <div id="statusMessage" style="margin-top: 15px; text-align: center; color: #555;"></div>
+                <div id="statusMessage" style="margin-top: 15px; text-align: center;"></div>
             </div>
 
             <div class="view-switcher">
-                <button class="view-btn active" onclick="showSingleView()">📊 Single View</button>
-                <button class="view-btn" onclick="showTrendsView()">📈 Trend View</button>
+                <button class="view-btn active" onclick="showSingleView()">Single View</button>
+                <button class="view-btn" onclick="showTrendsView()">Trend View</button>
             </div>
 
             <div class="timeline-nav" id="timelineNav">
                 <div class="timeline-controls">
-                    <button class="nav-btn" id="firstBtn" onclick="navigateToFirst()">⏮️ First</button>
-                    <button class="nav-btn" id="prevBtn" onclick="navigatePrevious()">⏪ Previous</button>
-                    <button class="nav-btn" id="nextBtn" onclick="navigateNext()">Next ⏩</button>
-                    <button class="nav-btn" id="lastBtn" onclick="navigateToLast()">Last ⏭️</button>
+                    <button class="nav-btn" id="firstBtn" onclick="navigateToFirst()">First</button>
+                    <button class="nav-btn" id="prevBtn" onclick="navigatePrevious()">Previous</button>
+                    <button class="nav-btn" id="nextBtn" onclick="navigateNext()">Next</button>
+                    <button class="nav-btn" id="lastBtn" onclick="navigateToLast()">Last</button>
                 </div>
                 <div class="timeline-slider">
-                    <input 
-                        type="range" 
-                        id="timelineSlider" 
-                        min="0" 
-                        max="0" 
+                    <input
+                        type="range"
+                        id="timelineSlider"
+                        min="0"
+                        max="0"
                         value="0"
                         oninput="navigateToIndex(this.value)"
                     />
@@ -784,82 +1164,82 @@
                 <div class="view-mode" id="singleView">
                     <div class="info-grid">
                         <div class="info-card">
-                            <label>⏰ Time of Check</label>
+                            <label>Time of Check</label>
                             <div id="checktime" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>📟 Modem Model</label>
+                            <label>Modem Model</label>
                             <div id="modemtype" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🔢 Modem MAC</label>
+                            <label>Modem MAC</label>
                             <div id="modemmac" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>💾 Firmware Version</label>
+                            <label>Firmware Version</label>
                             <div id="firmware" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>⏱️ Time Since Reboot</label>
+                            <label>Time Since Reboot</label>
                             <div id="uptime" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🕐 Modem Time</label>
+                            <label>Modem Time</label>
                             <div id="systime" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🖥️ Client Version</label>
+                            <label>Client Version</label>
                             <div id="clientinfo" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>✅ Detection Status</label>
+                            <label>Detection Status</label>
                             <div id="detection_status" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🌍 Public IP</label>
+                            <label>Public IP</label>
                             <div id="public_ip" class="value">-</div>
                         </div>
                         <div class="info-card">
-                            <label>🏢 ISP / ASN</label>
+                            <label>ISP / ASN</label>
                             <div id="isp_info" class="value">-</div>
                         </div>
                     </div>
 
                     <div class="speed-cards">
                         <div class="speed-card">
-                            <label>🌐 Speed Test Info</label>
+                            <label>Speed Test Info</label>
                             <div id="speedtest_status" class="value">-</div>
                             <div id="speedtest_server" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                         </div>
                         <div class="speed-card">
-                            <label>📡 Speed Test Ping</label>
+                            <label>Speed Test Ping</label>
                             <div id="speedtest_ping" class="value">-</div>
                             <div id="speedtest_ping_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                         </div>
                         <div class="speed-card">
-                            <label>⬇️ Download Speed</label>
+                            <label>Download Speed</label>
                             <div id="iperf3_dl" class="value">-</div>
                             <div id="iperf3_dl_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                         </div>
                         <div class="speed-card">
-                            <label>⬆️ Upload Speed</label>
+                            <label>Upload Speed</label>
                             <div id="iperf3_ul" class="value">-</div>
                             <div id="iperf3_ul_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
                         </div>
                         <div class="speed-card">
-                            <label>🌐 Ping Google</label>
+                            <label>Ping Google</label>
                             <div id="ping_google" class="value">-</div>
                             <div id="ping_google_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
                         </div>
                         <div class="speed-card">
-                            <label>☁️ Ping Cloudflare</label>
+                            <label>Ping Cloudflare</label>
                             <div id="ping_cloudflare" class="value">-</div>
                             <div id="ping_cloudflare_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
                         </div>
                     </div>
 
                     <div class="table-section">
-                        <h2>📥 RX Data (Downstream SC-QAM)</h2>
+                        <h2>RX Data (Downstream SC-QAM)</h2>
                         <div class="table-wrapper">
                             <table id="rxTable">
                                 <thead>
@@ -879,7 +1259,7 @@
                     </div>
 
                     <div class="table-section">
-                        <h2>📥 RX OFDM Data (Downstream OFDM)</h2>
+                        <h2>RX OFDM Data (Downstream OFDM)</h2>
                         <div class="table-wrapper">
                             <table id="rxofdmTable">
                                 <thead>
@@ -902,7 +1282,7 @@
                     </div>
 
                     <div class="table-section">
-                        <h2>📤 TX Data (Upstream SC-QAM)</h2>
+                        <h2>TX Data (Upstream SC-QAM)</h2>
                         <div class="table-wrapper">
                             <table id="txTable">
                                 <thead>
@@ -918,7 +1298,7 @@
                     </div>
 
                     <div class="table-section">
-                        <h2>📤 TX OFDMA Data (Upstream OFDMA)</h2>
+                        <h2>TX OFDMA Data (Upstream OFDMA)</h2>
                         <div class="table-wrapper">
                             <table id="txofdmTable">
                                 <thead>
@@ -940,7 +1320,7 @@
                     </div>
 
                     <div class="table-section">
-                        <h2>📋 DOCSIS Event Logs</h2>
+                        <h2>DOCSIS Event Logs</h2>
                         <div class="table-wrapper">
                             <table id="eventlogTable">
                                 <thead>
@@ -959,7 +1339,7 @@
                 <!-- Trends View -->
                 <div class="view-mode" id="trendsView">
                     <div class="chart-section">
-                        <h2>📊 Speed Trends</h2>
+                        <h2>Speed Trends</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="speedChart"></canvas>
@@ -968,7 +1348,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>🌐 Ping Latency</h2>
+                        <h2>Ping Latency</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="latencyChart"></canvas>
@@ -977,7 +1357,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📉 Packet Loss</h2>
+                        <h2>Packet Loss</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="packetLossChart"></canvas>
@@ -986,7 +1366,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>⏱️ Modem Uptime (Time Since Reboot)</h2>
+                        <h2>Modem Uptime (Time Since Reboot)</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="uptimeChart"></canvas>
@@ -995,7 +1375,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📶 RX Power</h2>
+                        <h2>RX Power</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="rxPowerChart"></canvas>
@@ -1004,7 +1384,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📡 RX SNR</h2>
+                        <h2>RX SNR</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="rxSnrChart"></canvas>
@@ -1013,7 +1393,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>⚠️ RX Codeword Errors</h2>
+                        <h2>RX Codeword Errors</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="berChart"></canvas>
@@ -1022,7 +1402,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📤 TX Channels</h2>
+                        <h2>TX Channels</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="txChannelsChart"></canvas>
@@ -1031,7 +1411,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>⚡ TX Power</h2>
+                        <h2>TX Power</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="txPowerChart"></canvas>
@@ -1042,7 +1422,66 @@
             </div>
         </div>
 
-        <script>console.log("DEBUG: Page loaded, about to load db-viewer.js"); window.debugMode = true;</script>
+        <script>
+            // Theme toggle functionality
+            function toggleTheme() {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('modemcheck-theme', next);
+
+                // Update chart colors if charts exist
+                if (typeof updateChartColors === 'function') {
+                    updateChartColors();
+                }
+            }
+
+            // Get current theme colors for charts
+            function getChartColors() {
+                const style = getComputedStyle(document.documentElement);
+                return {
+                    // Grid and text colors (theme-aware)
+                    grid: style.getPropertyValue('--chart-grid').trim(),
+                    text: style.getPropertyValue('--chart-text').trim(),
+                    // Semantic colors
+                    primary: style.getPropertyValue('--primary').trim(),
+                    accent: style.getPropertyValue('--accent').trim(),
+                    success: style.getPropertyValue('--success').trim(),
+                    warning: style.getPropertyValue('--warning').trim(),
+                    error: style.getPropertyValue('--error').trim(),
+                    // Chart dataset colors
+                    download: style.getPropertyValue('--chart-download').trim(),
+                    upload: style.getPropertyValue('--chart-upload').trim(),
+                    google: style.getPropertyValue('--chart-google').trim(),
+                    cloudflare: style.getPropertyValue('--chart-cloudflare').trim(),
+                    speedtest: style.getPropertyValue('--chart-speedtest').trim(),
+                    latencyMax: style.getPropertyValue('--chart-latency-max').trim(),
+                    googleMax: style.getPropertyValue('--chart-google-max').trim(),
+                    cloudflareMax: style.getPropertyValue('--chart-cloudflare-max').trim(),
+                    packetGoogle: style.getPropertyValue('--chart-packet-google').trim(),
+                    packetCloudflare: style.getPropertyValue('--chart-packet-cloudflare').trim(),
+                    uptime: style.getPropertyValue('--chart-uptime').trim(),
+                    rxScqam: style.getPropertyValue('--chart-rx-scqam').trim(),
+                    rxOfdm: style.getPropertyValue('--chart-rx-ofdm').trim(),
+                    snrScqam: style.getPropertyValue('--chart-snr-scqam').trim(),
+                    snrOfdm: style.getPropertyValue('--chart-snr-ofdm').trim(),
+                    berUncorr: style.getPropertyValue('--chart-ber-uncorr').trim(),
+                    berUncorrDark: style.getPropertyValue('--chart-ber-uncorr-dark').trim(),
+                    berOfdmUncorr: style.getPropertyValue('--chart-ber-ofdm-uncorr').trim(),
+                    berOfdmUncorrDark: style.getPropertyValue('--chart-ber-ofdm-uncorr-dark').trim(),
+                    berCorr: style.getPropertyValue('--chart-ber-corr').trim(),
+                    berCorrDark: style.getPropertyValue('--chart-ber-corr-dark').trim(),
+                    berOfdmCorr: style.getPropertyValue('--chart-ber-ofdm-corr').trim(),
+                    berOfdmCorrDark: style.getPropertyValue('--chart-ber-ofdm-corr-dark').trim(),
+                    txScqam: style.getPropertyValue('--chart-tx-scqam').trim(),
+                    txOfdma: style.getPropertyValue('--chart-tx-ofdma').trim(),
+                    txImpaired: style.getPropertyValue('--chart-tx-impaired').trim()
+                };
+            }
+
+            console.log("DEBUG: Page loaded, about to load db-viewer.js");
+            window.debugMode = true;
+        </script>
         <script src="/static/error-utils.js"></script>
         <script src="/static/api-config.js"></script>
         <script src="/static/db-viewer.js"></script>

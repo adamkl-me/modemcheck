@@ -16,6 +16,11 @@ class ViewerPage:
         self.admin_button = page.locator("#adminBtn")
         self.logout_button = page.locator("#logoutBtn")
 
+        # Theme-related locators
+        self.theme_toggle = page.locator(".theme-toggle")
+        self.theme_icon_light = page.locator(".theme-icon-light")
+        self.theme_icon_dark = page.locator(".theme-icon-dark")
+
         # Filter section
         self.modem_search_input = page.locator("#modemSearchInput")
         self.modem_dropdown = page.locator("#modemDropdown")
@@ -101,3 +106,43 @@ class ViewerPage:
         await self.page.wait_for_timeout(500)
         items = self.modem_dropdown.locator(".searchable-option")
         return await items.count()
+
+    # Theme methods
+    async def get_current_theme(self) -> str:
+        """Get current theme from data-theme attribute on html element."""
+        return await self.page.evaluate(
+            "document.documentElement.getAttribute('data-theme')"
+        )
+
+    async def get_stored_theme(self) -> str:
+        """Get theme from localStorage."""
+        return await self.page.evaluate(
+            "localStorage.getItem('modemcheck-theme')"
+        )
+
+    async def toggle_theme(self):
+        """Click theme toggle button."""
+        await self.theme_toggle.click()
+        await self.page.wait_for_timeout(300)
+
+    async def set_theme(self, theme: str):
+        """Set theme to 'dark' or 'light'."""
+        current = await self.get_current_theme()
+        if current != theme:
+            await self.toggle_theme()
+
+    async def get_background_color(self) -> str:
+        """Get body background color."""
+        return await self.page.evaluate(
+            "getComputedStyle(document.body).backgroundColor"
+        )
+
+    async def get_text_color(self) -> str:
+        """Get body text color."""
+        return await self.page.evaluate(
+            "getComputedStyle(document.body).color"
+        )
+
+    async def is_theme_toggle_visible(self) -> bool:
+        """Check if theme toggle button is visible."""
+        return await self.theme_toggle.is_visible()
