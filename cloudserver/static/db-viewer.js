@@ -1236,12 +1236,14 @@ function renderTrendChartsFromChecks() {
     
     // Render all charts with time-based x-axis
     renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss,
-                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
+    renderLatencyChart(timestamps, googlePingAvg, cloudflarePingAvg,
+                       speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
+    renderPacketLossChart(timestamps, googlePingLoss, cloudflarePingLoss);
     renderUptimeChart(timestamps, uptimeData);
     renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
     renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
     renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
+    renderTxChannelsChart(timestamps, txScqamData, txOfdmaData);
     renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
             }
 
@@ -1346,12 +1348,14 @@ function renderTrendChartsFromPreAggregated() {
 
     // Render all charts using existing render functions
     renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-    renderPingChart(timestamps, googlePingAvg, googlePingLoss, cloudflarePingAvg, cloudflarePingLoss,
-                    speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
+    renderLatencyChart(timestamps, googlePingAvg, cloudflarePingAvg,
+                       speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency);
+    renderPacketLossChart(timestamps, googlePingLoss, cloudflarePingLoss);
     renderUptimeChart(timestamps, uptimeData);
     renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
     renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
     renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, rxScqamCorrectedData, rxOfdmCorrectedData);
+    renderTxChannelsChart(timestamps, txScqamData, txOfdmaData);
     renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
 }
 
@@ -1434,6 +1438,7 @@ function renderTrendChartsFromPreAggregated() {
                 renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
                 renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
                 renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, [], []);
+                renderTxChannelsChart(timestamps, txScqamData, txOfdmaData);
                 renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
             }
 
@@ -1556,15 +1561,15 @@ function renderTrendChartsFromPreAggregated() {
                 });
             }
 
-            function renderPingChart(timestamps, googleAvg, googleLoss, cloudflareAvg, cloudflareLoss,
-                                      speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency) {
-                const ctx = document.getElementById('pingChart');
+            function renderLatencyChart(timestamps, googleAvg, cloudflareAvg,
+                                       speedtestLatency, speedtestMaxLatency, googleMaxLatency, cloudflareMaxLatency) {
+                const ctx = document.getElementById('latencyChart');
 
-                if (charts.ping) {
-                    charts.ping.destroy();
+                if (charts.latency) {
+                    charts.latency.destroy();
                 }
 
-                charts.ping = new Chart(ctx, {
+                charts.latency = new Chart(ctx, {
                     type: 'line',
                     data: {
                         datasets: [{
@@ -1574,8 +1579,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(66, 133, 244, 0.1)',
                             tension: 0.4,
                             borderWidth: 2,
-                            fill: true,
-                            yAxisID: 'y'
+                            fill: true
                         }, {
                             label: 'Cloudflare Ping (ms)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareAvg[i] })),
@@ -1583,8 +1587,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(246, 130, 31, 0.1)',
                             tension: 0.4,
                             borderWidth: 2,
-                            fill: true,
-                            yAxisID: 'y'
+                            fill: true
                         }, {
                             label: 'Speed Test Avg Latency (ms)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestLatency[i] })),
@@ -1592,8 +1595,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(52, 168, 83, 0.1)',
                             tension: 0.4,
                             borderWidth: 2,
-                            fill: true,
-                            yAxisID: 'y'
+                            fill: true
                         }, {
                             label: 'Speed Test Max Latency (ms)',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: speedtestMaxLatency[i] })),
@@ -1602,7 +1604,6 @@ function renderTrendChartsFromPreAggregated() {
                             tension: 0.4,
                             borderWidth: 2,
                             fill: true,
-                            yAxisID: 'y',
                             hidden: true
                         }, {
                             label: 'Google Max Latency (ms)',
@@ -1613,7 +1614,6 @@ function renderTrendChartsFromPreAggregated() {
                             borderWidth: 2,
                             borderDash: [2, 2],
                             fill: false,
-                            yAxisID: 'y',
                             hidden: true
                         }, {
                             label: 'Cloudflare Max Latency (ms)',
@@ -1624,28 +1624,7 @@ function renderTrendChartsFromPreAggregated() {
                             borderWidth: 2,
                             borderDash: [2, 2],
                             fill: false,
-                            yAxisID: 'y',
                             hidden: true
-                        }, {
-                            label: 'Google Packet Loss (%)',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: googleLoss[i] })),
-                            borderColor: 'rgba(234, 67, 53, 0.7)',
-                            backgroundColor: 'rgba(234, 67, 53, 0.1)',
-                            borderDash: [5, 5],
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            yAxisID: 'y1'
-                        }, {
-                            label: 'Cloudflare Packet Loss (%)',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareLoss[i] })),
-                            borderColor: 'rgba(251, 188, 5, 0.7)',
-                            backgroundColor: 'rgba(251, 188, 5, 0.1)',
-                            borderDash: [5, 5],
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            yAxisID: 'y1'
                         }]
                     },
                     options: {
@@ -1673,11 +1652,7 @@ function renderTrendChartsFromPreAggregated() {
                                             label += ': ';
                                         }
                                         if (context.parsed.y !== null) {
-                                            if (label.includes('Loss')) {
-                                                label += context.parsed.y.toFixed(1) + '%';
-                                            } else {
-                                                label += context.parsed.y.toFixed(2) + ' ms';
-                                            }
+                                            label += context.parsed.y.toFixed(2) + ' ms';
                                         }
                                         return label;
                                     }
@@ -1713,21 +1688,110 @@ function renderTrendChartsFromPreAggregated() {
                                     text: 'Latency (ms)'
                                 },
                                 beginAtZero: true,
-                                suggestedMax: 50  // Auto-adjust but ensure reasonable minimum scale
+                                suggestedMax: 50
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
+            function renderPacketLossChart(timestamps, googleLoss, cloudflareLoss) {
+                const ctx = document.getElementById('packetLossChart');
+
+                if (charts.packetLoss) {
+                    charts.packetLoss.destroy();
+                }
+
+                charts.packetLoss = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Google Packet Loss (%)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: googleLoss[i] })),
+                            borderColor: '#ea4335',
+                            backgroundColor: 'rgba(234, 67, 53, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            fill: true
+                        }, {
+                            label: 'Cloudflare Packet Loss (%)',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: cloudflareLoss[i] })),
+                            borderColor: '#fbbc05',
+                            backgroundColor: 'rgba(251, 188, 5, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
+                        plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
                             },
-                            y1: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y.toFixed(1) + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
+                            y: {
                                 type: 'linear',
                                 display: true,
-                                position: 'right',
+                                position: 'left',
                                 title: {
                                     display: true,
                                     text: 'Packet Loss (%)'
                                 },
                                 beginAtZero: true,
-                                max: 100,
-                                grid: {
-                                    drawOnChartArea: false,
-                                }
+                                grace: '10%'  // Auto-scale with padding above data
                             }
                         },
                         interaction: {
@@ -2240,13 +2304,112 @@ function renderTrendChartsFromPreAggregated() {
                 });
             }
 
+            function renderTxChannelsChart(timestamps, txScqamData, txOfdmaData) {
+                const ctx = document.getElementById('txChannelsChart');
+
+                if (charts.txChannels) {
+                    charts.txChannels.destroy();
+                }
+
+                charts.txChannels = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'TX SC-QAM Bonded Channels',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].bonded })),
+                            borderColor: '#9f7aea',
+                            backgroundColor: 'rgba(159, 122, 234, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'TX OFDMA Bonded Channels',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].bonded })),
+                            borderColor: '#38b2ac',
+                            backgroundColor: 'rgba(56, 178, 172, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'TX OFDMA Impaired Channels',
+                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].impaired })),
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.2)',
+                            tension: 0.4,
+                            borderWidth: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        parsing: false,
+                        normalized: true,
+                        plugins: {
+                            decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: 500,
+                                threshold: 1000
+                            },
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm:ss'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    autoSkip: true
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Channel Count'
+                                },
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
+                    }
+                });
+            }
+
             function renderTxPowerChart(timestamps, txScqamData, txOfdmaData) {
                 const ctx = document.getElementById('txPowerChart');
-                
+
                 if (charts.txPower) {
                     charts.txPower.destroy();
                 }
-                
+
                 charts.txPower = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -2257,8 +2420,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
                             tension: 0.4,
-                            pointRadius: 2,
-                            yAxisID: 'y'
+                            pointRadius: 2
                         }, {
                             label: 'Avg TX SC-QAM Power',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].avg })),
@@ -2266,8 +2428,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(102, 126, 234, 0.2)',
                             tension: 0.4,
                             borderWidth: 3,
-                            fill: true,
-                            yAxisID: 'y'
+                            fill: true
                         }, {
                             label: 'Max TX SC-QAM Power',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].max })),
@@ -2275,8 +2436,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             borderDash: [5, 5],
                             tension: 0.4,
-                            pointRadius: 2,
-                            yAxisID: 'y'
+                            pointRadius: 2
                         }, {
                             label: 'Avg TX OFDMA Power',
                             data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].avgPower })),
@@ -2284,32 +2444,7 @@ function renderTrendChartsFromPreAggregated() {
                             backgroundColor: 'rgba(72, 187, 120, 0.2)',
                             tension: 0.4,
                             borderWidth: 2,
-                            fill: true,
-                            yAxisID: 'y'
-                        }, {
-                            label: 'TX SC-QAM Bonded Channels',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txScqamData[i].bonded })),
-                            borderColor: '#9f7aea',
-                            backgroundColor: 'rgba(159, 122, 234, 0.2)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y1'
-                        }, {
-                            label: 'TX OFDMA Bonded Channels',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].bonded })),
-                            borderColor: '#38b2ac',
-                            backgroundColor: 'rgba(56, 178, 172, 0.2)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y1'
-                        }, {
-                            label: 'TX OFDMA Impaired Channels',
-                            data: timestamps.map((t, i) => ({ x: t * 1000, y: txOfdmaData[i].impaired })),
-                            borderColor: '#f56565',
-                            backgroundColor: 'rgba(245, 101, 101, 0.2)',
-                            tension: 0.4,
-                            borderWidth: 2,
-                            yAxisID: 'y1'
+                            fill: true
                         }]
                     },
                     options: {
@@ -2360,24 +2495,7 @@ function renderTrendChartsFromPreAggregated() {
                                     display: true,
                                     text: 'Power (dBmV)'
                                 },
-                                // Auto-scale to data range for better visibility
-                                grace: '5%'  // Add 5% padding above/below data range
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: {
-                                    display: true,
-                                    text: 'Channel Count'
-                                },
-                                beginAtZero: true,
-                                grid: {
-                                    drawOnChartArea: false,
-                                },
-                                ticks: {
-                                    stepSize: 1
-                                }
+                                grace: '5%'
                             }
                         },
                         interaction: {

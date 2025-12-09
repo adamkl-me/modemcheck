@@ -968,10 +968,19 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>🌐 Ping Latency & Packet Loss</h2>
+                        <h2>🌐 Ping Latency</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
-                                <canvas id="pingChart"></canvas>
+                                <canvas id="latencyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>📉 Packet Loss</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="packetLossChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -986,7 +995,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📶 Downstream Power Levels</h2>
+                        <h2>📶 RX Power</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="rxPowerChart"></canvas>
@@ -995,7 +1004,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📡 Downstream SNR</h2>
+                        <h2>📡 RX SNR</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="rxSnrChart"></canvas>
@@ -1004,7 +1013,7 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>⚠️ Codeword Error Rates (BER & Corrected)</h2>
+                        <h2>⚠️ RX Codeword Errors</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="berChart"></canvas>
@@ -1013,7 +1022,16 @@
                     </div>
 
                     <div class="chart-section">
-                        <h2>📤 Upstream Channels & Power</h2>
+                        <h2>📤 TX Channels</h2>
+                        <div class="chart-wrapper">
+                            <div class="chart-container">
+                                <canvas id="txChannelsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section">
+                        <h2>⚡ TX Power</h2>
                         <div class="chart-wrapper">
                             <div class="chart-container">
                                 <canvas id="txPowerChart"></canvas>
