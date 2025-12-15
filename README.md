@@ -1,7 +1,7 @@
 # Modem-Check
 
 [![Latest Release](https://img.shields.io/github/v/release/adamkl-me/modemcheck)](https://github.com/adamkl-me/modemcheck/releases/latest)
-[![License](https://img.shields.io/badge/license-Personal%20%26%20Educational-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Modem-Check is a cross-platform diagnostic tool for cable modems that collects system information, power levels, signal quality, error rates, event logs, and speed test results. Built in Go with native implementations for all diagnostics, it provides comprehensive modem monitoring with optional cloud integration for centralized management.
 
@@ -451,7 +451,7 @@ Special thanks to **Ookla** for the speedtest.net infrastructure and to all the 
 
 ## License
 
-This project is provided as-is for personal and educational use.
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
 
 ## Documentation
 
