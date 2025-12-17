@@ -88,6 +88,7 @@ class TestCompleteUploadFlow:
         self,
         http_client: httpx.AsyncClient,
         active_api_key,
+        test_api_key: str,
         db_session
     ):
         """Test complete upload flow with valid authentication."""
@@ -104,7 +105,7 @@ class TestCompleteUploadFlow:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
@@ -112,7 +113,7 @@ class TestCompleteUploadFlow:
         # Upload
         files = {"file": (filename, json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -153,6 +154,7 @@ class TestCompleteUploadFlow:
         self,
         http_client: httpx.AsyncClient,
         active_api_key,
+        test_api_key: str,
         db_session
     ):
         """Test that metrics are extracted during upload."""
@@ -165,14 +167,14 @@ class TestCompleteUploadFlow:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|2024-01-01_12-00-01_metrics.json|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-01_metrics.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-01_metrics.json",
             "checksum": checksum
@@ -214,7 +216,8 @@ class TestCompleteUploadFlow:
     async def test_upload_rejection_invalid_signature(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that uploads with invalid signatures are rejected."""
         modem_data = create_valid_modem_data()
@@ -228,7 +231,7 @@ class TestCompleteUploadFlow:
 
         files = {"file": ("2024-01-01_12-00-02_invsig.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-02_invsig.json",
             "checksum": checksum
@@ -252,6 +255,7 @@ class TestCompleteUploadFlow:
         self,
         http_client: httpx.AsyncClient,
         active_api_key,
+        test_api_key: str,
         db_session
     ):
         """Test that uploads are logged in audit trail."""
@@ -263,14 +267,14 @@ class TestCompleteUploadFlow:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|2024-01-01_12-00-03_audit.json|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-03_audit.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-03_audit.json",
             "checksum": checksum
@@ -327,7 +331,8 @@ class TestUploadValidation:
     async def test_reject_invalid_checksum(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that uploads with mismatched checksums are rejected."""
         modem_data = create_valid_modem_data()
@@ -340,14 +345,14 @@ class TestUploadValidation:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|2024-01-01_12-00-05_badsum.json|{wrong_checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-05_badsum.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-05_badsum.json",
             "checksum": wrong_checksum
@@ -370,7 +375,8 @@ class TestUploadValidation:
     async def test_reject_expired_timestamp(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that old timestamps are rejected."""
         modem_data = create_valid_modem_data()
@@ -382,14 +388,14 @@ class TestUploadValidation:
         old_timestamp = str(int(time.time()) - 3600)
         message = f"{old_timestamp}|{modem_id}|2024-01-01_12-00-06_oldts.json|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-06_oldts.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-06_oldts.json",
             "checksum": checksum
@@ -413,7 +419,8 @@ class TestUploadValidation:
     async def test_reject_malformed_json(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that malformed JSON is rejected."""
         malformed_data = b"{invalid json}"
@@ -423,14 +430,14 @@ class TestUploadValidation:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|2024-01-01_12-00-07_badjson.json|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-07_badjson.json", malformed_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-07_badjson.json",
             "checksum": checksum
@@ -453,7 +460,8 @@ class TestUploadValidation:
     async def test_reject_oversized_upload(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that oversized uploads are rejected."""
         # Create large data (> 10MB)
@@ -465,14 +473,14 @@ class TestUploadValidation:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|2024-01-01_12-00-08_bigfile.json|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-08_bigfile.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-08_bigfile.json",
             "checksum": checksum
@@ -502,6 +510,7 @@ class TestConcurrentUploads:
         self,
         http_client: httpx.AsyncClient,
         active_api_key,
+        test_api_key: str,
         db_session
     ):
         """Test concurrent uploads from same modem."""
@@ -518,14 +527,14 @@ class TestConcurrentUploads:
             filename = f"2024-01-01_12-00-{index:02d}_same.json"
             message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
-                active_api_key.api_key.encode('utf-8'),
+                test_api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
             files = {"file": (filename, json_data, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -560,7 +569,8 @@ class TestConcurrentUploads:
     async def test_concurrent_uploads_different_modems(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test concurrent uploads from different modems."""
         import asyncio
@@ -577,14 +587,14 @@ class TestConcurrentUploads:
             filename = f"2024-01-01_12-00-{modem_num:02d}_diff.json"
             message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
-                active_api_key.api_key.encode('utf-8'),
+                test_api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
             files = {"file": (filename, json_data, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum

@@ -97,8 +97,8 @@ async def list_configs(
 
     config_items = [
         ConfigListItem(
-            api_key=f"{c.api_key[:8]}...",
-            api_key_full=c.api_key,
+            api_key=f"{c.api_key_hash[:8]}...",  # v8.0+: Use hash prefix for display
+            api_key_full=c.api_key_hash,  # v8.0+: Hash is the identifier now
             last_seen_modem_id=c.last_seen_modem_id,
             status=c.status.value,
             sync_status=c.sync_status.value,
@@ -144,8 +144,13 @@ async def create_config(
             strict_security=True
         )
 
+        # Hash API key for validation (v7.1+)
+        import hashlib
+        api_key_hash = hashlib.sha256(create_request.api_key.encode('utf-8')).hexdigest()
+
+        # Validate API key exists and is active (hash-based lookup)
         api_key_result = await db.execute(
-            select(APIKey).where(APIKey.api_key == create_request.api_key)
+            select(APIKey).where(APIKey.api_key_hash == api_key_hash)
         )
         api_key_record = api_key_result.scalar_one_or_none()
 
@@ -166,7 +171,7 @@ async def create_config(
             )
 
         existing_result = await db.execute(
-            select(ClientConfig).where(ClientConfig.api_key == create_request.api_key)
+            select(ClientConfig).where(ClientConfig.api_key_hash == api_key_hash)
         )
         if existing_result.scalar_one_or_none():
             raise ModemCheckError(
@@ -174,7 +179,7 @@ async def create_config(
                 message="Configuration already exists for this API key",
                 status_code=409,
                 details={
-                    "api_key": f"{create_request.api_key[:8]}...",
+                    "api_key": f"{api_key_hash[:8]}...",
                     "hint": "Use PUT to update existing config"
                 }
             )
@@ -197,7 +202,7 @@ async def create_config(
             sync_status_val = SyncStatus.PENDING
 
         new_config = ClientConfig(
-            api_key=create_request.api_key,
+            api_key_hash=api_key_hash,  # v8.0+: Hash-based primary key
             last_seen_modem_id=None,
             config_plaintext=create_request.config,
             config_encrypted=encrypted_blob,
@@ -217,7 +222,7 @@ async def create_config(
 
         await create_config_version(
             db=db,
-            api_key=create_request.api_key,
+            api_key_hash=api_key_hash,  # v8.0+: Use hash
             modem_id=None,
             version_number=1,
             config_plaintext=create_request.config,
@@ -234,7 +239,7 @@ async def create_config(
         await log_config_update(
             db=db,
             username=username,
-            api_key=create_request.api_key,
+            api_key_hash=api_key_hash,  # v8.0+: Use hash
             modem_id=None,
             ip_address=client_ip,
             old_config=None,
@@ -252,7 +257,7 @@ async def create_config(
 
         return ConfigCreateResponse(
             success=True,
-            api_key=f"{create_request.api_key[:8]}...",
+            api_key=f"{api_key_hash[:8]}...",  # v8.0+: Use hash prefix
             version=1,
             status=status.value,
             sync_status=sync_status_val.value,
@@ -286,7 +291,7 @@ async def get_config(
     Returns full config with metadata.
     """
     result = await db.execute(
-        select(ClientConfig).where(ClientConfig.api_key == api_key)
+        select(ClientConfig).where(ClientConfig.api_key_hash == api_key)
     )
     config = result.scalar_one_or_none()
 
@@ -294,7 +299,7 @@ async def get_config(
         raise ConfigNotFoundError(api_key=api_key)
 
     return ConfigDetailResponse(
-        api_key=config.api_key,
+        api_key=config.api_key_hash,
         last_seen_modem_id=config.last_seen_modem_id,
         config=config.config_plaintext,
         status=config.status.value,
@@ -333,7 +338,7 @@ async def update_config(
 
         result = await db.execute(
             select(ClientConfig)
-            .where(ClientConfig.api_key == api_key)
+            .where(ClientConfig.api_key_hash == api_key)
             .with_for_update()
         )
         existing_config = result.scalar_one_or_none()
@@ -386,7 +391,7 @@ async def update_config(
         if version_created:
             await create_config_version(
                 db=db,
-                api_key=api_key,
+                api_key_hash=api_key,
                 modem_id=old_modem_id,
                 version_number=new_version,
                 config_plaintext=update_request.config,
@@ -403,7 +408,7 @@ async def update_config(
         await log_config_update(
             db=db,
             username=username,
-            api_key=api_key,
+            api_key_hash=api_key,
             modem_id=old_modem_id,
             ip_address=client_ip,
             old_config=old_config,
@@ -462,7 +467,7 @@ async def delete_config(
     try:
         result = await db.execute(
             select(ClientConfig)
-            .where(ClientConfig.api_key == api_key)
+            .where(ClientConfig.api_key_hash == api_key)
             .with_for_update()
         )
         config = result.scalar_one_or_none()
@@ -475,7 +480,7 @@ async def delete_config(
         await log_config_update(
             db=db,
             username=username,
-            api_key=api_key,
+            api_key_hash=api_key,
             modem_id=config.last_seen_modem_id,
             ip_address=client_ip,
             old_config=config.config_plaintext,
@@ -491,7 +496,7 @@ async def delete_config(
 
         # Delete version history first (no FK cascade)
         await db.execute(
-            delete(ConfigVersion).where(ConfigVersion.api_key == api_key)
+            delete(ConfigVersion).where(ConfigVersion.api_key_hash == api_key)
         )
 
         await db.delete(config)

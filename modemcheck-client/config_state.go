@@ -143,6 +143,8 @@ func SaveConfigState(state *ConfigState) error {
 	}
 
 	// Atomic write: write to temp file, then rename
+	// NOTE: os.Rename is atomic on POSIX systems but NOT fully atomic on Windows.
+	// State files have backup/restore logic to mitigate potential data loss.
 	tempFile := stateFile + ".tmp"
 
 	// Write to temp file with restrictive permissions (only owner can read/write)

@@ -162,6 +162,8 @@ func saveUploadQueue(queue *UploadQueue) error {
 	}
 
 	// Write to temporary file first (atomic write pattern)
+	// NOTE: os.Rename is atomic on POSIX systems but NOT fully atomic on Windows.
+	// Upload queue data can be regenerated if lost, so this is acceptable.
 	tmpFile := queueFilePath + ".tmp"
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)

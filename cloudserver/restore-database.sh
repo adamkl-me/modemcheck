@@ -135,6 +135,33 @@ else
     exit 1
 fi
 
+# Verify schema version (v7.1+ dual storage migration)
+echo ""
+echo "Checking schema version..."
+
+# Check for v7.1 dual storage columns
+DUAL_STORAGE_COLS=$(docker exec "$CONTAINER_NAME" psql -U modemcheck -d "$DATABASE_NAME" -t -c "
+SELECT COUNT(*)
+FROM information_schema.columns
+WHERE table_name = 'api_keys'
+AND column_name IN ('api_key_hash', 'api_key_encrypted', 'encryption_salt', 'migrated');
+" | tr -d ' ')
+
+if [ "$DUAL_STORAGE_COLS" -eq 4 ]; then
+    echo "✓ Schema version: v7.1+ (dual storage detected)"
+    echo ""
+    echo "⚠️  WARNING: This database uses v7.1+ dual storage for API keys."
+    echo "   Ensure application code is v7.1+ compatible."
+    echo "   Required: SECRET_KEY must match the one used during encryption."
+else
+    echo "✓ Schema version: < v7.1 (legacy)"
+    echo ""
+    echo "⚠️  NOTE: This database does not have v7.1 dual storage."
+    echo "   If deploying v7.1+ code, run migration scripts after restore:"
+    echo "   1. cloudserver/migrations/add_api_key_dual_storage.sql"
+    echo "   2. cloudserver/migrations/migrate_api_keys_to_dual_storage.py"
+fi
+
 # Summary
 echo ""
 echo "========================================================================"

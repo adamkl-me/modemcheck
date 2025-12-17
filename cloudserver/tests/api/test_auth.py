@@ -236,15 +236,22 @@ class TestChangeOwnPassword:
     
     @pytest.mark.asyncio
     async def test_change_own_password_weak(self, admin_client_with_token: httpx.AsyncClient, csrf_token: str):
-        """Test forced password change with weak password."""
+        """Test forced password change with weak password.
+
+        The ChangeOwnPasswordRequest schema enforces min_length=12 via Pydantic,
+        so weak passwords are rejected with 422 (validation error) before reaching
+        the endpoint logic.
+        """
         response = await admin_client_with_token.post("/api/auth/change_own_password", json={
             "new_password": "weak"
         }, headers={"X-CSRF-Token": csrf_token})
 
-        assert response.status_code == 400
+        # Pydantic validation rejects passwords shorter than 12 characters
+        assert response.status_code == 422
         data = response.json()
-        assert data.get("success") is False
-        assert "password" in data["error"]["message"].lower()
+        # Pydantic returns validation errors in 'detail' field
+        assert "detail" in data
+        assert any("new_password" in str(err) for err in data["detail"])
     
     @pytest.mark.asyncio
     async def test_change_own_password_unauthenticated(self, http_client: httpx.AsyncClient):

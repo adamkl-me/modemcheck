@@ -7,6 +7,7 @@ Provides:
 - Database initialization
 - Dependency injection for FastAPI routes
 """
+import logging
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import (
@@ -19,6 +20,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool  # Only needed for test environments
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # SQLAlchemy base class for models
 Base = declarative_base()
@@ -150,7 +153,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             # the session might be in an inconsistent state
             try:
                 await session.rollback()
-            except Exception:
+            except Exception as rollback_error:
                 # If rollback fails, session cleanup will be handled by context manager
-                pass
+                logger.error(f"Database rollback failed: {type(rollback_error).__name__}: {rollback_error}")
             raise

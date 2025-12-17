@@ -145,8 +145,9 @@ run_tests() {
     export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
 
     # Export required environment variables for Settings
-    export SECRET_KEY="test-secret-key-for-testing-only-not-production"
-    export CSRF_SECRET_KEY="test-csrf-secret-key-for-testing-only"
+    # IMPORTANT: These must match docker-compose.test.yml for encryption consistency
+    export SECRET_KEY="test-secret-key-not-for-production"
+    export CSRF_SECRET_KEY="test-csrf-secret-key"
     export DATABASE_URL="postgresql+asyncpg://modemcheck:modemcheck_test_password@localhost:5433/modemcheck_test"
     export REDIS_HOST="localhost"
     export REDIS_PORT="6380"

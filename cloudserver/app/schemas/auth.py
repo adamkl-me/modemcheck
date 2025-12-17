@@ -65,3 +65,15 @@ class ChangePasswordResponse(BaseModel):
     success: bool
     message: Optional[str] = None
     error: Optional[str] = None
+
+
+class ChangeOwnPasswordRequest(BaseModel):
+    """Change own password request schema (for forced password changes)."""
+    new_password: str = Field(..., min_length=12)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "new_password": "NewSecurePassword456#"
+            }
+        }

@@ -228,6 +228,8 @@ class TestViewerTheme:
         await login_page.login_as_admin()
 
         viewer_page = ViewerPage(browser_page, BASE_URL)
+        # Wait for theme toggle to appear (page may still be loading after redirect)
+        await viewer_page.theme_toggle.wait_for(state="visible", timeout=5000)
         assert await viewer_page.is_theme_toggle_visible(), "Theme toggle button should be visible"
 
 

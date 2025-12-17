@@ -78,7 +78,10 @@ func (s *CODAScraper) GetData(checkTime int64) (*ModemData, error) {
 	}
 
 	if len(sysInfoArray) > 0 {
-		modemMAC, _ := s.GetMAC()
+		modemMAC, err := s.GetMAC()
+		if err != nil {
+			s.logger.Log(fmt.Sprintf("Warning: Failed to retrieve MAC address: %v", err))
+		}
 		data.SysInfo = SysInfo{
 			SysTime:   parseModemTime("coda56-system", getString(sysInfoArray[0], "systemTime")),
 			Firmware:  getString(sysInfoArray[0], "swVersion"),

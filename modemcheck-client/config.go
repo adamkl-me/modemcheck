@@ -361,6 +361,10 @@ func SaveConfigurationAtomic(config *Configuration, configPath string) error {
 	}
 
 	// Atomic write: write to temp file, then rename
+	// NOTE: os.Rename is atomic on POSIX systems but NOT fully atomic on Windows
+	// when the destination file exists. On Windows, the target is first deleted
+	// then renamed, creating a brief window for data loss on crash. This is
+	// acceptable for configuration files as they can be regenerated.
 	tempFile := configPath + ".tmp"
 
 	// Write to temp file with restrictive permissions

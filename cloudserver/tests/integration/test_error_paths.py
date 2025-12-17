@@ -206,20 +206,28 @@ class TestDatabaseErrors:
     @pytest.mark.asyncio
     @pytest.mark.filterwarnings("ignore:New instance.*conflicts with persistent instance:sqlalchemy.exc.SAWarning")
     async def test_foreign_key_constraint(self, db_session):
-        """Test handling of foreign key violations."""
+        """Test handling of foreign key violations (v8.0+: hash-based storage)."""
         from app.models.api_key import APIKey
+        from app.core.api_key_crypto import encrypt_api_key_for_storage
+        import secrets
 
-        # Try to create API key with duplicate primary key
+        # Create first API key
+        plaintext1 = secrets.token_hex(32)
+        hash1, enc1, salt1 = encrypt_api_key_for_storage(plaintext1)
         api_key1 = APIKey(
-            api_key="test_key_duplicate",
+            api_key_hash=hash1,
+            api_key_encrypted=enc1,
+            encryption_salt=salt1,
             name="first_key"
         )
         db_session.add(api_key1)
         await db_session.commit()
 
-        # Try to create another with same api_key (primary key violation)
+        # Try to create another with same hash (primary key violation)
         api_key2 = APIKey(
-            api_key="test_key_duplicate",  # Duplicate primary key
+            api_key_hash=hash1,  # Duplicate primary key
+            api_key_encrypted=enc1,
+            encryption_salt=salt1,
             name="second_key"
         )
         db_session.add(api_key2)
@@ -359,7 +367,8 @@ class TestInputValidationEdgeCases:
     async def test_special_characters_in_modem_id(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test handling of special characters in modem_id."""
         import hashlib
@@ -377,14 +386,14 @@ class TestInputValidationEdgeCases:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -456,7 +465,8 @@ class TestResourceLimits:
     async def test_maximum_upload_size(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test upload at maximum allowed size."""
         import hashlib
@@ -473,14 +483,14 @@ class TestResourceLimits:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -538,7 +548,8 @@ class TestErrorRecovery:
     async def test_recovery_after_invalid_json(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test that system recovers after receiving invalid JSON."""
         import hashlib
@@ -553,14 +564,14 @@ class TestErrorRecovery:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, invalid_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -596,14 +607,14 @@ class TestErrorRecovery:
         checksum2 = hashlib.sha256(valid_data).hexdigest()
         message2 = f"{timestamp}|{modem_id}|{filename2}|{checksum2}"
         signature2 = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message2.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files2 = {"file": (filename2, valid_data, "application/json")}
         data2 = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename2,
             "checksum": checksum2

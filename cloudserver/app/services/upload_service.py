@@ -11,6 +11,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.utils import utc_now
 from app.models import ModemCheck
@@ -50,10 +51,11 @@ class InputValidator:
         if len(modem_id) > 64:
             raise UploadValidationError("modem_id too long (max 64 characters)")
 
-        # Model can be alphanumeric with underscores, MAC address uses hex digits and colons
-        if not re.match(r'^[a-zA-Z0-9_]+-[A-Fa-f0-9:]+$', modem_id):
+        # Model can be alphanumeric with underscores, MAC address must be valid format
+        # Valid MAC formats: 12 hex digits (no colons) or 6 colon-separated hex pairs
+        if not re.match(r'^[a-zA-Z0-9_]+-([A-Fa-f0-9]{12}|([A-Fa-f0-9]{2}:){5}[A-Fa-f0-9]{2})$', modem_id):
             raise UploadValidationError(
-                "Invalid modem_id format (expected: MODEL-MACADDRESS)"
+                "Invalid modem_id format (expected: MODEL-MACADDRESS with 12 hex digits)"
             )
 
     @staticmethod
@@ -145,7 +147,9 @@ class FileProcessor:
         """
         try:
             return json.loads(file_data.decode('utf-8'))
-        except Exception as e:
+        except UnicodeDecodeError as e:
+            raise UploadValidationError(f"Invalid file encoding: {str(e)}")
+        except json.JSONDecodeError as e:
             raise UploadValidationError(f"Invalid JSON data: {str(e)}")
 
     @staticmethod
@@ -237,13 +241,12 @@ class UploadPersistenceService:
             await db.commit()
             await db.refresh(new_check)
             return new_check
-        except Exception as e:
+        except IntegrityError:
             await db.rollback()
-            # Check if duplicate
-            if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
-                raise UploadValidationError("Check already exists", status_code=409)
-            else:
-                raise UploadValidationError("Database error", status_code=500)
+            raise UploadValidationError("Check already exists", status_code=409)
+        except SQLAlchemyError:
+            await db.rollback()
+            raise UploadValidationError("Database error", status_code=500)
 
 
 class UploadService:

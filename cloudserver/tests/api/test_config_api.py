@@ -37,10 +37,10 @@ class TestConfigSync:
     """Test client configuration sync endpoint."""
 
     @pytest.mark.asyncio
-    async def test_first_sync_creates_config(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_first_sync_creates_config(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """First sync from new client creates configuration."""
-        # Use the API key from the active_api_key fixture
-        api_key_value = active_api_key.api_key
+        # Use the plaintext API key from the test_api_key fixture
+        api_key_value = test_api_key
 
         # Prepare sync request
         config = {
@@ -103,7 +103,7 @@ class TestConfigSync:
         assert "server_timestamp" in data
 
     @pytest.mark.asyncio
-    async def test_sync_with_invalid_signature_fails(self, http_client: AsyncClient, active_api_key):
+    async def test_sync_with_invalid_signature_fails(self, http_client: AsyncClient, active_api_key, test_api_key: str):
         """Sync with invalid HMAC signature fails."""
         config = {"PingCount": 25}
         timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
@@ -112,7 +112,7 @@ class TestConfigSync:
         config_hash = calculate_config_hash(config)
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": config,
             "version": 1,  # v3.0: integer version
@@ -130,7 +130,7 @@ class TestConfigSync:
         assert "signature" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_sync_with_replay_nonce_fails(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_sync_with_replay_nonce_fails(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Sync with reused nonce fails (replay attack)."""
         config = {"PingCount": 25}
         timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')  # ISO 8601 UTC format
@@ -141,13 +141,13 @@ class TestConfigSync:
         # v2.1: signature format excludes modem_id
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,  # Optional
             "config": config,
             "version": 0,  # v3.0: integer version
@@ -166,7 +166,7 @@ class TestConfigSync:
         assert response2.status_code in [400, 401]  # Nonce replay error
 
     @pytest.mark.asyncio
-    async def test_sync_with_clock_skew_fails(self, http_client: AsyncClient, active_api_key):
+    async def test_sync_with_clock_skew_fails(self, http_client: AsyncClient, active_api_key, test_api_key: str):
         """Sync with timestamp too far in past/future fails."""
         config = {"PingCount": 25}
         # Timestamp 10 minutes in past
@@ -178,13 +178,13 @@ class TestConfigSync:
         # v2.1: signature format excludes modem_id
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,  # Optional
             "config": config,
             "version": 0,  # v3.0: integer version
@@ -201,7 +201,7 @@ class TestConfigSync:
         assert "clock" in data["error"]["message"].lower() or "timestamp" in data["error"]["message"].lower() or "skew" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_sync_with_invalid_config_fails(self, http_client: AsyncClient, active_api_key):
+    async def test_sync_with_invalid_config_fails(self, http_client: AsyncClient, active_api_key, test_api_key: str):
         """Sync with invalid configuration fails validation."""
         # Invalid config (PingCount too high)
         config = {"PingCount": 150}  # Above maximum of 100
@@ -213,13 +213,13 @@ class TestConfigSync:
         # v2.1: signature format excludes modem_id
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": config,
             "version": 0,  # v3.0: integer version
@@ -273,7 +273,7 @@ class TestAdminListConfigs:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_list_configs_returns_all(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_list_configs_returns_all(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Admin can list all configurations."""
         # Create a test config (one per API key in v2.1 architecture)
         from app.core.config_encryption import encrypt_config
@@ -283,7 +283,7 @@ class TestAdminListConfigs:
         encrypted, salt = await encrypt_config(config)
 
         client_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="ARRIS-TEST000",
             config_plaintext=config,
             config_encrypted=encrypted,
@@ -312,7 +312,7 @@ class TestAdminListConfigs:
         assert "total" in data
 
     @pytest.mark.asyncio
-    async def test_list_configs_filter_by_status(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_list_configs_filter_by_status(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Admin can filter configs by status."""
         # Create enforced config
         config = {"PingCount": 25}
@@ -322,7 +322,7 @@ class TestAdminListConfigs:
         encrypted, salt = await encrypt_config(config)
 
         enforced_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="ENFORCED-001",
             config_plaintext=config,
             config_encrypted=encrypted,
@@ -365,16 +365,16 @@ class TestAdminGetConfig:
     """Test admin get config endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key):
+    async def test_get_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Non-admin users cannot get config details."""
         response = await basic_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}"
+            f"/api/admin/configs/{active_api_key.api_key_hash}"
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_get_config_returns_details(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_config_returns_details(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Admin can get config details."""
         # Create config
         config = {"PingCount": 25, "CloudAPIKey": "secret123"}
@@ -384,7 +384,7 @@ class TestAdminGetConfig:
         encrypted, salt = await encrypt_config(config)
 
         client_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="DETAIL-001",
             config_plaintext=config,
             config_encrypted=encrypted,
@@ -403,12 +403,12 @@ class TestAdminGetConfig:
 
         # Get config (api_key only - modem_id is no longer primary key)
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}"
+            f"/api/admin/configs/{active_api_key.api_key_hash}"
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["api_key"] == active_api_key.api_key
+        assert data["api_key"] == active_api_key.api_key_hash  # v8.0+: Returns hash
         assert data["last_seen_modem_id"] == "DETAIL-001"
         assert data["version"] == 5  # v3.0: integer version
         assert data["status"] == "unmanaged"  # v3.0: simplified status
@@ -430,7 +430,7 @@ class TestAdminUpdateConfig:
     """Test admin update config endpoint."""
 
     @pytest.mark.asyncio
-    async def test_update_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key):
+    async def test_update_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Non-admin users cannot update config."""
         update_request = {
             "config": {"PingCount": 50},
@@ -438,14 +438,14 @@ class TestAdminUpdateConfig:
         }
 
         response = await basic_client_with_token.put(
-            f"/api/admin/configs/{active_api_key.api_key}",
+            f"/api/admin/configs/{active_api_key.api_key_hash}",
             json=update_request
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_update_config_creates_version(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, csrf_token):
+    async def test_update_config_creates_version(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str, csrf_token):
         """Updating config creates version history."""
         # Create initial config
         config = {"PingCount": 25}
@@ -455,7 +455,7 @@ class TestAdminUpdateConfig:
         encrypted, salt = await encrypt_config(config)
 
         client_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="VERSION-001",
             config_plaintext=config,
             config_encrypted=encrypted,
@@ -480,7 +480,7 @@ class TestAdminUpdateConfig:
         }
 
         response = await admin_client_with_token.put(
-            f"/api/admin/configs/{active_api_key.api_key}",
+            f"/api/admin/configs/{active_api_key.api_key_hash}",
             json=update_request,
             headers={"X-CSRF-Token": csrf_token}
         )
@@ -494,7 +494,7 @@ class TestAdminUpdateConfig:
         # Verify version history was created
         result = await db_session.execute(
             select(ConfigVersion).where(
-                ConfigVersion.api_key == active_api_key.api_key,
+                ConfigVersion.api_key_hash == active_api_key.api_key_hash,
                 ConfigVersion.version_number == 2  # v3.0: simple version lookup
             )
         )
@@ -503,7 +503,7 @@ class TestAdminUpdateConfig:
         assert version_entry.config_plaintext == {"PingCount": 50}  # New config
 
     @pytest.mark.asyncio
-    async def test_update_config_with_invalid_data_fails(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, csrf_token):
+    async def test_update_config_with_invalid_data_fails(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str, csrf_token):
         """Updating with invalid config fails validation."""
         # Create config
         config = {"PingCount": 25}
@@ -513,7 +513,7 @@ class TestAdminUpdateConfig:
         encrypted, salt = await encrypt_config(config)
 
         client_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="INVALID-001",
             config_plaintext=config,
             config_encrypted=encrypted,
@@ -538,7 +538,7 @@ class TestAdminUpdateConfig:
         }
 
         response = await admin_client_with_token.put(
-            f"/api/admin/configs/{active_api_key.api_key}",
+            f"/api/admin/configs/{active_api_key.api_key_hash}",
             json=update_request,
             headers={"X-CSRF-Token": csrf_token}
         )
@@ -552,19 +552,19 @@ class TestAdminRollbackConfig:
     """Test admin rollback config endpoint."""
 
     @pytest.mark.asyncio
-    async def test_rollback_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key):
+    async def test_rollback_config_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Non-admin users cannot rollback config."""
         rollback_request = {"reason": "Test rollback"}
 
         response = await basic_client_with_token.post(
-            f"/api/admin/configs/{active_api_key.api_key}/rollback/1",  # v3.0: integer version
+            f"/api/admin/configs/{active_api_key.api_key_hash}/rollback/1",  # v3.0: integer version
             json=rollback_request
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_rollback_config_restores_version(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, csrf_token):
+    async def test_rollback_config_restores_version(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str, csrf_token):
         """Rollback restores config from version history."""
         # Create config with version 2
         old_config = {"PingCount": 25}
@@ -575,7 +575,7 @@ class TestAdminRollbackConfig:
         encrypted, salt = await encrypt_config(new_config)
 
         client_config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             last_seen_modem_id="ROLLBACK-001",
             config_plaintext=new_config,
             config_encrypted=encrypted,
@@ -596,7 +596,7 @@ class TestAdminRollbackConfig:
         old_encrypted, old_salt = await encrypt_config(old_config)
 
         version_entry = ConfigVersion(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             modem_id_at_creation="ROLLBACK-001",
             version_number=1,  # v3.0: simple integer version
             config_plaintext=old_config,
@@ -616,7 +616,7 @@ class TestAdminRollbackConfig:
         rollback_request = {"reason": "Revert changes"}
 
         response = await admin_client_with_token.post(
-            f"/api/admin/configs/{active_api_key.api_key}/rollback/1",  # v3.0: integer version
+            f"/api/admin/configs/{active_api_key.api_key_hash}/rollback/1",  # v3.0: integer version
             json=rollback_request,
             headers={"X-CSRF-Token": csrf_token}
         )
@@ -646,16 +646,16 @@ class TestAdminConfigHistory:
     """Test admin config history endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_history_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_requires_admin(self, http_client: AsyncClient, basic_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Non-admin users cannot view history."""
         response = await basic_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history"
         )
 
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_get_history_returns_versions(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_returns_versions(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """Admin can view version history."""
         # Create multiple version entries
         from app.core.config_encryption import encrypt_config
@@ -666,7 +666,7 @@ class TestAdminConfigHistory:
             encrypted, salt = await encrypt_config(config)
 
             version_entry = ConfigVersion(
-                api_key=active_api_key.api_key,
+                api_key_hash=active_api_key.api_key_hash,
                 modem_id_at_creation="HISTORY-001",
                 version_number=version_num,  # v3.0: simple integer version
                 config_plaintext=config,
@@ -685,7 +685,7 @@ class TestAdminConfigHistory:
 
         # Get history
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history"
         )
 
         assert response.status_code == 200
@@ -699,7 +699,7 @@ class TestAdminConfigHistory:
         assert version_numbers == [1, 2, 3]  # v3.0: simple integer versions
 
     @pytest.mark.asyncio
-    async def test_get_history_filter_by_status(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_filter_by_status(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """History can be filtered by status (v3.0: replaces track filtering)."""
         from app.core.config_encryption import encrypt_config
 
@@ -710,7 +710,7 @@ class TestAdminConfigHistory:
             encrypted, salt = await encrypt_config(config)
 
             version_entry = ConfigVersion(
-                api_key=active_api_key.api_key,
+                api_key_hash=active_api_key.api_key_hash,
                 modem_id_at_creation="HISTORY-STATUS-001",
                 version_number=idx + 1,  # v3.0: simple integer version
                 config_plaintext=config,
@@ -729,7 +729,7 @@ class TestAdminConfigHistory:
 
         # Get all history (no filtering by track in v3.0)
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history"
         )
 
         assert response.status_code == 200
@@ -737,10 +737,10 @@ class TestAdminConfigHistory:
         assert len(data["versions"]) >= 2
 
     @pytest.mark.asyncio
-    async def test_get_history_respects_limit(self, http_client: AsyncClient, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_respects_limit(self, http_client: AsyncClient, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """History endpoint respects limit parameter."""
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history?limit=2"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history?limit=2"
         )
 
         assert response.status_code == 200
@@ -748,19 +748,18 @@ class TestAdminConfigHistory:
         assert len(data["versions"]) <= 2
 
     @pytest.mark.asyncio
-    async def test_get_history_includes_modem_events(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_includes_modem_events(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """History includes modem events when requested."""
         from app.models.client_config import ConfigAuditLog
 
-        # Hash the API key for the audit log (matches query in get_modem_events_for_history)
-        api_key_hash = hashlib.sha256(active_api_key.api_key.encode('utf-8')).hexdigest()
+        # Use the hash from the fixture (v8.0+: no need to compute)
+        api_key_hash = active_api_key.api_key_hash
 
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
             timestamp=utc_now(),
             username=None,
             ip_address="192.168.1.100",
-            api_key=active_api_key.api_key,
             api_key_hash=api_key_hash,
             modem_id="MODEM-NEW",
             old_modem_id="MODEM-OLD",
@@ -773,7 +772,7 @@ class TestAdminConfigHistory:
         await db_session.commit()
 
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history"
         )
 
         assert response.status_code == 200
@@ -786,19 +785,18 @@ class TestAdminConfigHistory:
         assert modem_change_events[0]["new_modem_id"] == "MODEM-NEW"
 
     @pytest.mark.asyncio
-    async def test_get_history_excludes_modem_events_when_disabled(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key):
+    async def test_get_history_excludes_modem_events_when_disabled(self, http_client: AsyncClient, db_session, admin_client_with_token: AsyncClient, active_api_key, test_api_key: str):
         """History can exclude modem events with query param."""
         from app.models.client_config import ConfigAuditLog
 
-        # Hash the API key for the audit log (matches query in get_modem_events_for_history)
-        api_key_hash = hashlib.sha256(active_api_key.api_key.encode('utf-8')).hexdigest()
+        # Use the hash from the fixture (v8.0+: no need to compute)
+        api_key_hash = active_api_key.api_key_hash
 
         # Create modem change audit entry
         audit_entry = ConfigAuditLog(
             timestamp=utc_now(),
             username=None,
             ip_address="192.168.1.100",
-            api_key=active_api_key.api_key,
             api_key_hash=api_key_hash,
             modem_id="MODEM-TEST",
             old_modem_id=None,
@@ -811,7 +809,7 @@ class TestAdminConfigHistory:
         await db_session.commit()
 
         response = await admin_client_with_token.get(
-            f"/api/admin/configs/{active_api_key.api_key}/history?include_modem_events=false"
+            f"/api/admin/configs/{active_api_key.api_key_hash}/history?include_modem_events=false"
         )
 
         assert response.status_code == 200

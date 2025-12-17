@@ -2170,10 +2170,10 @@
     </div>
 
     <!-- Modal for showing new key -->
-    <div id="newKeyModal" class="modal">
+    <div id="newKeyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="newKeyModalTitle">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>API Key Created Successfully!</h2>
+                <h2 id="newKeyModalTitle">API Key Created Successfully!</h2>
             </div>
             <div>
                 <p style="margin-bottom: 15px;">
@@ -2189,10 +2189,10 @@
     </div>
 
     <!-- Modal for editing key -->
-    <div id="editKeyModal" class="modal">
+    <div id="editKeyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editKeyModalTitle">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Edit API Key</h2>
+                <h2 id="editKeyModalTitle">Edit API Key</h2>
             </div>
             <div class="form-group">
                 <label for="editKeyName">Key Name / Description</label>
@@ -2211,10 +2211,10 @@
     </div>
 
     <!-- Modal for delete config confirmation -->
-    <div id="deleteConfigModal" class="modal">
+    <div id="deleteConfigModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteConfigModalTitle">
         <div class="modal-content" style="max-width: 450px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="margin: 0; color: #dc3545;">Delete Configuration</h2>
+                <h2 id="deleteConfigModalTitle" style="margin: 0; color: #dc3545;">Delete Configuration</h2>
                 <button class="btn btn-secondary" onclick="closeDeleteConfigModal()" style="padding: 5px 12px; font-size: 16px;">&times;</button>
             </div>
             <div style="padding: 20px 0;">
@@ -2848,7 +2848,27 @@
             showTab('configGen');
 
             loadKeys();
+
+            // Global Escape key handler to close any open modal
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeAllModals();
+                }
+            });
         });
+
+        // Close all open modals - called by Escape key handler
+        function closeAllModals() {
+            // Get all elements with class 'modal' that are currently shown
+            const openModals = document.querySelectorAll('.modal.show, .modal.active');
+            openModals.forEach(modal => {
+                modal.classList.remove('show');
+                modal.classList.remove('active');
+            });
+            // Also close any dialog overlays
+            const overlays = document.querySelectorAll('.dialog-overlay');
+            overlays.forEach(overlay => overlay.remove());
+        }
 
         function showMessage(text, type = 'info') {
             const container = document.getElementById('toast-container');

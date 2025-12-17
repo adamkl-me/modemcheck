@@ -40,7 +40,9 @@ class ViewerPage:
     async def navigate(self):
         """Navigate to viewer page."""
         await self.page.goto(f"{self.base_url}{self.URL}")
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        # Wait for a key element to be visible instead of networkidle
+        await self.load_button.wait_for(state="visible", timeout=10000)
 
     async def is_viewer_page(self) -> bool:
         """Check if currently on viewer page."""
@@ -53,7 +55,8 @@ class ViewerPage:
     async def click_admin_button(self):
         """Click admin button to navigate to admin page."""
         await self.admin_button.click()
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        await self.page.wait_for_url("**/admin**", timeout=10000)
 
     async def click_logout_button(self):
         """Click logout button."""
@@ -132,15 +135,15 @@ class ViewerPage:
             await self.toggle_theme()
 
     async def get_background_color(self) -> str:
-        """Get body background color."""
+        """Get theme background color from CSS variable."""
         return await self.page.evaluate(
-            "getComputedStyle(document.body).backgroundColor"
+            "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"
         )
 
     async def get_text_color(self) -> str:
-        """Get body text color."""
+        """Get theme text color from CSS variable."""
         return await self.page.evaluate(
-            "getComputedStyle(document.body).color"
+            "getComputedStyle(document.documentElement).getPropertyValue('--text').trim()"
         )
 
     async def is_theme_toggle_visible(self) -> bool:

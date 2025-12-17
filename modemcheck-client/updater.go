@@ -654,6 +654,11 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 
 	// Verify signature timestamp is reasonable
 	sigAge := time.Since(sigTimestamp)
+	// maxSignatureAge limits how old a signed binary can be to prevent rollback attacks.
+	// An attacker with repository access could serve an old vulnerable binary with a valid
+	// signature. The 30-day window balances security (limiting attack surface) against
+	// operational needs (allowing normal release cycles and client update delays).
+	// SECURITY NOTE: Consider reducing to 7-14 days for higher-security deployments.
 	const maxSignatureAge = 30 * 24 * time.Hour // 30 days
 
 	// Check for clock skew (negative age means signature is in the future)

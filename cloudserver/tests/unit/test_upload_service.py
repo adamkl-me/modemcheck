@@ -9,7 +9,7 @@ import json
 import hashlib
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.services.upload_service import (
     InputValidator,
@@ -290,10 +290,11 @@ class TestUploadPersistenceService:
 
     async def test_save_modem_check_database_error(self):
         """Database error should raise appropriate error."""
-        # Mock database session that raises generic exception
+        # Mock database session that raises SQLAlchemyError
+        # (the service now catches SQLAlchemyError specifically, not generic Exception)
         mock_db = AsyncMock()
         mock_db.add = MagicMock()  # db.add() is synchronous in SQLAlchemy
-        mock_db.commit.side_effect = Exception("Database connection failed")
+        mock_db.commit.side_effect = SQLAlchemyError("Database connection failed")
         mock_db.rollback = AsyncMock()
 
         service = UploadPersistenceService()

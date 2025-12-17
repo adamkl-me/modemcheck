@@ -13,6 +13,7 @@ Encrypted format: salt (32 hex chars) + nonce (24 hex chars) + ciphertext (hex)
 import os
 import json
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -22,6 +23,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from app.core.config import settings
 from app.core.errors import ConfigEncryptionError
 
+logger = logging.getLogger(__name__)
 
 # Thread pool for CPU-intensive crypto operations (avoids blocking event loop)
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crypto_")
@@ -319,5 +321,6 @@ def verify_encryption_key() -> bool:
 
         return decrypted == plaintext
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Encryption key verification failed: {type(e).__name__}: {e}")
         return False

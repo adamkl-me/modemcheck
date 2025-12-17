@@ -163,7 +163,7 @@ async def verify_nonce(
 
 async def create_config_version(
     db: AsyncSession,
-    api_key: str,
+    api_key_hash: str,
     modem_id: Optional[str],
     version_number: int,
     config_plaintext: Dict[str, Any],
@@ -181,7 +181,7 @@ async def create_config_version(
 
     Args:
         db: Database session
-        api_key: Client API key
+        api_key_hash: SHA-256 hash of API key (v8.0+: no plaintext stored)
         modem_id: Modem ID at time of creation (for tracking)
         version_number: Version number (1, 2, 3...)
         config_plaintext: Configuration data
@@ -198,7 +198,7 @@ async def create_config_version(
         Created ConfigVersion instance
     """
     version_entry = ConfigVersion(
-        api_key=api_key,
+        api_key_hash=api_key_hash,
         modem_id_at_creation=modem_id,
         version_number=version_number,
         config_plaintext=config_plaintext,
@@ -305,10 +305,13 @@ async def _sync_client_config_impl(
             actual_hash=calculated_hash
         )
 
-    # Fetch existing config by API key only (with row-level lock for update)
+    # Hash API key for database lookups (v8.0+: only hash stored in DB)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
+    # Fetch existing config by API key hash (with row-level lock for update)
     result = await db.execute(
         select(ClientConfig)
-        .where(ClientConfig.api_key == api_key)
+        .where(ClientConfig.api_key_hash == api_key_hash)
         .with_for_update()
     )
     existing_config = result.scalar_one_or_none()
@@ -329,34 +332,34 @@ async def _sync_client_config_impl(
         await validate_config(client_config, check_reachability=False, strict_security=True)
 
     # NOW verify nonce (replay protection) - only after validation passes
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+    # Note: api_key_hash was computed above for database lookup
     await verify_nonce(db, nonce, api_key_hash, request_timestamp, ip_address, modem_id)
 
     # SCENARIO 1: First sync (no existing config)
     if existing_config is None:
         return await _handle_first_sync(
-            db, api_key, modem_id, client_config, calculated_hash, ip_address
+            db, api_key, api_key_hash, modem_id, client_config, calculated_hash, ip_address
         )
 
     # Track modem ID changes (explicit None check to distinguish "not provided" from "changed")
     if modem_id is not None and existing_config.last_seen_modem_id != modem_id:
         await _log_modem_change(
-            db, api_key, existing_config.last_seen_modem_id, modem_id, ip_address
+            db, api_key_hash, existing_config.last_seen_modem_id, modem_id, ip_address
         )
         existing_config.last_seen_modem_id = modem_id
 
     # Dispatch based on status
     if existing_config.status == ConfigStatus.UNMANAGED:
         return await _handle_unmanaged_sync(
-            db, existing_config, modem_id, client_config, calculated_hash, ip_address
+            db, api_key, existing_config, modem_id, client_config, calculated_hash, ip_address
         )
     elif existing_config.status == ConfigStatus.MANAGED:
         return await _handle_managed_sync(
-            db, existing_config, modem_id, client_config, calculated_hash, ip_address
+            db, api_key, existing_config, modem_id, client_config, calculated_hash, ip_address
         )
     elif existing_config.status == ConfigStatus.LOCKED:
         return await _handle_locked_sync(
-            db, existing_config, modem_id, client_config, calculated_hash, ip_address
+            db, api_key, existing_config, modem_id, client_config, calculated_hash, ip_address
         )
     else:
         # All ConfigStatus enum values should be handled above.
@@ -366,7 +369,7 @@ async def _sync_client_config_impl(
 
 async def _log_modem_change(
     db: AsyncSession,
-    api_key: str,
+    api_key_hash: str,
     old_modem_id: Optional[str],
     new_modem_id: str,
     ip_address: str
@@ -374,15 +377,11 @@ async def _log_modem_change(
     """Log a modem ID change event to the audit log."""
     from app.models.client_config import ConfigAuditLog
 
-    # Hash API key for secure storage (SHA256)
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-
     audit_entry = ConfigAuditLog(
         timestamp=utc_now(),
         username=None,  # Client-initiated
         api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=None,  # Don't store plaintext API key
         modem_id=new_modem_id,
         old_modem_id=old_modem_id,
         new_modem_id=new_modem_id,
@@ -406,6 +405,7 @@ async def _log_modem_change(
 async def _handle_first_sync(
     db: AsyncSession,
     api_key: str,
+    api_key_hash: str,
     modem_id: Optional[str],
     client_config: Dict[str, Any],
     config_hash: str,
@@ -420,7 +420,7 @@ async def _handle_first_sync(
     encrypted_blob, _ = await encrypt_config(client_config, salt)
 
     new_config = ClientConfig(
-        api_key=api_key,
+        api_key_hash=api_key_hash,
         last_seen_modem_id=modem_id,
         config_plaintext=client_config,
         config_encrypted=encrypted_blob,
@@ -440,7 +440,7 @@ async def _handle_first_sync(
 
     # Create version history entry
     await create_config_version(
-        db, api_key, modem_id,
+        db, api_key_hash, modem_id,
         version_number=1,
         config_plaintext=client_config,
         config_encrypted=encrypted_blob,
@@ -453,7 +453,7 @@ async def _handle_first_sync(
         ip_address=ip_address
     )
 
-    # Log audit entry
+    # Log audit entry (uses plaintext api_key which it hashes internally)
     await log_config_sync(
         db, api_key, modem_id, ip_address,
         old_config=None,
@@ -476,6 +476,7 @@ async def _handle_first_sync(
 
 async def _handle_unmanaged_sync(
     db: AsyncSession,
+    api_key: str,
     existing_config: ClientConfig,
     modem_id: Optional[str],
     client_config: Dict[str, Any],
@@ -527,7 +528,7 @@ async def _handle_unmanaged_sync(
 
     # Create version history
     await create_config_version(
-        db, existing_config.api_key, modem_id,
+        db, existing_config.api_key_hash, modem_id,
         version_number=new_version,
         config_plaintext=client_config,
         config_encrypted=encrypted_blob,
@@ -540,8 +541,9 @@ async def _handle_unmanaged_sync(
         ip_address=ip_address
     )
 
+    # Log audit entry (uses plaintext api_key which it hashes internally)
     await log_config_sync(
-        db, existing_config.api_key, modem_id, ip_address,
+        db, api_key, modem_id, ip_address,
         old_config=old_config_plaintext,  # Use captured value, not mutated object
         new_config=client_config,
         old_version=old_version,
@@ -562,6 +564,7 @@ async def _handle_unmanaged_sync(
 
 async def _handle_managed_sync(
     db: AsyncSession,
+    api_key: str,
     existing_config: ClientConfig,
     modem_id: Optional[str],
     client_config: Dict[str, Any],
@@ -582,10 +585,11 @@ async def _handle_managed_sync(
         old_sync_status = existing_config.sync_status
         existing_config.sync_status = SyncStatus.ACTIVE
 
+        # Log status change (uses plaintext api_key which it hashes internally)
         await log_status_change(
             db=db,
             username="client",
-            api_key=existing_config.api_key,
+            api_key=api_key,
             modem_id=modem_id,
             ip_address=ip_address,
             old_status=existing_config.status,
@@ -650,7 +654,7 @@ async def _handle_managed_sync(
     existing_config.updated_by = "client"
 
     await create_config_version(
-        db, existing_config.api_key, modem_id,
+        db, existing_config.api_key_hash, modem_id,
         version_number=new_version,
         config_plaintext=client_config,
         config_encrypted=encrypted_blob,
@@ -663,8 +667,9 @@ async def _handle_managed_sync(
         ip_address=ip_address
     )
 
+    # Log audit entries (uses plaintext api_key which it hashes internally)
     await log_config_sync(
-        db, existing_config.api_key, modem_id, ip_address,
+        db, api_key, modem_id, ip_address,
         old_config=old_config_plaintext,  # Use captured value, not mutated object
         new_config=client_config,
         old_version=old_version,
@@ -675,7 +680,7 @@ async def _handle_managed_sync(
     await log_status_change(
         db=db,
         username="client",
-        api_key=existing_config.api_key,
+        api_key=api_key,
         modem_id=modem_id,
         ip_address=ip_address,
         old_status=old_status,
@@ -699,6 +704,7 @@ async def _handle_managed_sync(
 
 async def _handle_locked_sync(
     db: AsyncSession,
+    api_key: str,
     existing_config: ClientConfig,
     modem_id: Optional[str],
     client_config: Dict[str, Any],
@@ -720,10 +726,11 @@ async def _handle_locked_sync(
         old_sync_status = existing_config.sync_status
         existing_config.sync_status = SyncStatus.ACTIVE
 
+        # Log status change (uses plaintext api_key which it hashes internally)
         await log_status_change(
             db=db,
             username="client",
-            api_key=existing_config.api_key,
+            api_key=api_key,
             modem_id=modem_id,
             ip_address=ip_address,
             old_status=existing_config.status,
@@ -768,9 +775,12 @@ async def get_config_for_sync(
         Config dict with encrypted_blob, salt, hash, status, sync_status, version
         None if config doesn't exist
     """
+    # Hash API key for database lookup (v8.0+: only hash stored in DB)
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
     result = await db.execute(
         select(ClientConfig)
-        .where(ClientConfig.api_key == api_key)
+        .where(ClientConfig.api_key_hash == api_key_hash)
     )
     config = result.scalar_one_or_none()
 

@@ -20,14 +20,23 @@ logger = logging.getLogger(__name__)
 
 class APIKeyCache:
     """
-    Cache-based API key cache for optimizing upload endpoint performance.
+    Hash-based API key cache for optimizing upload endpoint performance (v7.1+).
+
+    SECURITY ENHANCEMENT:
+    - Stores ONLY HASHES in Redis (no plaintext exposure)
+    - Fixes CRITICAL vulnerability: Redis compromise no longer exposes API keys
+    - Uses SHA-256 hash for validation (one-way, cannot reverse)
 
     Cache strategy:
-    - Active API keys are cached with configurable TTL (default: 5 minutes)
-    - Keys are stored as a JSON list with their names
-    - Timing-safe comparison used for key validation
+    - Active API key HASHES are cached with configurable TTL (default: 5 minutes)
+    - Keys stored as JSON list: [{'api_key_hash': hash, 'name': name}, ...]
+    - Timing-safe comparison used for hash validation
     - Cache invalidated when keys are created/modified/deleted
     - Automatic fallback to in-memory cache if Redis unavailable
+
+    Migration:
+    - During migration, cache stores both hash (new) and plaintext (legacy)
+    - After Phase 8 cleanup, only hash is stored
     """
 
     CACHE_KEY = "api_keys:active"
@@ -35,10 +44,13 @@ class APIKeyCache:
     @staticmethod
     async def get_cached_keys() -> Optional[List[Dict[str, str]]]:
         """
-        Get cached API keys from cache (with automatic fallback).
+        Get cached API key hashes from cache (with automatic fallback).
 
         Returns:
-            List of dicts with 'api_key' and 'name' fields, or None if not cached
+            List of dicts with 'api_key_hash' and 'name' fields, or None if not cached
+
+        Security:
+            Returns ONLY HASHES (no plaintext in Redis)
         """
         try:
             cache = await get_cache()
@@ -54,10 +66,13 @@ class APIKeyCache:
     @staticmethod
     async def set_cached_keys(keys: List[Dict[str, str]]) -> None:
         """
-        Cache API keys in cache (with automatic fallback).
+        Cache API key hashes in cache (with automatic fallback).
 
         Args:
-            keys: List of dicts with 'api_key' and 'name' fields
+            keys: List of dicts with 'api_key_hash' and 'name' fields
+
+        Security:
+            Stores ONLY HASHES (no plaintext written to Redis)
         """
         try:
             cache = await get_cache()
@@ -85,54 +100,70 @@ class APIKeyCache:
         db_fallback_func
     ) -> Tuple[bool, Optional[str]]:
         """
-        Validate API key using cache with database fallback.
+        Validate API key using hash-based cache with database fallback (v7.1+).
+
+        Security flow:
+        1. Client sends plaintext API key
+        2. Server hashes it (SHA-256)
+        3. Server looks up hash in cache/database
+        4. Timing-safe comparison prevents timing attacks
 
         Args:
-            api_key: The API key to validate
+            api_key: The plaintext API key from client
             db_fallback_func: Async function to query database if cache miss
 
         Returns:
             (is_valid, key_name) tuple
         """
+        # Hash the API key for validation (SHA-256, 64 hex chars)
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
         # Try to get from cache first
         cached_keys = await APIKeyCache.get_cached_keys()
 
         if cached_keys is not None:
-            # Use cached keys for validation
+            # Use cached HASHES for validation (timing-safe)
             for stored_key in cached_keys:
-                if secrets.compare_digest(api_key, stored_key['api_key']):
+                # Compare hashes (not plaintext) - timing-safe
+                if secrets.compare_digest(api_key_hash, stored_key['api_key_hash']):
                     return True, stored_key['name']
             return False, None
 
         # Cache miss - query database
         active_keys = await db_fallback_func()
 
-        # Build cache data
+        # Build cache data with HASHES ONLY (security fix)
         cache_data = [
-            {'api_key': key.api_key, 'name': key.name}
+            {'api_key_hash': key.api_key_hash, 'name': key.name}
             for key in active_keys
+            if key.api_key_hash  # Only cache migrated keys with hashes
         ]
 
-        # Store in cache for next time
+        # Store in cache for next time (HASHES ONLY, no plaintext)
         await APIKeyCache.set_cached_keys(cache_data)
 
-        # Validate against fetched keys
+        # Validate against fetched keys (hash comparison)
         for stored_key in active_keys:
-            if secrets.compare_digest(api_key, stored_key.api_key):
+            if stored_key.api_key_hash and secrets.compare_digest(api_key_hash, stored_key.api_key_hash):
                 return True, stored_key.name
 
         return False, None
 
     @staticmethod
-    async def update_last_used(api_key: str, db=None) -> None:
+    async def update_last_used_by_hash(api_key_hash: str) -> None:
         """
-        Update the last_used timestamp for an API key.
+        Update the last_used timestamp for an API key using hash-based lookup (v7.1+).
+
+        Security: Uses hash lookup to prevent plaintext exposure in queries.
 
         This is done asynchronously using its own database session to avoid
         conflicts with the request's session lifecycle.
 
         Performance: Reduces upload latency by 10-50ms by not waiting
         for the database commit to complete.
+
+        Args:
+            api_key_hash: SHA-256 hash of the API key (64 hex chars)
         """
         from sqlalchemy import update
         from app.models.api_key import APIKey
@@ -144,14 +175,14 @@ class APIKeyCache:
             async with get_db_context() as session:
                 await session.execute(
                     update(APIKey)
-                    .where(APIKey.api_key == api_key)
+                    .where(APIKey.api_key_hash == api_key_hash)
                     .values(last_used=utc_now())
                 )
                 # Commit is handled by the context manager
         except Exception as e:
             # Log but don't fail - last_used timestamp is not critical
             # Upload should succeed even if timestamp update fails
-            logger.debug(f"API key last_used update failed: {type(e).__name__}: {e}")
+            logger.debug(f"API key last_used update failed (hash-based): {type(e).__name__}: {e}")
 
 
 class APIKeyCacheStats:

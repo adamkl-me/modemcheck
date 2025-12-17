@@ -177,7 +177,6 @@ async def log_config_sync(
         username=None,  # Client-initiated (no user)
         api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="sync",
         config_summary=config_summary,
@@ -197,7 +196,7 @@ async def log_config_sync(
 async def log_config_update(
     db: AsyncSession,
     username: str,
-    api_key: str,
+    api_key_hash: str,
     modem_id: Optional[str],
     ip_address: str,
     old_config: Optional[Dict[str, Any]],
@@ -217,7 +216,7 @@ async def log_config_update(
     Args:
         db: Database session
         username: Admin username
-        api_key: Target client API key (will be hashed for storage)
+        api_key_hash: SHA-256 hash of API key (v8.0+: hash passed directly)
         modem_id: Target client modem ID (optional, for tracking metadata)
         ip_address: Admin IP address
         old_config: Previous config (None for new configs)
@@ -233,15 +232,11 @@ async def log_config_update(
     """
     config_summary = create_change_summary(old_config, new_config)
 
-    # Hash API key for secure storage (SHA256)
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-
     audit_entry = ConfigAuditLog(
         timestamp=utc_now(),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="update",
         config_summary=config_summary,
@@ -261,7 +256,7 @@ async def log_config_update(
 async def log_config_rollback(
     db: AsyncSession,
     username: str,
-    api_key: str,
+    api_key_hash: str,
     modem_id: Optional[str],
     ip_address: str,
     target_version: int,
@@ -276,7 +271,7 @@ async def log_config_rollback(
     Args:
         db: Database session
         username: Admin username
-        api_key: Target client API key (will be hashed for storage)
+        api_key_hash: SHA-256 hash of API key (v8.0+: hash passed directly)
         modem_id: Target client modem ID (optional, for tracking metadata)
         ip_address: Admin IP address
         target_version: Version being rolled back to
@@ -285,15 +280,11 @@ async def log_config_rollback(
         success: Whether rollback succeeded
         failure_reason: Error message if failed
     """
-    # Hash API key for secure storage (SHA256)
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
-
     audit_entry = ConfigAuditLog(
         timestamp=utc_now(),
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="rollback",
         config_summary={
@@ -352,7 +343,6 @@ async def log_status_change(
         username=username,
         api_key_hash=api_key_hash,
         ip_address=ip_address,
-        api_key=None,  # Don't store plaintext API key
         modem_id=modem_id,
         action="status_change",
         config_summary={
@@ -376,7 +366,7 @@ async def log_status_change(
 
 async def get_modem_events_for_history(
     db: AsyncSession,
-    api_key: str,
+    api_key_hash: str,
     limit: int = 50
 ) -> list:
     """
@@ -386,7 +376,7 @@ async def get_modem_events_for_history(
 
     Args:
         db: Database session
-        api_key: API key to filter by (will be hashed for query)
+        api_key_hash: SHA-256 hash of API key (v8.0+: hash passed directly)
         limit: Maximum events to return
 
     Returns:
@@ -396,9 +386,6 @@ async def get_modem_events_for_history(
     from app.models.client_config import ConfigAuditLog
 
     events = []
-
-    # Hash API key for secure lookup
-    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
 
     modem_changes = await db.execute(
         select(

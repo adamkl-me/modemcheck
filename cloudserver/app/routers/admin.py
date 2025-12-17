@@ -52,16 +52,29 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new API key for client authentication.
+    Create a new API key with dual storage (hash + encrypted) for security (v7.1+).
+
+    Security:
+    - Generates 256-bit random API key (cryptographically secure)
+    - Stores SHA-256 hash for validation (one-way, fast lookup)
+    - Stores AES-256-GCM encrypted plaintext for admin reveal
+    - Returns plaintext ONLY ONCE (must be saved by user)
 
     Requires: elevated or admin role
     """
+    from app.core.api_key_crypto import encrypt_api_key_for_storage
+
     # Generate secure random API key (32 bytes = 64 hex chars)
     new_api_key = secrets.token_hex(32)
 
-    # Create API key record
+    # Hash + encrypt for storage (convenience function)
+    api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(new_api_key)
+
+    # Create API key record with hash-based storage (v8.0+)
     api_key = APIKey(
-        api_key=new_api_key,
+        api_key_hash=api_key_hash,  # Primary key - SHA-256 hash for validation
+        api_key_encrypted=encrypted_hex,  # Encrypted plaintext for admin reveal
+        encryption_salt=salt_hex,  # Salt for decryption
         name=key_data.name,
         created_at=utc_now(),
         is_active=True
@@ -70,11 +83,11 @@ async def create_api_key(
     db.add(api_key)
     await db.commit()
 
-    # Invalidate API key cache
+    # Invalidate API key cache (forces hash-based repopulation)
     from app.core.api_key_cache import APIKeyCache
     await APIKeyCache.invalidate_cache()
 
-    # Log creation
+    # Log creation (audit trail)
     await log_user_activity(
         db=db,
         username=session_data["username"],
@@ -82,14 +95,14 @@ async def create_api_key(
         ip_address=get_client_ip(request),
         success=True,
         user_role=session_data.get("role"),
-        action_details={"key_name": key_data.name},
+        action_details={"key_name": key_data.name, "key_hash_prefix": api_key_hash[:16]},
         user_agent=get_user_agent(request)
     )
 
     return APIKeyCreateResponse(
         success=True,
-        message="API key created successfully",
-        api_key=new_api_key,  # Only shown once!
+        message="API key created successfully. Save it now - it cannot be recovered later.",
+        api_key=new_api_key,  # ⚠️ ONLY TIME PLAINTEXT IS SHOWN - must be saved!
         name=key_data.name
     )
 
@@ -104,23 +117,78 @@ async def list_api_keys(
     """
     List all API keys (without exposing the actual keys).
 
+    v8.0+: Decrypts each key to create preview (first4...last4).
+    This is secure because previews are computed on-demand, not stored.
+
     Requires: elevated or admin role
     """
+    from app.core.api_key_crypto import decrypt_api_key_from_storage
+
     result = await db.execute(select(APIKey))
     keys = result.scalars().all()
 
-    key_list = [
-        APIKeyResponse(
-            api_key_preview=create_api_key_preview(key.api_key),
+    key_list = []
+    for key in keys:
+        # Decrypt to create preview (v8.0+: no plaintext column)
+        try:
+            plaintext = decrypt_api_key_from_storage(key.api_key_encrypted, key.encryption_salt)
+            preview = create_api_key_preview(plaintext)
+        except Exception:
+            # Fallback if decryption fails (shouldn't happen)
+            preview = f"{key.api_key_hash[:4]}...{key.api_key_hash[-4:]}"
+
+        key_list.append(APIKeyResponse(
+            api_key_preview=preview,
             name=key.name,
             created_at=key.created_at,
             last_used=key.last_used,
             is_active=key.is_active
-        )
-        for key in keys
-    ]
+        ))
 
     return APIKeyListResponse(success=True, api_keys=key_list)
+
+
+async def find_api_key_by_preview(db: AsyncSession, api_key_preview: str) -> tuple[APIKey, str]:
+    """
+    Find an API key by its preview format (first4...last4).
+
+    v8.0+: Since plaintext is no longer stored, we decrypt each key to match.
+    This is O(n) but acceptable for small key counts (<100 keys typical).
+
+    Args:
+        db: Database session
+        api_key_preview: Preview string in format "xxxx...yyyy"
+
+    Returns:
+        Tuple of (APIKey model, decrypted plaintext)
+
+    Raises:
+        InvalidAPIKeyPreviewError: If preview format is invalid
+        APIKeyNotFoundError: If no matching key found
+    """
+    from app.core.api_key_crypto import decrypt_api_key_from_storage
+
+    # Validate preview format
+    if "..." not in api_key_preview or len(api_key_preview) != 11:
+        raise InvalidAPIKeyPreviewError()
+
+    first_part = api_key_preview[:4]
+    last_part = api_key_preview[-4:]
+
+    # v8.0+: Decrypt all keys and find matching one
+    result = await db.execute(select(APIKey))
+    all_keys = result.scalars().all()
+
+    for key in all_keys:
+        try:
+            plaintext = decrypt_api_key_from_storage(key.api_key_encrypted, key.encryption_salt)
+            if plaintext[:4] == first_part and plaintext[-4:] == last_part:
+                return key, plaintext
+        except Exception:
+            # Skip keys that can't be decrypted
+            continue
+
+    raise APIKeyNotFoundError()
 
 
 @router.get("/api_keys/reveal/{api_key_preview}")
@@ -132,39 +200,22 @@ async def reveal_api_key(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Reveal the full API key given its preview.
+    Reveal the full API key by decrypting from encrypted storage.
+
+    Security:
+    - Decrypts API key on-demand using AES-256-GCM
+    - Access logged for audit trail (who revealed which key when)
+    - Requires elevated/admin role
+    - Used for "Select Existing API Key" workflow in admin UI
 
     This endpoint is used when a user needs to copy an existing API key.
-    Access is logged for security audit purposes.
 
     Requires: elevated or admin role
     """
-    # Find API key by preview - extract the pattern from preview
-    # Preview format is "first4...last4", so we need to extract these parts
-    if "..." not in api_key_preview or len(api_key_preview) != 11:
-        raise InvalidAPIKeyPreviewError()
+    # Find API key by preview (decrypts all keys to match)
+    target_key, plaintext_key = await find_api_key_by_preview(db, api_key_preview)
 
-    first_part = api_key_preview[:4]
-    last_part = api_key_preview[-4:]
-
-    # Query database for keys matching this pattern
-    # Using SQL functions to match first 4 and last 4 characters
-    from sqlalchemy import and_, func
-
-    query = select(APIKey).where(
-        and_(
-            func.substring(APIKey.api_key, 1, 4) == first_part,
-            func.right(APIKey.api_key, 4) == last_part
-        )
-    )
-
-    result = await db.execute(query)
-    target_key = result.scalar_one_or_none()
-
-    if not target_key:
-        raise APIKeyNotFoundError()
-
-    # Log this access for audit purposes
+    # Log this access for audit purposes (CRITICAL for security)
     await log_user_activity(
         db=db,
         username=session_data["username"],
@@ -172,13 +223,17 @@ async def reveal_api_key(
         ip_address=get_client_ip(request),
         success=True,
         user_role=session_data.get("role"),
-        action_details={"key_name": target_key.name, "key_preview": api_key_preview},
+        action_details={
+            "key_name": target_key.name,
+            "key_preview": api_key_preview,
+            "key_hash_prefix": target_key.api_key_hash[:16] if target_key.api_key_hash else "none"
+        },
         user_agent=get_user_agent(request)
     )
 
     return {
         "success": True,
-        "api_key": target_key.api_key,
+        "api_key": plaintext_key,  # ✅ Decrypted on-demand
         "name": target_key.name
     }
 
@@ -196,33 +251,13 @@ async def toggle_api_key(
 
     Requires: elevated or admin role
     """
-    # Find API key by preview - extract the pattern from preview
-    if "..." not in toggle_data.api_key_preview or len(toggle_data.api_key_preview) != 11:
-        raise InvalidAPIKeyPreviewError()
+    # Find API key by preview (decrypts all keys to match)
+    target_key, _ = await find_api_key_by_preview(db, toggle_data.api_key_preview)
 
-    first_part = toggle_data.api_key_preview[:4]
-    last_part = toggle_data.api_key_preview[-4:]
-
-    # Query database for keys matching this pattern
-    from sqlalchemy import and_, func
-
-    query = select(APIKey).where(
-        and_(
-            func.substring(APIKey.api_key, 1, 4) == first_part,
-            func.right(APIKey.api_key, 4) == last_part
-        )
-    )
-
-    result = await db.execute(query)
-    target_key = result.scalar_one_or_none()
-
-    if not target_key:
-        raise APIKeyNotFoundError()
-
-    # Update status
+    # Update status using hash-based primary key
     await db.execute(
         update(APIKey)
-        .where(APIKey.api_key == target_key.api_key)
+        .where(APIKey.api_key_hash == target_key.api_key_hash)
         .values(is_active=toggle_data.is_active)
     )
     await db.commit()
@@ -262,32 +297,12 @@ async def delete_api_key(
 
     Requires: elevated or admin role
     """
-    # Find API key by preview - extract the pattern from preview
-    if "..." not in delete_data.api_key_preview or len(delete_data.api_key_preview) != 11:
-        raise InvalidAPIKeyPreviewError()
+    # Find API key by preview (decrypts all keys to match)
+    target_key, _ = await find_api_key_by_preview(db, delete_data.api_key_preview)
 
-    first_part = delete_data.api_key_preview[:4]
-    last_part = delete_data.api_key_preview[-4:]
-
-    # Query database for keys matching this pattern
-    from sqlalchemy import and_, func
-
-    query = select(APIKey).where(
-        and_(
-            func.substring(APIKey.api_key, 1, 4) == first_part,
-            func.right(APIKey.api_key, 4) == last_part
-        )
-    )
-
-    result = await db.execute(query)
-    target_key = result.scalar_one_or_none()
-
-    if not target_key:
-        raise APIKeyNotFoundError()
-
-    # Delete key
+    # Delete key using hash-based primary key
     await db.execute(
-        delete(APIKey).where(APIKey.api_key == target_key.api_key)
+        delete(APIKey).where(APIKey.api_key_hash == target_key.api_key_hash)
     )
     await db.commit()
 

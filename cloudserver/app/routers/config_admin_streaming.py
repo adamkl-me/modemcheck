@@ -75,7 +75,7 @@ async def stream_config_updates(
                         .order_by(ClientConfig.updated_at.asc())
                         .limit(100)
                         .options(load_only(
-                            ClientConfig.api_key,
+                            ClientConfig.api_key_hash,
                             ClientConfig.last_seen_modem_id,
                             ClientConfig.status,
                             ClientConfig.sync_status,
@@ -88,7 +88,7 @@ async def stream_config_updates(
 
                     for config in updated_configs:
                         update_event = ConfigSSEUpdate(
-                            api_key=f"{config.api_key[:8]}..." if config.api_key else "unknown",
+                            api_key=f"{config.api_key_hash[:8]}..." if config.api_key_hash else "unknown",
                             last_seen_modem_id=config.last_seen_modem_id,
                             status=config.status.value if config.status else "unknown",
                             sync_status=config.sync_status.value if config.sync_status else "n/a",

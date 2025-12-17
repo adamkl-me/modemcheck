@@ -22,7 +22,7 @@ class TestHMACTampering:
     """Test detection of HMAC signature tampering."""
 
     @pytest.mark.asyncio
-    async def test_signature_tampering_detection(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_signature_tampering_detection(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that tampered signatures are rejected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
@@ -33,7 +33,7 @@ class TestHMACTampering:
         # Generate correct signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         correct_signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
@@ -50,7 +50,7 @@ class TestHMACTampering:
         for tampered_sig in tampered_signatures:
             files = {"file": (filename, file_content, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -69,7 +69,7 @@ class TestHMACTampering:
             assert response.status_code in [400, 401, 403], f"Tampered signature should be rejected: {tampered_sig[:10]}..."
 
     @pytest.mark.asyncio
-    async def test_signature_parameter_tampering(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_signature_parameter_tampering(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that changing any parameter after signing is detected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
@@ -80,7 +80,7 @@ class TestHMACTampering:
         # Generate signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
@@ -96,7 +96,7 @@ class TestHMACTampering:
         for tamper_params in tamper_tests:
             files = {"file": (filename, file_content, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -122,7 +122,7 @@ class TestReplayAttackPrevention:
     """Test prevention of replay attacks."""
 
     @pytest.mark.asyncio
-    async def test_timestamp_validation_window(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_timestamp_validation_window(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that old timestamps are rejected to prevent replay attacks."""
         modem_id = "XB8-REPLAY-TEST"
         filename = "test.json"
@@ -142,11 +142,11 @@ class TestReplayAttackPrevention:
         for timestamp_value, should_pass in timestamp_tests:
             timestamp = str(int(timestamp_value))
             message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-            signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+            signature = hashlib.sha256(f"{test_api_key}{message}".encode()).hexdigest()
 
             files = {"file": (filename, file_content, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -172,7 +172,7 @@ class TestReplayAttackPrevention:
                     f"Old/future timestamp {timestamp} should be rejected"
 
     @pytest.mark.asyncio
-    async def test_replay_same_request_rejection(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_replay_same_request_rejection(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that replaying the exact same request is detected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-REPLAY-EXACT"
@@ -183,14 +183,14 @@ class TestReplayAttackPrevention:
         # Generate signature
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -216,7 +216,7 @@ class TestSignatureMissingComponents:
     """Test handling of missing signature components."""
 
     @pytest.mark.asyncio
-    async def test_missing_timestamp_header(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_missing_timestamp_header(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that missing timestamp header is rejected."""
         modem_id = "XB8-MISSING-TS"
         filename = "test.json"
@@ -226,11 +226,11 @@ class TestSignatureMissingComponents:
         # Generate signature (but don't send timestamp header)
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
-        signature = hashlib.sha256(f"{active_api_key.api_key}{message}".encode()).hexdigest()
+        signature = hashlib.sha256(f"{test_api_key}{message}".encode()).hexdigest()
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -249,7 +249,7 @@ class TestSignatureMissingComponents:
         assert response.status_code in [400, 401, 403], "Missing timestamp should be rejected"
 
     @pytest.mark.asyncio
-    async def test_missing_signature_header(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_missing_signature_header(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that missing signature header is rejected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-MISSING-SIG"
@@ -259,7 +259,7 @@ class TestSignatureMissingComponents:
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -278,7 +278,7 @@ class TestSignatureMissingComponents:
         assert response.status_code in [400, 401, 403], "Missing signature should be rejected"
 
     @pytest.mark.asyncio
-    async def test_malformed_timestamp(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_malformed_timestamp(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that malformed timestamps are rejected."""
         modem_id = "XB8-MALFORMED-TS"
         filename = "test.json"
@@ -297,14 +297,14 @@ class TestSignatureMissingComponents:
             # Generate signature with the malformed timestamp
             message = f"{bad_timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
-                active_api_key.api_key.encode('utf-8'),
+                test_api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
             files = {"file": (filename, file_content, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -451,7 +451,7 @@ class TestChecksumValidation:
     """Test file checksum validation in signature."""
 
     @pytest.mark.asyncio
-    async def test_checksum_mismatch_detection(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_checksum_mismatch_detection(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that file content checksum mismatches are detected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-CHECKSUM"
@@ -463,14 +463,14 @@ class TestChecksumValidation:
         # Generate signature with wrong checksum
         message = f"{timestamp}|{modem_id}|{filename}|{wrong_checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, file_content, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": wrong_checksum  # Wrong checksum in data
@@ -489,7 +489,7 @@ class TestChecksumValidation:
         assert response.status_code in [400, 401, 403], "Checksum mismatch should be detected"
 
     @pytest.mark.asyncio
-    async def test_file_content_tampering(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_file_content_tampering(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that file content tampering after signing is detected."""
         timestamp = str(int(time.time()))
         modem_id = "XB8-TAMPER"
@@ -501,7 +501,7 @@ class TestChecksumValidation:
         # Generate signature with original content checksum
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
@@ -509,7 +509,7 @@ class TestChecksumValidation:
         # Send tampered content
         files = {"file": (filename, tampered_content, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum  # Original checksum

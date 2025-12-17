@@ -98,9 +98,12 @@ async def sync_config(
                 details={"timestamp": sync_request.timestamp, "expected_format": "ISO 8601"}
             )
 
-        # Verify API key exists and is active
+        # Verify API key exists and is active (hash-based lookup v7.1+)
+        # Client sends plaintext → Server hashes → Lookup by hash
+        api_key_hash = hashlib.sha256(sync_request.api_key.encode('utf-8')).hexdigest()
+
         api_key_result = await db.execute(
-            select(APIKey).where(APIKey.api_key == sync_request.api_key)
+            select(APIKey).where(APIKey.api_key_hash == api_key_hash)
         )
         api_key_record = api_key_result.scalar_one_or_none()
 
@@ -122,7 +125,7 @@ async def sync_config(
                 details={"hint": "Contact administrator to re-enable this API key"}
             )
 
-        # Update last_used timestamp
+        # Update last_used timestamp (uses hash-based lookup internally)
         api_key_record.update_last_used()
 
         # Perform sync (with deadlock retry)
@@ -183,7 +186,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     try:
         await db.execute(select(1))
-    except Exception:
+    except Exception as e:
+        logger.error(f"Health check database query failed: {type(e).__name__}: {e}")
         database_status = "error"
         overall_healthy = False
 
@@ -191,7 +195,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         cache_stats = await get_cache_stats()
         if not cache_stats.get("redis_available", False):
             cache_status = "degraded"
-    except Exception:
+    except Exception as e:
+        logger.error(f"Health check cache query failed: {type(e).__name__}: {e}")
         cache_status = "error"
 
     return HealthCheckResponse(

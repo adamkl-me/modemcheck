@@ -181,15 +181,15 @@ class TestAPIKeyReveal:
     """Tests for GET /api/admin/api_keys/reveal/{preview} endpoint."""
 
     @pytest.mark.asyncio
-    async def test_reveal_api_key_success(self, admin_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_reveal_api_key_success(self, admin_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test admin can reveal full API key."""
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await admin_client_with_token.get(f"/api/admin/api_keys/reveal/{preview}")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["api_key"] == active_api_key.api_key
+        assert data["api_key"] == test_api_key
         assert data["name"] == active_api_key.name
 
     @pytest.mark.asyncio
@@ -217,9 +217,9 @@ class TestAPIKeyReveal:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_reveal_api_key_basic_user_denied(self, basic_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_reveal_api_key_basic_user_denied(self, basic_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test basic user cannot reveal API keys."""
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await basic_client_with_token.get(f"/api/admin/api_keys/reveal/{preview}")
 
@@ -234,12 +234,12 @@ class TestAPIKeyToggle:
     """Tests for PUT /api/admin/api_keys/toggle endpoint."""
 
     @pytest.mark.asyncio
-    async def test_toggle_api_key_deactivate(self, admin_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_toggle_api_key_deactivate(self, admin_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test deactivating an API key."""
         session_check = await admin_client_with_token.get("/api/auth/session_check")
         csrf = session_check.json().get("csrf_token")
 
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await admin_client_with_token.put(
             "/api/admin/api_keys/toggle",
@@ -253,10 +253,16 @@ class TestAPIKeyToggle:
     @pytest.mark.asyncio
     async def test_toggle_api_key_activate(self, admin_client_with_token: httpx.AsyncClient, inactive_api_key):
         """Test activating an API key."""
+        from app.core.api_key_crypto import decrypt_api_key_from_storage
         session_check = await admin_client_with_token.get("/api/auth/session_check")
         csrf = session_check.json().get("csrf_token")
 
-        preview = f"{inactive_api_key.api_key[:4]}...{inactive_api_key.api_key[-4:]}"
+        # Decrypt the inactive API key to get the plaintext for preview
+        inactive_key_plaintext = decrypt_api_key_from_storage(
+            inactive_api_key.api_key_encrypted,
+            inactive_api_key.encryption_salt
+        )
+        preview = f"{inactive_key_plaintext[:4]}...{inactive_key_plaintext[-4:]}"
 
         response = await admin_client_with_token.put(
             "/api/admin/api_keys/toggle",
@@ -296,9 +302,9 @@ class TestAPIKeyToggle:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_toggle_api_key_requires_csrf(self, admin_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_toggle_api_key_requires_csrf(self, admin_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test toggle requires CSRF token."""
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await admin_client_with_token.put(
             "/api/admin/api_keys/toggle",
@@ -316,12 +322,12 @@ class TestAPIKeyDeletion:
     """Tests for DELETE /api/admin/api_keys endpoint."""
 
     @pytest.mark.asyncio
-    async def test_delete_api_key_success(self, admin_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_delete_api_key_success(self, admin_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test admin can delete an API key."""
         session_check = await admin_client_with_token.get("/api/auth/session_check")
         csrf = session_check.json().get("csrf_token")
 
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await admin_client_with_token.request(
             "DELETE",
@@ -364,12 +370,12 @@ class TestAPIKeyDeletion:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_api_key_basic_user_denied(self, basic_client_with_token: httpx.AsyncClient, active_api_key):
+    async def test_delete_api_key_basic_user_denied(self, basic_client_with_token: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test basic user cannot delete API keys."""
         session_check = await basic_client_with_token.get("/api/auth/session_check")
         csrf = session_check.json().get("csrf_token")
 
-        preview = f"{active_api_key.api_key[:4]}...{active_api_key.api_key[-4:]}"
+        preview = f"{test_api_key[:4]}...{test_api_key[-4:]}"
 
         response = await basic_client_with_token.request(
             "DELETE",

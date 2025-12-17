@@ -373,6 +373,19 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 		return false, fmt.Errorf("failed to parse sync response: %w", err)
 	}
 
+	// Validate server timestamp to prevent replay attacks
+	if syncResponse.ServerTimestamp != "" {
+		serverTime, err := time.Parse(time.RFC3339, syncResponse.ServerTimestamp)
+		if err != nil {
+			return false, fmt.Errorf("invalid server timestamp format: %w", err)
+		}
+		timeDiff := time.Since(serverTime)
+		// Allow 5-minute clock skew in either direction
+		if timeDiff < -5*time.Minute || timeDiff > 5*time.Minute {
+			return false, fmt.Errorf("server timestamp outside acceptable range (clock skew: %v)", timeDiff)
+		}
+	}
+
 	if !syncResponse.Success {
 		if syncResponse.Error != nil {
 			return false, fmt.Errorf("sync failed: %s", syncResponse.Error.Message)

@@ -25,29 +25,29 @@ class TestUpload:
     """Tests for POST /api/upload"""
     
     @pytest.mark.asyncio
-    async def test_upload_success(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_success(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test successful file upload with valid API key and signature."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
-        
+
         # Calculate checksum
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
-        
-        # Create HMAC signature
+
+        # Create HMAC signature (test_api_key is the plaintext from fixture)
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
-        
+
         # Create upload request
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -107,6 +107,7 @@ class TestUpload:
     @pytest.mark.asyncio
     async def test_upload_inactive_api_key(self, http_client: httpx.AsyncClient, inactive_api_key, sample_modem_check_data: Dict[str, Any]):
         """Test upload with inactive API key (but valid signature)."""
+        from app.core.api_key_crypto import decrypt_api_key_from_storage
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
@@ -114,18 +115,24 @@ class TestUpload:
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
 
+        # Decrypt the API key from storage to get plaintext
+        inactive_key_plaintext = decrypt_api_key_from_storage(
+            inactive_api_key.api_key_encrypted,
+            inactive_api_key.encryption_salt
+        )
+
         # Generate valid HMAC signature with the inactive key
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            inactive_api_key.api_key.encode('utf-8'),
+            inactive_key_plaintext.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": inactive_api_key.api_key,
+            "api_key": inactive_key_plaintext,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -143,20 +150,20 @@ class TestUpload:
         assert "Invalid or inactive API key" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_invalid_signature(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_invalid_signature(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload with invalid HMAC signature."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
-        
+
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
-        
+
         timestamp = str(int(time.time()))
-        
+
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -174,27 +181,27 @@ class TestUpload:
         assert "Signature validation failed" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_expired_timestamp(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_expired_timestamp(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload with expired timestamp (replay attack prevention)."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
         filename = "2024-01-01_12-00-00.json"
-        
+
         file_content = json.dumps(sample_modem_check_data).encode('utf-8')
         checksum = hashlib.sha256(file_content).hexdigest()
-        
+
         # Use timestamp from 10 minutes ago (should fail with 5-minute window)
         timestamp = str(int(time.time()) - 600)
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
-        
+
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -214,7 +221,7 @@ class TestUpload:
         assert "signature validation failed" in error_msg or "expired" in error_msg
     
     @pytest.mark.asyncio
-    async def test_upload_invalid_checksum(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_invalid_checksum(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload with invalid checksum."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
@@ -227,14 +234,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{wrong_checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": wrong_checksum
@@ -252,7 +259,7 @@ class TestUpload:
         assert "Checksum validation failed" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_missing_checksum(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_missing_checksum(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload without checksum field."""
         sysinfo = sample_modem_check_data["sysinfo"]
         modem_id = f"{sysinfo['modemtype']}-{sysinfo['modemmac']}"
@@ -264,14 +271,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|"  # Empty checksum
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": ""  # Empty checksum
@@ -289,7 +296,7 @@ class TestUpload:
         assert "Missing checksum" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_invalid_json(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_upload_invalid_json(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test upload with invalid JSON data."""
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         filename = "2024-01-01_12-00-00.json"
@@ -301,14 +308,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -326,7 +333,7 @@ class TestUpload:
         assert "Invalid JSON" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_invalid_modem_id_format(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_invalid_modem_id_format(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload with invalid modem_id format."""
         filename = "2024-01-01_12-00-00.json"
         modem_id = "invalid modem id with spaces"  # Invalid format
@@ -338,14 +345,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -363,7 +370,7 @@ class TestUpload:
         assert "Invalid modem_id format" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_invalid_filename_format(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check_data: Dict[str, Any]):
+    async def test_upload_invalid_filename_format(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check_data: Dict[str, Any]):
         """Test upload with invalid filename format."""
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
         filename = "invalid-filename.json"  # Invalid format (should be YYYY-MM-DD_HH-MM-SS.json)
@@ -375,14 +382,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -401,7 +408,7 @@ class TestUpload:
     
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_upload_file_too_large(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_upload_file_too_large(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test upload with file exceeding size limit."""
         import uuid
         modem_id = "XB8-AA:BB:CC:DD:EE:FF"
@@ -419,14 +426,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum
@@ -444,7 +451,7 @@ class TestUpload:
         assert "File size exceeds" in result["error"]["message"]
     
     @pytest.mark.asyncio
-    async def test_upload_duplicate_check(self, http_client: httpx.AsyncClient, active_api_key, sample_modem_check):
+    async def test_upload_duplicate_check(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, sample_modem_check):
         """Test uploading duplicate check."""
         # Try to upload the same check again
         modem_id = sample_modem_check.modem_id
@@ -457,14 +464,14 @@ class TestUpload:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum

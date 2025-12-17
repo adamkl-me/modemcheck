@@ -29,7 +29,7 @@ class TestClientSyncWorkflow:
     """Test complete client sync lifecycle."""
 
     @pytest.mark.asyncio
-    async def test_complete_client_lifecycle(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_complete_client_lifecycle(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Test complete client lifecycle: first sync → update → status change → sync."""
         modem_id = "LIFECYCLE-001"
 
@@ -47,13 +47,13 @@ class TestClientSyncWorkflow:
         # Signature format: timestamp|nonce|config_hash
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,  # Optional - for tracking only
             "config": initial_config,
             "version": 0,  # First sync (int version)
@@ -84,13 +84,13 @@ class TestClientSyncWorkflow:
 
         message2 = f"{timestamp2}|{nonce2}|{config_hash2}"
         signature2 = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message2.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request2 = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": updated_config,
             "version": 1,  # Client has version 1
@@ -110,7 +110,7 @@ class TestClientSyncWorkflow:
         # Step 3: Admin changes status to locked
         result = await db_session.execute(
             select(ClientConfig).where(
-                ClientConfig.api_key == active_api_key.api_key
+                ClientConfig.api_key_hash == active_api_key.api_key_hash
             )
         )
         config_obj = result.scalar_one()
@@ -131,13 +131,13 @@ class TestClientSyncWorkflow:
 
         message3 = f"{timestamp3}|{nonce3}|{config_hash3}"
         signature3 = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message3.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request3 = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": attempted_config,
             "version": 2,
@@ -163,7 +163,7 @@ class TestManagedSyncWorkflow:
     """Test managed mode with pending/active transitions."""
 
     @pytest.mark.asyncio
-    async def test_managed_pending_to_active(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_managed_pending_to_active(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Test pending → active transition when client syncs managed config."""
         modem_id = "MANAGED-001"
 
@@ -175,7 +175,7 @@ class TestManagedSyncWorkflow:
         }
 
         config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             config_plaintext=server_config,
             config_encrypted="placeholder_encrypted_blob",  # Required field
             config_hash=calculate_config_hash(server_config),
@@ -198,13 +198,13 @@ class TestManagedSyncWorkflow:
 
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": client_config,
             "version": 0,  # Client has no version
@@ -225,7 +225,7 @@ class TestManagedSyncWorkflow:
         assert data["config_changed"] is True
 
     @pytest.mark.asyncio
-    async def test_managed_active_client_override_transitions_to_unmanaged(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_managed_active_client_override_transitions_to_unmanaged(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Test managed/active mode transitions to unmanaged when client modifies config."""
         modem_id = "MANAGED-002"
 
@@ -233,7 +233,7 @@ class TestManagedSyncWorkflow:
         server_config = {"PingCount": 100, "EnableCloud": True}
 
         config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             config_plaintext=server_config,
             config_encrypted="placeholder_encrypted_blob",  # Required field
             config_hash=calculate_config_hash(server_config),
@@ -256,13 +256,13 @@ class TestManagedSyncWorkflow:
 
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": updated_config,
             "version": 1,
@@ -290,7 +290,7 @@ class TestLockedMode:
     """Test locked mode behavior - server always wins, no version increment."""
 
     @pytest.mark.asyncio
-    async def test_locked_rejects_without_version_increment(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_locked_rejects_without_version_increment(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Locked mode rejects client changes without creating new version."""
         modem_id = "LOCKED-001"
 
@@ -298,7 +298,7 @@ class TestLockedMode:
         server_config = {"PingCount": 100, "EnableCloud": True}
 
         config = ClientConfig(
-            api_key=active_api_key.api_key,
+            api_key_hash=active_api_key.api_key_hash,
             config_plaintext=server_config,
             config_encrypted="placeholder_encrypted_blob",  # Required field
             config_hash=calculate_config_hash(server_config),
@@ -321,13 +321,13 @@ class TestLockedMode:
 
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": client_config,
             "version": 5,
@@ -351,7 +351,7 @@ class TestLockedMode:
         # Verify no new version was created in database
         result = await db_session.execute(
             select(ConfigVersion).where(
-                ConfigVersion.api_key == active_api_key.api_key
+                ConfigVersion.api_key_hash == active_api_key.api_key_hash
             ).order_by(ConfigVersion.version_number.desc())
         )
         versions = result.scalars().all()
@@ -363,7 +363,7 @@ class TestAdminWorkflow:
     """Test admin config management workflows."""
 
     @pytest.mark.asyncio
-    async def test_admin_create_and_client_sync(self, admin_client_with_token: AsyncClient, http_client: AsyncClient, db_session, active_api_key, csrf_token):
+    async def test_admin_create_and_client_sync(self, admin_client_with_token: AsyncClient, http_client: AsyncClient, db_session, active_api_key, test_api_key: str, csrf_token):
         """Admin creates config, client syncs and gets it."""
         modem_id = "ADMIN-001"
 
@@ -379,7 +379,7 @@ class TestAdminWorkflow:
         create_response = await admin_client_with_token.post(
             "/api/admin/configs",
             json={
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "config": admin_config,
                 "mode": "managed"  # Use mode (not status) per schema
             },
@@ -402,13 +402,13 @@ class TestAdminWorkflow:
 
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": client_config,
             "version": 0,
@@ -432,7 +432,7 @@ class TestUnmanagedMode:
     """Test unmanaged (client-controlled) mode."""
 
     @pytest.mark.asyncio
-    async def test_unmanaged_first_sync_creates_record(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_unmanaged_first_sync_creates_record(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """First sync in unmanaged mode creates server record."""
         modem_id = "UNMANAGED-001"
 
@@ -448,13 +448,13 @@ class TestUnmanagedMode:
 
         message = f"{timestamp}|{nonce}|{config_hash}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         sync_request = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": client_config,
             "version": 0,
@@ -476,7 +476,7 @@ class TestUnmanagedMode:
         # Verify record exists in database
         result = await db_session.execute(
             select(ClientConfig).where(
-                ClientConfig.api_key == active_api_key.api_key
+                ClientConfig.api_key_hash == active_api_key.api_key_hash
             )
         )
         config_obj = result.scalar_one_or_none()
@@ -484,7 +484,7 @@ class TestUnmanagedMode:
         assert config_obj.status == ConfigStatus.UNMANAGED
 
     @pytest.mark.asyncio
-    async def test_unmanaged_multiple_updates(self, http_client: AsyncClient, db_session, active_api_key):
+    async def test_unmanaged_multiple_updates(self, http_client: AsyncClient, db_session, active_api_key, test_api_key: str):
         """Unmanaged mode accepts multiple client updates."""
         modem_id = "UNMANAGED-002"
 
@@ -494,10 +494,10 @@ class TestUnmanagedMode:
         nonce1 = hashlib.sha256(f"nonce_{timestamp1}_u2a".encode()).hexdigest()
         hash1 = calculate_config_hash(config1)
         msg1 = f"{timestamp1}|{nonce1}|{hash1}"
-        sig1 = hmac.new(active_api_key.api_key.encode(), msg1.encode(), hashlib.sha256).hexdigest()
+        sig1 = hmac.new(test_api_key.encode(), msg1.encode(), hashlib.sha256).hexdigest()
 
         resp1 = await http_client.post("/api/config/sync", json={
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": config1,
             "version": 0,
@@ -515,10 +515,10 @@ class TestUnmanagedMode:
         nonce2 = hashlib.sha256(f"nonce_{timestamp2}_u2b".encode()).hexdigest()
         hash2 = calculate_config_hash(config2)
         msg2 = f"{timestamp2}|{nonce2}|{hash2}"
-        sig2 = hmac.new(active_api_key.api_key.encode(), msg2.encode(), hashlib.sha256).hexdigest()
+        sig2 = hmac.new(test_api_key.encode(), msg2.encode(), hashlib.sha256).hexdigest()
 
         resp2 = await http_client.post("/api/config/sync", json={
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": config2,
             "version": 1,
@@ -537,10 +537,10 @@ class TestUnmanagedMode:
         nonce3 = hashlib.sha256(f"nonce_{timestamp3}_u2c".encode()).hexdigest()
         hash3 = calculate_config_hash(config3)
         msg3 = f"{timestamp3}|{nonce3}|{hash3}"
-        sig3 = hmac.new(active_api_key.api_key.encode(), msg3.encode(), hashlib.sha256).hexdigest()
+        sig3 = hmac.new(test_api_key.encode(), msg3.encode(), hashlib.sha256).hexdigest()
 
         resp3 = await http_client.post("/api/config/sync", json={
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "config": config3,
             "version": 2,

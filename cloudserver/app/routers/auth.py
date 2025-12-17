@@ -32,6 +32,7 @@ from app.schemas.auth import (
     SessionCheckResponse,
     ChangePasswordRequest,
     ChangePasswordResponse,
+    ChangeOwnPasswordRequest,
 )
 from app.middleware.auth import (
     get_current_user_from_session,
@@ -347,7 +348,7 @@ async def change_password(
 @router.post("/change_own_password", response_model=ChangePasswordResponse)
 @limiter.limit(lambda: settings.auth_rate_limit)
 async def change_own_password(
-    password_data: dict,
+    password_data: ChangeOwnPasswordRequest,
     request: Request,
     session_data: dict = Depends(require_authenticated_user_bypass_password_check),
     db: AsyncSession = Depends(get_db)
@@ -365,8 +366,8 @@ async def change_own_password(
     user_agent = get_user_agent(request)
     username = session_data["username"]
 
-    # Get new password from request
-    new_password = password_data.get("new_password", "")
+    # Get new password from request (validated by Pydantic schema)
+    new_password = password_data.new_password
 
     # Get user from database
     user = await get_user_from_db(username, db)

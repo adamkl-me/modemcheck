@@ -29,13 +29,29 @@ class LoginPage:
         await self.page.wait_for_load_state("domcontentloaded")
         await self.page.wait_for_timeout(500)
 
-    async def login(self, username: str, password: str):
-        """Perform login with given credentials."""
+    async def login(self, username: str, password: str, expect_success: bool = True):
+        """Perform login with given credentials.
+
+        Args:
+            username: Username to login with
+            password: Password to login with
+            expect_success: If True, waits for redirect to viewer page
+        """
         await self.username_input.fill(username)
         await self.password_input.fill(password)
         await self.login_button.click()
-        await self.page.wait_for_load_state("domcontentloaded", timeout=15000)
-        await self.page.wait_for_timeout(1000)
+
+        if expect_success:
+            # Wait for redirect to viewer page (handles slow browsers like WebKit)
+            try:
+                await self.page.wait_for_url("**/viewer**", timeout=10000)
+            except Exception:
+                # If timeout, still wait for page to settle
+                await self.page.wait_for_load_state("domcontentloaded", timeout=5000)
+        else:
+            # For failed logins, just wait for page to settle
+            await self.page.wait_for_load_state("domcontentloaded", timeout=5000)
+            await self.page.wait_for_timeout(500)
 
     async def login_as_admin(self):
         """Login as admin user."""
@@ -88,15 +104,19 @@ class LoginPage:
             await self.toggle_theme()
 
     async def get_background_color(self) -> str:
-        """Get body background color."""
+        """Get theme background color from CSS variable.
+
+        Note: body.backgroundColor is transparent because background uses a gradient.
+        We check the --bg CSS variable which is different between light/dark themes.
+        """
         return await self.page.evaluate(
-            "getComputedStyle(document.body).backgroundColor"
+            "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"
         )
 
     async def get_text_color(self) -> str:
-        """Get body text color."""
+        """Get theme text color from CSS variable."""
         return await self.page.evaluate(
-            "getComputedStyle(document.body).color"
+            "getComputedStyle(document.documentElement).getPropertyValue('--text').trim()"
         )
 
     async def is_theme_toggle_visible(self) -> bool:

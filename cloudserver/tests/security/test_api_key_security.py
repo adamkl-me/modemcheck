@@ -111,10 +111,10 @@ class TestAPIKeyTimingAttacks:
     """Test resistance to timing attacks."""
 
     @pytest.mark.asyncio
-    async def test_api_key_timing_attack_resistance(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_api_key_timing_attack_resistance(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test that API key validation is timing-safe."""
         # Test with valid key prefix and invalid suffix
-        partial_key = active_api_key.api_key[:16] + "0" * 48
+        partial_key = test_api_key[:16] + "0" * 48
 
         # Test with completely wrong key
         wrong_key = "x" * 64

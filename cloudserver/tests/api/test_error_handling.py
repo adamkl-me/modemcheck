@@ -51,7 +51,7 @@ class TestContentTypeValidation:
     """Content-Type header validation tests."""
 
     @pytest.mark.asyncio
-    async def test_upload_wrong_content_type(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_upload_wrong_content_type(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test upload with wrong Content-Type header."""
         import hashlib
         import json
@@ -67,7 +67,7 @@ class TestContentTypeValidation:
             content=file_content,
             headers={"Content-Type": "text/plain"},
             params={
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -130,7 +130,7 @@ class TestUploadValidation:
     """Upload endpoint input validation tests."""
 
     @pytest.mark.asyncio
-    async def test_upload_invalid_filename_format(self, http_client: httpx.AsyncClient, active_api_key, create_upload_signature):
+    async def test_upload_invalid_filename_format(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, create_upload_signature):
         """Test upload with invalid filename format."""
         from io import BytesIO
         import hashlib
@@ -152,11 +152,11 @@ class TestUploadValidation:
         for filename in invalid_filenames:
             # Create proper HMAC signature
             timestamp = str(int(time.time()))
-            signature = create_upload_signature(active_api_key.api_key, timestamp, modem_id, filename, checksum)
+            signature = create_upload_signature(test_api_key, timestamp, modem_id, filename, checksum)
 
             files = {"file": (filename, BytesIO(file_content), "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -173,7 +173,7 @@ class TestUploadValidation:
             assert response.status_code in [400, 422, 500], f"Invalid filename accepted: {filename}"
 
     @pytest.mark.asyncio
-    async def test_upload_invalid_modem_id_format(self, http_client: httpx.AsyncClient, active_api_key, create_upload_signature):
+    async def test_upload_invalid_modem_id_format(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str, create_upload_signature):
         """Test upload with invalid modem_id format."""
         from io import BytesIO
         import hashlib
@@ -195,11 +195,11 @@ class TestUploadValidation:
         for modem_id in invalid_modem_ids:
             # Create proper HMAC signature
             timestamp = str(int(time.time()))
-            signature = create_upload_signature(active_api_key.api_key, timestamp, modem_id, filename, checksum)
+            signature = create_upload_signature(test_api_key, timestamp, modem_id, filename, checksum)
 
             files = {"file": (filename, BytesIO(file_content), "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum

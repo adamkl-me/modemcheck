@@ -149,7 +149,7 @@ class TestFileUploadVulnerabilities:
     """File upload security tests."""
     
     @pytest.mark.asyncio
-    async def test_upload_executable_file(self, http_client: httpx.AsyncClient, active_api_key):
+    async def test_upload_executable_file(self, http_client: httpx.AsyncClient, active_api_key, test_api_key: str):
         """Test uploading executable file disguised as JSON."""
         from io import BytesIO
         import hashlib
@@ -167,14 +167,14 @@ class TestFileUploadVulnerabilities:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
         signature = hmac.new(
-            active_api_key.api_key.encode('utf-8'),
+            test_api_key.encode('utf-8'),
             message.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
 
         files = {"file": (filename, BytesIO(file_content), "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": filename,
             "checksum": checksum

@@ -924,7 +924,7 @@ class TestViewerWithRealData:
         ping_heading = page.locator('h2:has-text("Ping Latency")')
         await expect(ping_heading).to_be_visible()
 
-        power_heading = page.locator('h2:has-text("Downstream Power")')
+        power_heading = page.locator('h2:has-text("RX Power")')
         await expect(power_heading).to_be_visible()
 
         # Check for chart containers/canvas elements

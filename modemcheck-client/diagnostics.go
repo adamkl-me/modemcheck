@@ -428,6 +428,9 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 	outputStr := string(output)
 
 	// Parse packet loss (rounded to 1 decimal) using pre-compiled regex
+	// Note: ParseFloat errors are intentionally ignored here because the regex
+	// guarantees the captured group contains only numeric characters. Parse
+	// failure would indicate a regex bug (should be caught in development).
 	if matches := pingLossRe.FindStringSubmatch(outputStr); len(matches) > 1 {
 		lossVal, _ := strconv.ParseFloat(matches[1], 64)
 		loss = fmt.Sprintf("%.1f%%", lossVal)

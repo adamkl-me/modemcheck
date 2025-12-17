@@ -258,12 +258,17 @@ class TestAPIKeyOperations:
     """Test API Key CRUD operations."""
 
     async def test_create_api_key(self, db_session, admin_user):
-        """Test creating a new API key."""
+        """Test creating a new API key (v8.0+: hash-based storage)."""
         import secrets
+        from app.core.api_key_crypto import encrypt_api_key_for_storage
 
         key = secrets.token_hex(32)
+        api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(key)
+
         api_key = APIKey(
-            api_key=key,
+            api_key_hash=api_key_hash,
+            api_key_encrypted=encrypted_hex,
+            encryption_salt=salt_hex,
             name="Test Key",
             is_active=True
         )
@@ -272,16 +277,19 @@ class TestAPIKeyOperations:
         await db_session.commit()
         await db_session.refresh(api_key)
 
-        assert api_key.api_key == key  # api_key is the primary key
+        assert api_key.api_key_hash == api_key_hash  # api_key_hash is now the primary key
         assert api_key.name == "Test Key"
         assert api_key.is_active is True
 
-    async def test_api_key_user_relationship(self, db_session, active_api_key):
+    async def test_api_key_user_relationship(self, db_session, active_api_key, test_api_key: str):
         """Test API key to user relationship."""
+        from app.core.api_key_crypto import hash_api_key
+
         # Since APIKey doesn't have a user relationship in the model,
-        # we'll just verify the key exists
+        # we'll just verify the key exists (query by hash in v8.0+)
+        api_key_hash = hash_api_key(test_api_key)
         result = await db_session.execute(
-            select(APIKey).where(APIKey.api_key == active_api_key.api_key)
+            select(APIKey).where(APIKey.api_key_hash == api_key_hash)
         )
         key = result.scalar_one()
 
@@ -297,13 +305,18 @@ class TestAPIKeyOperations:
         assert active_api_key.is_active is False
 
     async def test_query_active_keys_only(self, db_session, admin_user):
-        """Test querying only active API keys."""
+        """Test querying only active API keys (v8.0+: hash-based storage)."""
         import secrets
+        from app.core.api_key_crypto import encrypt_api_key_for_storage
 
         # Create active and inactive keys
         for i in range(3):
+            plaintext = secrets.token_hex(32)
+            api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(plaintext)
             key = APIKey(
-                api_key=secrets.token_hex(32),
+                api_key_hash=api_key_hash,
+                api_key_encrypted=encrypted_hex,
+                encryption_salt=salt_hex,
                 name=f"Key {i}",
                 is_active=(i % 2 == 0)
             )
@@ -458,9 +471,15 @@ class TestTransactionHandling:
         await db_session.commit()
         await db_session.refresh(user)
 
-        # Create API key in nested context
+        # Create API key in nested context (v8.0+: hash-based storage)
+        from app.core.api_key_crypto import encrypt_api_key_for_storage
+        import secrets
+        plaintext_key = secrets.token_hex(32)
+        api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(plaintext_key)
         api_key = APIKey(
-            api_key="test_hash",
+            api_key_hash=api_key_hash,
+            api_key_encrypted=encrypted_hex,
+            encryption_salt=salt_hex,
             name="Nested Key",
             is_active=True
         )

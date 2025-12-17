@@ -53,13 +53,18 @@ class ClientConfig(Base):
     Stores both plaintext (for admin viewing) and encrypted configs (for security).
     Uses simplified single-track versioning (v1, v2, v3...).
 
-    Primary key: api_key only (one config per API key)
+    Primary key: api_key_hash (one config per API key)
+
+    v8.0+: Hash-based storage
+    - api_key_hash: SHA-256 hash of API key (PRIMARY KEY + FK to api_keys)
+    - No plaintext API key stored (security improvement)
     """
     __tablename__ = "client_configs"
 
-    # Primary key - single API key (one config per key)
-    api_key = Column(String(255), ForeignKey("api_keys.api_key", ondelete="CASCADE"),
-                     primary_key=True, nullable=False)
+    # Primary key - SHA-256 hash of API key (64 hex chars)
+    # FK to api_keys.api_key_hash with CASCADE delete
+    api_key_hash = Column(String(64), ForeignKey("api_keys.api_key_hash", ondelete="CASCADE"),
+                          primary_key=True, nullable=False)
 
     # Modem tracking (metadata only, not part of key)
     last_seen_modem_id = Column(String(255), nullable=True, index=True)
@@ -146,7 +151,8 @@ class ClientConfig(Base):
     def __repr__(self):
         modem_display = self.last_seen_modem_id or 'never synced'
         sync_str = f", sync={self.sync_status.value}" if self.status != ConfigStatus.UNMANAGED else ""
-        return f"<ClientConfig(api_key='{self.api_key[:8]}...', last_modem='{modem_display}', status='{self.status.value}'{sync_str}, version=v{self.version})>"
+        hash_preview = self.api_key_hash[:8] if self.api_key_hash else 'unknown'
+        return f"<ClientConfig(hash='{hash_preview}...', last_modem='{modem_display}', status='{self.status.value}'{sync_str}, version=v{self.version})>"
 
 
 class ConfigVersion(Base):
@@ -160,8 +166,8 @@ class ConfigVersion(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    # Reference to config (api_key is the primary reference)
-    api_key = Column(String(255), nullable=False, index=True)
+    # Reference to config via hash (v8.0+: no plaintext API key stored)
+    api_key_hash = Column(String(64), nullable=False, index=True)
 
     # Modem ID at time of creation (for tracking/audit, nullable)
     modem_id_at_creation = Column(String(255), nullable=True, index=True)
@@ -194,11 +200,11 @@ class ConfigVersion(Base):
     ip_address = Column(String(45), nullable=True)  # IPv6 compatible
 
     __table_args__ = (
-        # Unique constraint: only one version per api_key per version number
-        Index('idx_config_version_unique_v3', 'api_key', 'version_number', unique=True),
+        # Unique constraint: only one version per api_key_hash per version number
+        Index('idx_config_version_unique_hash', 'api_key_hash', 'version_number', unique=True),
 
         # History lookup
-        Index('idx_config_version_history', 'api_key', 'created_at'),
+        Index('idx_config_version_hash_created', 'api_key_hash', 'created_at'),
 
         # Retention cleanup (90-day retention)
         Index('idx_config_version_retention', 'created_at'),
@@ -214,7 +220,8 @@ class ConfigVersion(Base):
 
     def __repr__(self):
         modem_display = self.modem_id_at_creation or 'unknown'
-        return f"<ConfigVersion(api_key='{self.api_key[:8]}...', modem='{modem_display}', version=v{self.version_number})>"
+        hash_preview = self.api_key_hash[:8] if self.api_key_hash else 'unknown'
+        return f"<ConfigVersion(hash='{hash_preview}...', modem='{modem_display}', version=v{self.version_number})>"
 
 
 class ConfigAuditLog(Base):
@@ -236,9 +243,6 @@ class ConfigAuditLog(Base):
     username = Column(String(255), nullable=True, index=True)  # NULL for client-initiated
     api_key_hash = Column(String(64), nullable=True, index=True)  # SHA256 of API key
     ip_address = Column(String(45), nullable=False)  # IPv6 compatible
-
-    # Target configuration
-    api_key = Column(String(255), nullable=True, index=True)  # Deprecated - use api_key_hash for security
 
     # Modem ID tracking (nullable - may not be known for admin operations)
     modem_id = Column(String(255), nullable=True, index=True)
@@ -277,10 +281,10 @@ class ConfigAuditLog(Base):
 
     __table_args__ = (
         # Composite indexes (will be created on each partition)
-        Index('idx_config_audit_client', 'api_key', 'timestamp'),
+        Index('idx_config_audit_hash', 'api_key_hash', 'timestamp'),
         Index('idx_config_audit_user_action', 'username', 'action', 'timestamp'),
         Index('idx_config_audit_action_success', 'action', 'success', 'timestamp'),
-        Index('idx_config_audit_modem_change', 'api_key', 'action', 'timestamp',
+        Index('idx_config_audit_modem_change', 'api_key_hash', 'action', 'timestamp',
               postgresql_where=(action == 'modem_change')),
     )
 

@@ -65,7 +65,7 @@ async def rollback_config(
         result = await db.execute(
             select(ConfigVersion)
             .where(
-                ConfigVersion.api_key == api_key,
+                ConfigVersion.api_key_hash == api_key,
                 ConfigVersion.version_number == version
             )
         )
@@ -76,7 +76,7 @@ async def rollback_config(
 
         result = await db.execute(
             select(ClientConfig)
-            .where(ClientConfig.api_key == api_key)
+            .where(ClientConfig.api_key_hash == api_key)
             .with_for_update()
         )
         current_config = result.scalar_one_or_none()
@@ -104,7 +104,7 @@ async def rollback_config(
 
         await create_config_version(
             db=db,
-            api_key=api_key,
+            api_key_hash=api_key,
             modem_id=old_modem_id,
             version_number=new_version,
             config_plaintext=target_version.config_plaintext,
@@ -121,7 +121,7 @@ async def rollback_config(
         await log_config_rollback(
             db=db,
             username=username,
-            api_key=api_key,
+            api_key_hash=api_key,
             modem_id=old_modem_id,
             ip_address=client_ip,
             target_version=version,
@@ -176,7 +176,7 @@ async def get_config_history(
         # Query versions using ORM (handles enum conversion automatically)
         versions_result = await db.execute(
             select(ConfigVersion)
-            .where(ConfigVersion.api_key == api_key)
+            .where(ConfigVersion.api_key_hash == api_key)
             .order_by(ConfigVersion.created_at.desc())
             .limit(limit)
         )
@@ -185,14 +185,14 @@ async def get_config_history(
         # Get total count (separate query for accuracy)
         total_result = await db.execute(
             select(func.count(ConfigVersion.id))
-            .where(ConfigVersion.api_key == api_key)
+            .where(ConfigVersion.api_key_hash == api_key)
         )
         total = total_result.scalar() or 0
 
         # Get current config metadata
         current_result = await db.execute(
             select(ClientConfig.last_seen_modem_id, ClientConfig.version)
-            .where(ClientConfig.api_key == api_key)
+            .where(ClientConfig.api_key_hash == api_key)
         )
         current_row = current_result.first()
         current_modem_id = current_row.last_seen_modem_id if current_row else None

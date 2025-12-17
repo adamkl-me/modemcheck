@@ -84,7 +84,8 @@ class TestUploadPerformance:
     async def test_upload_latency(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test upload latency under normal conditions."""
         import hashlib
@@ -103,14 +104,14 @@ class TestUploadPerformance:
             timestamp = str(int(time.time()))
             message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
-                active_api_key.api_key.encode('utf-8'),
+                test_api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
             files = {"file": (filename, json_data, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -150,7 +151,8 @@ class TestUploadPerformance:
     async def test_concurrent_upload_performance(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test performance with concurrent uploads."""
         import hashlib
@@ -167,14 +169,14 @@ class TestUploadPerformance:
             timestamp = str(int(time.time()))
             message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
             signature = hmac.new(
-                active_api_key.api_key.encode('utf-8'),
+                test_api_key.encode('utf-8'),
                 message.encode('utf-8'),
                 hashlib.sha256
             ).hexdigest()
 
             files = {"file": (filename, json_data, "application/json")}
             data = {
-                "api_key": active_api_key.api_key,
+                "api_key": test_api_key,
                 "modem_id": modem_id,
                 "filename": filename,
                 "checksum": checksum
@@ -272,7 +274,8 @@ class TestQueryPerformance:
     async def test_api_key_cache_performance(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test API key validation performance (cache hit)."""
         import hashlib
@@ -287,12 +290,12 @@ class TestQueryPerformance:
         timestamp = str(int(time.time()))
         message = f"{timestamp}|{modem_id}|test.json|{checksum}"
         signature = hashlib.sha256(
-            f"{active_api_key.api_key}{message}".encode()
+            f"{test_api_key}{message}".encode()
         ).hexdigest()
 
         files = {"file": ("2024-01-01_12-00-00.json", json_data, "application/json")}
         data = {
-            "api_key": active_api_key.api_key,
+            "api_key": test_api_key,
             "modem_id": modem_id,
             "filename": "2024-01-01_12-00-00.json",
             "checksum": checksum
@@ -411,7 +414,8 @@ class TestStressTest:
     async def test_sustained_load(
         self,
         http_client: httpx.AsyncClient,
-        active_api_key
+        active_api_key,
+        test_api_key: str
     ):
         """Test sustained load over time."""
         import hashlib
@@ -438,14 +442,14 @@ class TestStressTest:
                     timestamp = str(int(time.time()))
                     message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
                     signature = hmac.new(
-                        active_api_key.api_key.encode('utf-8'),
+                        test_api_key.encode('utf-8'),
                         message.encode('utf-8'),
                         hashlib.sha256
                     ).hexdigest()
 
                     files = {"file": (filename, json_data, "application/json")}
                     data = {
-                        "api_key": active_api_key.api_key,
+                        "api_key": test_api_key,
                         "modem_id": modem_id,
                         "filename": filename,
                         "checksum": checksum

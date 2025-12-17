@@ -558,34 +558,38 @@ class TestModalDialogsE2E:
     """E2E tests for modal dialogs."""
 
     @pytest.mark.asyncio
-    async def test_config_detail_modal_behavior(self, admin_browser):
-        """Test modal behavior when viewing config details (if configs exist)."""
+    async def test_create_config_modal_opens_and_closes(self, admin_browser):
+        """Test the create config modal opens and closes correctly.
+
+        This tests the modal behavior using the Create Config button which
+        doesn't require pre-existing data.
+        """
         page, admin_page = admin_browser
 
+        # Navigate to config management section
         await admin_page.navigate_to_config_management()
+        await page.wait_for_timeout(1000)
+
+        # Click the Create Config button
+        create_button = page.locator('button:has-text("Create Config")')
+        await expect(create_button).to_be_visible(timeout=5000)
+        await create_button.click()
+
+        # Wait for modal to appear
+        # The config modal uses id="configModal" and class "active" when visible
+        modal = page.locator('#configModal.active')
+        await expect(modal).to_be_visible(timeout=5000)
+
+        # Verify modal has expected content - use specific ID
+        modal_title = page.locator('#configModalTitle')
+        await expect(modal_title).to_contain_text("Configuration")
+
+        # Press Escape to close (triggers closeAllModals)
+        await page.keyboard.press("Escape")
         await page.wait_for_timeout(500)
 
-        # Check if there are any config rows to click
-        config_rows = page.locator('table tbody tr:not(:has-text("No configurations"))')
-        row_count = await config_rows.count()
-
-        if row_count > 0:
-            # Click first row to open detail modal
-            await config_rows.first.click()
-            await page.wait_for_timeout(500)
-
-            # Modal should appear
-            modal = page.locator('.modal.active, [role="dialog"]')
-            if await modal.count() > 0:
-                # Press Escape to close
-                await page.keyboard.press("Escape")
-                await page.wait_for_timeout(300)
-                # Modal should close
-                await expect(modal).not_to_be_visible()
-        else:
-            # No configs to test with - just verify the table exists
-            table = page.locator('table')
-            await expect(table).to_be_visible()
+        # Modal should close (class "active" removed)
+        await expect(modal).not_to_be_visible(timeout=5000)
 
 
 # ============================================================================

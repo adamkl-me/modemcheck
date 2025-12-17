@@ -230,6 +230,21 @@ engine = create_async_engine(
 )
 ```
 
+**Scaling guidelines:**
+- **Low traffic (< 50 concurrent users):** pool_size=10, max_overflow=5
+- **Medium traffic (50-200 users):** pool_size=20, max_overflow=10 (default)
+- **High traffic (200-1000 users):** pool_size=50, max_overflow=25
+- **Very high traffic (> 1000 users):** Consider read replicas and connection pooler (PgBouncer)
+
+**Monitoring pool exhaustion:**
+```bash
+# Check active connections
+docker exec modemcheck-postgres psql -U modemcheck -c "SELECT count(*) FROM pg_stat_activity WHERE datname='modemcheck'"
+
+# Check for waiting connections
+docker exec modemcheck-postgres psql -U modemcheck -c "SELECT wait_event_type, count(*) FROM pg_stat_activity WHERE datname='modemcheck' GROUP BY wait_event_type"
+```
+
 **Query optimization:**
 - Use indexes on frequently queried columns
 - Monitor slow queries with `EXPLAIN ANALYZE`
@@ -241,6 +256,16 @@ engine = create_async_engine(
 - Max memory: 512MB (configurable in docker-compose.yml)
 - Eviction policy: allkeys-lru (least recently used)
 - Session TTL: 1 hour (configurable in .env)
+
+**Failback behavior:**
+When Redis is unavailable, the system falls back to an in-memory cache. Be aware of these limitations:
+
+- **Session loss:** Sessions are NOT migrated to in-memory cache. All active user sessions will be lost when Redis fails, requiring users to log in again.
+- **Per-worker isolation:** In-memory cache is NOT shared across workers. Each worker process has its own cache, which can cause inconsistent behavior (e.g., a user logged in on worker A won't be authenticated on worker B).
+- **Memory limits:** Default 10,000 keys with LRU eviction. Under high load, sessions may be evicted unexpectedly.
+- **Recovery:** When Redis recovers, users must log in again (their in-memory sessions won't automatically migrate back to Redis).
+
+**Recommendation:** Monitor Redis health closely and configure alerts for Redis connection failures.
 
 **Monitor Redis:**
 ```bash
@@ -457,6 +482,80 @@ docker exec test-postgres psql -U modemcheck -d modemcheck -c "SELECT COUNT(*) F
 - [ ] Update all dependencies
 - [ ] Credential rotation (90-day policy)
 - [ ] Disaster recovery drill
+
+---
+
+## Log Management
+
+### Log File Growth
+
+Application and backup logs can grow significantly in production. Implement log rotation to prevent disk exhaustion.
+
+**Using logrotate (recommended):**
+```bash
+# Create /etc/logrotate.d/modemcheck
+/path/to/cloudserver/logs/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+```
+
+**Docker logging (for container logs):**
+```yaml
+# In docker-compose.yml
+services:
+  modemcheck-cloud-v2:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+```
+
+**Monitoring disk usage:**
+```bash
+# Check log sizes
+du -sh /path/to/cloudserver/logs/
+
+# Watch for disk pressure
+df -h /path/to/cloudserver/
+```
+
+---
+
+## Client Upload Handling
+
+### Upload Queue Behavior
+
+The Go client maintains an upload queue (`.upload_queue.json`) for failed uploads. Be aware of these performance characteristics:
+
+- **Queue rebuild:** When loading, the entire queue is deserialized (O(n) operation). With maximum 100 entries, this is typically < 100ms.
+- **Large queues:** If clients consistently fail to upload, queue processing can slow startup. Maximum queue size is capped at 100 entries (FIFO eviction).
+- **Cleanup:** Entries older than 14 days are automatically purged on load.
+
+**Monitoring client queues:**
+If users report slow startup, check for large `.upload_queue.json` files (> 100KB indicates issues).
+
+### Binary Size Limits
+
+The upload endpoint enforces file size limits to prevent resource exhaustion:
+
+- **Maximum upload size:** 10MB (configurable via `MAX_UPLOAD_SIZE` in .env)
+- **Typical modem check file:** 50-200KB
+- **Files exceeding limit:** Return 413 (Request Entity Too Large)
+
+**Adjusting limits:**
+```bash
+# In .env
+MAX_UPLOAD_SIZE=10485760  # 10MB in bytes
+```
+
+**Note:** Larger limits increase memory pressure during upload processing. Each upload is fully buffered in memory before validation.
 
 ---
 

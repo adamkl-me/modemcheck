@@ -184,18 +184,20 @@ class TestVersionCreation:
     @pytest.mark.asyncio
     async def test_create_version_stores_config(self):
         """create_config_version stores config data correctly."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         config_data = {"PingCount": 25, "EnableCloud": True}
         config_hash = calculate_config_hash(config_data)
         version_number = 1
         api_key = "test-key-123"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         modem_id = "ARRIS-001"
         actor = "client"
 
         await create_config_version(
             db=db,
-            api_key=api_key,
+            api_key_hash=api_key_hash,
             modem_id=modem_id,
             version_number=version_number,
             config_plaintext=config_data,
@@ -214,7 +216,7 @@ class TestVersionCreation:
         added_version = db.add.call_args[0][0]
         assert isinstance(added_version, ConfigVersion)
         assert added_version.version_number == 1
-        assert added_version.api_key == api_key
+        assert added_version.api_key_hash == api_key_hash
 
 
 class TestSyncResult:
@@ -243,11 +245,14 @@ class TestUnmanagedHandler:
     @pytest.mark.asyncio
     async def test_unmanaged_accepts_client_config(self):
         """Unmanaged mode accepts client configuration changes."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         # Create existing config in unmanaged state
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = {"PingCount": 25}
         existing_config.version = 1
         existing_config.status = ConfigStatus.UNMANAGED
@@ -263,6 +268,7 @@ class TestUnmanagedHandler:
 
             result = await _handle_unmanaged_sync(
                 db=db,
+                api_key=api_key,
                 existing_config=existing_config,
                 modem_id="ARRIS-001",
                 client_config=client_config,
@@ -279,13 +285,16 @@ class TestUnmanagedHandler:
     @pytest.mark.asyncio
     async def test_unmanaged_no_change_if_same_hash(self):
         """Unmanaged mode returns current config if hash matches."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         client_config = {"PingCount": 25}
         client_hash = calculate_config_hash(client_config)
 
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = client_config
         existing_config.version = 1
         existing_config.status = ConfigStatus.UNMANAGED
@@ -294,6 +303,7 @@ class TestUnmanagedHandler:
 
         result = await _handle_unmanaged_sync(
             db=db,
+            api_key=api_key,
             existing_config=existing_config,
             modem_id="ARRIS-001",
             client_config=client_config,
@@ -312,13 +322,16 @@ class TestManagedHandler:
     @pytest.mark.asyncio
     async def test_managed_pending_returns_server_config(self):
         """Managed mode with pending status returns server config."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         server_config = {"PingCount": 100, "EnableCloud": True}
         server_hash = calculate_config_hash(server_config)
 
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = server_config
         existing_config.version = 1
         existing_config.status = ConfigStatus.MANAGED
@@ -333,6 +346,7 @@ class TestManagedHandler:
 
             result = await _handle_managed_sync(
                 db=db,
+                api_key=api_key,
                 existing_config=existing_config,
                 modem_id="ARRIS-001",
                 client_config=client_config,
@@ -347,11 +361,14 @@ class TestManagedHandler:
     @pytest.mark.asyncio
     async def test_managed_active_client_override_transitions_to_unmanaged(self):
         """Managed mode with active status transitions to unmanaged when client modifies config."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         server_config = {"PingCount": 100}
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = server_config
         existing_config.version = 1
         existing_config.status = ConfigStatus.MANAGED
@@ -369,6 +386,7 @@ class TestManagedHandler:
 
             result = await _handle_managed_sync(
                 db=db,
+                api_key=api_key,
                 existing_config=existing_config,
                 modem_id="ARRIS-001",
                 client_config=client_config,
@@ -390,13 +408,16 @@ class TestLockedHandler:
     @pytest.mark.asyncio
     async def test_locked_rejects_client_changes(self):
         """Locked mode always returns server config, rejects client changes."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         server_config = {"PingCount": 100, "EnableCloud": True}
         server_hash = calculate_config_hash(server_config)
 
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = server_config
         existing_config.version = 1
         existing_config.status = ConfigStatus.LOCKED
@@ -409,6 +430,7 @@ class TestLockedHandler:
         # Cache invalidation now happens in router
         result = await _handle_locked_sync(
             db=db,
+            api_key=api_key,
             existing_config=existing_config,
             modem_id="ARRIS-001",
             client_config=client_config,
@@ -424,11 +446,14 @@ class TestLockedHandler:
     @pytest.mark.asyncio
     async def test_locked_no_version_increment_on_reject(self):
         """Locked mode does NOT create new version when rejecting client config."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         server_config = {"PingCount": 100}
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = server_config
         existing_config.version = 5
         existing_config.status = ConfigStatus.LOCKED
@@ -441,6 +466,7 @@ class TestLockedHandler:
         # Cache invalidation now happens in router
         result = await _handle_locked_sync(
             db=db,
+            api_key=api_key,
             existing_config=existing_config,
             modem_id="ARRIS-001",
             client_config=client_config,
@@ -460,11 +486,14 @@ class TestStatusTransitions:
     @pytest.mark.asyncio
     async def test_pending_to_active_on_sync(self):
         """Pending status transitions to active when client syncs."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
         server_config = {"PingCount": 100}
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = server_config
         existing_config.version = 1
         existing_config.status = ConfigStatus.MANAGED
@@ -479,6 +508,7 @@ class TestStatusTransitions:
 
             result = await _handle_managed_sync(
                 db=db,
+                api_key=api_key,
                 existing_config=existing_config,
                 modem_id="ARRIS-001",
                 client_config=client_config,
@@ -491,10 +521,13 @@ class TestStatusTransitions:
     @pytest.mark.asyncio
     async def test_unmanaged_always_na(self):
         """Unmanaged status always has n/a sync_status."""
+        import hashlib
         db = AsyncMock(spec=AsyncSession)
 
+        api_key = "test-key"
+        api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
         existing_config = MagicMock(spec=ClientConfig)
-        existing_config.api_key = "test-key"
+        existing_config.api_key_hash = api_key_hash
         existing_config.config_plaintext = {"PingCount": 25}
         existing_config.version = 1
         existing_config.status = ConfigStatus.UNMANAGED
@@ -511,6 +544,7 @@ class TestStatusTransitions:
 
             result = await _handle_unmanaged_sync(
                 db=db,
+                api_key=api_key,
                 existing_config=existing_config,
                 modem_id="ARRIS-001",
                 client_config=client_config,

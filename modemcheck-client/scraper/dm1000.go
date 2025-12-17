@@ -154,7 +154,10 @@ func (s *DM1000Scraper) GetData(checkTime int64) (*ModemData, error) {
 		}
 	}
 
-	modemMAC, _ := s.GetMAC()
+	modemMAC, err := s.GetMAC()
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Warning: Failed to retrieve MAC address: %v", err))
+	}
 	data.SysInfo.ModemType = s.modemType
 	data.SysInfo.ModemMAC = modemMAC
 	data.SysInfo.CheckTime = checkTime

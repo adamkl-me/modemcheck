@@ -51,7 +51,10 @@ func NewModemCheck(config Configuration, configFilePath string) (*ModemCheck, er
 		InsecureSkipVerify: false, // Always verify TLS certificates (v3.0+)
 	}
 	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
+		TLSClientConfig:     tlsConfig,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
 	}
 	client := &http.Client{
 		Transport: transport,
@@ -364,7 +367,10 @@ func (m *ModemCheck) Run() error {
 	}
 
 	// Load last successful modem state
-	lastSuccessful, _ := LoadLastSuccessfulModem()
+	lastSuccessful, err := LoadLastSuccessfulModem()
+	if err != nil {
+		m.Log(fmt.Sprintf("Warning: Failed to load last successful modem state: %v", err))
+	}
 
 	// Detect modem
 	detectionFailed := false

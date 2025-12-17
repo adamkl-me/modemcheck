@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, Request, Form, File, UploadFile, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database import get_db
 from app.core.audit import log_client_submission
@@ -87,25 +88,38 @@ async def validate_and_get_api_key(
     db: AsyncSession
 ) -> tuple[bool, Optional[str]]:
     """
-    Validate API key and return key name if valid.
+    Validate API key using hash-based lookup (v7.1+).
 
+    Client sends plaintext API key → Server hashes → Lookup by hash.
     Uses Redis cache for performance optimization.
+
+    Security:
+    - Hash-based lookup prevents plaintext exposure in database queries
+    - Cache stores only hashes (no plaintext in Redis)
+    - Backward compatible during migration period
 
     Returns:
         (is_valid, key_name)
     """
     from app.core.api_key_cache import APIKeyCache, api_key_cache_stats
 
-    # Database fallback function
+    # Hash the API key for lookup (SHA-256, 64 hex chars)
+    # Client sends plaintext, we hash it for validation
+    api_key_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+
+    # Database fallback function (hash-based lookup)
     async def get_active_keys_from_db():
+        # DUAL STORAGE MIGRATION: Query supports both hash and plaintext
+        # After migration, all keys have api_key_hash populated
         result = await db.execute(
             select(APIKey).where(APIKey.is_active == True)
         )
         return result.scalars().all()
 
-    # Validate using cache with DB fallback
+    # Validate using cache with DB fallback (now hash-based)
+    # Note: Cache validation updated in Phase 2, Step 2.3
     is_valid, key_name = await APIKeyCache.validate_api_key_cached(
-        api_key,
+        api_key,  # Still pass plaintext for HMAC validation compatibility
         get_active_keys_from_db
     )
 
@@ -119,7 +133,8 @@ async def validate_and_get_api_key(
         # Update last_used timestamp in background (non-blocking)
         # Performance: Avoids 10-50ms latency from waiting for DB commit
         # Note: Creates its own DB session to avoid session lifecycle conflicts
-        asyncio.create_task(APIKeyCache.update_last_used(api_key))
+        # Updated to use hash-based lookup
+        asyncio.create_task(APIKeyCache.update_last_used_by_hash(api_key_hash))
 
     return is_valid, key_name
 
@@ -219,7 +234,7 @@ async def upload_check(
     # Also logs modem changes to audit log for history timeline
     try:
         config_result = await db.execute(
-            select(ClientConfig).where(ClientConfig.api_key == api_key)
+            select(ClientConfig).where(ClientConfig.api_key_hash == api_key_hash)
         )
         client_config = config_result.scalar_one_or_none()
         if client_config and client_config.last_seen_modem_id != modem_id:
@@ -227,14 +242,14 @@ async def upload_check(
             from app.core.config_sync import _log_modem_change
             await _log_modem_change(
                 db=db,
-                api_key=api_key,
+                api_key_hash=api_key_hash,
                 old_modem_id=client_config.last_seen_modem_id,
                 new_modem_id=modem_id,
                 ip_address=client_ip
             )
             client_config.last_seen_modem_id = modem_id
             await db.commit()
-    except Exception as e:
+    except SQLAlchemyError as e:
         # Non-critical - don't fail upload if config update fails
         logger.warning(f"Failed to update client config last_seen_modem_id: {type(e).__name__}: {e}")
 

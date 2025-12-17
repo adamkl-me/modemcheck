@@ -55,6 +55,7 @@ class AdminPage:
         self.password_strength_container = page.locator("#newPassword-strength-container")
 
         # API Keys section
+        self.key_name_input = page.locator("#keyName")
         self.create_key_button = page.locator('button[onclick="createKey()"]')
         self.new_key_modal = page.locator("#newKeyModal")
         self.edit_key_modal = page.locator("#editKeyModal")
@@ -76,9 +77,15 @@ class AdminPage:
 
     async def navigate(self):
         """Navigate to admin page."""
-        await self.page.goto(f"{self.base_url}{self.URL}")
-        # Use domcontentloaded instead of networkidle as admin page may have polling
-        await self.page.wait_for_load_state("domcontentloaded")
+        # Wait for page to be fully loaded before starting new navigation
+        # This prevents NS_BINDING_ABORTED errors in Firefox
+        await self.page.wait_for_load_state("load")
+        await self.page.wait_for_timeout(500)  # Extra buffer for Firefox
+        await self.page.goto(
+            f"{self.base_url}{self.URL}",
+            wait_until="domcontentloaded",
+            timeout=15000
+        )
         await self.page.wait_for_timeout(1500)  # Wait for JS init
 
     async def is_admin_page(self) -> bool:
@@ -107,7 +114,8 @@ class AdminPage:
     async def click_viewer_button(self):
         """Click viewer button to navigate back."""
         await self.viewer_button.click()
-        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_load_state("domcontentloaded")
+        await self.page.wait_for_url("**/viewer**", timeout=10000)
 
     async def click_logout_button(self):
         """Click logout button."""
@@ -180,12 +188,19 @@ class AdminPage:
 
     # API Keys methods
     async def open_create_api_key_modal(self):
-        """Open the create API key modal."""
+        """Open the create API key modal by creating a test API key.
+
+        This fills in a key name and clicks create, which triggers the API
+        to create a key and then shows the newKeyModal with the result.
+        """
         await self.click_tab("client_management")
         await self.api_keys_subtab.click()
         await self.page.wait_for_timeout(500)
+        # Fill in a key name (required for createKey() to show the modal)
+        await self.key_name_input.fill("Test Key for Modal")
         await self.create_key_button.click()
-        await self.page.wait_for_timeout(500)
+        # Wait for API call to complete and modal to appear
+        await self.page.wait_for_timeout(1000)
 
     async def is_new_key_modal_visible(self) -> bool:
         """Check if new key modal is visible."""
@@ -292,15 +307,15 @@ class AdminPage:
             await self.toggle_theme()
 
     async def get_background_color(self) -> str:
-        """Get body background color."""
+        """Get theme background color from CSS variable."""
         return await self.page.evaluate(
-            "getComputedStyle(document.body).backgroundColor"
+            "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"
         )
 
     async def get_text_color(self) -> str:
-        """Get body text color."""
+        """Get theme text color from CSS variable."""
         return await self.page.evaluate(
-            "getComputedStyle(document.body).color"
+            "getComputedStyle(document.documentElement).getPropertyValue('--text').trim()"
         )
 
     async def is_theme_toggle_visible(self) -> bool:

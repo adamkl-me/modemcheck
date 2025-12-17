@@ -217,7 +217,10 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 	data := &ModemData{}
 
 	// Get system info
-	modemMAC, _ := s.GetMAC()
+	modemMAC, err := s.GetMAC()
+	if err != nil {
+		s.logger.Log(fmt.Sprintf("Warning: Failed to retrieve MAC address: %v", err))
+	}
 	data.SysInfo.SysTime = parseModemTime("xb8-system", s.extractValue(pageStr, "Local time:"))
 	data.SysInfo.Uptime = parseUptimeToSeconds(s.extractValue(pageStr, "System Uptime:"))
 	data.SysInfo.ModemType = s.modemType

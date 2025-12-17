@@ -412,9 +412,16 @@ def test_api_key() -> str:
 
 @pytest.fixture(scope="function")
 async def active_api_key(db_session: AsyncSession, test_api_key: str) -> APIKey:
-    """Create active API key in database."""
+    """Create active API key in database with dual storage (v7.1+)."""
+    from app.core.api_key_crypto import encrypt_api_key_for_storage
+
+    # Hash + encrypt for dual storage
+    api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(test_api_key)
+
     api_key = APIKey(
-        api_key=test_api_key,
+        api_key_hash=api_key_hash,  # Hash for validation (primary key)
+        api_key_encrypted=encrypted_hex,  # Encrypted for reveal
+        encryption_salt=salt_hex,  # Salt for decryption
         name="test_key_active",
         created_at=utc_now(),
         is_active=True
@@ -427,10 +434,19 @@ async def active_api_key(db_session: AsyncSession, test_api_key: str) -> APIKey:
 
 @pytest.fixture(scope="function")
 async def inactive_api_key(db_session: AsyncSession) -> APIKey:
-    """Create inactive API key in database."""
+    """Create inactive API key in database with dual storage (v7.1+)."""
     import secrets
+    from app.core.api_key_crypto import encrypt_api_key_for_storage
+
+    plaintext_key = secrets.token_hex(32)
+
+    # Hash + encrypt for dual storage
+    api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(plaintext_key)
+
     api_key = APIKey(
-        api_key=secrets.token_hex(32),
+        api_key_hash=api_key_hash,  # Hash for validation (primary key)
+        api_key_encrypted=encrypted_hex,  # Encrypted for reveal
+        encryption_salt=salt_hex,  # Salt for decryption
         name="test_key_inactive",
         created_at=utc_now(),
         is_active=False
@@ -666,6 +682,118 @@ async def single_modem_populated(
 # ============================================================================
 # UI TEST DATA FIXTURES
 # ============================================================================
+
+@pytest.fixture(scope="function")
+async def ui_client_config():
+    """Create a ClientConfig record for UI tests.
+
+    This fixture creates its own database connection and commits data directly,
+    making it visible to the Docker web server. Cleans up data after test.
+
+    Returns tuple of (api_key_preview, modem_id) for test use.
+    """
+    import asyncio
+    import secrets
+    import hashlib
+    import json
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy import delete
+    import os
+
+    from app.models import APIKey
+    from app.models.client_config import ClientConfig, ConfigStatus
+    from app.core.utils import utc_now
+    from app.core.api_key_crypto import encrypt_api_key_for_storage
+    from app.core.config_encryption import generate_salt, _encrypt_sync
+
+    # Create async engine for test database
+    db_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://modemcheck:modemcheck_test_password@localhost:5433/modemcheck_test"
+    )
+    engine = create_async_engine(db_url, echo=False)
+    async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    # Generate unique test API key
+    plaintext_key = secrets.token_hex(32)
+    api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(plaintext_key)
+
+    # Test modem ID for this config
+    test_modem_id = "UI-TEST-AA:BB:CC:DD:EE:FF"
+
+    # Simple config for testing
+    config_plaintext = {
+        "SpeedTestEnabled": True,
+        "SpeedTestInterval": 5,
+        "AutoUpdateEnabled": True,
+        "UpdateChannel": "stable"
+    }
+
+    # Generate config hash (SHA256 of canonical JSON)
+    canonical_json = json.dumps(config_plaintext, sort_keys=True, separators=(',', ':'))
+    config_hash = hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()
+
+    # Encrypt config (synchronous version since we're in test)
+    config_salt = generate_salt()
+    config_encrypted, _ = _encrypt_sync(config_plaintext, config_salt)
+
+    async with async_session_factory() as session:
+        # Clean up any existing test data first
+        await session.execute(
+            delete(ClientConfig).where(ClientConfig.last_seen_modem_id == test_modem_id)
+        )
+        await session.execute(
+            delete(APIKey).where(APIKey.name == "ui_test_config_key")
+        )
+
+        # Create API key (v8.0+: no plaintext column)
+        api_key = APIKey(
+            api_key_hash=api_key_hash,
+            api_key_encrypted=encrypted_hex,
+            encryption_salt=salt_hex,
+            name="ui_test_config_key",
+            created_at=utc_now(),
+            is_active=True
+        )
+        session.add(api_key)
+        await session.flush()  # Ensure API key exists before creating config
+
+        # Create ClientConfig (v8.0+: no plaintext column, api_key_hash is PK)
+        client_config = ClientConfig(
+            api_key_hash=api_key_hash,
+            last_seen_modem_id=test_modem_id,
+            config_plaintext=config_plaintext,
+            config_encrypted=config_encrypted,
+            config_hash=config_hash,
+            encryption_salt=config_salt,  # Required NOT NULL field
+            status=ConfigStatus.UNMANAGED,
+            version=1,
+            created_at=utc_now(),
+            created_by="test_fixture",  # Required NOT NULL field
+            updated_at=utc_now(),
+            updated_by="test_fixture",  # Required NOT NULL field
+        )
+        session.add(client_config)
+        await session.commit()
+
+    # Return preview (first 8 chars) and modem ID for test use
+    api_key_preview = plaintext_key[:8]
+
+    yield (api_key_preview, test_modem_id)
+
+    # Cleanup: remove test data after test completes
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(ClientConfig).where(ClientConfig.last_seen_modem_id == test_modem_id)
+        )
+        await session.execute(
+            delete(APIKey).where(APIKey.name == "ui_test_config_key")
+        )
+        await session.commit()
+
+    await engine.dispose()
+
 
 @pytest.fixture(scope="function")
 async def ui_modem_data(real_modem_data: Dict[str, list[Dict[str, Any]]]) -> list[str]:
@@ -1127,7 +1255,11 @@ async def cross_browser_page(browser_type_name: str):
     async with async_playwright() as p:
         browser_launcher = getattr(p, browser_type_name)
         browser = await browser_launcher.launch(headless=True)
-        context = await browser.new_context()
+        # Create context with options to ensure consistent cookie handling
+        context = await browser.new_context(
+            ignore_https_errors=True,
+            java_script_enabled=True,
+        )
         page = await context.new_page()
         yield page, browser_type_name
         await context.close()
@@ -1155,7 +1287,10 @@ async def webkit_page():
 
     async with async_playwright() as p:
         browser = await p.webkit.launch(headless=True)
-        context = await browser.new_context()
+        context = await browser.new_context(
+            ignore_https_errors=True,
+            java_script_enabled=True,
+        )
         page = await context.new_page()
         yield page
         await context.close()

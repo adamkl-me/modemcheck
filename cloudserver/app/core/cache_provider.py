@@ -114,6 +114,16 @@ class InMemoryCache(ICacheProvider):
         Args:
             max_size: Maximum number of keys to store (LRU eviction)
             default_ttl: Default TTL in seconds if not specified
+
+        Operational Implications:
+            - Data is NOT shared across workers/processes. Each worker has its
+              own cache, which may lead to cache inconsistencies in multi-worker
+              deployments (e.g., session invalidation may not propagate).
+            - Memory usage grows linearly with max_size. With default 10,000 keys
+              and typical session data (~500 bytes), expect ~5MB per worker.
+            - LRU eviction may cause unexpected session loss under high load if
+              max_size is insufficient for active user count.
+            - Consider increasing max_size or fixing Redis for production use.
         """
         self.max_size = max_size
         self.default_ttl = default_ttl
