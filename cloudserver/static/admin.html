@@ -153,24 +153,14 @@
         }
 
         /* Header navigation buttons */
-        .header-nav {
-            position: absolute;
-            top: 30px;
-            left: 30px;
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            align-items: center;
-        }
-
         .header-nav-right {
             position: absolute;
             top: 30px;
             right: 30px;
             display: flex;
-            flex-direction: row;
+            flex-direction: column-reverse;
             gap: 10px;
-            align-items: center;
+            align-items: flex-end;
         }
 
         .header-nav-btn {
@@ -203,6 +193,9 @@
 
         /* Theme toggle in header */
         .theme-toggle {
+            position: absolute;
+            top: 30px;
+            left: 30px;
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -212,6 +205,7 @@
             cursor: pointer;
             font-size: 16px;
             transition: all 0.2s ease;
+            color: white;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
         }
 
@@ -266,9 +260,7 @@
             right: -100%;
             width: 250px;
             height: 100vh;
-            background: var(--glass-tint);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             box-shadow: -4px 0 12px rgba(0,0,0,0.3);
             z-index: 1000;
             padding: 80px 20px 20px 20px;
@@ -283,9 +275,9 @@
             width: 100%;
             margin-bottom: 10px;
             padding: 15px 20px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid var(--glass-border);
-            color: var(--text);
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
@@ -295,11 +287,10 @@
 
         .mobile-menu button.viewer {
             background: rgba(59, 130, 246, 0.8);
-            color: white;
         }
 
         .mobile-menu button:hover {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.25);
             transform: translateX(-5px);
         }
 
@@ -1046,8 +1037,13 @@
                 padding-right: 50px; /* Make room for hamburger */
             }
 
+            .theme-toggle {
+                top: auto;
+                bottom: 30px;
+                left: 30px;
+            }
+
             /* Hide desktop nav, show hamburger and mobile menu */
-            .header-nav,
             .header-nav-right {
                 display: none;
             }
@@ -1064,6 +1060,13 @@
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
+            }
+
+            .theme-toggle {
+                bottom: 20px;
+                left: 20px;
+                padding: 6px 10px;
+                font-size: 14px;
             }
 
             .keys-table {
@@ -1610,17 +1613,14 @@
         <div class="header">
             <h1>🔐 ModemCheck Admin Dashboard</h1>
 
-            <!-- Desktop navigation - left side -->
-            <div class="header-nav">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-                    <span class="theme-icon-light">&#9728;</span>
-                    <span class="theme-icon-dark">&#9790;</span>
-                </button>
-            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <span class="theme-icon-light">☀️</span>
+                <span class="theme-icon-dark">🌙</span>
+            </button>
 
             <!-- Desktop navigation - right side -->
             <div class="header-nav-right">
-                <button id="viewerBtn" class="header-nav-btn viewer">📊 Viewer</button>
+                <button id="viewerBtn" class="header-nav-btn viewer">Viewer</button>
                 <button id="logoutBtn" class="header-nav-btn">Logout</button>
             </div>
 
@@ -1637,12 +1637,7 @@
 
         <!-- Mobile slide-out menu -->
         <div class="mobile-menu">
-            <button onclick="toggleTheme(); closeMobileMenu();">
-                <span class="theme-icon-light">&#9728; Light Mode</span>
-                <span class="theme-icon-dark">&#9790; Dark Mode</span>
-            </button>
-            <button id="configBtnMobile" onclick="closeMobileMenu(); showTab('configGen'); showConfigSubTab('configMgmt');">⚙️ Config Management</button>
-            <button id="viewerBtnMobile" class="viewer">📊 Viewer</button>
+            <button id="viewerBtnMobile" class="viewer">Viewer</button>
             <button id="logoutBtnMobile">Logout</button>
         </div>
 
@@ -2005,7 +2000,7 @@
                                 <option value="active">✅ Active</option>
                             </select>
                         </div>
-                        <button class="btn btn-success" onclick="showCreateConfigModal()">➕ Create Config</button>
+                        <button class="btn btn-primary" onclick="showCreateConfigModal()">➕ Create Config</button>
                     </div>
 
                     <div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color);">

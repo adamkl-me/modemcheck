@@ -217,11 +217,11 @@ create the new key first, update all clients, then delete the old key.
 - username (PK), password_hash, role, created_at, last_login, must_change_password
 
 **api_keys** - Client authentication
-- api_key (PK), name, created_at, last_used, is_active
+- api_key_hash (PK), api_key_encrypted, encryption_salt, name, created_at, last_used, is_active
 
 **modem_checks** - Diagnostic data
 - id (PK), modem_id, modem_type, check_time, filename, full_data (JSONB), created_at
-- Extracted metrics: signal quality, speed tests, ping results, client info
+- Extracted metrics: signal quality, speed tests, ping results, traceroute (hop count, status), client info
 
 **user_activity_log** - Audit trail
 - id (PK), timestamp, username, action_type, ip_address, success, failure_reason

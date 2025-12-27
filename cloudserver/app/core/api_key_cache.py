@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class APIKeyCache:
     """
-    Hash-based API key cache for optimizing upload endpoint performance (v7.1+).
+    Hash-based API key cache for optimizing upload endpoint performance.
 
     SECURITY ENHANCEMENT:
     - Stores ONLY HASHES in Redis (no plaintext exposure)
@@ -33,10 +33,6 @@ class APIKeyCache:
     - Timing-safe comparison used for hash validation
     - Cache invalidated when keys are created/modified/deleted
     - Automatic fallback to in-memory cache if Redis unavailable
-
-    Migration:
-    - During migration, cache stores both hash (new) and plaintext (legacy)
-    - After Phase 8 cleanup, only hash is stored
     """
 
     CACHE_KEY = "api_keys:active"

@@ -40,7 +40,16 @@ This is the main application source code for modem-check, organized into a clean
   - Falls back to system ping command if permissions don't allow go-ping
   - Automatic OS detection for proper command flags (Windows: `-n`, Unix: `-c`)
   - Works "out of the box" on all platforms without configuration
-  - Better error handling and timeout control
+  - Target: 8.8.8.8 and one.one.one.one
+  - Timeout: 90 seconds (accommodates 100 pings @ 500ms + overhead)
+
+- **Native Traceroute with System Fallback**: Primary implementation uses `github.com/pixelbender/go-traceroute` library
+  - Tries go-traceroute library first (pure ICMP, requires raw socket permissions)
+  - Falls back to system traceroute/tracert command if permissions don't allow
+  - Target: 8.8.8.8 (Google DNS)
+  - Max hops: 30
+  - Timeout: 60 seconds
+  - Records: hop count, per-hop IP/hostname, RTT values, status
 
 - **Native Speed Tests**: Uses `github.com/showwin/speedtest-go` library instead of external iperf3
   - Tests against public Ookla speed test servers

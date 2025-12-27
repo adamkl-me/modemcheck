@@ -155,7 +155,7 @@ async def sync_config(
             status=sync_result.status,
             sync_status=sync_result.sync_status,
             config_hash=config_hash,
-            server_timestamp=utc_now().isoformat(),
+            server_timestamp=utc_now().isoformat() + "Z",
             config_changed=sync_result.config_changed
         )
 

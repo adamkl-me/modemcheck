@@ -67,6 +67,8 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
         'ping_cloudflare_loss': None,
         'ping_cloudflare_jitter': None,
         'ping_cloudflare_max_latency': None,
+        'traceroute_google_hops': None,
+        'traceroute_google_status': None,
         'client_version': None,
         'client_os': None,
         'client_arch': None,
@@ -165,6 +167,12 @@ def extract_metrics(json_data: Dict[str, Any]) -> Dict[str, Any]:
     metrics['ping_cloudflare_loss'] = safe_float(cloudflare_ping.get('packet_loss'))
     metrics['ping_cloudflare_jitter'] = safe_float(cloudflare_ping.get('jitter'))
     metrics['ping_cloudflare_max_latency'] = safe_float(cloudflare_ping.get('max_latency'))
+
+    # Extract traceroute results (from root level, not nested)
+    traceroute_google = json_data.get('traceroute_google', {})
+    if traceroute_google:
+        metrics['traceroute_google_hops'] = safe_int(traceroute_google.get('hop_count'))
+        metrics['traceroute_google_status'] = traceroute_google.get('status')
 
     # Extract client information
     metrics['client_version'] = sysinfo.get('client_version')

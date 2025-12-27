@@ -476,8 +476,8 @@ class TestLockedHandler:
 
         # Version should NOT be incremented - we're just returning existing config
         assert result.version == 5
-        # db.add should NOT be called for new version
-        assert db.add.call_count == 0  # No version created
+        # db.add should be called once for audit entry (rejected config), NOT for version
+        assert db.add.call_count == 1  # Audit entry added for rejected config change
 
 
 class TestStatusTransitions:

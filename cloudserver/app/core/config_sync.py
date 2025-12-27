@@ -121,8 +121,8 @@ async def verify_nonce(
 
     if not is_valid:
         raise ConfigClockSkewError(
-            client_time=request_timestamp.isoformat(),
-            server_time=server_time.isoformat(),
+            client_time=request_timestamp.isoformat() + "Z",
+            server_time=server_time.isoformat() + "Z",
             max_skew_seconds=TIMESTAMP_WINDOW_SECONDS
         )
 
@@ -506,9 +506,10 @@ async def _handle_unmanaged_sync(
 
     # Config changed - create new version
     # Check for version overflow (PostgreSQL INTEGER limit protection)
-    if existing_config.version >= MAX_VERSION:
+    # Use > to allow version MAX_VERSION to be created, reject only when exceeding it
+    if existing_config.version > MAX_VERSION:
         raise DatabaseError(
-            message=f"Version number overflow: current version {existing_config.version} is at maximum limit",
+            message=f"Version number overflow: current version {existing_config.version} exceeds maximum limit",
             details={"current_version": existing_config.version, "max_version": MAX_VERSION}
         )
     new_version = existing_config.version + 1
@@ -614,6 +615,14 @@ async def _handle_managed_sync(
     # Normalize client config to only include fields present in server's stored config
     # This handles cases where client sends extra fields (e.g., IgnitePassword, EnableCloud)
     server_fields = set(existing_config.config_plaintext.keys())
+    client_fields = set(client_config.keys())
+    dropped_fields = client_fields - server_fields
+    if dropped_fields:
+        logger.debug(
+            f"MANAGED config normalization: dropping client fields not tracked by server "
+            f"for api_key_hash={existing_config.api_key_hash[:16]}..., "
+            f"modem_id={modem_id}, dropped_fields={sorted(dropped_fields)}"
+        )
     normalized_client_config = {k: v for k, v in client_config.items() if k in server_fields}
     normalized_client_hash = calculate_config_hash(normalized_client_config)
 
@@ -629,9 +638,10 @@ async def _handle_managed_sync(
 
     # Client modified config - transition to UNMANAGED
     # Check for version overflow (PostgreSQL INTEGER limit protection)
-    if existing_config.version >= MAX_VERSION:
+    # Use > to allow version MAX_VERSION to be created, reject only when exceeding it
+    if existing_config.version > MAX_VERSION:
         raise DatabaseError(
-            message=f"Version number overflow: current version {existing_config.version} is at maximum limit",
+            message=f"Version number overflow: current version {existing_config.version} exceeds maximum limit",
             details={"current_version": existing_config.version, "max_version": MAX_VERSION}
         )
     new_version = existing_config.version + 1
@@ -754,6 +764,37 @@ async def _handle_locked_sync(
     # ACTIVE state - always return server config
     # Do NOT record rejected client configs as new versions
     # Cache invalidation moved to router (after db.commit) to avoid race condition
+
+    # Log attempted config changes for audit trail (security monitoring)
+    if config_hash != existing_config.config_hash:
+        logger.info(
+            f"LOCKED config rejection: client attempted config change for api_key_hash={existing_config.api_key_hash[:16]}..., "
+            f"modem_id={modem_id}, client_hash={config_hash[:16]}..., server_hash={existing_config.config_hash[:16]}..."
+        )
+        # Log to audit for security visibility
+        from app.models.client_config import ConfigAuditLog
+        audit_entry = ConfigAuditLog(
+            timestamp=utc_now(),
+            username=None,  # Client-initiated
+            api_key_hash=existing_config.api_key_hash,
+            ip_address=ip_address,
+            modem_id=modem_id,
+            action="locked_config_rejected",
+            config_summary={
+                "reason": "client_attempted_modify_locked_config",
+                "client_hash": config_hash[:16] + "...",
+                "server_hash": existing_config.config_hash[:16] + "..."
+            },
+            old_version=existing_config.version,
+            new_version=existing_config.version,
+            old_status=ConfigStatus.LOCKED,
+            new_status=ConfigStatus.LOCKED,
+            old_sync_status=SyncStatus.ACTIVE,
+            new_sync_status=SyncStatus.ACTIVE,
+            success=True,
+            failure_reason=None
+        )
+        db.add(audit_entry)
 
     return SyncResult(
         config=existing_config.config_plaintext,

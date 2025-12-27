@@ -79,6 +79,28 @@ type EventLog struct {
 	Event string `json:"event"`
 }
 
+// TracerouteHop represents a single hop in a traceroute.
+type TracerouteHop struct {
+	Hop     int    `json:"hop"`
+	Host    string `json:"host,omitempty"`
+	IP      string `json:"ip,omitempty"`
+	RTT1    string `json:"rtt1,omitempty"`
+	RTT2    string `json:"rtt2,omitempty"`
+	RTT3    string `json:"rtt3,omitempty"`
+	Timeout bool   `json:"timeout,omitempty"`
+}
+
+// TracerouteResult represents the results of a traceroute test.
+type TracerouteResult struct {
+	Target    string          `json:"target"`
+	HopCount  int             `json:"hop_count"`
+	Hops      []TracerouteHop `json:"hops"`
+	Status    string          `json:"status"` // "success", "failed", "timeout"
+	Error     string          `json:"error,omitempty"`
+	Duration  string          `json:"duration,omitempty"`
+	RawOutput string          `json:"raw_output,omitempty"`
+}
+
 // ModemData represents all data collected from a modem including channel statistics,
 // event logs, and diagnostic test results.
 type ModemData struct {
@@ -110,6 +132,9 @@ type ModemData struct {
 	PingCloudflareLoss       string `json:"ping_cloudflare_loss,omitempty"`
 	PingCloudflareJitter     string `json:"ping_cloudflare_jitter,omitempty"`
 	PingCloudflareMaxLatency string `json:"ping_cloudflare_max_latency,omitempty"`
+
+	// Traceroute results
+	TracerouteGoogle *TracerouteResult `json:"traceroute_google,omitempty"`
 
 	// Client information
 	ClientVersion string `json:"client_version,omitempty"` // Version of modem-check client

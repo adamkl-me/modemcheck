@@ -37,7 +37,8 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
     * TX/Upstream power levels (SC-QAM & OFDMA)
     * Codeword error counts (Corrected/Uncorrected)
     * Event logs (not available on Xfinity modems)
-    * Ping test results (google.ca and one.one.one.one) - native Go implementation
+    * Ping test results (8.8.8.8 and one.one.one.one) - native Go implementation
+    * Traceroute to Google DNS (8.8.8.8) - hop count, per-hop latency, route status
     * Speed test results using public Ookla servers - native Go implementation (enabled by default)
     * Public IP and network information (IP address, ASN, ISP name, geolocation)
 * **Additional Functionality**:
@@ -303,7 +304,7 @@ Generated JSON files include:
 **System Info**: Firmware, uptime, timestamps, modem type, MAC address
 **Downstream Data**: SC-QAM and OFDM channels (power, SNR, errors)
 **Upstream Data**: SC-QAM and OFDMA channels (power levels)
-**Network Tests**: Ping results (Google, Cloudflare with avg/max/jitter/loss), speed test data (download, upload, latency, server info)
+**Network Tests**: Ping results (Google 8.8.8.8, Cloudflare with avg/max/jitter/loss), traceroute data (hops, status, per-hop details), speed test data (download, upload, latency, server info)
 **Event Logs**: Modem event history (not available on Xfinity modems)
 **Client Info**: Version, OS, architecture
 

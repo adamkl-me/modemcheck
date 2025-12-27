@@ -18,10 +18,11 @@ const (
 	LogMaxAgeDays = 30
 
 	// HTTP timeouts
-	DefaultHTTPTimeout = 10 * time.Second
-	SpeedTestTimeout   = 60 * time.Second
-	PingTimeout        = 60 * time.Second
-	PingInterval       = 500 * time.Millisecond
+	DefaultHTTPTimeout  = 10 * time.Second
+	SpeedTestTimeout    = 60 * time.Second
+	PingTimeout         = 90 * time.Second  // 100 pings @ 500ms + RTT overhead buffer
+	PingInterval        = 500 * time.Millisecond
+	TracerouteTimeout   = 60 * time.Second
 
 	// Test configuration
 	DefaultPingCount            = 100 // Number of pings for latency testing
@@ -29,6 +30,10 @@ const (
 
 	// Network limits
 	MaxHostnameLength = 253 // RFC 1035 DNS hostname max length
+	MaxIPLength       = 45  // IPv6 max length is 45 chars (39 + zone ID)
+
+	// Time conversion constants
+	NanosecondsPerMillisecond = 1_000_000.0 // For converting time.Duration to milliseconds
 
 	// File size limits
 	MaxFileUploadSize      = 10 * 1024 * 1024  // 10MB

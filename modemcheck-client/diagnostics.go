@@ -20,6 +20,8 @@ import (
 	// See THIRD-PARTY-LICENSES.md for full license information
 	"github.com/go-ping/ping"                   // MIT License - Copyright (c) 2016 Cameron Sparr and contributors
 	"github.com/showwin/speedtest-go/speedtest" // MIT License - Copyright (c) 2015 ITO Shogo
+	// Note: github.com/pixelbender/go-traceroute is imported in diagnostics_unix.go only
+	// (uses Unix-specific syscalls that don't compile on Windows)
 )
 
 // Shared HTTP client for IP detection services to avoid repeated TLS handshakes
@@ -38,6 +40,20 @@ var (
 	pingAvgReWin    = regexp.MustCompile(`Average = (\d+)ms`)
 	pingMaxReWin    = regexp.MustCompile(`Maximum = (\d+)ms`)
 	pingStatsReUnix = regexp.MustCompile(`(?:rtt|round-trip) min/avg/max/(?:mdev|stddev) = ([\d.]+)/([\d.]+)/([\d.]+)/([\d.]+)`)
+)
+
+// Pre-compiled regexes for traceroute output parsing
+var (
+	// Unix traceroute format: " 1  192.168.1.1 (192.168.1.1)  1.234 ms  1.345 ms  1.456 ms"
+	// or " 1  router.local (192.168.1.1)  1.234 ms  1.345 ms  1.456 ms"
+	tracerouteUnixRe = regexp.MustCompile(`^\s*(\d+)\s+(\S+)\s+\(([^)]+)\)\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms`)
+	// Unix traceroute timeout format: " 2  * * *"
+	tracerouteUnixTimeoutRe = regexp.MustCompile(`^\s*(\d+)\s+\*\s+\*\s+\*`)
+	// Windows tracert format: "  1     1 ms     1 ms     1 ms  192.168.1.1"
+	// or "  1    <1 ms    <1 ms    <1 ms  192.168.1.1"
+	tracerouteWinRe = regexp.MustCompile(`^\s*(\d+)\s+(<?\d+)\s*ms\s+(<?\d+)\s*ms\s+(<?\d+)\s*ms\s+(\S+)`)
+	// Windows tracert timeout format: "  2     *        *        *     Request timed out."
+	tracerouteWinTimeoutRe = regexp.MustCompile(`^\s*(\d+)\s+\*\s+\*\s+\*`)
 )
 
 // ShouldRunSpeedTest determines if a speed test should run based on interval and previous results.
@@ -143,9 +159,9 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 	err = server.PingTest(nil)
 	if err == nil {
 		// Extract unloaded latency metrics (convert from nanoseconds to milliseconds)
-		data.SpeedTestLatency = math.Round(float64(server.Latency)/1000000.0*10) / 10 // Round to 1 decimal
-		data.SpeedTestMaxLatency = math.Round(float64(server.MaxLatency)/1000000.0*10) / 10
-		data.SpeedTestJitter = math.Round(float64(server.Jitter)/1000000.0*10) / 10
+		data.SpeedTestLatency = math.Round(float64(server.Latency)/NanosecondsPerMillisecond*10) / 10 // Round to 1 decimal
+		data.SpeedTestMaxLatency = math.Round(float64(server.MaxLatency)/NanosecondsPerMillisecond*10) / 10
+		data.SpeedTestJitter = math.Round(float64(server.Jitter)/NanosecondsPerMillisecond*10) / 10
 	}
 
 	// Run download test
@@ -190,10 +206,11 @@ func (m *ModemCheck) RunSpeedTests(data *scraper.ModemData, state *SpeedTestStat
 	return success
 }
 
-// RunPingTests runs ping tests to Google and Cloudflare concurrently and records
-// average latency, packet loss, jitter, and maximum latency for each target.
+// RunPingTests runs ping tests to Google and Cloudflare concurrently, along with
+// a traceroute to 8.8.8.8. Records average latency, packet loss, jitter,
+// and maximum latency for each ping target.
 func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
-	m.Log(fmt.Sprintf("Running ping tests (%d pings each) to google.ca and one.one.one.one...", m.config.PingCount))
+	m.Log(fmt.Sprintf("Running ping tests (%d pings each) and traceroute to 8.8.8.8...", m.config.PingCount))
 
 	// Use channels to collect results from concurrent goroutines
 	type pingResult struct {
@@ -204,17 +221,18 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 		maxLatency string
 	}
 	results := make(chan pingResult, 2)
+	tracerouteResult := make(chan *scraper.TracerouteResult, 1)
 
 	// Start both pings concurrently
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				m.Log(fmt.Sprintf("Panic in google.ca ping test: %v", r))
-				results <- pingResult{"google.ca", "", "", "", ""}
+				m.Log(fmt.Sprintf("Panic in 8.8.8.8 ping test: %v", r))
+				results <- pingResult{"8.8.8.8", "", "", "", ""}
 			}
 		}()
-		avg, loss, jitter, maxLatency := m.runPing("google.ca", m.config.PingCount)
-		results <- pingResult{"google.ca", avg, loss, jitter, maxLatency}
+		avg, loss, jitter, maxLatency := m.runPing("8.8.8.8", m.config.PingCount)
+		results <- pingResult{"8.8.8.8", avg, loss, jitter, maxLatency}
 	}()
 
 	go func() {
@@ -228,12 +246,23 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 		results <- pingResult{"one.one.one.one", avg, loss, jitter, maxLatency}
 	}()
 
+	// Start traceroute concurrently
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				m.Log(fmt.Sprintf("Panic in traceroute test: %v", r))
+				tracerouteResult <- nil
+			}
+		}()
+		tracerouteResult <- m.runTraceroute("8.8.8.8")
+	}()
+
 	// Collect results from both pings
 	for i := 0; i < 2; i++ {
 		result := <-results
 		if result.avg != "" {
 			m.Log(fmt.Sprintf("%s: avg %s ms, %s packet loss", result.host, result.avg, result.loss))
-			if result.host == "google.ca" {
+			if result.host == "8.8.8.8" {
 				data.PingGoogleAvg = result.avg
 				data.PingGoogleLoss = result.loss
 				data.PingGoogleJitter = result.jitter
@@ -246,7 +275,7 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 			}
 		} else {
 			m.Log(fmt.Sprintf("Ping to %s failed", result.host))
-			if result.host == "google.ca" {
+			if result.host == "8.8.8.8" {
 				data.PingGoogleAvg = "Failed"
 				data.PingGoogleLoss = "N/A"
 				data.PingGoogleJitter = "N/A"
@@ -258,6 +287,15 @@ func (m *ModemCheck) RunPingTests(data *scraper.ModemData) {
 				data.PingCloudflareMaxLatency = "N/A"
 			}
 		}
+	}
+
+	// Collect traceroute result
+	data.TracerouteGoogle = <-tracerouteResult
+	if data.TracerouteGoogle != nil {
+		m.Log(fmt.Sprintf("Traceroute to %s: %d hops, status: %s",
+			data.TracerouteGoogle.Target,
+			data.TracerouteGoogle.HopCount,
+			data.TracerouteGoogle.Status))
 	}
 }
 
@@ -467,6 +505,139 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 	return avg, loss, jitter, maxLatency
 }
 
+// runTraceroute is implemented in platform-specific files:
+// - diagnostics_unix.go: Uses go-traceroute library with fallback to system command
+// - diagnostics_windows.go: Uses system tracert command directly
+
+// runSystemTraceroute executes a traceroute using the system command.
+// Uses system traceroute (Linux/macOS) or tracert (Windows) command.
+// This is the fallback when the Go traceroute library fails.
+func (m *ModemCheck) runSystemTraceroute(host string) *scraper.TracerouteResult {
+	startTime := time.Now()
+
+	// Validate host parameter (reuse same validation as ping)
+	if len(host) == 0 || len(host) > MaxHostnameLength {
+		m.Log(fmt.Sprintf("Invalid host length for traceroute: %d characters", len(host)))
+		return &scraper.TracerouteResult{
+			Target: host,
+			Status: "failed",
+			Error:  "invalid host length",
+		}
+	}
+
+	// SECURITY: Validate hostname characters to prevent command injection
+	for _, char := range host {
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '.' || char == '-' || char == ':') {
+			m.Log(fmt.Sprintf("Invalid characters in hostname for traceroute: %s", host))
+			return &scraper.TracerouteResult{
+				Target: host,
+				Status: "failed",
+				Error:  "invalid hostname characters",
+			}
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), TracerouteTimeout)
+	defer cancel()
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		// Windows: tracert with DNS resolution to show both hostname and IP
+		cmd = exec.CommandContext(ctx, "tracert", "-h", "30", host)
+	} else {
+		// Linux/macOS: traceroute with DNS resolution to show hostname (IP) format
+		cmd = exec.CommandContext(ctx, "traceroute", "-m", "30", host)
+	}
+
+	output, err := cmd.CombinedOutput()
+	duration := time.Since(startTime)
+
+	result := &scraper.TracerouteResult{
+		Target:    host,
+		RawOutput: string(output),
+		Duration:  fmt.Sprintf("%.1fs", duration.Seconds()),
+	}
+
+	if err != nil {
+		// Check if it was a timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			m.Log(fmt.Sprintf("Traceroute to %s timed out after %v", host, TracerouteTimeout))
+			result.Status = "timeout"
+			result.Error = "traceroute timed out"
+		} else {
+			m.Log(fmt.Sprintf("Traceroute to %s failed: %v", host, err))
+			result.Status = "failed"
+			result.Error = err.Error()
+		}
+		// Still try to parse any partial output we got
+		result.Hops = m.parseTracerouteOutput(string(output))
+		result.HopCount = len(result.Hops)
+		return result
+	}
+
+	// Parse the output
+	result.Hops = m.parseTracerouteOutput(string(output))
+	result.HopCount = len(result.Hops)
+	result.Status = "success"
+
+	return result
+}
+
+// parseTracerouteOutput parses traceroute/tracert output into structured hop data.
+func (m *ModemCheck) parseTracerouteOutput(output string) []scraper.TracerouteHop {
+	var hops []scraper.TracerouteHop
+	lines := strings.Split(output, "\n")
+	isWindows := runtime.GOOS == "windows"
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		var hop scraper.TracerouteHop
+
+		if isWindows {
+			// Try to match Windows tracert output
+			if matches := tracerouteWinRe.FindStringSubmatch(line); matches != nil {
+				hopNum, _ := strconv.Atoi(matches[1])
+				hop.Hop = hopNum
+				hop.RTT1 = strings.TrimPrefix(matches[2], "<") + " ms"
+				hop.RTT2 = strings.TrimPrefix(matches[3], "<") + " ms"
+				hop.RTT3 = strings.TrimPrefix(matches[4], "<") + " ms"
+				hop.IP = matches[5]
+				hop.Host = matches[5] // Windows tracert shows hostname or IP (same value)
+				hops = append(hops, hop)
+			} else if matches := tracerouteWinTimeoutRe.FindStringSubmatch(line); matches != nil {
+				hopNum, _ := strconv.Atoi(matches[1])
+				hop.Hop = hopNum
+				hop.Timeout = true
+				hops = append(hops, hop)
+			}
+		} else {
+			// Try to match Unix traceroute output
+			if matches := tracerouteUnixRe.FindStringSubmatch(line); matches != nil {
+				hopNum, _ := strconv.Atoi(matches[1])
+				hop.Hop = hopNum
+				hop.Host = matches[2]
+				hop.IP = matches[3]
+				hop.RTT1 = matches[4] + " ms"
+				hop.RTT2 = matches[5] + " ms"
+				hop.RTT3 = matches[6] + " ms"
+				hops = append(hops, hop)
+			} else if matches := tracerouteUnixTimeoutRe.FindStringSubmatch(line); matches != nil {
+				hopNum, _ := strconv.Atoi(matches[1])
+				hop.Hop = hopNum
+				hop.Timeout = true
+				hops = append(hops, hop)
+			}
+		}
+	}
+
+	return hops
+}
+
 // GetPublicIPInfo detects the client's public IP address, ASN, and ISP information.
 // Uses caching to reduce API calls and multiple fallback services for reliability.
 func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
@@ -505,23 +676,60 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 		m.Log("Fetching IP and ASN information...")
 	}
 
-	// Try primary service (ip-api.com - free, no rate limits for reasonable usage)
-	if m.tryIPAPI(data) {
-		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
-			data.PublicIP, data.ASN, data.ISPName))
-		// Save to cache for future use
-		if err := SaveIPInfoCache(data.PublicIP, data.ASN, data.ISPName, data.IPCity, data.IPCountry); err != nil {
-			m.Log(fmt.Sprintf("Warning: Failed to save IP cache: %v", err))
+	// Try both IP services in parallel and use the first one that succeeds
+	// This avoids 10+ second delays when one service is slow or down
+	type ipResult struct {
+		publicIP  string
+		asn       string
+		ispName   string
+		ipCity    string
+		ipCountry string
+		service   string
+	}
+	resultChan := make(chan ipResult, 2)
+
+	// Launch both services concurrently
+	go func() {
+		tempData := &scraper.ModemData{}
+		if m.tryIPAPI(tempData) {
+			resultChan <- ipResult{
+				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
+				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ip-api.com",
+			}
+		} else {
+			resultChan <- ipResult{} // Empty result indicates failure
 		}
-		return
+	}()
+
+	go func() {
+		tempData := &scraper.ModemData{}
+		if m.tryIPAPICo(tempData) {
+			resultChan <- ipResult{
+				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
+				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ipapi.co",
+			}
+		} else {
+			resultChan <- ipResult{} // Empty result indicates failure
+		}
+	}()
+
+	// Wait for both services, use first successful result
+	var successResult *ipResult
+	for i := 0; i < 2; i++ {
+		result := <-resultChan
+		if result.publicIP != "" && successResult == nil {
+			successResult = &result
+		}
 	}
 
-	m.Log("Primary IP service failed, trying fallback (ipapi.co)...")
-
-	// Try fallback service (ipapi.co)
-	if m.tryIPAPICo(data) {
-		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s)",
-			data.PublicIP, data.ASN, data.ISPName))
+	if successResult != nil {
+		data.PublicIP = successResult.publicIP
+		data.ASN = successResult.asn
+		data.ISPName = successResult.ispName
+		data.IPCity = successResult.ipCity
+		data.IPCountry = successResult.ipCountry
+		m.Log(fmt.Sprintf("Public IP: %s (ASN: %s, ISP: %s) [via %s]",
+			data.PublicIP, data.ASN, data.ISPName, successResult.service))
 		// Save to cache for future use
 		if err := SaveIPInfoCache(data.PublicIP, data.ASN, data.ISPName, data.IPCity, data.IPCountry); err != nil {
 			m.Log(fmt.Sprintf("Warning: Failed to save IP cache: %v", err))
@@ -614,7 +822,7 @@ func (m *ModemCheck) tryIPAPI(data *scraper.ModemData) bool {
 		Status  string `json:"status"`
 	}
 
-	if err := m.fetchJSONFromService("http://ip-api.com/json/", "ip-api.com", &ipInfo); err != nil {
+	if err := m.fetchJSONFromService("https://ip-api.com/json/", "ip-api.com", &ipInfo); err != nil {
 		return false
 	}
 
@@ -665,7 +873,7 @@ func (m *ModemCheck) trySimpleIP(data *scraper.ModemData) bool {
 
 	// Parse as plain text
 	ip := strings.TrimSpace(string(body))
-	if ip != "" && len(ip) < 50 { // Basic validation
+	if ip != "" && len(ip) <= MaxIPLength { // Validate IP length (IPv6 max is 45 chars)
 		data.PublicIP = ip
 		return true
 	}

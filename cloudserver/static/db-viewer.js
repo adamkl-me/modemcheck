@@ -766,7 +766,10 @@ function updateTimelineNav() {
 }
 
 function navigateToIndex(index) {
-    currentCheckIndex = parseInt(index);
+    // Validate bounds to prevent invalid index access
+    const parsed = parseInt(index);
+    if (isNaN(parsed) || allChecks.length === 0) return;
+    currentCheckIndex = Math.max(0, Math.min(allChecks.length - 1, parsed));
     updateTimelineNav();
     displayCurrentCheck();
 }
@@ -919,16 +922,32 @@ function displayCurrentCheck() {
         googleParts.push(`Jitter: ${parseFloat(pingGoogleJitter).toFixed(1)} ms`);
     }
 
-    // Build details text with Loss always on its own line
+    // Build details using DOM manipulation to support traceroute link
     const googleTopLineParts = googleParts.join(' | ');
-    const googleDetailsLines = [];
+    const pingGoogleDetailsEl = document.getElementById('ping_google_details');
+    pingGoogleDetailsEl.textContent = ''; // Clear existing content
+
     if (googleTopLineParts) {
-        googleDetailsLines.push(googleTopLineParts);
+        pingGoogleDetailsEl.appendChild(document.createTextNode(googleTopLineParts));
     }
     if (pingGoogleLoss && pingGoogleLoss !== 'N/A') {
-        googleDetailsLines.push('Loss: ' + pingGoogleLoss);
+        if (googleTopLineParts) {
+            pingGoogleDetailsEl.appendChild(document.createElement('br'));
+        }
+        pingGoogleDetailsEl.appendChild(document.createTextNode('Loss: ' + pingGoogleLoss));
+
+        // Add traceroute link inline with loss (if data available)
+        if (data.traceroute_google && data.traceroute_google.status) {
+            pingGoogleDetailsEl.appendChild(document.createTextNode(' | '));
+            pingGoogleDetailsEl.appendChild(createTracerouteLink(data.traceroute_google));
+        }
+    } else if (data.traceroute_google && data.traceroute_google.status) {
+        // Show traceroute link even without loss data
+        if (googleTopLineParts) {
+            pingGoogleDetailsEl.appendChild(document.createElement('br'));
+        }
+        pingGoogleDetailsEl.appendChild(createTracerouteLink(data.traceroute_google));
     }
-    document.getElementById('ping_google_details').textContent = googleDetailsLines.join('\n');
 
     // Display ping Cloudflare results with jitter and max latency
     const pingCloudflareAvg = data.ping_cloudflare_avg || '-';
@@ -1374,89 +1393,6 @@ function renderTrendChartsFromPreAggregated() {
     renderTxChannelsChart(timestamps, txScqamData, txOfdmaData);
     renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
 }
-
-            // Old API function - can be removed if no longer needed
-            function renderTrendCharts(speedData, signalData) {
-                // Debug logging
-                console.log('Speed data sample:', speedData[0]);
-                console.log('Signal data sample:', signalData[0]);
-                
-                // Extract timestamps from speed data (all checks should have same timestamps)
-                const timestamps = speedData.map(d => d.check_time);
-                
-                // Extract speed test data
-                const uploadSpeeds = speedData.map(d => parseSpeed(d.iperf3_upload));
-                const downloadSpeeds = speedData.map(d => parseSpeed(d.iperf3_download));
-                const uploadLimits = speedData.map(d => d.iperf3_upload_limit ? parseSpeed(d.iperf3_upload_limit) : null);
-                const downloadLimits = speedData.map(d => d.iperf3_download_limit ? parseSpeed(d.iperf3_download_limit) : null);
-                
-                // Extract RX SC-QAM data (handle null values)
-                const rxScqamPowerData = signalData.map(d => ({
-                    min: d.rx_scqam?.min_power ?? null,
-                    avg: d.rx_scqam?.avg_power ?? null,
-                    max: d.rx_scqam?.max_power ?? null
-                }));
-                
-                const rxScqamSnrData = signalData.map(d => ({
-                    min: d.rx_scqam?.min_snr ?? null,
-                    avg: d.rx_scqam?.avg_snr ?? null,
-                    max: d.rx_scqam?.max_snr ?? null
-                }));
-                
-                const rxScqamBerData = signalData.map(d => ({
-                    avg: d.rx_scqam?.avg_ber ?? null,
-                    max: d.rx_scqam?.max_ber ?? null
-                }));
-                
-                // Extract RX OFDM data (handle null values)
-                const rxOfdmPowerData = signalData.map(d => ({
-                    min: d.rx_ofdm?.min_power ?? null,
-                    avg: d.rx_ofdm?.avg_power ?? null,
-                    max: d.rx_ofdm?.max_power ?? null
-                }));
-                
-                const rxOfdmSnrData = signalData.map(d => ({
-                    min: d.rx_ofdm?.min_snr ?? null,
-                    avg: d.rx_ofdm?.avg_snr ?? null,
-                    max: d.rx_ofdm?.max_snr ?? null
-                }));
-                
-                const rxOfdmBerData = signalData.map(d => ({
-                    avg: d.rx_ofdm?.avg_ber ?? null,
-                    max: d.rx_ofdm?.max_ber ?? null
-                }));
-                
-                // Extract TX SC-QAM data (handle null values)
-                const txScqamData = signalData.map(d => ({
-                    min: d.tx_scqam?.min_power ?? null,
-                    avg: d.tx_scqam?.avg_power ?? null,
-                    max: d.tx_scqam?.max_power ?? null,
-                    bonded: d.tx_scqam?.bonded_count ?? 0
-                }));
-                
-                // Extract TX OFDMA data (handle null values)
-                const txOfdmaData = signalData.map(d => ({
-                    avgPower: d.tx_ofdma?.avg_power ?? null,
-                    bonded: d.tx_ofdma?.bonded_count ?? 0,
-                    impaired: d.tx_ofdma?.impaired_count ?? 0
-                }));
-                
-                console.log('Extracted data samples:');
-                console.log('  Labels:', labels.slice(0, 3));
-                console.log('  RX SC-QAM Power:', rxScqamPowerData.slice(0, 3));
-                console.log('  RX OFDM Power:', rxOfdmPowerData.slice(0, 3));
-                console.log('  RX SC-QAM SNR:', rxScqamSnrData.slice(0, 3));
-                console.log('  TX SC-QAM:', txScqamData.slice(0, 3));
-                console.log('  TX OFDMA:', txOfdmaData.slice(0, 3));
-                
-                // Render all charts (Note: API function doesn't calculate corrected data, so passing empty arrays)
-                renderSpeedChart(timestamps, uploadSpeeds, downloadSpeeds, uploadLimits, downloadLimits);
-                renderRxPowerChart(timestamps, rxScqamPowerData, rxOfdmPowerData);
-                renderRxSnrChart(timestamps, rxScqamSnrData, rxOfdmSnrData);
-                renderBerChart(timestamps, rxScqamBerData, rxOfdmBerData, [], []);
-                renderTxChannelsChart(timestamps, txScqamData, txOfdmaData);
-                renderTxPowerChart(timestamps, txScqamData, txOfdmaData);
-            }
 
             function renderSpeedChart(timestamps, uploadData, downloadData, uploadLimits, downloadLimits) {
                 const ctx = document.getElementById('speedChart');
@@ -2627,3 +2563,123 @@ function renderTrendChartsFromPreAggregated() {
                     }
                 });
             }
+
+// Helper function to create traceroute link element
+function createTracerouteLink(tracerouteData) {
+    const link = document.createElement('a');
+    link.textContent = 'Traceroute';
+    link.href = '#';
+    link.style.cssText = 'color: white; text-decoration: underline; cursor: pointer;';
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        showTracerouteModal(tracerouteData);
+    });
+    return link;
+}
+
+// Traceroute modal functions
+function showTracerouteModal(tracerouteData) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'traceroute-modal-overlay';
+
+    // Create content container
+    const content = document.createElement('div');
+    content.className = 'traceroute-modal-content';
+
+    // Header
+    const header = document.createElement('h3');
+    header.textContent = 'Traceroute to ' + tracerouteData.target;
+    content.appendChild(header);
+
+    // Traceroute output
+    const pre = document.createElement('pre');
+    pre.className = 'traceroute-output';
+    pre.textContent = formatTracerouteOutput(tracerouteData);
+    content.appendChild(pre);
+
+    // Buttons container
+    const buttons = document.createElement('div');
+    buttons.className = 'traceroute-modal-buttons';
+
+    // Copy button with error handling for clipboard API
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy to Clipboard';
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(pre.textContent).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+        }).catch((err) => {
+            console.warn('Clipboard access denied:', err);
+            copyBtn.textContent = 'Copy Failed';
+            setTimeout(() => { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+        });
+    });
+    buttons.appendChild(copyBtn);
+
+    // Escape key handler - defined first so closeModal can reference it
+    let handleEscape;
+
+    // Close modal and cleanup function
+    const closeModal = () => {
+        document.removeEventListener('keydown', handleEscape);
+        if (overlay.parentNode) {
+            document.body.removeChild(overlay);
+        }
+    };
+
+    // Now assign the actual function
+    handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    };
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', closeModal);
+    buttons.appendChild(closeBtn);
+
+    content.appendChild(buttons);
+    overlay.appendChild(content);
+
+    // Close on overlay click (outside the modal)
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    });
+
+    // Register escape key handler
+    document.addEventListener('keydown', handleEscape);
+
+    document.body.appendChild(overlay);
+}
+
+function formatTracerouteOutput(tracerouteData) {
+    // Use raw output if available (preserves original formatting)
+    if (tracerouteData.raw_output) {
+        return tracerouteData.raw_output;
+    }
+
+    // Format hops array into readable output
+    if (!tracerouteData.hops || tracerouteData.hops.length === 0) {
+        return 'No hop data available';
+    }
+
+    return tracerouteData.hops.map(hop => {
+        if (hop.timeout) {
+            return hop.hop.toString().padStart(2) + '  * * *';
+        }
+        // Show hostname (IP) format when both are available and different
+        let hostDisplay;
+        if (hop.host && hop.ip && hop.host !== hop.ip) {
+            hostDisplay = hop.host + ' (' + hop.ip + ')';
+        } else {
+            hostDisplay = hop.host || hop.ip || '*';
+        }
+        const rtts = [hop.rtt1, hop.rtt2, hop.rtt3].filter(r => r).join('  ');
+        return hop.hop.toString().padStart(2) + '  ' + hostDisplay + '  ' + rtts;
+    }).join('\n');
+}

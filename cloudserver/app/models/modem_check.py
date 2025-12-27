@@ -58,6 +58,10 @@ class ModemCheck(Base):
     ping_cloudflare_jitter = Column(Float, nullable=True)
     ping_cloudflare_max_latency = Column(Float, nullable=True)
 
+    # Traceroute results
+    traceroute_google_hops = Column(Integer, nullable=True)
+    traceroute_google_status = Column(String(50), nullable=True)
+
     # Client information
     client_version = Column(String(50), nullable=True)
     client_os = Column(String(50), nullable=True)

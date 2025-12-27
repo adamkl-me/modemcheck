@@ -52,7 +52,7 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Create a new API key with dual storage (hash + encrypted) for security (v7.1+).
+    Create a new API key with dual storage (hash + encrypted) for security.
 
     Security:
     - Generates 256-bit random API key (cryptographically secure)
@@ -70,7 +70,7 @@ async def create_api_key(
     # Hash + encrypt for storage (convenience function)
     api_key_hash, encrypted_hex, salt_hex = encrypt_api_key_for_storage(new_api_key)
 
-    # Create API key record with hash-based storage (v8.0+)
+    # Create API key record with hash-based storage
     api_key = APIKey(
         api_key_hash=api_key_hash,  # Primary key - SHA-256 hash for validation
         api_key_encrypted=encrypted_hex,  # Encrypted plaintext for admin reveal
@@ -117,7 +117,7 @@ async def list_api_keys(
     """
     List all API keys (without exposing the actual keys).
 
-    v8.0+: Decrypts each key to create preview (first4...last4).
+    Decrypts each key to create preview (first4...last4).
     This is secure because previews are computed on-demand, not stored.
 
     Requires: elevated or admin role
@@ -129,7 +129,7 @@ async def list_api_keys(
 
     key_list = []
     for key in keys:
-        # Decrypt to create preview (v8.0+: no plaintext column)
+        # Decrypt to create preview (plaintext not stored)
         try:
             plaintext = decrypt_api_key_from_storage(key.api_key_encrypted, key.encryption_salt)
             preview = create_api_key_preview(plaintext)
@@ -152,7 +152,7 @@ async def find_api_key_by_preview(db: AsyncSession, api_key_preview: str) -> tup
     """
     Find an API key by its preview format (first4...last4).
 
-    v8.0+: Since plaintext is no longer stored, we decrypt each key to match.
+    Since plaintext is not stored, we decrypt each key to match.
     This is O(n) but acceptable for small key counts (<100 keys typical).
 
     Args:

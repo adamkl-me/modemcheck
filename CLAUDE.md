@@ -46,6 +46,11 @@ cd modemcheck-client && go test -v ./...
 
 **IP Detection (diagnostics.go):** ip-api.com → ipapi.co → ipify.org (3-tier fallback)
 
+**Network Diagnostics (diagnostics.go):**
+- Ping: 100 pings to 8.8.8.8 and one.one.one.one (90s timeout)
+- Traceroute: Route trace to 8.8.8.8 (60s timeout, max 30 hops)
+- Fallback: go-ping/go-traceroute libraries → system commands
+
 ## Config Management (v7.0+)
 
 Server-side client config with encryption. Modes: `one_time` (client can modify), `locked` (server enforces).
