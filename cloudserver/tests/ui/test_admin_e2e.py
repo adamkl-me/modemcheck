@@ -897,9 +897,9 @@ class TestUserManagementWorkflowE2E:
         await admin_page.click_tab("users")
         await page.wait_for_timeout(1000)
 
-        # Look for role column in user table
-        role_cells = page.locator("td:has-text('admin'), td:has-text('basic'), td:has-text('elevated')")
-        role_count = await role_cells.count()
+        # Look for role select dropdowns in user table
+        role_selects = page.locator("select.role-select[data-current-role]")
+        role_count = await role_selects.count()
 
         # Should see at least one role (admin user should be visible)
         assert role_count >= 1, "User list should display user roles"

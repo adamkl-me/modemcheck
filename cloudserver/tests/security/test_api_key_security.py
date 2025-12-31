@@ -440,6 +440,7 @@ class TestAPIKeyComplexity:
 
         # Clean up created keys
         for key in keys:
+            await asyncio.sleep(0.1)  # Prevent server overload during rapid cleanup
             # Get fresh CSRF token for each deletion (one-time use tokens)
             session_resp = await admin_client_with_token.get("/api/auth/session_check")
             csrf_token = session_resp.json()["csrf_token"]

@@ -429,7 +429,7 @@ class TestSessionAnomalyDetection:
         endpoints = [
             "/api/admin/api_keys",
             "/api/admin/users",
-            "/api/modem_checks",
+            "/api/db/list_checks",
             "/api/auth/session_check",
         ]
 
