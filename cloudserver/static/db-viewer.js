@@ -941,6 +941,7 @@ function showDetailView() {
     const nav = document.getElementById("timelineNav");
     if (allChecks.length > 0) {
         nav.classList.add("active");
+        displayCurrentCheck();
     }
 }
 
@@ -997,19 +998,27 @@ function displaySummaryData() {
     // Helper to format values or show '-'
     const fmt = (val) =>
         val !== null && val !== undefined ? val.toFixed(2) : "-";
+    const fmtBer = (val) =>
+        val !== null && val !== undefined ? val.toFixed(3) : "-";
     const fmtInt = (val) =>
         val !== null && val !== undefined ? val.toString() : "-";
 
     // Helper to populate a row with all 5 stats (avg, min, max, range, stdev)
-    const populateRow = (prefix, data) => {
+    const populateRow = (prefix, data, formatter = fmt) => {
         if (!data) return;
-        document.getElementById(`${prefix}-avg`).textContent = fmt(data.avg);
-        document.getElementById(`${prefix}-min`).textContent = fmt(data.min);
-        document.getElementById(`${prefix}-max`).textContent = fmt(data.max);
-        document.getElementById(`${prefix}-range`).textContent = fmt(
+        document.getElementById(`${prefix}-avg`).textContent = formatter(
+            data.avg,
+        );
+        document.getElementById(`${prefix}-min`).textContent = formatter(
+            data.min,
+        );
+        document.getElementById(`${prefix}-max`).textContent = formatter(
+            data.max,
+        );
+        document.getElementById(`${prefix}-range`).textContent = formatter(
             data.range,
         );
-        document.getElementById(`${prefix}-stdev`).textContent = fmt(
+        document.getElementById(`${prefix}-stdev`).textContent = formatter(
             data.stdev,
         );
     };
@@ -1057,10 +1066,10 @@ function displaySummaryData() {
     // Error Rates (BER) - merged into RX section
     const ber = summaryData.error_rates;
     if (ber) {
-        populateRow("sum-scqam-corr", ber.scqam_corrected_ber);
-        populateRow("sum-scqam-uncorr", ber.scqam_uncorrectable_ber);
-        populateRow("sum-ofdm-corr", ber.ofdm_corrected_ber);
-        populateRow("sum-ofdm-uncorr", ber.ofdm_uncorrectable_ber);
+        populateRow("sum-scqam-corr", ber.scqam_corrected_ber, fmtBer);
+        populateRow("sum-scqam-uncorr", ber.scqam_uncorrectable_ber, fmtBer);
+        populateRow("sum-ofdm-corr", ber.ofdm_corrected_ber, fmtBer);
+        populateRow("sum-ofdm-uncorr", ber.ofdm_uncorrectable_ber, fmtBer);
     }
 
     // TX Signal Summary
