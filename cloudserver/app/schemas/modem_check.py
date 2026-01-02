@@ -170,3 +170,73 @@ class TrendDataResponse(BaseModel):
     success: bool
     data: List[TrendDataItem]
     total_count: int
+
+
+# Summary view schemas for aggregated statistics across all checks
+class MinAvgMaxRange(BaseModel):
+    """Statistics for a single metric: min, avg, max, range, and stdev."""
+    min: Optional[float] = None
+    avg: Optional[float] = None
+    max: Optional[float] = None
+    range: Optional[float] = None
+    stdev: Optional[float] = None
+
+
+class PeriodOverview(BaseModel):
+    """Overview statistics for the selected period."""
+    total_checks: int
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    checks_with_speedtest: int = 0
+    detected_reboots: int = 0
+
+
+class RxSignalSummary(BaseModel):
+    """Aggregated downstream signal quality statistics."""
+    scqam_power: Optional[MinAvgMaxRange] = None
+    scqam_snr: Optional[MinAvgMaxRange] = None
+    ofdm_power: Optional[MinAvgMaxRange] = None
+    ofdm_snr: Optional[MinAvgMaxRange] = None
+
+
+class TxSignalSummary(BaseModel):
+    """Aggregated upstream signal quality statistics."""
+    scqam_power: Optional[MinAvgMaxRange] = None
+    ofdma_power: Optional[MinAvgMaxRange] = None
+
+
+class ErrorRateSummary(BaseModel):
+    """Aggregated error rate statistics."""
+    scqam_corrected_ber: Optional[MinAvgMaxRange] = None
+    scqam_uncorrectable_ber: Optional[MinAvgMaxRange] = None
+    ofdm_corrected_ber: Optional[MinAvgMaxRange] = None
+    ofdm_uncorrectable_ber: Optional[MinAvgMaxRange] = None
+
+
+class NetworkSummary(BaseModel):
+    """Aggregated network performance statistics."""
+    download_speed: Optional[MinAvgMaxRange] = None
+    upload_speed: Optional[MinAvgMaxRange] = None
+    ping_google: Optional[MinAvgMaxRange] = None
+    ping_cloudflare: Optional[MinAvgMaxRange] = None
+    loss_google: Optional[MinAvgMaxRange] = None
+    loss_cloudflare: Optional[MinAvgMaxRange] = None
+    jitter_google: Optional[MinAvgMaxRange] = None
+    jitter_cloudflare: Optional[MinAvgMaxRange] = None
+
+
+class SummaryData(BaseModel):
+    """Core summary data (reusable for both full and filtered summaries)."""
+    period: Optional[PeriodOverview] = None
+    rx_signal: Optional[RxSignalSummary] = None
+    tx_signal: Optional[TxSignalSummary] = None
+    error_rates: Optional[ErrorRateSummary] = None
+    network: Optional[NetworkSummary] = None
+
+
+class SummaryDataResponse(BaseModel):
+    """Response with both full and maintenance-excluded summaries."""
+    success: bool
+    full: Optional[SummaryData] = None
+    maint_excluded: Optional[SummaryData] = None  # 2am-5am excluded
+    error: Optional[str] = None

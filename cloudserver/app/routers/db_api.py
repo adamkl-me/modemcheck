@@ -22,11 +22,47 @@ from app.schemas.modem_check import (
     CheckWithFullData,
     CheckListWithDataResponse,
     TrendDataResponse,
+    SummaryDataResponse,
 )
 from app.middleware.auth import require_authenticated_user
 from app.core.trend_aggregation import aggregate_check_for_trends
+from app.core.summary_aggregation import compute_summary_from_trend_data
 
 router = APIRouter(prefix="/api/db", tags=["Database"])
+
+
+def parse_datetime_range(start_str: str, end_str: str) -> tuple[datetime, datetime]:
+    """
+    Parse start/end date strings, handling both date-only and datetime formats.
+
+    Accepts:
+    - YYYY-MM-DD (appends 00:00:00 for start, 23:59:59 for end)
+    - YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS (uses as-is)
+
+    Returns:
+        Tuple of (start_datetime, end_datetime)
+
+    Raises:
+        InvalidDateRangeError: If date format is invalid
+    """
+    try:
+        # Parse start datetime
+        if 'T' in start_str:
+            start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+        else:
+            start_dt = datetime.fromisoformat(f"{start_str}T00:00:00")
+
+        # Parse end datetime
+        if 'T' in end_str:
+            end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+        else:
+            end_dt = datetime.fromisoformat(f"{end_str}T23:59:59")
+
+        return start_dt, end_dt
+    except ValueError:
+        raise InvalidDateRangeError(
+            message="Invalid date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM"
+        )
 
 
 @router.get("/list_modems", response_model=ModemListResponse)
@@ -93,12 +129,8 @@ async def list_checks(
         end_date: End date in YYYY-MM-DD format
         limit: Maximum number of checks to return (max 10000)
     """
-    # Parse dates
-    try:
-        start_dt = datetime.fromisoformat(f"{start_date}T00:00:00")
-        end_dt = datetime.fromisoformat(f"{end_date}T23:59:59")
-    except ValueError:
-        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
+    # Parse dates (supports both YYYY-MM-DD and YYYY-MM-DDTHH:MM formats)
+    start_dt, end_dt = parse_datetime_range(start_date, end_date)
 
     # Optimized: Use a single query with window function to get both data and count
     # This avoids executing the same WHERE clause twice
@@ -184,12 +216,8 @@ async def get_all_checks(
 
     This is optimized for the viewer - returns complete check data in a single request.
     """
-    # Parse dates
-    try:
-        start_dt = datetime.fromisoformat(f"{date_range.start_date}T00:00:00")
-        end_dt = datetime.fromisoformat(f"{date_range.end_date}T23:59:59")
-    except ValueError:
-        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
+    # Parse dates (supports both YYYY-MM-DD and YYYY-MM-DDTHH:MM formats)
+    start_dt, end_dt = parse_datetime_range(date_range.start_date, date_range.end_date)
 
     # Build query
     conditions = [
@@ -248,12 +276,8 @@ async def get_trend_data(
 
     This endpoint is optimized for the dashboard trend view charts.
     """
-    # Parse dates
-    try:
-        start_dt = datetime.fromisoformat(f"{date_range.start_date}T00:00:00")
-        end_dt = datetime.fromisoformat(f"{date_range.end_date}T23:59:59")
-    except ValueError:
-        raise InvalidDateRangeError(message="Invalid date format. Use YYYY-MM-DD")
+    # Parse dates (supports both YYYY-MM-DD and YYYY-MM-DDTHH:MM formats)
+    start_dt, end_dt = parse_datetime_range(date_range.start_date, date_range.end_date)
 
     # Build query conditions
     conditions = [
@@ -285,3 +309,52 @@ async def get_trend_data(
         data=trend_items,
         total_count=total_count
     )
+
+
+@router.post("/get_summary_data", response_model=SummaryDataResponse)
+@limiter.limit("300/second")
+async def get_summary_data(
+    request: Request,
+    date_range: DateRangeRequest,
+    session_data: dict = Depends(require_authenticated_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get aggregated summary statistics for the selected period.
+
+    Returns Min/Avg/Max/Range for all key metrics across all checks.
+    Uses pre-aggregated trend data for efficiency.
+
+    This endpoint is optimized for the dashboard Summary view.
+    """
+    # Parse dates (supports both YYYY-MM-DD and YYYY-MM-DDTHH:MM formats)
+    start_dt, end_dt = parse_datetime_range(date_range.start_date, date_range.end_date)
+
+    # Build query conditions
+    conditions = [
+        ModemCheck.check_time >= start_dt,
+        ModemCheck.check_time <= end_dt
+    ]
+
+    if date_range.modem_id:
+        conditions.append(ModemCheck.modem_id == date_range.modem_id)
+
+    # Query checks ordered by time ascending (for reboot detection)
+    query = select(ModemCheck).where(
+        and_(*conditions)
+    ).order_by(ModemCheck.check_time.asc()).limit(date_range.limit)
+
+    result = await db.execute(query)
+    checks = result.scalars().all()
+
+    if not checks:
+        return SummaryDataResponse(
+            success=False,
+            error="No data found for the selected criteria"
+        )
+
+    # Aggregate each check for trend format first
+    trend_items = [aggregate_check_for_trends(check) for check in checks]
+
+    # Compute summary from trend data and checks
+    return compute_summary_from_trend_data(trend_items, checks)

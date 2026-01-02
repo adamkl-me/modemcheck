@@ -55,8 +55,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevents loading resources from untrusted sources
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",  # unsafe-inline needed for inline scripts in HTML
-            "style-src 'self' 'unsafe-inline'",   # unsafe-inline needed for inline styles
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",  # unsafe-inline needed for inline scripts in HTML, jsdelivr for Flatpickr
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",   # unsafe-inline needed for inline styles, jsdelivr for Flatpickr
             "img-src 'self' data:",               # Allow data URIs for inline images
             "font-src 'self'",
             "connect-src 'self'",                 # API calls to same origin only

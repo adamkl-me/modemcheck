@@ -6,6 +6,7 @@ Reduces data transfer from ~15-50KB per check to ~500 bytes per check.
 """
 from typing import Dict, Any, Optional, List
 import re
+import math
 
 from app.schemas.modem_check import (
     TrendDataItem,
@@ -15,12 +16,15 @@ from app.schemas.modem_check import (
 
 
 def safe_float(value: Any) -> Optional[float]:
-    """Safely convert value to float, returning None on failure."""
+    """Safely convert value to float, returning None on failure or invalid values."""
     if value is None or value == "":
         return None
     try:
         result = float(value)
-        return result if not (result != result) else None  # Check for NaN
+        # Filter out NaN and infinity values (e.g., "-inf" from disabled TX channels)
+        if math.isnan(result) or math.isinf(result):
+            return None
+        return result
     except (ValueError, TypeError):
         return None
 

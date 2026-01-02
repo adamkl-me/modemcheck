@@ -3,46 +3,72 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>"
+        />
         <title>ModemCheck Cloud Dashboard</title>
         <!-- Blocking script to prevent FOUC -->
         <script>
-            (function() {
-                var theme = localStorage.getItem('modemcheck-theme') || 'dark';
-                document.documentElement.setAttribute('data-theme', theme);
+            (function () {
+                var theme = localStorage.getItem("modemcheck-theme") || "dark";
+                document.documentElement.setAttribute("data-theme", theme);
             })();
         </script>
         <script src="/static/chart.umd.min.js"></script>
         <script src="/static/chartjs-adapter-date-fns.bundle.min.js"></script>
+        <!-- Flatpickr date/time picker -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css"
+            id="flatpickr-dark-theme"
+            disabled
+        />
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <style>
             /* Light Theme (Classic Aero Blue) */
-            :root, [data-theme="light"] {
-                --primary: #0078D4;
-                --primary-hover: #106EBE;
-                --accent: #00B4D8;
+            :root,
+            [data-theme="light"] {
+                color-scheme: light;
+                --primary: #0078d4;
+                --primary-hover: #106ebe;
+                --accent: #00b4d8;
                 --glass-tint: rgba(232, 244, 252, 0.7);
                 --glass-border: rgba(255, 255, 255, 0.8);
                 --glass-shadow: rgba(0, 120, 212, 0.1);
-                --surface: #F8FAFC;
+                --surface: #f8fafc;
                 --surface-elevated: rgba(255, 255, 255, 0.85);
-                --bg: #F8FAFC;
-                --bg-gradient: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 50%, #E0F2FE 100%);
-                --text: #1E293B;
-                --text-muted: #64748B;
-                --text-inverse: #FFFFFF;
-                --success: #14B8A6;
-                --warning: #F59E0B;
-                --error: #F43F5E;
+                --bg: #f8fafc;
+                --bg-gradient: linear-gradient(
+                    135deg,
+                    #e0f2fe 0%,
+                    #bae6fd 50%,
+                    #e0f2fe 100%
+                );
+                --text: #1e293b;
+                --text-muted: #64748b;
+                --text-inverse: #ffffff;
+                --success: #14b8a6;
+                --warning: #f59e0b;
+                --error: #f43f5e;
                 --admin-bg: rgba(239, 68, 68, 0.9);
                 --admin-bg-hover: rgba(220, 38, 38, 0.95);
-                --input-bg: #FFFFFF;
-                --input-border: #E2E8F0;
-                --border-color: #E2E8F0;
-                --card-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
-                --table-row-alt: #FAFBFC;
-                --table-row-hover: #F0F2F5;
+                --input-bg: #ffffff;
+                --input-border: #e2e8f0;
+                --border-color: #e2e8f0;
+                --card-gradient: linear-gradient(
+                    135deg,
+                    #f5f7fa 0%,
+                    #e4e8ed 100%
+                );
+                --table-row-alt: #fafbfc;
+                --table-row-hover: #f0f2f5;
                 --chart-grid: rgba(0, 0, 0, 0.1);
-                --chart-text: #64748B;
+                --chart-text: #64748b;
                 /* Chart dataset colors - consistent across themes for data continuity */
                 --chart-download: #667eea;
                 --chart-upload: #764ba2;
@@ -74,32 +100,42 @@
 
             /* Dark Theme (Dark Instrument Panel) - Default */
             [data-theme="dark"] {
-                --primary: #3B82F6;
-                --primary-hover: #2563EB;
-                --accent: #22D3EE;
+                color-scheme: dark;
+                --primary: #3b82f6;
+                --primary-hover: #2563eb;
+                --accent: #22d3ee;
                 --glass-tint: rgba(30, 58, 95, 0.6);
                 --glass-border: rgba(255, 255, 255, 0.1);
                 --glass-shadow: rgba(59, 130, 246, 0.2);
-                --surface: #1F2937;
+                --surface: #1f2937;
                 --surface-elevated: rgba(31, 41, 55, 0.9);
                 --bg: #111827;
-                --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
-                --text: #E2E8F0;
-                --text-muted: #94A3B8;
-                --text-inverse: #FFFFFF;
-                --success: #22C55E;
-                --warning: #FB923C;
-                --error: #F87171;
+                --bg-gradient: linear-gradient(
+                    135deg,
+                    #0f172a 0%,
+                    #1e293b 50%,
+                    #0f172a 100%
+                );
+                --text: #e2e8f0;
+                --text-muted: #94a3b8;
+                --text-inverse: #ffffff;
+                --success: #22c55e;
+                --warning: #fb923c;
+                --error: #f87171;
                 --admin-bg: rgba(239, 68, 68, 0.9);
                 --admin-bg-hover: rgba(220, 38, 38, 0.95);
-                --input-bg: #1F2937;
+                --input-bg: #1f2937;
                 --input-border: rgba(255, 255, 255, 0.1);
                 --border-color: rgba(255, 255, 255, 0.1);
-                --card-gradient: linear-gradient(135deg, rgba(30, 58, 95, 0.4) 0%, rgba(30, 41, 59, 0.4) 100%);
+                --card-gradient: linear-gradient(
+                    135deg,
+                    rgba(30, 58, 95, 0.4) 0%,
+                    rgba(30, 41, 59, 0.4) 100%
+                );
                 --table-row-alt: rgba(255, 255, 255, 0.02);
                 --table-row-hover: rgba(255, 255, 255, 0.05);
                 --chart-grid: rgba(255, 255, 255, 0.1);
-                --chart-text: #94A3B8;
+                --chart-text: #94a3b8;
                 /* Chart dataset colors - consistent across themes for data continuity */
                 --chart-download: #667eea;
                 --chart-upload: #764ba2;
@@ -136,7 +172,9 @@
             }
 
             body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
                 background: var(--bg-gradient);
                 min-height: 100vh;
                 padding: 20px;
@@ -171,7 +209,11 @@
             }
 
             .header {
-                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
                 color: var(--text-inverse);
                 padding: 30px;
                 text-align: center;
@@ -212,10 +254,18 @@
                 transform: translateY(-2px);
             }
 
-            [data-theme="light"] .theme-icon-light { display: none; }
-            [data-theme="light"] .theme-icon-dark { display: inline; }
-            [data-theme="dark"] .theme-icon-light { display: inline; }
-            [data-theme="dark"] .theme-icon-dark { display: none; }
+            [data-theme="light"] .theme-icon-light {
+                display: none;
+            }
+            [data-theme="light"] .theme-icon-dark {
+                display: inline;
+            }
+            [data-theme="dark"] .theme-icon-light {
+                display: inline;
+            }
+            [data-theme="dark"] .theme-icon-dark {
+                display: none;
+            }
 
             /* Header navigation buttons */
             .header-nav {
@@ -230,8 +280,8 @@
 
             .header-nav-btn {
                 padding: 10px 20px;
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.3);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
@@ -246,9 +296,9 @@
             }
 
             .header-nav-btn:hover {
-                background: rgba(255,255,255,0.25);
+                background: rgba(255, 255, 255, 0.25);
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             }
 
             .header-nav-btn.admin:hover {
@@ -296,8 +346,12 @@
                 right: -100%;
                 width: 250px;
                 height: 100vh;
-                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-                box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
+                box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
                 z-index: 1000;
                 padding: 80px 20px 20px 20px;
                 transition: right 0.3s ease;
@@ -311,8 +365,8 @@
                 width: 100%;
                 margin-bottom: 10px;
                 padding: 15px 20px;
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.3);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
@@ -326,7 +380,7 @@
             }
 
             .mobile-menu button:hover {
-                background: rgba(255,255,255,0.25);
+                background: rgba(255, 255, 255, 0.25);
                 transform: translateX(-5px);
             }
 
@@ -342,7 +396,7 @@
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0,0,0,0.5);
+                background: rgba(0, 0, 0, 0.5);
                 z-index: 999;
                 backdrop-filter: blur(4px);
             }
@@ -376,7 +430,11 @@
                 font-size: 0.95em;
             }
 
-            select, input[type="date"] {
+            select,
+            input[type="date"],
+            input[type="datetime-local"],
+            #startDate,
+            #endDate {
                 padding: 10px 15px;
                 border: 1px solid var(--input-border);
                 border-radius: 8px;
@@ -387,12 +445,177 @@
                 box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
             }
 
-            select:focus, input[type="date"]:focus {
+            select:focus,
+            input[type="date"]:focus,
+            input[type="datetime-local"]:focus,
+            #startDate:focus,
+            #endDate:focus {
                 outline: none;
                 border-color: var(--primary);
                 box-shadow:
                     inset 0 2px 4px rgba(0, 0, 0, 0.1),
                     0 0 0 3px var(--glass-shadow);
+            }
+
+            #startDate::placeholder,
+            #endDate::placeholder {
+                color: var(--text-muted);
+            }
+
+            /* Flatpickr input field styling - matches dashboard inputs */
+            /* Target the visible altInput created by Flatpickr (has form-control input classes) */
+            .filter-group input.form-control.input,
+            .filter-group input.flatpickr-input:not([type="hidden"]) {
+                width: 100%;
+                padding: 10px 35px 10px 15px;
+                border: 1px solid var(--input-border);
+                border-radius: 8px;
+                font-size: 1em;
+                background: var(--input-bg);
+                color: var(--text);
+                transition: all 0.3s ease;
+                cursor: pointer;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .filter-group input.form-control.input:focus,
+            .filter-group input.flatpickr-input:not([type="hidden"]):focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow:
+                    inset 0 2px 4px rgba(0, 0, 0, 0.1),
+                    0 0 0 3px var(--glass-shadow);
+            }
+
+            .filter-group input.form-control.input::placeholder,
+            .filter-group input.flatpickr-input::placeholder {
+                color: var(--text-muted);
+            }
+
+            /* Flatpickr color overrides for dashboard consistency */
+            .flatpickr-day.selected,
+            .flatpickr-day.selected:hover,
+            .flatpickr-day.selected.inRange {
+                background: var(--primary);
+                border-color: var(--primary);
+            }
+
+            .flatpickr-day.today {
+                border-color: var(--primary);
+            }
+
+            .flatpickr-day:hover {
+                background: var(--primary-hover);
+                border-color: var(--primary-hover);
+            }
+
+            /* Flatpickr font styling */
+            .flatpickr-calendar {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
+                border-radius: 12px;
+            }
+
+            /* Light theme calendar styling */
+            [data-theme="light"] .flatpickr-calendar {
+                background: var(--surface);
+            }
+
+            /* Dark theme calendar styling */
+            [data-theme="dark"] .flatpickr-calendar {
+                background: var(--surface);
+            }
+
+            /* Remove grey backgrounds in dark mode */
+            [data-theme="dark"] .flatpickr-months,
+            [data-theme="dark"] .flatpickr-month,
+            [data-theme="dark"] .flatpickr-weekdays,
+            [data-theme="dark"] .flatpickr-weekday,
+            [data-theme="dark"] .flatpickr-monthDropdown-months {
+                background: transparent;
+            }
+
+            /* Remove grey backgrounds in light mode */
+            [data-theme="light"] .flatpickr-months,
+            [data-theme="light"] .flatpickr-month,
+            [data-theme="light"] .flatpickr-weekdays,
+            [data-theme="light"] .flatpickr-weekday,
+            [data-theme="light"] .flatpickr-monthDropdown-months {
+                background: transparent;
+            }
+
+            /* Flatpickr month/year header - taller and vertically centered */
+            .flatpickr-months {
+                height: 40px;
+            }
+
+            .flatpickr-current-month {
+                font-size: 16px;
+                padding-top: 8px;
+                height: 40px;
+                line-height: 24px;
+            }
+
+            .flatpickr-months .flatpickr-prev-month,
+            .flatpickr-months .flatpickr-next-month {
+                height: 40px;
+                display: flex;
+                align-items: center;
+            }
+
+            .flatpickr-current-month .flatpickr-monthDropdown-months {
+                font-size: 16px;
+                font-weight: 600;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
+                box-shadow: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                border: none;
+                outline: none;
+                color: inherit;
+            }
+
+            /* Ensure dropdown options have consistent styling */
+            .flatpickr-monthDropdown-months option {
+                background: var(--surface);
+                color: var(--text);
+            }
+
+            .flatpickr-current-month input.cur-year {
+                font-size: 16px;
+            }
+
+            /* Always show year navigation arrows (only in month header, not time picker) */
+            .flatpickr-months .numInputWrapper span {
+                opacity: 1;
+            }
+
+            .flatpickr-months .numInputWrapper span.arrowUp,
+            .flatpickr-months .numInputWrapper span.arrowDown {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            /* Style year input for better visibility and prevent arrow overlap */
+            .flatpickr-months .numInputWrapper {
+                width: 75px;
+            }
+
+            .flatpickr-months .numInputWrapper input {
+                font-weight: 600;
+            }
+
+            /* Theme-aware year arrow styling */
+            .flatpickr-months .numInputWrapper span.arrowUp:after {
+                border-bottom-color: var(--text);
+            }
+
+            .flatpickr-months .numInputWrapper span.arrowDown:after {
+                border-top-color: var(--text);
             }
 
             /* Searchable dropdown styles */
@@ -434,7 +657,7 @@
             }
 
             .searchable-select::after {
-                content: '\25BC';
+                content: "\25BC";
                 position: absolute;
                 right: 15px;
                 top: 50%;
@@ -503,27 +726,43 @@
                 padding: 12px 30px;
                 border: none;
                 border-radius: 8px;
-                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
                 color: white;
                 cursor: pointer;
                 font-size: 1em;
                 font-weight: 600;
-                transition: all 0.2s ease;
+                line-height: 1.2;
+                transition:
+                    transform 0.2s ease,
+                    box-shadow 0.2s ease,
+                    opacity 0.2s ease;
                 position: relative;
                 overflow: hidden;
+                box-sizing: border-box;
+                height: 44px;
+                min-height: 44px;
+                max-height: 44px;
                 box-shadow:
                     0 4px 12px var(--glass-shadow),
                     inset 0 1px 0 rgba(255, 255, 255, 0.2);
             }
 
             .load-btn::before {
-                content: '';
+                content: "";
                 position: absolute;
                 top: 0;
                 left: 0;
                 right: 0;
                 height: 50%;
-                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.15),
+                    transparent
+                );
                 pointer-events: none;
             }
 
@@ -538,6 +777,34 @@
                 opacity: 0.5;
                 cursor: not-allowed;
                 transform: none;
+            }
+
+            /* Loading spinner for Load Data button */
+            .load-btn.loading {
+                color: transparent;
+                pointer-events: none;
+                padding: 12px 30px; /* Override generic .loading class padding */
+            }
+
+            .load-btn.loading::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 20px;
+                height: 20px;
+                margin-top: -10px;
+                margin-left: -10px;
+                border: 3px solid rgba(255, 255, 255, 0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
             }
 
             .view-switcher {
@@ -573,6 +840,12 @@
                 box-shadow:
                     0 4px 12px var(--glass-shadow),
                     inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+
+            .view-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                pointer-events: none;
             }
 
             .timeline-nav {
@@ -673,6 +946,11 @@
                 display: block;
             }
 
+            /* Hide content area until data is loaded */
+            .content.no-data {
+                display: none;
+            }
+
             .info-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -725,7 +1003,11 @@
             }
 
             .speed-card {
-                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
                 color: white;
                 border-radius: 12px;
                 padding: 25px;
@@ -738,13 +1020,17 @@
             }
 
             .speed-card::before {
-                content: '';
+                content: "";
                 position: absolute;
                 top: 0;
                 left: 0;
                 right: 0;
                 height: 50%;
-                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.1),
+                    transparent
+                );
                 pointer-events: none;
             }
 
@@ -824,7 +1110,11 @@
             }
 
             thead {
-                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
                 color: white;
             }
 
@@ -861,6 +1151,112 @@
                 background-color: var(--table-row-hover);
             }
 
+            /* Summary View Styles */
+            .summary-controls {
+                margin-bottom: 20px;
+                display: flex;
+                gap: 10px;
+            }
+
+            .toggle-btn {
+                padding: 8px 16px;
+                border: 1px solid var(--primary);
+                border-radius: 6px;
+                background: transparent;
+                color: var(--primary);
+                cursor: pointer;
+                font-size: 0.9em;
+                font-weight: 500;
+                transition: all 0.2s ease;
+            }
+
+            .toggle-btn:hover {
+                background: var(--glass-tint);
+            }
+
+            .toggle-btn.active {
+                background: var(--primary);
+                color: white;
+            }
+
+            .period-overview-container {
+                display: flex;
+                gap: 20px;
+                max-width: 800px;
+            }
+
+            .period-table-left,
+            .period-table-right {
+                flex: 1;
+                background: var(--glass-tint);
+                border-radius: 8px;
+                border: 1px solid var(--glass-border);
+                overflow: hidden;
+            }
+
+            .period-table-left table,
+            .period-table-right table {
+                min-width: unset;
+                width: 100%;
+            }
+
+            .period-table-left td,
+            .period-table-right td {
+                padding: 8px 12px;
+                white-space: nowrap;
+            }
+
+            .period-table-left td:first-child,
+            .period-table-right td:first-child {
+                font-weight: 500;
+                color: var(--text-muted);
+                width: 60%;
+            }
+
+            .period-table-left td:last-child,
+            .period-table-right td:last-child {
+                text-align: right;
+                font-weight: 600;
+                color: var(--text);
+            }
+
+            /* Compressed summary tables */
+            .summary-table-section .table-wrapper {
+                max-width: 900px;
+            }
+
+            .summary-table-section table {
+                min-width: unset;
+            }
+
+            .summary-table-section th,
+            .summary-table-section td {
+                padding: 8px 10px;
+                text-align: center;
+            }
+
+            .summary-table-section th:not(:first-child),
+            .summary-table-section td:not(:first-child) {
+                min-width: 70px;
+                width: auto;
+            }
+
+            .summary-table-section td:first-child {
+                text-align: left;
+                white-space: nowrap;
+            }
+
+            .summary-table-section th:first-child {
+                text-align: left;
+            }
+
+            /* Responsive adjustments for period overview */
+            @media (max-width: 600px) {
+                .period-overview-container {
+                    flex-direction: column;
+                }
+            }
+
             .empty-state {
                 text-align: center;
                 padding: 40px;
@@ -885,10 +1281,6 @@
                 padding: 40px;
                 color: var(--error);
                 font-size: 1.1em;
-            }
-
-            #statusMessage {
-                color: var(--text-muted);
             }
 
             @media (max-width: 1024px) {
@@ -934,7 +1326,8 @@
                     grid-template-columns: 1fr;
                 }
 
-                th, td {
+                th,
+                td {
                     padding: 8px 6px;
                     font-size: 0.85em;
                 }
@@ -1020,7 +1413,9 @@
             }
             .pwd-strength-bar {
                 height: 100%;
-                transition: width 0.3s, background-color 0.3s;
+                transition:
+                    width 0.3s,
+                    background-color 0.3s;
                 width: 0%;
                 background-color: var(--glass-border);
             }
@@ -1055,7 +1450,11 @@
             .pwd-dialog-btn {
                 width: 100%;
                 padding: 12px;
-                background: var(--header-gradient);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--accent) 100%
+                );
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -1106,7 +1505,7 @@
                 border: 1px solid var(--glass-border);
                 border-radius: 8px;
                 padding: 15px;
-                font-family: 'Courier New', monospace;
+                font-family: "Courier New", monospace;
                 font-size: 14px;
                 overflow-x: auto;
                 white-space: pre;
@@ -1141,13 +1540,108 @@
                 transform: translateY(-2px);
                 box-shadow: 0 8px 20px var(--glass-shadow);
             }
+
+            /* Toast notifications */
+            #toast-container {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                pointer-events: none;
+            }
+
+            .toast {
+                min-width: 300px;
+                max-width: 500px;
+                padding: 16px 20px;
+                border-radius: 12px;
+                box-shadow:
+                    0 4px 12px rgba(0, 0, 0, 0.15),
+                    0 2px 6px rgba(0, 0, 0, 0.1);
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 14px;
+                font-weight: 500;
+                pointer-events: auto;
+                cursor: pointer;
+                transform: translateX(calc(100% + 40px));
+                transition:
+                    transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                    opacity 0.3s ease;
+                opacity: 0;
+                backdrop-filter: blur(10px);
+            }
+
+            .toast.show {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            .toast.hiding {
+                transform: translateX(calc(100% + 40px));
+                opacity: 0;
+            }
+
+            .toast-icon {
+                font-size: 20px;
+                flex-shrink: 0;
+            }
+
+            .toast-message {
+                flex: 1;
+                line-height: 1.4;
+            }
+
+            .toast-close {
+                font-size: 18px;
+                opacity: 0.6;
+                flex-shrink: 0;
+                transition: opacity 0.2s;
+            }
+
+            .toast:hover .toast-close {
+                opacity: 1;
+            }
+
+            .toast.success {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+            }
+
+            .toast.error {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: white;
+            }
+
+            .toast.info {
+                background: linear-gradient(
+                    135deg,
+                    var(--primary) 0%,
+                    var(--primary-hover) 100%
+                );
+                color: white;
+            }
+
+            .toast.warning {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+            }
         </style>
-        <link rel="stylesheet" href="/static/session-monitor.css">
+        <link rel="stylesheet" href="/static/session-monitor.css" />
     </head>
     <body>
+        <div id="toast-container"></div>
         <div class="container">
             <div class="header">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <button
+                    class="theme-toggle"
+                    onclick="toggleTheme()"
+                    title="Toggle theme"
+                >
                     <span class="theme-icon-light">☀️</span>
                     <span class="theme-icon-dark">🌙</span>
                 </button>
@@ -1156,8 +1650,16 @@
 
                 <!-- Desktop navigation -->
                 <div class="header-nav">
-                    <button id="adminBtn" class="header-nav-btn admin" style="display: none;">Admin</button>
-                    <button id="logoutBtn" class="header-nav-btn">Logout</button>
+                    <button
+                        id="adminBtn"
+                        class="header-nav-btn admin"
+                        style="display: none"
+                    >
+                        Admin
+                    </button>
+                    <button id="logoutBtn" class="header-nav-btn">
+                        Logout
+                    </button>
                 </div>
 
                 <!-- Mobile hamburger -->
@@ -1173,7 +1675,9 @@
 
             <!-- Mobile slide-out menu -->
             <div class="mobile-menu">
-                <button id="adminBtnMobile" class="admin" style="display: none;">Admin</button>
+                <button id="adminBtnMobile" class="admin" style="display: none">
+                    Admin
+                </button>
                 <button id="logoutBtnMobile">Logout</button>
             </div>
 
@@ -1182,38 +1686,91 @@
                     <div class="filter-group">
                         <label for="modemSearchInput">Select Modem:</label>
                         <div class="searchable-select">
-                            <input type="text" id="modemSearchInput" placeholder="Select a modem or start typing to filter" autocomplete="off" readonly>
-                            <div class="searchable-dropdown" id="modemDropdown"></div>
+                            <input
+                                type="text"
+                                id="modemSearchInput"
+                                placeholder="Select a modem or start typing to filter"
+                                autocomplete="off"
+                                readonly
+                            />
+                            <div
+                                class="searchable-dropdown"
+                                id="modemDropdown"
+                            ></div>
                         </div>
-                        <input type="hidden" id="modemSelect" value="">
+                        <input type="hidden" id="modemSelect" value="" />
                     </div>
                     <div class="filter-group">
-                        <label for="startDate">Start Date:</label>
-                        <input type="date" id="startDate" />
+                        <label for="startDate">Start Date/Time:</label>
+                        <input
+                            type="text"
+                            id="startDate"
+                            placeholder="Select date/time"
+                        />
                     </div>
                     <div class="filter-group">
-                        <label for="endDate">End Date:</label>
-                        <input type="date" id="endDate" />
+                        <label for="endDate">End Date/Time:</label>
+                        <input
+                            type="text"
+                            id="endDate"
+                            placeholder="Select date/time"
+                        />
                     </div>
-                    <div class="filter-group" style="justify-content: flex-end;">
+                    <div class="filter-group" style="justify-content: flex-end">
                         <label>&nbsp;</label>
-                        <button class="load-btn" onclick="loadData()" id="loadBtn">Load Data</button>
+                        <button
+                            class="load-btn"
+                            onclick="loadData()"
+                            id="loadBtn"
+                        >
+                            Load Data
+                        </button>
                     </div>
                 </div>
-                <div id="statusMessage" style="margin-top: 15px; text-align: center;"></div>
             </div>
 
             <div class="view-switcher">
-                <button class="view-btn active" onclick="showSingleView()">Single View</button>
-                <button class="view-btn" onclick="showTrendsView()">Trend View</button>
+                <button class="view-btn" onclick="showSummaryView()" disabled>
+                    Summary
+                </button>
+                <button class="view-btn" onclick="showDetailView()" disabled>
+                    Detail View
+                </button>
+                <button class="view-btn" onclick="showTrendsView()" disabled>
+                    Trend View
+                </button>
             </div>
 
             <div class="timeline-nav" id="timelineNav">
                 <div class="timeline-controls">
-                    <button class="nav-btn" id="firstBtn" onclick="navigateToFirst()">First</button>
-                    <button class="nav-btn" id="prevBtn" onclick="navigatePrevious()">Previous</button>
-                    <button class="nav-btn" id="nextBtn" onclick="navigateNext()">Next</button>
-                    <button class="nav-btn" id="lastBtn" onclick="navigateToLast()">Last</button>
+                    <button
+                        class="nav-btn"
+                        id="firstBtn"
+                        onclick="navigateToFirst()"
+                    >
+                        First
+                    </button>
+                    <button
+                        class="nav-btn"
+                        id="prevBtn"
+                        onclick="navigatePrevious()"
+                    >
+                        Previous
+                    </button>
+                    <button
+                        class="nav-btn"
+                        id="nextBtn"
+                        onclick="navigateNext()"
+                    >
+                        Next
+                    </button>
+                    <button
+                        class="nav-btn"
+                        id="lastBtn"
+                        onclick="navigateToLast()"
+                    >
+                        Last
+                    </button>
                 </div>
                 <div class="timeline-slider">
                     <input
@@ -1224,18 +1781,282 @@
                         value="0"
                         oninput="navigateToIndex(this.value)"
                     />
-                    <div class="timeline-info" id="timelineInfo">No data loaded</div>
+                    <div class="timeline-info" id="timelineInfo">
+                        No data loaded
+                    </div>
                 </div>
             </div>
 
-            <div class="content" id="contentArea">
-                <div class="empty-state" id="welcomeMessage">
-                    <h2>Welcome to ModemCheck Cloud Dashboard</h2>
-                    <p>Select a modem and date range (optional), then click "Load Data" to view diagnostics.</p>
+            <div class="content no-data" id="contentArea">
+                <!-- Summary View -->
+                <div class="view-mode active" id="summaryView">
+                    <!-- Summary View Toggle Buttons -->
+                    <div class="summary-controls">
+                        <button
+                            class="toggle-btn active"
+                            id="enableAnalysisToggle"
+                            onclick="toggleAnalysis()"
+                        >
+                            Enable Analysis
+                        </button>
+                        <button
+                            class="toggle-btn"
+                            id="excludeMaintenanceToggle"
+                            onclick="toggleMaintenance()"
+                        >
+                            Exclude Maintenance (2-5am)
+                        </button>
+                    </div>
+
+                    <!-- Overview - Two Side-by-Side Tables -->
+                    <div class="table-section">
+                        <h2>Overview</h2>
+                        <div class="period-overview-container">
+                            <div class="period-table-left">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td>Total Checks</td>
+                                            <td id="sum-total-checks">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Period Start</td>
+                                            <td id="sum-period-start">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Period End</td>
+                                            <td id="sum-period-end">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="period-table-right">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td>Checks with Speed Tests</td>
+                                            <td id="sum-speedtest-count">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Detected Reboots</td>
+                                            <td id="sum-reboots">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Network Performance (moved up for quick health visibility) -->
+                    <div class="table-section summary-table-section">
+                        <h2>Network Performance</h2>
+                        <div class="table-wrapper">
+                            <table id="networkSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Avg</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Range</th>
+                                        <th>Stdev</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Download Speed (Mbps)</td>
+                                        <td id="sum-dl-avg">-</td>
+                                        <td id="sum-dl-min">-</td>
+                                        <td id="sum-dl-max">-</td>
+                                        <td id="sum-dl-range">-</td>
+                                        <td id="sum-dl-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Upload Speed (Mbps)</td>
+                                        <td id="sum-ul-avg">-</td>
+                                        <td id="sum-ul-min">-</td>
+                                        <td id="sum-ul-max">-</td>
+                                        <td id="sum-ul-range">-</td>
+                                        <td id="sum-ul-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Google Ping (ms)</td>
+                                        <td id="sum-ping-google-avg">-</td>
+                                        <td id="sum-ping-google-min">-</td>
+                                        <td id="sum-ping-google-max">-</td>
+                                        <td id="sum-ping-google-range">-</td>
+                                        <td id="sum-ping-google-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cloudflare Ping (ms)</td>
+                                        <td id="sum-ping-cf-avg">-</td>
+                                        <td id="sum-ping-cf-min">-</td>
+                                        <td id="sum-ping-cf-max">-</td>
+                                        <td id="sum-ping-cf-range">-</td>
+                                        <td id="sum-ping-cf-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Google Packet Loss (%)</td>
+                                        <td id="sum-loss-google-avg">-</td>
+                                        <td id="sum-loss-google-min">-</td>
+                                        <td id="sum-loss-google-max">-</td>
+                                        <td id="sum-loss-google-range">-</td>
+                                        <td id="sum-loss-google-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cloudflare Packet Loss (%)</td>
+                                        <td id="sum-loss-cf-avg">-</td>
+                                        <td id="sum-loss-cf-min">-</td>
+                                        <td id="sum-loss-cf-max">-</td>
+                                        <td id="sum-loss-cf-range">-</td>
+                                        <td id="sum-loss-cf-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Google Jitter (ms)</td>
+                                        <td id="sum-jitter-google-avg">-</td>
+                                        <td id="sum-jitter-google-min">-</td>
+                                        <td id="sum-jitter-google-max">-</td>
+                                        <td id="sum-jitter-google-range">-</td>
+                                        <td id="sum-jitter-google-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cloudflare Jitter (ms)</td>
+                                        <td id="sum-jitter-cf-avg">-</td>
+                                        <td id="sum-jitter-cf-min">-</td>
+                                        <td id="sum-jitter-cf-max">-</td>
+                                        <td id="sum-jitter-cf-range">-</td>
+                                        <td id="sum-jitter-cf-stdev">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Downstream Signal Quality (RX) - includes BER metrics -->
+                    <div class="table-section summary-table-section">
+                        <h2>Downstream Signal Quality (RX)</h2>
+                        <div class="table-wrapper">
+                            <table id="rxSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Avg</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Range</th>
+                                        <th>Stdev</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>SC-QAM Power (dBmV)</td>
+                                        <td id="sum-scqam-power-avg">-</td>
+                                        <td id="sum-scqam-power-min">-</td>
+                                        <td id="sum-scqam-power-max">-</td>
+                                        <td id="sum-scqam-power-range">-</td>
+                                        <td id="sum-scqam-power-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SC-QAM SNR (dB)</td>
+                                        <td id="sum-scqam-snr-avg">-</td>
+                                        <td id="sum-scqam-snr-min">-</td>
+                                        <td id="sum-scqam-snr-max">-</td>
+                                        <td id="sum-scqam-snr-range">-</td>
+                                        <td id="sum-scqam-snr-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SC-QAM Corrected BER (%)</td>
+                                        <td id="sum-scqam-corr-avg">-</td>
+                                        <td id="sum-scqam-corr-min">-</td>
+                                        <td id="sum-scqam-corr-max">-</td>
+                                        <td id="sum-scqam-corr-range">-</td>
+                                        <td id="sum-scqam-corr-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>SC-QAM Uncorrectable BER (%)</td>
+                                        <td id="sum-scqam-uncorr-avg">-</td>
+                                        <td id="sum-scqam-uncorr-min">-</td>
+                                        <td id="sum-scqam-uncorr-max">-</td>
+                                        <td id="sum-scqam-uncorr-range">-</td>
+                                        <td id="sum-scqam-uncorr-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OFDM Power (dBmV)</td>
+                                        <td id="sum-ofdm-power-avg">-</td>
+                                        <td id="sum-ofdm-power-min">-</td>
+                                        <td id="sum-ofdm-power-max">-</td>
+                                        <td id="sum-ofdm-power-range">-</td>
+                                        <td id="sum-ofdm-power-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OFDM SNR (dB)</td>
+                                        <td id="sum-ofdm-snr-avg">-</td>
+                                        <td id="sum-ofdm-snr-min">-</td>
+                                        <td id="sum-ofdm-snr-max">-</td>
+                                        <td id="sum-ofdm-snr-range">-</td>
+                                        <td id="sum-ofdm-snr-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OFDM Corrected BER (%)</td>
+                                        <td id="sum-ofdm-corr-avg">-</td>
+                                        <td id="sum-ofdm-corr-min">-</td>
+                                        <td id="sum-ofdm-corr-max">-</td>
+                                        <td id="sum-ofdm-corr-range">-</td>
+                                        <td id="sum-ofdm-corr-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OFDM Uncorrectable BER (%)</td>
+                                        <td id="sum-ofdm-uncorr-avg">-</td>
+                                        <td id="sum-ofdm-uncorr-min">-</td>
+                                        <td id="sum-ofdm-uncorr-max">-</td>
+                                        <td id="sum-ofdm-uncorr-range">-</td>
+                                        <td id="sum-ofdm-uncorr-stdev">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Upstream Signal Quality (TX) -->
+                    <div class="table-section summary-table-section">
+                        <h2>Upstream Signal Quality (TX)</h2>
+                        <div class="table-wrapper">
+                            <table id="txSummaryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Avg</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Range</th>
+                                        <th>Stdev</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>SC-QAM TX Power (dBmV)</td>
+                                        <td id="sum-tx-scqam-avg">-</td>
+                                        <td id="sum-tx-scqam-min">-</td>
+                                        <td id="sum-tx-scqam-max">-</td>
+                                        <td id="sum-tx-scqam-range">-</td>
+                                        <td id="sum-tx-scqam-stdev">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OFDMA TX Power (dBmV)</td>
+                                        <td id="sum-tx-ofdma-avg">-</td>
+                                        <td id="sum-tx-ofdma-min">-</td>
+                                        <td id="sum-tx-ofdma-max">-</td>
+                                        <td id="sum-tx-ofdma-range">-</td>
+                                        <td id="sum-tx-ofdma-stdev">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Single Check View -->
-                <div class="view-mode" id="singleView">
+                <!-- Detail View (formerly Single Check View) -->
+                <div class="view-mode" id="detailView">
                     <div class="info-grid">
                         <div class="info-card">
                             <label>Time of Check</label>
@@ -1283,32 +2104,78 @@
                         <div class="speed-card">
                             <label>Speed Test Info</label>
                             <div id="speedtest_status" class="value">-</div>
-                            <div id="speedtest_server" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div
+                                id="speedtest_server"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                "
+                            ></div>
                         </div>
                         <div class="speed-card">
                             <label>Speed Test Ping</label>
                             <div id="speedtest_ping" class="value">-</div>
-                            <div id="speedtest_ping_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div
+                                id="speedtest_ping_details"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                "
+                            ></div>
                         </div>
                         <div class="speed-card">
                             <label>Download Speed</label>
                             <div id="iperf3_dl" class="value">-</div>
-                            <div id="iperf3_dl_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div
+                                id="iperf3_dl_loaded"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                "
+                            ></div>
                         </div>
                         <div class="speed-card">
                             <label>Upload Speed</label>
                             <div id="iperf3_ul" class="value">-</div>
-                            <div id="iperf3_ul_loaded" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px;"></div>
+                            <div
+                                id="iperf3_ul_loaded"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                "
+                            ></div>
                         </div>
                         <div class="speed-card">
                             <label>Ping Google</label>
                             <div id="ping_google" class="value">-</div>
-                            <div id="ping_google_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
+                            <div
+                                id="ping_google_details"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                    white-space: pre-line;
+                                    text-align: center;
+                                "
+                            ></div>
                         </div>
                         <div class="speed-card">
                             <label>Ping Cloudflare</label>
                             <div id="ping_cloudflare" class="value">-</div>
-                            <div id="ping_cloudflare_details" style="font-size: 0.75em; opacity: 0.85; margin-top: 8px; white-space: pre-line; text-align: center;"></div>
+                            <div
+                                id="ping_cloudflare_details"
+                                style="
+                                    font-size: 0.75em;
+                                    opacity: 0.85;
+                                    margin-top: 8px;
+                                    white-space: pre-line;
+                                    text-align: center;
+                                "
+                            ></div>
                         </div>
                     </div>
 
@@ -1499,14 +2366,20 @@
         <script>
             // Theme toggle functionality
             function toggleTheme() {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('modemcheck-theme', next);
+                const current =
+                    document.documentElement.getAttribute("data-theme");
+                const next = current === "dark" ? "light" : "dark";
+                document.documentElement.setAttribute("data-theme", next);
+                localStorage.setItem("modemcheck-theme", next);
 
                 // Update chart colors if charts exist
-                if (typeof updateChartColors === 'function') {
+                if (typeof updateChartColors === "function") {
                     updateChartColors();
+                }
+
+                // Update Flatpickr theme
+                if (typeof syncFlatpickrTheme === "function") {
+                    syncFlatpickrTheme();
                 }
             }
 
@@ -1515,41 +2388,73 @@
                 const style = getComputedStyle(document.documentElement);
                 return {
                     // Grid and text colors (theme-aware)
-                    grid: style.getPropertyValue('--chart-grid').trim(),
-                    text: style.getPropertyValue('--chart-text').trim(),
+                    grid: style.getPropertyValue("--chart-grid").trim(),
+                    text: style.getPropertyValue("--chart-text").trim(),
                     // Semantic colors
-                    primary: style.getPropertyValue('--primary').trim(),
-                    accent: style.getPropertyValue('--accent').trim(),
-                    success: style.getPropertyValue('--success').trim(),
-                    warning: style.getPropertyValue('--warning').trim(),
-                    error: style.getPropertyValue('--error').trim(),
+                    primary: style.getPropertyValue("--primary").trim(),
+                    accent: style.getPropertyValue("--accent").trim(),
+                    success: style.getPropertyValue("--success").trim(),
+                    warning: style.getPropertyValue("--warning").trim(),
+                    error: style.getPropertyValue("--error").trim(),
                     // Chart dataset colors
-                    download: style.getPropertyValue('--chart-download').trim(),
-                    upload: style.getPropertyValue('--chart-upload').trim(),
-                    google: style.getPropertyValue('--chart-google').trim(),
-                    cloudflare: style.getPropertyValue('--chart-cloudflare').trim(),
-                    speedtest: style.getPropertyValue('--chart-speedtest').trim(),
-                    latencyMax: style.getPropertyValue('--chart-latency-max').trim(),
-                    googleMax: style.getPropertyValue('--chart-google-max').trim(),
-                    cloudflareMax: style.getPropertyValue('--chart-cloudflare-max').trim(),
-                    packetGoogle: style.getPropertyValue('--chart-packet-google').trim(),
-                    packetCloudflare: style.getPropertyValue('--chart-packet-cloudflare').trim(),
-                    uptime: style.getPropertyValue('--chart-uptime').trim(),
-                    rxScqam: style.getPropertyValue('--chart-rx-scqam').trim(),
-                    rxOfdm: style.getPropertyValue('--chart-rx-ofdm').trim(),
-                    snrScqam: style.getPropertyValue('--chart-snr-scqam').trim(),
-                    snrOfdm: style.getPropertyValue('--chart-snr-ofdm').trim(),
-                    berUncorr: style.getPropertyValue('--chart-ber-uncorr').trim(),
-                    berUncorrDark: style.getPropertyValue('--chart-ber-uncorr-dark').trim(),
-                    berOfdmUncorr: style.getPropertyValue('--chart-ber-ofdm-uncorr').trim(),
-                    berOfdmUncorrDark: style.getPropertyValue('--chart-ber-ofdm-uncorr-dark').trim(),
-                    berCorr: style.getPropertyValue('--chart-ber-corr').trim(),
-                    berCorrDark: style.getPropertyValue('--chart-ber-corr-dark').trim(),
-                    berOfdmCorr: style.getPropertyValue('--chart-ber-ofdm-corr').trim(),
-                    berOfdmCorrDark: style.getPropertyValue('--chart-ber-ofdm-corr-dark').trim(),
-                    txScqam: style.getPropertyValue('--chart-tx-scqam').trim(),
-                    txOfdma: style.getPropertyValue('--chart-tx-ofdma').trim(),
-                    txImpaired: style.getPropertyValue('--chart-tx-impaired').trim()
+                    download: style.getPropertyValue("--chart-download").trim(),
+                    upload: style.getPropertyValue("--chart-upload").trim(),
+                    google: style.getPropertyValue("--chart-google").trim(),
+                    cloudflare: style
+                        .getPropertyValue("--chart-cloudflare")
+                        .trim(),
+                    speedtest: style
+                        .getPropertyValue("--chart-speedtest")
+                        .trim(),
+                    latencyMax: style
+                        .getPropertyValue("--chart-latency-max")
+                        .trim(),
+                    googleMax: style
+                        .getPropertyValue("--chart-google-max")
+                        .trim(),
+                    cloudflareMax: style
+                        .getPropertyValue("--chart-cloudflare-max")
+                        .trim(),
+                    packetGoogle: style
+                        .getPropertyValue("--chart-packet-google")
+                        .trim(),
+                    packetCloudflare: style
+                        .getPropertyValue("--chart-packet-cloudflare")
+                        .trim(),
+                    uptime: style.getPropertyValue("--chart-uptime").trim(),
+                    rxScqam: style.getPropertyValue("--chart-rx-scqam").trim(),
+                    rxOfdm: style.getPropertyValue("--chart-rx-ofdm").trim(),
+                    snrScqam: style
+                        .getPropertyValue("--chart-snr-scqam")
+                        .trim(),
+                    snrOfdm: style.getPropertyValue("--chart-snr-ofdm").trim(),
+                    berUncorr: style
+                        .getPropertyValue("--chart-ber-uncorr")
+                        .trim(),
+                    berUncorrDark: style
+                        .getPropertyValue("--chart-ber-uncorr-dark")
+                        .trim(),
+                    berOfdmUncorr: style
+                        .getPropertyValue("--chart-ber-ofdm-uncorr")
+                        .trim(),
+                    berOfdmUncorrDark: style
+                        .getPropertyValue("--chart-ber-ofdm-uncorr-dark")
+                        .trim(),
+                    berCorr: style.getPropertyValue("--chart-ber-corr").trim(),
+                    berCorrDark: style
+                        .getPropertyValue("--chart-ber-corr-dark")
+                        .trim(),
+                    berOfdmCorr: style
+                        .getPropertyValue("--chart-ber-ofdm-corr")
+                        .trim(),
+                    berOfdmCorrDark: style
+                        .getPropertyValue("--chart-ber-ofdm-corr-dark")
+                        .trim(),
+                    txScqam: style.getPropertyValue("--chart-tx-scqam").trim(),
+                    txOfdma: style.getPropertyValue("--chart-tx-ofdma").trim(),
+                    txImpaired: style
+                        .getPropertyValue("--chart-tx-impaired")
+                        .trim(),
                 };
             }
 
