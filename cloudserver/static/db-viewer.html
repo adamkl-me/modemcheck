@@ -193,7 +193,6 @@
                 box-shadow:
                     0 20px 60px rgba(0, 0, 0, 0.3),
                     inset 0 1px 0 rgba(255, 255, 255, 0.1);
-                overflow: hidden;
                 display: none; /* Hidden until auth verified */
             }
 
@@ -223,6 +222,7 @@
                 align-items: center;
                 justify-content: center;
                 box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+                border-radius: 16px 16px 0 0;
             }
 
             .header h1 {
@@ -680,7 +680,7 @@
                 border-radius: 0 0 8px 8px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                 display: none;
-                z-index: 1000;
+                z-index: 10000;
                 margin-top: -1px;
             }
 
@@ -816,6 +816,13 @@
                 align-items: center;
                 justify-content: center;
                 flex-wrap: wrap;
+                border-radius: 0 0 16px 16px;
+            }
+
+            /* Remove bottom radius from view-switcher when content is visible */
+            .view-switcher:has(+ .content:not(.no-data)),
+            .view-switcher:has(+ .timeline-nav + .content:not(.no-data)) {
+                border-radius: 0;
             }
 
             .view-btn {
@@ -936,6 +943,7 @@
             .content {
                 padding: 30px;
                 background: var(--surface);
+                border-radius: 0 0 16px 16px;
             }
 
             .view-mode {
