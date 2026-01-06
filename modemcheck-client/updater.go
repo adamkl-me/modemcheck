@@ -244,7 +244,7 @@ func createUpdateLock(version string) {
 		return
 	}
 
-	os.WriteFile(lockPath, data, 0600)
+	_ = os.WriteFile(lockPath, data, 0600) // #nosec G104 -- update lock, non-critical
 }
 
 // clearUpdateLock removes the update lock file.
@@ -266,7 +266,7 @@ func clearUpdateLock() {
 	}
 	defer fileLock.Unlock()
 
-	os.Remove(lockPath)
+	_ = os.Remove(lockPath) // #nosec G104 -- cleanup, non-critical
 }
 
 // verifySignature verifies the Minisign signature of a file.
@@ -609,8 +609,8 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 
 	// Cleanup function to remove temporary files on error
 	cleanup := func() {
-		os.Remove(tmpFile)
-		os.Remove(sigFile)
+		_ = os.Remove(tmpFile)  // #nosec G104 -- cleanup, non-critical
+		_ = os.Remove(sigFile)  // #nosec G104 -- cleanup, non-critical
 	}
 
 	// STEP 1: Download binary to temporary file
@@ -684,6 +684,7 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 	}
 
 	// STEP 4: Make the new binary executable (Unix systems)
+	// #nosec G302 -- binary must be executable (0755) after signature verification
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(tmpFile, 0755); err != nil {
 			cleanup()
@@ -702,7 +703,7 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 
 	// STEP 6: Create backup of current binary
 	// Remove old backup if exists
-	os.Remove(backupFile)
+	_ = os.Remove(backupFile) // #nosec G104 -- cleanup, non-critical
 
 	if err := os.Rename(currentExe, backupFile); err != nil {
 		cleanup()
@@ -725,7 +726,7 @@ func (m *ModemCheck) DownloadAndApplyUpdate(downloadURL, newVersion string) erro
 	}
 
 	// Cleanup signature file (no longer needed)
-	os.Remove(sigFile)
+	_ = os.Remove(sigFile) // #nosec G104 -- cleanup after verified update
 
 	m.Log(fmt.Sprintf("✓ Successfully updated to v%s", newVersion))
 	m.Log("Backup saved as: " + backupFile)
@@ -785,7 +786,7 @@ func downloadFile(filepath string, url string) error {
 
 	// Check if we hit the size limit
 	if written == MaxBinaryDownloadSize {
-		os.Remove(filepath)
+		_ = os.Remove(filepath) // #nosec G104 -- cleanup on error, non-critical
 		return fmt.Errorf("download exceeded size limit of %d MB", MaxBinaryDownloadSize/(1024*1024))
 	}
 

@@ -98,6 +98,7 @@ func encryptAPIKey(plainKey string) (*EncryptedAPIKey, error) {
 	}
 
 	// Encrypt the API key
+	// #nosec G407 -- nonce is randomly generated via crypto/rand.Read() above, not hardcoded
 	ciphertext := gcm.Seal(nil, nonce, []byte(plainKey), nil)
 
 	return &EncryptedAPIKey{

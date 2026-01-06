@@ -124,7 +124,7 @@ setup_venv() {
     print_info "Checking Playwright browser installation..."
     if ! python -c "from playwright.sync_api import sync_playwright; p = sync_playwright().start(); p.chromium.launch()" > /dev/null 2>&1; then
         print_info "Installing Playwright browsers (this may take a few minutes)..."
-        playwright install chromium
+        playwright install chromium firefox webkit
         print_success "Playwright browsers installed"
     else
         print_success "Playwright browsers already installed"

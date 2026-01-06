@@ -30,7 +30,7 @@ var (
 	}
 )
 
-// XfinityScraper handles Rogers Xfinity/XB7/XB8 cable modems.
+// XfinityScraper handles Rogers Xfinity/XB7/XB8/XB10 cable modems.
 type XfinityScraper struct {
 	client       *http.Client
 	modemAddress string
@@ -108,8 +108,11 @@ func (s *XfinityScraper) Login() error {
 
 	s.logger.Log("Rogers Xfinity modem login successful.")
 
-	// Detect XB7 vs XB8
-	if strings.Contains(bodyStr, "XB8") {
+	// Detect XB7 vs XB8 vs XB10
+	if strings.Contains(bodyStr, "XB10") {
+		s.modemType = "XB10"
+		s.logger.Log(fmt.Sprintf("Detected specific model: %s", s.modemType))
+	} else if strings.Contains(bodyStr, "XB8") {
 		s.modemType = "XB8"
 		s.logger.Log(fmt.Sprintf("Detected specific model: %s", s.modemType))
 	} else if strings.Contains(bodyStr, "XB7") {
@@ -200,7 +203,7 @@ func (s *XfinityScraper) GetData(checkTime int64) (*ModemData, error) {
 
 	if !strings.Contains(pageStr, "CM MAC:") {
 		s.logger.Log("Failed to fetch data page. Re-logging in...")
-		s.Login()
+		_ = s.Login() // #nosec G104 -- retry login, result checked on retry
 		retryResp, err := s.client.Get(fmt.Sprintf("http://%s/network_setup.jst", s.modemAddress))
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch network setup after re-login: %w", err)

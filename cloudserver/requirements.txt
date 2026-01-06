@@ -14,7 +14,6 @@ redis[hiredis]==5.2.0
 
 # Security
 passlib[argon2]==1.7.4
-python-jose[cryptography]==3.4.0  # Updated for CVE-2024-232/233 (algorithm confusion, JWT bomb)
 cryptography>=46.0.3  # Pinned for security updates
 python-multipart==0.0.20
 fastapi-csrf-protect==0.3.4

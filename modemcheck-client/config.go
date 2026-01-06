@@ -93,6 +93,7 @@ func migrateAPIKey(config *Configuration) (bool, error) {
 
 // LoadConfigFile loads configuration from a JSON file and validates required settings.
 func LoadConfigFile(path string, config *Configuration) error {
+	// #nosec G304 -- path is from CLI flag -c (user-intended) or default location
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
@@ -200,6 +201,7 @@ func LoadLastSuccessfulModem() (*LastSuccessfulModem, error) {
 		StateFilePath: stateFile,
 	}
 
+	// #nosec G304 -- stateFile is constructed from executable directory + hardcoded filename
 	data, err := os.ReadFile(stateFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -265,6 +267,7 @@ func LoadIPInfoCache() (*IPInfoCache, error) {
 	exeDir := filepath.Dir(exePath)
 	cacheFile := filepath.Join(exeDir, ".ip_info_cache.json")
 
+	// #nosec G304 -- cacheFile is constructed from executable directory + hardcoded filename
 	data, err := os.ReadFile(cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -338,6 +341,7 @@ func LoadSpeedTestState(stateDir string) (*SpeedTestState, error) {
 		StateFilePath:   stateFile,
 	}
 
+	// #nosec G304 -- stateFile is constructed from checkDir + hardcoded filename
 	data, err := os.ReadFile(stateFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -373,8 +377,9 @@ func (s *SpeedTestState) Save() error {
 		return nil
 	}
 
-	// Ensure directory exists
+	// Ensure directory exists (0755 for dirs is standard; state files within use 0600)
 	dir := filepath.Dir(s.StateFilePath)
+	// #nosec G301 -- directory permissions appropriate for results storage
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create state directory: %w", err)
 	}
@@ -411,8 +416,9 @@ func SaveConfigurationAtomic(config *Configuration, configPath string) error {
 		saveCopy.CloudAPIKey = "" // Clear plain text from saved config
 	}
 
-	// Ensure directory exists
+	// Ensure directory exists (0755 for dirs is standard; config files within use 0600)
 	dir := filepath.Dir(configPath)
+	// #nosec G301 -- directory permissions appropriate for config storage
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}

@@ -150,8 +150,9 @@ func loadUploadQueue() (*UploadQueue, error) {
 // saveUploadQueue saves the upload queue to disk using atomic write.
 // Uses temp file + rename to prevent corruption if the process crashes during write.
 func saveUploadQueue(queue *UploadQueue) error {
-	// Ensure directory exists
+	// Ensure directory exists (queue dir for non-sensitive upload metadata)
 	dir := filepath.Dir(queueFilePath)
+	// #nosec G301 -- directory permissions appropriate for queue storage
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -165,6 +166,7 @@ func saveUploadQueue(queue *UploadQueue) error {
 	// NOTE: os.Rename is atomic on POSIX systems but NOT fully atomic on Windows.
 	// Upload queue data can be regenerated if lost, so this is acceptable.
 	tmpFile := queueFilePath + ".tmp"
+	// #nosec G306 -- queue file contains non-sensitive metadata (timestamps, retry counts)
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
@@ -305,6 +307,7 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	}
 
 	// Open local file
+	// #nosec G304 -- localFile is constructed from checkDir + timestamp, not user input
 	file, err := os.Open(localFile)
 	if err != nil {
 		return fmt.Errorf("failed to open local file: %v", err)

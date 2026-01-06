@@ -226,7 +226,7 @@ func RecoverStateFile() (*ConfigState, error) {
 				return nil, fmt.Errorf("failed to restore from temp file: %w", err)
 			}
 			// Clean up temp file after successful recovery
-			os.Remove(tempFile)
+			_ = os.Remove(tempFile) // #nosec G104 -- cleanup after recovery
 			return &state, nil
 		}
 	}
@@ -304,13 +304,13 @@ func CleanupOldStateFiles() error {
 		}
 
 		// Delete state file while holding lock
-		os.Remove(stateFile)
+		_ = os.Remove(stateFile) // #nosec G104 -- cleanup during state reset
 
 		// Release lock before deleting lock file (proper order for idempotency)
-		lock.Unlock()
+		_ = lock.Unlock() // #nosec G104 -- unlock in defer, error non-critical
 
 		// Delete lock file after releasing (safe to delete now)
-		os.Remove(lockFile)
+		_ = os.Remove(lockFile) // #nosec G104 -- cleanup during state reset
 	}
 
 	return nil

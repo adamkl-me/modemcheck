@@ -102,7 +102,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 
 	if err := json.Unmarshal(data, &lock); err != nil {
 		// Invalid lock file, remove it
-		os.Remove(lockPath)
+		_ = os.Remove(lockPath) // #nosec G104 -- cleanup, non-critical
 		return
 	}
 
@@ -113,7 +113,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 	// If current version is >= lock version, the update succeeded
 	if currentVersion >= lockVersion {
 		// Update was successful, remove lock
-		os.Remove(lockPath)
+		_ = os.Remove(lockPath) // #nosec G104 -- cleanup, non-critical
 		if !m.config.Silent {
 			fmt.Printf("✓ Successfully verified update to v%s\n", lock.Version)
 		}
@@ -121,7 +121,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 		// Clean up old backup file if update succeeded
 		backupFile := exePath + ".old"
 		if _, err := os.Stat(backupFile); err == nil {
-			os.Remove(backupFile)
+			_ = os.Remove(backupFile) // #nosec G104 -- cleanup, non-critical
 		}
 		return
 	}
@@ -152,7 +152,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 	} else {
 		// No backup available, just clear the lock and continue
 		m.Log("No backup available for rollback, continuing with current version")
-		os.Remove(lockPath)
+		_ = os.Remove(lockPath) // #nosec G104 -- cleanup, non-critical
 	}
 }
 
@@ -170,7 +170,7 @@ func (m *ModemCheck) Log(message string) {
 	if m.logFile != nil && !m.config.NoLogs {
 		m.logMutex.Lock()
 		defer m.logMutex.Unlock() // Ensure lock is released even if WriteString panics
-		m.logFile.WriteString(logMessage)
+		_, _ = m.logFile.WriteString(logMessage) // #nosec G104 -- logging, non-critical
 	}
 }
 
@@ -243,7 +243,7 @@ func (m *ModemCheck) InitLogFile() error {
 	}
 
 	logPath := filepath.Join(filepath.Dir(os.Args[0]), "modem-check_logs.txt")
-	// #nosec G304 -- logPath is constructed from executable directory, not user input
+	// #nosec G304,G302 -- logPath from executable dir; log file non-sensitive, 0644 standard
 	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -280,7 +280,7 @@ func (m *ModemCheck) createScraper() error {
 		m.modemScraper = scraper.NewCODAScraper(m.client, m.modemAddress, m.modemType, m)
 	case "DM1000":
 		m.modemScraper = scraper.NewDM1000Scraper(m.client, m.modemAddress, m)
-	case "Xfinity", "Xfinity-XB7", "Xfinity-XB8", "XB7", "XB8":
+	case "Xfinity", "Xfinity-XB7", "Xfinity-XB8", "Xfinity-XB10", "XB7", "XB8", "XB10":
 		m.modemScraper = scraper.NewXfinityScraper(m.client, m.modemAddress, m.config.IgnitePassword, m)
 	default:
 		return fmt.Errorf("unsupported modem type: %s", m.modemType)
@@ -448,7 +448,7 @@ func (m *ModemCheck) Run() error {
 	// Always store locally in ModemCheck-Results subdirectory
 	baseDir := filepath.Join(filepath.Dir(os.Args[0]), "ModemCheck-Results")
 	m.checkDir = filepath.Join(baseDir, fmt.Sprintf("%s-%s", m.modemType, m.modemMAC))
-	os.MkdirAll(m.checkDir, 0755)
+	_ = os.MkdirAll(m.checkDir, 0755) // #nosec G301,G104 -- results dir for non-sensitive files; best effort
 	m.checkFile = filepath.Join(m.checkDir, m.checkTimeString+".json")
 
 	// Load speed test state
@@ -505,7 +505,7 @@ func (m *ModemCheck) Run() error {
 
 		// Clear FEC after collecting data
 		m.Log("Clearing FEC counters")
-		m.modemScraper.ClearFEC()
+		_ = m.modemScraper.ClearFEC() // #nosec G104 -- best effort FEC clear, non-critical
 	}
 
 	// Add client version and platform information
@@ -522,6 +522,7 @@ func (m *ModemCheck) Run() error {
 		m.Log(fmt.Sprintf("ERROR: Failed to marshal modem data to JSON: %v", err))
 		return fmt.Errorf("failed to marshal modem data to JSON: %w", err)
 	}
+	// #nosec G306 -- diagnostic JSON data, not credentials
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
 		m.Log(fmt.Sprintf("ERROR: Failed to write modem data to file: %v", err))
 		return fmt.Errorf("failed to write modem data to file: %w", err)
@@ -547,6 +548,7 @@ func (m *ModemCheck) Run() error {
 		m.Log(fmt.Sprintf("ERROR: Failed to marshal test results to JSON: %v", err))
 		return fmt.Errorf("failed to marshal test results: %w", err)
 	}
+	// #nosec G306 -- diagnostic JSON data, not credentials
 	if err := os.WriteFile(m.checkFile, jsonData, 0644); err != nil {
 		m.Log(fmt.Sprintf("ERROR: Failed to write test results to file: %v", err))
 		return fmt.Errorf("failed to write test results: %w", err)
