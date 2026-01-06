@@ -185,6 +185,7 @@ func checkUpdateLock(targetVersion string) bool {
 	}
 	defer fileLock.Unlock()
 
+	// #nosec G304 -- lockPath is constructed from executable directory, not user input
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
 		// No lock file, allow update
@@ -278,6 +279,7 @@ func verifySignature(filePath, signaturePath string) error {
 	}
 
 	// Read the signature file
+	// #nosec G304 -- signaturePath is constructed from downloaded update path, verified before use
 	sigData, err := os.ReadFile(signaturePath)
 	if err != nil {
 		return fmt.Errorf("failed to read signature file: %w", err)
@@ -289,6 +291,7 @@ func verifySignature(filePath, signaturePath string) error {
 	}
 
 	// Read and verify the file
+	// #nosec G304 -- filePath is the downloaded binary, verified by signature before execution
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file for verification: %w", err)
@@ -311,6 +314,7 @@ func verifySignature(filePath, signaturePath string) error {
 // Returns an error if the signature format is invalid or timestamp is missing.
 func extractTimestampFromSignature(signaturePath string) (time.Time, string, error) {
 	// Read signature file
+	// #nosec G304 -- signaturePath is constructed from downloaded update path, not user input
 	sigData, err := os.ReadFile(signaturePath)
 	if err != nil {
 		return time.Time{}, "", fmt.Errorf("failed to read signature file: %w", err)
@@ -764,6 +768,7 @@ func downloadFile(filepath string, url string) error {
 		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
 	}
 
+	// #nosec G304 -- filepath is constructed from temp directory + validated filename
 	out, err := os.Create(filepath)
 	if err != nil {
 		return err
@@ -839,6 +844,7 @@ func RestartProcess() error {
 	// On Windows, we need to use a different approach
 	if runtime.GOOS == "windows" {
 		// Spawn new process and exit current
+		// #nosec G204 -- executable is the verified updated binary path, args are from current process
 		cmd := exec.Command(executable, args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -852,5 +858,6 @@ func RestartProcess() error {
 	}
 
 	// On Unix systems, use execve to replace current process
+	// #nosec G204 -- executable is the verified updated binary path, args are from current process
 	return syscall.Exec(executable, append([]string{executable}, args...), os.Environ())
 }

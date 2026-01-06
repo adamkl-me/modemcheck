@@ -73,11 +73,12 @@ func LoadConfigState() (*ConfigState, error) {
 	unlocked := false
 	defer func() {
 		if !unlocked {
-			lock.Unlock()
+			_ = lock.Unlock() // #nosec G104 -- unlock in defer, error non-critical
 		}
 	}()
 
 	// Read state file
+	// #nosec G304 -- stateFile is constructed from executable directory, not user input
 	data, err := os.ReadFile(stateFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read state file: %w", err)
@@ -92,7 +93,7 @@ func LoadConfigState() (*ConfigState, error) {
 		// Release read lock before recovery (RecoverStateFile needs write lock)
 		// Mark as unlocked so defer doesn't double-unlock
 		unlocked = true
-		lock.Unlock()
+		_ = lock.Unlock() // #nosec G104 -- unlock error non-critical, already marked unlocked
 
 		recoveredState, recoverErr := RecoverStateFile()
 		if recoverErr != nil {
@@ -149,26 +150,26 @@ func SaveConfigState(state *ConfigState) error {
 
 	// Write to temp file with restrictive permissions (only owner can read/write)
 	if err := os.WriteFile(tempFile, data, 0600); err != nil {
-		// Restore from backup if write failed
+		// Restore from backup if write failed (best effort, ignore error)
 		if _, bakErr := os.Stat(backupFile); bakErr == nil {
-			os.Rename(backupFile, stateFile)
+			_ = os.Rename(backupFile, stateFile) // #nosec G104 -- best effort recovery
 		}
 		return fmt.Errorf("failed to write temp state file: %w", err)
 	}
 
 	// Atomic rename (overwrites existing file)
 	if err := os.Rename(tempFile, stateFile); err != nil {
-		// Clean up temp file on error
-		os.Remove(tempFile)
-		// Restore from backup
+		// Clean up temp file on error (best effort, ignore error)
+		_ = os.Remove(tempFile) // #nosec G104 -- cleanup in error path
+		// Restore from backup (best effort, ignore error)
 		if _, bakErr := os.Stat(backupFile); bakErr == nil {
-			os.Rename(backupFile, stateFile)
+			_ = os.Rename(backupFile, stateFile) // #nosec G104 -- best effort recovery
 		}
 		return fmt.Errorf("failed to rename temp state file: %w", err)
 	}
 
-	// Success - can remove old backup now
-	os.Remove(backupFile)
+	// Success - can remove old backup now (best effort, ignore error)
+	_ = os.Remove(backupFile) // #nosec G104 -- cleanup, non-critical
 
 	return nil
 }
@@ -201,6 +202,7 @@ func RecoverStateFile() (*ConfigState, error) {
 	tempFile := stateFile + ".tmp"
 
 	// Strategy 1: Try backup file
+	// #nosec G304 -- backupFile is constructed from stateFile path, not user input
 	if data, err := os.ReadFile(backupFile); err == nil {
 		var state ConfigState
 		if err := json.Unmarshal(data, &state); err == nil {
@@ -214,6 +216,7 @@ func RecoverStateFile() (*ConfigState, error) {
 	}
 
 	// Strategy 2: Try temp file (might be more recent than corrupted main file)
+	// #nosec G304 -- tempFile is constructed from stateFile path, not user input
 	if data, err := os.ReadFile(tempFile); err == nil {
 		var state ConfigState
 		if err := json.Unmarshal(data, &state); err == nil {

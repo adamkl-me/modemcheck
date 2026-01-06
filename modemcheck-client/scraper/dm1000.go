@@ -40,7 +40,8 @@ func NewDM1000Scraper(client *http.Client, modemAddress string, logger Logger) *
 func (s *DM1000Scraper) Login() error {
 	s.logger.Log("Attempting login to Sercomm DM1000 modem...")
 	user := "technician"
-	pass := "sercommdocsis"
+	// Known factory default password for Sercomm DM1000 modems - not a security credential
+	pass := "sercommdocsis" // #nosec G101 -- factory default modem password, not a secret
 	passB64 := base64.StdEncoding.EncodeToString([]byte(pass))
 
 	data := fmt.Sprintf("login_user=%s&pws=%s&submit=Apply&is_parent_window=1&todo=login&this_file=login.html&next_file=&language=en&message=&passwd=%s&cur_passwd=",

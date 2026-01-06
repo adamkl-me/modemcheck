@@ -48,7 +48,8 @@ func NewModemCheck(config Configuration, configFilePath string) (*ModemCheck, er
 		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
 	}
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: false, // Always verify TLS certificates (v3.0+)
+		InsecureSkipVerify: false,     // Always verify TLS certificates (v3.0+)
+		MinVersion:         tls.VersionTLS12, // Minimum TLS 1.2 required
 	}
 	transport := &http.Transport{
 		TLSClientConfig:     tlsConfig,
@@ -87,6 +88,7 @@ func (m *ModemCheck) VerifyUpdateSuccess() {
 	exeDir := filepath.Dir(exePath)
 	lockPath := filepath.Join(exeDir, ".update_lock")
 
+	// #nosec G304 -- lockPath is constructed from executable directory, not user input
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
 		// No lock file exists - no recent update to verify
@@ -241,6 +243,7 @@ func (m *ModemCheck) InitLogFile() error {
 	}
 
 	logPath := filepath.Join(filepath.Dir(os.Args[0]), "modem-check_logs.txt")
+	// #nosec G304 -- logPath is constructed from executable directory, not user input
 	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err

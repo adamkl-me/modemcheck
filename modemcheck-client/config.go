@@ -44,6 +44,7 @@ const (
 // Configuration holds all user-configurable settings.
 // Version 3.0: Removed CloudPath, FailoverHosts, FailoverPorts, EnforceHTTPS, InsecureTLS
 // (HTTPS is now always enforced for security)
+// Version 4.0: Added EncryptedCloudAPIKey for secure API key storage
 type Configuration struct {
 	ModemAddress         string
 	IgnitePassword       string
@@ -58,10 +59,36 @@ type Configuration struct {
 	LocalCleanupEnabled  bool   // Enable automatic cleanup of old local files (default: true)
 	LocalRetentionDays   int    // Days to retain local files (default: 90)
 	// Cloud mode settings (HTTPS always enforced)
-	EnableCloud bool   // Enable cloud upload (always saves locally)
-	CloudHost   string // Cloud server hostname or IP
-	CloudPort   string // Cloud server port
-	CloudAPIKey string // API key for authentication
+	EnableCloud          bool             // Enable cloud upload (always saves locally)
+	CloudHost            string           // Cloud server hostname or IP
+	CloudPort            string           // Cloud server port
+	CloudAPIKey          string           `json:",omitempty"` // Plain text API key (migrated to encrypted on save)
+	EncryptedCloudAPIKey *EncryptedAPIKey `json:",omitempty"` // Encrypted API key (machine-bound)
+}
+
+// migrateAPIKey handles decryption of encrypted API keys and migration from plain text.
+// Returns (migrated bool, error) where migrated=true indicates the config should be saved.
+func migrateAPIKey(config *Configuration) (bool, error) {
+	// Case 1: We have an encrypted key - decrypt it
+	if config.EncryptedCloudAPIKey != nil {
+		decrypted, err := decryptAPIKey(config.EncryptedCloudAPIKey)
+		if err != nil {
+			// Decryption failed - clear the key and report error
+			config.CloudAPIKey = ""
+			return false, fmt.Errorf("API key decryption failed (wrong machine?): %w", err)
+		}
+		config.CloudAPIKey = decrypted
+		return false, nil // Already encrypted, no migration needed
+	}
+
+	// Case 2: We have a plain text key - mark for migration
+	if config.CloudAPIKey != "" {
+		// The key will be encrypted when SaveConfigurationAtomic is called
+		return true, nil
+	}
+
+	// Case 3: No API key at all
+	return false, nil
 }
 
 // LoadConfigFile loads configuration from a JSON file and validates required settings.
@@ -73,6 +100,23 @@ func LoadConfigFile(path string, config *Configuration) error {
 
 	if err := json.Unmarshal(data, config); err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Handle API key decryption and migration
+	migrated, migrationErr := migrateAPIKey(config)
+	if migrationErr != nil {
+		// Log warning but continue - cloud features will be disabled if key is invalid
+		fmt.Fprintf(os.Stderr, "Warning: API key issue: %v\n", migrationErr)
+	}
+
+	// If migration occurred (plain text to encrypted), save the config
+	if migrated {
+		fmt.Fprintf(os.Stderr, "Migrating API key to encrypted storage...\n")
+		if saveErr := SaveConfigurationAtomic(config, path); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to save migrated config: %v\n", saveErr)
+		} else {
+			fmt.Fprintf(os.Stderr, "API key migration complete\n")
+		}
 	}
 
 	// Set defaults for new fields if not specified
@@ -352,7 +396,21 @@ func (s *SpeedTestState) Save() error {
 
 // SaveConfigurationAtomic atomically saves configuration to the config file
 // Uses temp file + atomic rename to prevent corruption on crash
+// Encrypts the API key before saving for security
 func SaveConfigurationAtomic(config *Configuration, configPath string) error {
+	// Create a copy for saving to avoid modifying the original
+	saveCopy := *config
+
+	// Encrypt API key before saving if it exists
+	if saveCopy.CloudAPIKey != "" {
+		encrypted, err := encryptAPIKey(saveCopy.CloudAPIKey)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt API key: %w", err)
+		}
+		saveCopy.EncryptedCloudAPIKey = encrypted
+		saveCopy.CloudAPIKey = "" // Clear plain text from saved config
+	}
+
 	// Ensure directory exists
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -360,7 +418,7 @@ func SaveConfigurationAtomic(config *Configuration, configPath string) error {
 	}
 
 	// Marshal to JSON with indentation for readability
-	data, err := json.MarshalIndent(config, "", "  ")
+	data, err := json.MarshalIndent(&saveCopy, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -379,9 +437,16 @@ func SaveConfigurationAtomic(config *Configuration, configPath string) error {
 
 	// Atomic rename (overwrites existing file)
 	if err := os.Rename(tempFile, configPath); err != nil {
-		// Clean up temp file on error
-		os.Remove(tempFile)
+		// Clean up temp file on error (best effort, ignore error)
+		_ = os.Remove(tempFile) // #nosec G104 -- cleanup in error path
 		return fmt.Errorf("failed to rename temp config file: %w", err)
+	}
+
+	// Ensure restrictive file permissions (0600) after rename
+	// This fixes permissions if the file was previously world-readable
+	if err := fixConfigPermissions(configPath); err != nil {
+		// Log warning but don't fail - file is already written
+		fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
 	}
 
 	return nil

@@ -432,8 +432,15 @@ func SyncWithRetry(config *Configuration, modemID string, state *ConfigState, ma
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff: 1s, 2s, 4s
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			// Exponential backoff: 1s, 2s, 4s (capped at 8s for safety)
+			shift := attempt - 1
+			if shift < 0 {
+				shift = 0
+			}
+			if shift > 3 {
+				shift = 3 // Cap at 8 seconds max
+			}
+			backoff := time.Duration(1<<shift) * time.Second
 			time.Sleep(backoff)
 		}
 

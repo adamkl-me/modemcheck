@@ -171,8 +171,8 @@ func saveUploadQueue(queue *UploadQueue) error {
 
 	// Atomic rename (on most filesystems, rename is atomic)
 	if err := os.Rename(tmpFile, queueFilePath); err != nil {
-		// Clean up temp file on failure
-		os.Remove(tmpFile)
+		// Clean up temp file on failure (best effort, ignore error)
+		_ = os.Remove(tmpFile) // #nosec G104 -- cleanup in error path
 		return fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
@@ -248,6 +248,20 @@ func removeFromUploadQueue(queue *UploadQueue, filePath string) {
 	// This is still better than O(n) rebuild since we only update affected entries
 	for i := idx; i < len(queue.FailedUploads); i++ {
 		queue.fileIndex[queue.FailedUploads[i].FilePath] = i
+	}
+}
+
+// updateUploadQueueEntry updates an existing entry's attempt info in a thread-safe manner.
+// Uses the queue's internal index for O(1) lookup.
+func updateUploadQueueEntry(queue *UploadQueue, filePath string, attemptTime time.Time, errorMsg string) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+
+	// Use the queue's internal index for O(1) lookup
+	if idx, exists := queue.fileIndex[filePath]; exists {
+		queue.FailedUploads[idx].Attempts++
+		queue.FailedUploads[idx].LastAttempt = attemptTime
+		queue.FailedUploads[idx].LastError = errorMsg
 	}
 }
 
@@ -460,19 +474,11 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 	entries := make([]UploadQueueEntry, len(queue.FailedUploads))
 	copy(entries, queue.FailedUploads)
 
-	// Create a map index for O(1) lookups by FilePath
-	// This prevents O(n²) performance when updating entries after failed uploads
-	entryMap := make(map[string]int, len(queue.FailedUploads))
-	for i := range queue.FailedUploads {
-		entryMap[queue.FailedUploads[i].FilePath] = i
-	}
-
 	for _, entry := range entries {
 		// Check if file still exists
 		if _, err := os.Stat(entry.FilePath); os.IsNotExist(err) {
 			m.Log(fmt.Sprintf("  ✗ File no longer exists: %s", entry.FilePath))
 			removeFromUploadQueue(queue, entry.FilePath)
-			delete(entryMap, entry.FilePath) // Keep map in sync
 			missingCount++
 			continue
 		}
@@ -483,24 +489,18 @@ func (m *ModemCheck) retryFailedUploads(queue *UploadQueue) {
 		if err == nil {
 			m.Log(fmt.Sprintf("  ✓ Successfully uploaded: %s (was attempt #%d)", filepath.Base(entry.FilePath), entry.Attempts+1))
 			removeFromUploadQueue(queue, entry.FilePath)
-			delete(entryMap, entry.FilePath) // Keep map in sync
 			successCount++
 		} else {
 			// Check if error is retryable (network errors, 5xx) or permanent (validation errors, 4xx)
 			if isRetryableError(err) {
 				m.Log(fmt.Sprintf("  ✗ Upload failed (will retry): %s - %v", filepath.Base(entry.FilePath), err))
-				// Update the entry with new attempt info using O(1) map lookup
-				if idx, exists := entryMap[entry.FilePath]; exists {
-					queue.FailedUploads[idx].Attempts++
-					queue.FailedUploads[idx].LastAttempt = attemptTime
-					queue.FailedUploads[idx].LastError = err.Error()
-				}
+				// Update the entry with new attempt info using thread-safe method
+				updateUploadQueueEntry(queue, entry.FilePath, attemptTime, err.Error())
 				failCount++
 			} else {
 				m.Log(fmt.Sprintf("  ✗ Upload failed (permanent error, removing from queue): %s - %v", filepath.Base(entry.FilePath), err))
 				// Permanent error (validation, auth, etc.) - remove from queue
 				removeFromUploadQueue(queue, entry.FilePath)
-				delete(entryMap, entry.FilePath) // Keep map in sync
 				failCount++
 			}
 		}
@@ -573,7 +573,7 @@ func (m *ModemCheck) cleanupLogFile() error {
 
 		if shouldKeep {
 			if _, err := writer.WriteString(line + "\n"); err != nil {
-				tmpFile.Close()
+				_ = tmpFile.Close() // #nosec G104 -- cleanup in error path
 				return err
 			}
 			linesKept++
@@ -581,13 +581,13 @@ func (m *ModemCheck) cleanupLogFile() error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close() // #nosec G104 -- cleanup in error path
 		return err
 	}
 
 	// Flush and close files
 	if err := writer.Flush(); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close() // #nosec G104 -- cleanup in error path
 		return err
 	}
 	if err := tmpFile.Close(); err != nil {

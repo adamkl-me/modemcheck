@@ -455,6 +455,7 @@ func (m *ModemCheck) runSystemPing(host string, count int) (avg string, loss str
 
 	// SECURITY: exec.CommandContext prevents shell injection by not invoking a shell
 	// The hostname is passed as a separate argument, not concatenated into a command string
+	// #nosec G204 -- host is validated via isValidHostname(), ping is a fixed command
 	cmd := exec.CommandContext(ctx, "ping", countFlag, strconv.Itoa(count), host)
 	output, err := cmd.CombinedOutput()
 
@@ -688,37 +689,64 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	}
 	resultChan := make(chan ipResult, 2)
 
+	// Context for early cancellation when first success is found
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Launch both services concurrently
 	go func() {
+		select {
+		case <-ctx.Done():
+			return // Early exit if another service succeeded
+		default:
+		}
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPI(tempData) {
-			resultChan <- ipResult{
+			select {
+			case resultChan <- ipResult{
 				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
 				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ip-api.com",
+			}:
+			case <-ctx.Done():
 			}
 		} else {
-			resultChan <- ipResult{} // Empty result indicates failure
+			select {
+			case resultChan <- ipResult{}: // Empty result indicates failure
+			case <-ctx.Done():
+			}
 		}
 	}()
 
 	go func() {
+		select {
+		case <-ctx.Done():
+			return // Early exit if another service succeeded
+		default:
+		}
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPICo(tempData) {
-			resultChan <- ipResult{
+			select {
+			case resultChan <- ipResult{
 				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
 				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ipapi.co",
+			}:
+			case <-ctx.Done():
 			}
 		} else {
-			resultChan <- ipResult{} // Empty result indicates failure
+			select {
+			case resultChan <- ipResult{}: // Empty result indicates failure
+			case <-ctx.Done():
+			}
 		}
 	}()
 
-	// Wait for both services, use first successful result
+	// Wait for first successful result or both failures
 	var successResult *ipResult
 	for i := 0; i < 2; i++ {
 		result := <-resultChan
 		if result.publicIP != "" && successResult == nil {
 			successResult = &result
+			cancel() // Signal other goroutine to stop early
 		}
 	}
 

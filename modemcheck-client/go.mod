@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
