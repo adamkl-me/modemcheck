@@ -29,6 +29,18 @@ function formatUptime(seconds) {
     }
 }
 
+/**
+ * Convert a local datetime string (YYYY-MM-DDTHH:MM) to UTC ISO string.
+ * Flatpickr returns dates in local time; this converts for API submission.
+ * @param {string} localDateStr - Date string in local time format
+ * @returns {string} ISO date string with 'Z' suffix (UTC)
+ */
+function localToUTC(localDateStr) {
+    if (!localDateStr) return null;
+    const localDate = new Date(localDateStr);
+    return localDate.toISOString();
+}
+
 // Toast notification utilities
 function showToast(text, type = "info") {
     const container = document.getElementById("toast-container");
@@ -790,11 +802,11 @@ async function loadData() {
     summaryDataMaintExcluded = null;
 
     try {
-        // Prepare request body
+        // Prepare request body - convert local dates to UTC for API
         const requestBody = {
             modem_id: modemId,
-            start_date: startDate || "2020-01-01T00:00",
-            end_date: endDate || new Date().toISOString().slice(0, 16),
+            start_date: startDate ? localToUTC(startDate) : "2020-01-01T00:00:00Z",
+            end_date: endDate ? localToUTC(endDate) : new Date().toISOString(),
             limit: 5000,
         };
 
@@ -1080,11 +1092,16 @@ function displaySummaryData() {
     }
 }
 
-// Format ISO datetime string for display
+// Format ISO datetime string for display (assumes UTC if no timezone indicator)
 function formatDateTime(isoString) {
     if (!isoString) return "-";
     try {
-        const date = new Date(isoString);
+        let dateStr = isoString;
+        // Server returns naive UTC datetimes - add Z suffix if no timezone indicator
+        if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+            dateStr = dateStr + 'Z';
+        }
+        const date = new Date(dateStr);
         return date.toLocaleString();
     } catch (e) {
         return isoString;

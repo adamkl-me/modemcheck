@@ -1,5 +1,6 @@
 # FastAPI and ASGI Server
-fastapi==0.115.5
+fastapi>=0.117.0  # Updated for starlette 0.49.1+ compatibility (security fixes)
+starlette>=0.49.1  # Pinned for CVE-2025-62727/54121 (Range header DoS, event loop blocking)
 uvicorn[standard]==0.32.1
 gunicorn==23.0.0
 
@@ -13,7 +14,7 @@ redis[hiredis]==5.2.0
 
 # Security
 passlib[argon2]==1.7.4
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0  # Updated for CVE-2024-232/233 (algorithm confusion, JWT bomb)
 cryptography>=46.0.3  # Pinned for security updates
 python-multipart==0.0.20
 fastapi-csrf-protect==0.3.4

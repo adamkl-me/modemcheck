@@ -28,8 +28,8 @@ class ViewerPage:
         self.end_date_input = page.locator("#endDate")
         self.load_button = page.locator("#loadBtn")
 
-        # View toggle
-        self.single_view_button = page.locator('.view-btn:has-text("Single View")')
+        # View toggle (Note: HTML uses "Detail View" not "Single View")
+        self.single_view_button = page.locator('.view-btn:has-text("Detail View")')
         self.trend_view_button = page.locator('.view-btn:has-text("Trend View")')
 
         # Data sections

@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import logging
 import secrets
+import time
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, Body
@@ -68,6 +69,19 @@ async def sync_config(
     """
     client_ip = get_client_ip(request)
 
+    # Constant-time processing: ensure consistent response time for all paths
+    # This prevents timing attacks that could enumerate valid API keys
+    MIN_PROCESSING_TIME_MS = 50  # Minimum processing time in milliseconds
+    start_time = time.monotonic()
+
+    async def ensure_min_time():
+        """Ensure minimum processing time to prevent timing attacks."""
+        elapsed_ms = (time.monotonic() - start_time) * 1000
+        if elapsed_ms < MIN_PROCESSING_TIME_MS:
+            # Add random jitter (0-50ms) on top of baseline
+            jitter_ms = secrets.randbelow(50)
+            await asyncio.sleep((MIN_PROCESSING_TIME_MS - elapsed_ms + jitter_ms) / 1000)
+
     try:
         # Validate HMAC signature
         # Message format: {timestamp}|{nonce}|{config_hash}
@@ -108,7 +122,7 @@ async def sync_config(
         api_key_record = api_key_result.scalar_one_or_none()
 
         if not api_key_record:
-            await asyncio.sleep(secrets.randbelow(100) / 1000 + 0.05)
+            await ensure_min_time()  # Constant-time response
             raise ModemCheckError(
                 error_code="AUTHENTICATION_ERROR",
                 message="Invalid or unknown API key",
@@ -117,7 +131,7 @@ async def sync_config(
             )
 
         if not api_key_record.is_active:
-            await asyncio.sleep(secrets.randbelow(100) / 1000 + 0.05)
+            await ensure_min_time()  # Constant-time response
             raise ModemCheckError(
                 error_code="AUTHENTICATION_ERROR",
                 message="API key is disabled",
@@ -141,10 +155,11 @@ async def sync_config(
             request_timestamp=request_timestamp
         )
 
-        await db.commit()
-
-        # Invalidate cache AFTER commit to avoid race condition
+        # Invalidate cache BEFORE commit - ensures no stale reads during commit window
+        # If commit fails, we just have an unnecessary cache miss (safe)
         await invalidate_config_cache(sync_request.api_key)
+
+        await db.commit()
 
         config_hash = calculate_config_hash(sync_result.config)
 

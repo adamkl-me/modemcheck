@@ -146,7 +146,7 @@ async def upload_check(
     api_key: str = Form(...),
     modem_id: str = Form(...),
     filename: str = Form(...),
-    checksum: str = Form(...),
+    checksum: str = Form(""),
     file: UploadFile = File(...),
     x_request_timestamp: Optional[str] = Header(None),
     x_request_signature: Optional[str] = Header(None),
@@ -172,6 +172,11 @@ async def upload_check(
 
     # Create API key hash for logging
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else 'none'
+
+    # Step 0: Validate checksum field is present (required for v6.0+ clients)
+    # This check is done early to return a clear 400 error before signature validation
+    if not checksum:
+        raise ChecksumValidationError(detail="Missing checksum field (upgrade client to v6.0.0+)")
 
     # Step 1: Validate HMAC signature BEFORE any database operations
     # This rejects invalid requests early without expensive DB queries

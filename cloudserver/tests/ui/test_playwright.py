@@ -198,15 +198,18 @@ class TestViewerUI:
         """Test viewer page displays modem filter controls after login."""
         await login_as_admin(browser_page)
 
+        # Wait for filter section to be fully loaded before assertions
+        await browser_page.locator('.filter-section').wait_for(state='visible', timeout=10000)
+
         # Verify filter section is visible
         await expect(browser_page.locator('.filter-section')).to_be_visible()
 
         # Verify modem search input exists
         await expect(browser_page.locator('#modemSearchInput')).to_be_visible()
 
-        # Verify date filters exist
-        await expect(browser_page.locator('#startDate')).to_be_visible()
-        await expect(browser_page.locator('#endDate')).to_be_visible()
+        # Verify date filter labels exist (Flatpickr modifies inputs but labels remain visible)
+        await expect(browser_page.locator('label[for="startDate"]')).to_be_visible()
+        await expect(browser_page.locator('label[for="endDate"]')).to_be_visible()
 
         # Verify Load Data button exists
         load_btn = browser_page.locator('#loadBtn')
@@ -242,24 +245,28 @@ class TestViewerUI:
 
     @pytest.mark.asyncio
     async def test_viewer_view_toggle_buttons_work(self, browser_page: Page):
-        """Test Single View and Trend View toggle buttons switch views."""
+        """Test Detail View and Trend View toggle buttons are present and initially disabled.
+
+        Note: Buttons are disabled until modem data is loaded. Full toggle functionality
+        is tested in TestViewerWithRealData.test_viewer_displays_signal_quality_table.
+        """
         await login_as_admin(browser_page)
 
-        # Single View button should be active by default
-        single_btn = browser_page.locator('.view-btn:has-text("Single View")')
-        await expect(single_btn).to_have_class(re.compile(r"active"))
-
-        # Click Trend View button
+        # Wait for view buttons to be visible
+        # Note: The button text is "Detail View" not "Single View" in the HTML
+        detail_btn = browser_page.locator('.view-btn:has-text("Detail View")')
         trend_btn = browser_page.locator('.view-btn:has-text("Trend View")')
-        await trend_btn.click()
+        summary_btn = browser_page.locator('.view-btn:has-text("Summary")')
 
-        # Trend View button should now be active
-        await expect(trend_btn).to_have_class(re.compile(r"active"))
-        await expect(single_btn).not_to_have_class(re.compile(r"active"))
+        # All three view buttons should be visible
+        await expect(detail_btn).to_be_visible(timeout=10000)
+        await expect(trend_btn).to_be_visible(timeout=10000)
+        await expect(summary_btn).to_be_visible(timeout=10000)
 
-        # Click back to Single View
-        await single_btn.click()
-        await expect(single_btn).to_have_class(re.compile(r"active"))
+        # Buttons should be disabled initially (before data is loaded)
+        await expect(detail_btn).to_be_disabled()
+        await expect(trend_btn).to_be_disabled()
+        await expect(summary_btn).to_be_disabled()
 
     @pytest.mark.asyncio
     async def test_viewer_logout_button_redirects_to_login(self, browser_page: Page):
@@ -836,8 +843,21 @@ class TestViewerWithRealData:
 
         await page.wait_for_timeout(500)
 
+        # Click Load Data and wait for data to load
         await page.click('#loadBtn')
-        await page.wait_for_timeout(3000)
+
+        # Wait for loading state to complete (button re-enables when done)
+        load_btn = page.locator('#loadBtn')
+        await expect(load_btn).not_to_be_disabled(timeout=20000)
+
+        # After data loads, Summary View is shown by default.
+        # Switch to Detail View to see the signal quality tables
+        detail_btn = page.locator('.view-btn:has-text("Detail View")')
+        await detail_btn.click()
+        await expect(detail_btn).to_have_class(re.compile(r"active"), timeout=5000)
+
+        # Wait for table rows to actually appear (may need longer for real data)
+        await page.locator('#rxTable tbody tr').first.wait_for(state='visible', timeout=15000)
 
         # Look for downstream table - real modem data has 32 channels
         # Note: HTML uses #rxTable for "RX Data (Downstream SC-QAM)"
@@ -903,7 +923,9 @@ class TestViewerWithRealData:
         await page.wait_for_timeout(500)
 
         await page.click('#loadBtn')
-        await page.wait_for_timeout(3000)
+        # Wait for loading state to complete (button re-enables when done)
+        load_btn = page.locator('#loadBtn')
+        await expect(load_btn).not_to_be_disabled(timeout=20000)
 
         # Switch to Trend View
         trend_btn = page.locator('.view-btn:has-text("Trend View")')

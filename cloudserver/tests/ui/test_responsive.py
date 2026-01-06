@@ -147,6 +147,10 @@ class TestViewerResponsive:
         # Wait for viewer page to fully load after redirect
         await viewer_page.load_button.wait_for(state="visible", timeout=10000)
 
+        # Wait for view buttons to be visible (they may have CSS transitions)
+        await viewer_page.single_view_button.wait_for(state="visible", timeout=10000)
+        await viewer_page.trend_view_button.wait_for(state="visible", timeout=10000)
+
         # View toggle buttons should be visible
         assert await viewer_page.single_view_button.is_visible(), \
             "Single view button not visible on mobile"

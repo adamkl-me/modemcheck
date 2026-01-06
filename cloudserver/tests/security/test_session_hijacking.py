@@ -423,6 +423,7 @@ class TestSessionAnomalyDetection:
             await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="TODO: Test has no assertions - needs proper implementation to verify rate limiting/anomaly detection")
     async def test_behavioral_anomaly_detection(self, admin_client_with_token: httpx.AsyncClient):
         """Test detection of abnormal user behavior patterns."""
         # Simulate unusual access pattern
@@ -438,8 +439,10 @@ class TestSessionAnomalyDetection:
             for endpoint in endpoints:
                 await admin_client_with_token.get(endpoint)
 
-        # Should trigger rate limiting or anomaly detection
-        # Check if later requests are blocked or flagged
+        # TODO: Add assertions to verify:
+        # - Rate limit headers are returned
+        # - 429 status codes after threshold
+        # - Anomaly was logged in audit table
 
     @pytest.mark.asyncio
     async def test_session_correlation_analysis(self, http_client: httpx.AsyncClient):

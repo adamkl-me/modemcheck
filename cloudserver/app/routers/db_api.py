@@ -1,7 +1,7 @@
 """
 Database API router for querying modem check data.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,35 +33,45 @@ router = APIRouter(prefix="/api/db", tags=["Database"])
 
 def parse_datetime_range(start_str: str, end_str: str) -> tuple[datetime, datetime]:
     """
-    Parse start/end date strings, handling both date-only and datetime formats.
+    Parse start/end date strings, handling timezone-aware and naive formats.
 
     Accepts:
-    - YYYY-MM-DD (appends 00:00:00 for start, 23:59:59 for end)
+    - YYYY-MM-DD (appends 00:00:00 for start, 23:59:59 for end) - treated as UTC
     - YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS (uses as-is)
+    - YYYY-MM-DDTHH:MM:SS.sssZ or YYYY-MM-DDTHH:MM:SSZ (UTC with Z suffix)
+    - YYYY-MM-DDTHH:MM:SS+HH:MM (timezone offset)
+
+    All inputs are converted to naive UTC datetimes for database comparison.
 
     Returns:
-        Tuple of (start_datetime, end_datetime)
+        Tuple of (start_datetime, end_datetime) as naive UTC datetimes
 
     Raises:
         InvalidDateRangeError: If date format is invalid
     """
+    def parse_to_naive_utc(date_str: str, default_time: str) -> datetime:
+        """Parse date string and convert to naive UTC datetime."""
+        # Handle 'Z' suffix (UTC indicator)
+        if date_str.endswith('Z'):
+            date_str = date_str[:-1] + '+00:00'
+
+        if 'T' in date_str:
+            parsed = datetime.fromisoformat(date_str)
+            # If timezone-aware, convert to UTC then strip tzinfo
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            return parsed
+        else:
+            # Date only - assume UTC
+            return datetime.fromisoformat(f"{date_str}T{default_time}")
+
     try:
-        # Parse start datetime
-        if 'T' in start_str:
-            start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
-        else:
-            start_dt = datetime.fromisoformat(f"{start_str}T00:00:00")
-
-        # Parse end datetime
-        if 'T' in end_str:
-            end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
-        else:
-            end_dt = datetime.fromisoformat(f"{end_str}T23:59:59")
-
+        start_dt = parse_to_naive_utc(start_str, "00:00:00")
+        end_dt = parse_to_naive_utc(end_str, "23:59:59")
         return start_dt, end_dt
     except ValueError:
         raise InvalidDateRangeError(
-            message="Invalid date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM"
+            message="Invalid date format. Use YYYY-MM-DD, YYYY-MM-DDTHH:MM, or ISO 8601 with timezone"
         )
 
 

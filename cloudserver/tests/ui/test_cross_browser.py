@@ -3,26 +3,54 @@ Cross-Browser Compatibility Tests for ModemCheck Cloud UI.
 
 Tests core functionality across Chromium, Firefox, and WebKit (Safari) browsers.
 
-Note: WebKit tests that require session cookies may fail on Linux due to
-limitations in WebKit's headless mode. These tests work correctly on macOS.
+Note: WebKit tests that require session cookies use a context-reuse workaround
+on Linux due to limitations in WebKit's headless mode cookie handling
+(Playwright issue #35269).
 """
 import sys
 import pytest
-from playwright.async_api import Page
+from playwright.async_api import Page, Playwright
 
 from tests.ui.pages import LoginPage, AdminPage, ViewerPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.cross_browser, pytest.mark.slow]
 
-# WebKit session-based tests are known to have issues on Linux headless mode
-WEBKIT_SESSION_XFAIL = pytest.mark.xfail(
-    sys.platform == "linux",
-    reason="WebKit headless mode has session cookie limitations on Linux",
-    strict=False,  # Don't fail if it unexpectedly passes
-)
-
 # Test server URL
 BASE_URL = "http://localhost:23894"
+
+
+async def get_webkit_authenticated_context(playwright: Playwright, base_url: str):
+    """Create WebKit context with pre-authenticated session.
+
+    Workaround for WebKit headless cookie limitations on Linux (Playwright #35269).
+    Instead of relying on WebKit's cookie persistence across page navigations,
+    we perform login in a dedicated page, then close that page while keeping
+    the context (and its session cookies) alive for subsequent test pages.
+
+    Returns:
+        Tuple of (browser, authenticated_context)
+    """
+    browser = await playwright.webkit.launch(headless=True)
+
+    # Create context for login
+    context = await browser.new_context(ignore_https_errors=True)
+    page = await context.new_page()
+
+    # Perform login - login_as_admin() already waits for redirect internally
+    login_page = LoginPage(page, base_url)
+    await login_page.navigate()
+    await login_page.login_as_admin()
+
+    # Verify login succeeded - should already be on viewer if login worked
+    if "/viewer" not in page.url:
+        # WebKit's cookie limitations prevent even basic login on Linux headless
+        await browser.close()
+        pytest.skip("WebKit on Linux headless cannot complete login (Playwright #35269)")
+
+    # Close the login page but keep the context (which holds the session)
+    await page.close()
+
+    return browser, context
 
 
 # =============================================================================
@@ -53,13 +81,28 @@ class TestCrossBrowserBasics:
             f"Login button not visible in {browser_type}"
 
     @pytest.mark.asyncio
-    async def test_login_form_submission(self, cross_browser_page):
+    async def test_login_form_submission(self, cross_browser_page, playwright_instance):
         """Test login form submission works in each browser."""
         page, browser_type = cross_browser_page
 
-        # WebKit on Linux has known issues with session cookies in headless mode
+        # Use storage_state workaround for WebKit on Linux
         if browser_type == "webkit" and sys.platform == "linux":
-            pytest.xfail("WebKit headless has session cookie limitations on Linux")
+            browser, context = await get_webkit_authenticated_context(
+                playwright_instance, BASE_URL
+            )
+            try:
+                auth_page = await context.new_page()
+                # Navigate to viewer page - should work with stored session
+                await auth_page.goto(f"{BASE_URL}/viewer")
+                await auth_page.wait_for_load_state("domcontentloaded")
+                # If authenticated, we stay on viewer page; if not, redirected to login
+                viewer_page = ViewerPage(auth_page, BASE_URL)
+                assert await viewer_page.is_viewer_page(), \
+                    f"Login did not redirect to viewer in {browser_type}"
+            finally:
+                await context.close()
+                await browser.close()
+            return
 
         login_page = LoginPage(page, BASE_URL)
         await login_page.navigate()
@@ -99,13 +142,39 @@ class TestCrossBrowserBasics:
             f"localStorage should be updated in {browser_type}, got {stored_theme}"
 
     @pytest.mark.asyncio
-    async def test_navigation_between_pages(self, cross_browser_page):
+    async def test_navigation_between_pages(self, cross_browser_page, playwright_instance):
         """Test navigation between pages works in each browser."""
         page, browser_type = cross_browser_page
 
-        # WebKit on Linux has known issues with session cookies in headless mode
+        # Use storage_state workaround for WebKit on Linux
         if browser_type == "webkit" and sys.platform == "linux":
-            pytest.xfail("WebKit headless has session cookie limitations on Linux")
+            browser, context = await get_webkit_authenticated_context(
+                playwright_instance, BASE_URL
+            )
+            try:
+                auth_page = await context.new_page()
+                # Navigate to viewer page
+                await auth_page.goto(f"{BASE_URL}/viewer")
+                await auth_page.wait_for_load_state("domcontentloaded")
+
+                viewer_page = ViewerPage(auth_page, BASE_URL)
+
+                # Navigate to admin
+                await viewer_page.click_admin_button()
+
+                # Verify admin page
+                admin_page = AdminPage(auth_page, BASE_URL)
+                assert await admin_page.is_admin_page(), \
+                    f"Failed to navigate to admin page in {browser_type}"
+
+                # Navigate back to viewer
+                await admin_page.click_viewer_button()
+                assert await viewer_page.is_viewer_page(), \
+                    f"Failed to navigate back to viewer in {browser_type}"
+            finally:
+                await context.close()
+                await browser.close()
+            return
 
         # Login
         login_page = LoginPage(page, BASE_URL)
@@ -143,13 +212,37 @@ class TestCrossBrowserBasics:
             f"Empty form should not submit in {browser_type}"
 
     @pytest.mark.asyncio
-    async def test_session_cookies(self, cross_browser_page):
+    async def test_session_cookies(self, cross_browser_page, playwright_instance):
         """Test session handling works in each browser."""
         page, browser_type = cross_browser_page
 
-        # WebKit on Linux has known issues with session cookies in headless mode
+        # Use storage_state workaround for WebKit on Linux
         if browser_type == "webkit" and sys.platform == "linux":
-            pytest.xfail("WebKit headless has session cookie limitations on Linux")
+            browser, context = await get_webkit_authenticated_context(
+                playwright_instance, BASE_URL
+            )
+            try:
+                auth_page = await context.new_page()
+
+                # Navigate to viewer and verify session established
+                await auth_page.goto(f"{BASE_URL}/viewer")
+                await auth_page.wait_for_load_state("domcontentloaded")
+                viewer_page = ViewerPage(auth_page, BASE_URL)
+                assert await viewer_page.is_viewer_page(), \
+                    f"Session should be established in {browser_type}"
+
+                # Logout
+                await viewer_page.click_logout_button()
+
+                # Should be back on login page
+                await auth_page.wait_for_timeout(500)
+                login_page = LoginPage(auth_page, BASE_URL)
+                assert await login_page.is_login_page(), \
+                    f"Session should be cleared after logout in {browser_type}"
+            finally:
+                await context.close()
+                await browser.close()
+            return
 
         # Login
         login_page = LoginPage(page, BASE_URL)
@@ -271,13 +364,35 @@ class TestCrossBrowserAdmin:
     """Admin page tests across all browsers."""
 
     @pytest.mark.asyncio
-    async def test_admin_tabs_work(self, cross_browser_page):
+    async def test_admin_tabs_work(self, cross_browser_page, playwright_instance):
         """Test admin page tabs work in each browser."""
         page, browser_type = cross_browser_page
 
-        # WebKit on Linux has known issues with session cookies in headless mode
+        # Use storage_state workaround for WebKit on Linux
         if browser_type == "webkit" and sys.platform == "linux":
-            pytest.xfail("WebKit headless has session cookie limitations on Linux")
+            browser, context = await get_webkit_authenticated_context(
+                playwright_instance, BASE_URL
+            )
+            try:
+                auth_page = await context.new_page()
+
+                # Navigate to admin page directly
+                await auth_page.goto(f"{BASE_URL}/admin")
+                await auth_page.wait_for_load_state("domcontentloaded")
+                admin_page = AdminPage(auth_page, BASE_URL)
+
+                # Try clicking different tabs
+                await admin_page.click_tab("users")
+                users_visible = await admin_page.users_section.is_visible()
+                assert users_visible, f"Users tab should work in {browser_type}"
+
+                await admin_page.click_tab("data_management")
+                data_visible = await admin_page.data_management_section.is_visible()
+                assert data_visible, f"Data management tab should work in {browser_type}"
+            finally:
+                await context.close()
+                await browser.close()
+            return
 
         # Login
         login_page = LoginPage(page, BASE_URL)
@@ -298,13 +413,36 @@ class TestCrossBrowserAdmin:
         assert data_visible, f"Data management tab should work in {browser_type}"
 
     @pytest.mark.asyncio
-    async def test_password_strength_meter(self, cross_browser_page):
+    async def test_password_strength_meter(self, cross_browser_page, playwright_instance):
         """Test password strength meter works in each browser."""
         page, browser_type = cross_browser_page
 
-        # WebKit on Linux has known issues with session cookies in headless mode
+        # Use storage_state workaround for WebKit on Linux
         if browser_type == "webkit" and sys.platform == "linux":
-            pytest.xfail("WebKit headless has session cookie limitations on Linux")
+            browser, context = await get_webkit_authenticated_context(
+                playwright_instance, BASE_URL
+            )
+            try:
+                auth_page = await context.new_page()
+
+                # Navigate to admin page directly
+                await auth_page.goto(f"{BASE_URL}/admin")
+                await auth_page.wait_for_load_state("domcontentloaded")
+                admin_page = AdminPage(auth_page, BASE_URL)
+                await admin_page.click_tab("users")
+
+                # Type in password field
+                await admin_page.new_password_input.fill("TestPassword123!")
+
+                # Password strength meter should appear
+                await auth_page.wait_for_timeout(500)
+                strength_visible = await admin_page.is_password_strength_visible()
+                assert strength_visible, \
+                    f"Password strength meter should appear in {browser_type}"
+            finally:
+                await context.close()
+                await browser.close()
+            return
 
         # Login
         login_page = LoginPage(page, BASE_URL)

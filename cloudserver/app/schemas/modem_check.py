@@ -3,7 +3,7 @@ Pydantic schemas for modem check data.
 """
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class ModemCheckUploadResponse(BaseModel):
@@ -24,6 +24,11 @@ class ModemInfo(BaseModel):
     last_seen: datetime
     check_count: int
 
+    @field_serializer('first_seen', 'last_seen')
+    def serialize_datetime(self, dt: datetime) -> str:
+        """Serialize datetime as ISO with Z suffix to indicate UTC."""
+        return dt.isoformat() + 'Z' if dt else None
+
 
 class ModemListResponse(BaseModel):
     """Response schema for modem list."""
@@ -42,6 +47,11 @@ class CheckListItem(BaseModel):
     total_uncorrected_errors: Optional[int] = None
     client_version: Optional[str] = None
 
+    @field_serializer('check_time')
+    def serialize_datetime(self, dt: datetime) -> str:
+        """Serialize datetime as ISO with Z suffix to indicate UTC."""
+        return dt.isoformat() + 'Z' if dt else None
+
 
 class CheckListResponse(BaseModel):
     """Response schema for check list."""
@@ -57,6 +67,11 @@ class CheckWithFullData(BaseModel):
     check_time: datetime
     modem_type: Optional[str] = None
     full_data: Dict[str, Any]  # Complete JSON data
+
+    @field_serializer('check_time')
+    def serialize_datetime(self, dt: datetime) -> str:
+        """Serialize datetime as ISO with Z suffix to indicate UTC."""
+        return dt.isoformat() + 'Z' if dt else None
 
 
 class CheckListWithDataResponse(BaseModel):
@@ -189,6 +204,11 @@ class PeriodOverview(BaseModel):
     period_end: Optional[datetime] = None
     checks_with_speedtest: int = 0
     detected_reboots: int = 0
+
+    @field_serializer('period_start', 'period_end')
+    def serialize_datetime(self, dt: Optional[datetime]) -> Optional[str]:
+        """Serialize datetime as ISO with Z suffix to indicate UTC."""
+        return dt.isoformat() + 'Z' if dt else None
 
 
 class RxSignalSummary(BaseModel):

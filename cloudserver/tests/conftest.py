@@ -861,6 +861,9 @@ async def ui_modem_data(real_modem_data: Dict[str, list[Dict[str, Any]]]) -> lis
 
         await session.commit()
 
+    # Small delay to ensure database changes are visible to web server
+    await asyncio.sleep(0.5)
+
     yield created_ids
 
     # Cleanup: remove test data after test completes
@@ -1295,6 +1298,19 @@ async def webkit_page():
         yield page
         await context.close()
         await browser.close()
+
+
+@pytest.fixture(scope="function")
+async def playwright_instance():
+    """Provide raw playwright instance for advanced context creation.
+
+    Used by tests that need direct access to Playwright for custom browser
+    context creation, such as WebKit storage_state workaround.
+    """
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        yield p
 
 
 # ============================================================================
