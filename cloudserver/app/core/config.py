@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, description="Debug mode")
 
     # Server
-    host: str = Field(default="0.0.0.0", description="Server host")
+    host: str = Field(default="0.0.0.0", description="Server host")  # nosec B104 - intentional for Docker
     port: int = Field(default=8000, description="Server port")
     workers: int = Field(default=4, description="Number of worker processes")
 
