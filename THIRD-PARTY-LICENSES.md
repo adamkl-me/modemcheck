@@ -174,6 +174,86 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
+### machineid
+
+**Package:** `github.com/denisbrodbeck/machineid v1.0.1`
+
+**Purpose:** Generates stable, unique machine identifiers for application-specific cryptographic key derivation. Used in v9.4.0 for machine-bound API key encryption, ensuring config files with encrypted API keys are only decryptable on the same device.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2017 Denis Brodbeck
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2017 Denis Brodbeck
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/denisbrodbeck/machineid
+
+---
+
+### go-traceroute
+
+**Package:** `github.com/pixelbender/go-traceroute v0.0.0-20190414152342-e631ab553a80`
+
+**Purpose:** Pure Go implementation of traceroute using ICMP. Used in v9.3.0 for network path diagnostics, tracing the route to Google DNS (8.8.8.8) with hop count, per-hop latency, and route status recording.
+
+**License:** MIT License
+
+**Copyright:** Copyright (c) 2019 Denis Chapligin
+
+**License Text:**
+
+```
+MIT License
+
+Copyright (c) 2019 Denis Chapligin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+**Project URL:** https://github.com/pixelbender/go-traceroute
+
+---
+
 ### golang.org/x Packages
 
 **Packages:**
@@ -266,7 +346,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 This project complies with all third-party license requirements:
 
-1. **MIT Licensed Dependencies** (speedtest-go, go-ping, redis-py, argon2-cffi, FastAPI, Gunicorn, SQLAlchemy, Pydantic, Chart.js, chartjs-adapter-date-fns, zxcvbn):
+1. **MIT Licensed Dependencies** (speedtest-go, go-ping, machineid, go-traceroute, redis-py, argon2-cffi, FastAPI, Gunicorn, SQLAlchemy, Pydantic, SlowAPI, Chart.js, chartjs-adapter-date-fns, zxcvbn):
    - ✅ Copyright notices preserved
    - ✅ License text included
    - ✅ Attribution provided
@@ -774,6 +854,8 @@ Special thanks to:
 - **ITO Shogo** for creating speedtest-go, enabling native Go speed testing
 - **Cameron Sparr and contributors** for go-ping, providing ICMP ping in pure Go
 - **Frank Denis** for Minisign and go-minisign, providing simple and secure cryptographic signing
+- **Denis Brodbeck** for machineid, enabling machine-bound cryptographic key derivation
+- **Denis Chapligin** for go-traceroute, providing native ICMP traceroute in Go
 - **Google** for the UUID library
 - **The Go Authors** for the official supplementary packages including crypto libraries
 - **Ookla** for speedtest.net infrastructure used by speedtest-go
@@ -797,4 +879,4 @@ These libraries and tools make it possible for Modem-Check to run as a single, s
 
 ---
 
-*Last Updated: 2025-11-17*
+*Last Updated: 2026-01-06*

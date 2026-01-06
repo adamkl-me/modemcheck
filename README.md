@@ -53,6 +53,7 @@ Modem-Check is a cross-platform diagnostic tool for cable modems that collects s
 
 ## Recent Highlights
 
+* **API Key Encryption (v9.4.0)**: CloudAPIKey encrypted at rest using AES-256-GCM with machine-bound key derivation, auto-migration from plaintext configs
 * **Client Stability**: Fixed 18 HTTP response body leaks, goroutine deadlocks, and race conditions for reliable weeks/months operation
 * **Performance**: O(1) upload queue operations (100x faster), HTTP client reuse saves 75% TLS handshakes per check
 * **Update Channels**: Configure stable, beta, or test release channels with cryptographic timestamp validation to prevent rollback attacks
@@ -156,7 +157,7 @@ Then run: `./modem-check -c config.json`
 | `EnableCloud` | bool | false | true/false | Enable cloud upload |
 | `CloudHost` | string | "" | hostname/IP | Cloud server address |
 | `CloudPort` | string | "22557" | 1-65535 | Cloud server port |
-| `CloudAPIKey` | string | "" | Any string | API key for authentication |
+| `CloudAPIKey` | string | "" | Any string | API key for authentication (auto-encrypted at rest) |
 | `CloudPath` | string | "" | Any string | Cloud storage path |
 | `EnforceHTTPS` | bool | **true** | true/false | **Always use HTTPS (secure by default)** |
 | `InsecureTLS` | bool | false | true/false | Allow self-signed certs (local dev only) |
@@ -312,6 +313,8 @@ Files saved to: `ModemCheck-Results/[MODEL]-[MAC]/[TIMESTAMP].json`
 Example: `ModemCheck-Results/XB8-AABBCCDDEEFF/2025-11-05_14-30-00.json`
 
 ## Security
+
+**API Key Protection (v9.4.0):** CloudAPIKey encrypted at rest using AES-256-GCM with machine-derived key (PBKDF2-SHA256, 100k iterations). Config files are machine-bound and protected with 0600 permissions.
 
 **Auto-Update:** Ed25519 signature verification, pre-execution testing, atomic updates with automatic rollback
 

@@ -21,7 +21,7 @@ cd modemcheck-client && go test -v ./...
 
 | Component | Stack | Key Files |
 |-----------|-------|-----------|
-| **Client** | Go | `main.go`, `cloud_client.go`, `updater.go`, `diagnostics.go` |
+| **Client** | Go | `main.go`, `cloud_client.go`, `updater.go`, `diagnostics.go`, `crypto.go` |
 | **Server** | FastAPI + PostgreSQL + Redis + nginx | `app/routers/`, `app/core/`, `app/models/` |
 
 **Client:** Implements `ModemScraper` interface (Login, GetMAC, GetData, ClearFEC, GetModemType). Auto-detects modem at 192.168.100.1, 192.168.0.1, 10.0.0.1, 172.20.0.1.
@@ -32,6 +32,7 @@ cd modemcheck-client && go test -v ./...
 
 | Feature | Implementation |
 |---------|----------------|
+| **API key at-rest** | AES-256-GCM, PBKDF2-SHA256 (100k iter) from machine ID, auto-migration, 0600 perms |
 | **Uploads** | HMAC-SHA256 (`X-Request-Timestamp`, `X-Request-Signature`), API key + Redis cache |
 | **Auth** | Argon2id (64MB/3iter), Redis sessions (1hr), device fingerprinting, lockout (5 fails→30min) |
 | **RBAC** | basic (view), elevated (+API keys, logs), admin (+users, delete, audit) |
@@ -80,7 +81,7 @@ API: `GET/PUT /api/admin/configs/{api_key}/{modem_id}`, `/rollback/{version}`, `
 
 **Server:** `app/core/errors.py`, `app/core/auth.py`, `app/core/security.py`, `app/routers/upload.py`
 
-**Client:** `diagnostics.go`, `cloud_client.go`, `updater.go`
+**Client:** `diagnostics.go`, `cloud_client.go`, `updater.go`, `crypto.go`
 
 **Ops:** `backup-all.sh`, `restore-database.sh`, `update-db-password.sh`
 

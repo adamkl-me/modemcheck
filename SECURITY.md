@@ -203,8 +203,13 @@ The ModemCheck cloud server (FastAPI v2) includes comprehensive security feature
 - **Dual-layer rate limiting**:
   - IP-based: 30/min (auth), 60/min (upload), 300/sec (API)
   - Per-user: 100 requests/hour across all IPs (prevents multi-IP abuse)
+- **API key security (v9.2.0+)**:
+  - Hash-only storage: API keys stored as SHA-256 hashes, plaintext never persisted
+  - Encrypted at-rest option for admin viewing
+  - Dual-storage migration path for backward compatibility
 - **CSRF protection** with token-based validation for all state-changing operations
 - **HMAC-SHA256 signatures** for client uploads with replay attack prevention
+- **Timestamp validation (v9.2.0+)**: 5-minute clock skew tolerance prevents replay attacks
 - **Timing-safe comparisons** for passwords and API keys
 
 ### Data Security
@@ -217,6 +222,13 @@ The ModemCheck cloud server (FastAPI v2) includes comprehensive security feature
 - **Automated backups** (daily PostgreSQL + Redis with verification)
 
 ### Client Security (Go Application)
+- **API Key Encryption (v9.4.0)**:
+  - AES-256-GCM encryption for CloudAPIKey at rest
+  - Key derived from machine ID using PBKDF2-SHA256 (100,000 iterations)
+  - Machine-bound: config files only decryptable on the same device
+  - Auto-migration from plaintext configs on first load
+  - Graceful degradation: app continues in local-only mode if decryption fails
+  - Config file permissions enforced to 0600 (owner read/write only)
 - **Hostname validation** before ping execution:
   - Length validation (1-253 characters per RFC 1035)
   - Character whitelist (alphanumeric, dots, hyphens, colons only)
@@ -242,8 +254,12 @@ If you discover a security vulnerability, please email security@yourdomain.com o
 
 ## Security Updates
 
-- **v5.7.2** (upcoming): Added Minisign signature verification and TOCTOU protection
-- Future versions will require signed binaries to update
+- **v9.4.0**: API key encryption (AES-256-GCM) with machine-bound key derivation, config file permission hardening (0600)
+- **v9.3.0**: Traceroute diagnostics, parallel IP detection, UTC timestamp RFC 3339 compliance
+- **v9.2.0**: Hash-only API key storage on server, timestamp validation for replay attack prevention, HTTP connection pooling
+- **v7.0.0**: Server-side client configuration management with encryption
+- **v5.8.0**: Update channels (stable/beta/test) with cryptographic timestamp validation
+- **v5.7.2**: Minisign signature verification, TOCTOU protection, atomic updates with automatic rollback
 
 ## Technical Details
 

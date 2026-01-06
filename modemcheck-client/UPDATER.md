@@ -407,5 +407,5 @@ A: May need to allowlist `api.github.com` and `github.com`
 
 ---
 
-*Last Updated: 2025-11-13*
-*Version: 1.0.0*
+*Last Updated: 2026-01-06*
+*Version: 1.1.0*

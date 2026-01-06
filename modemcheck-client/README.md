@@ -8,6 +8,7 @@ This is the main application source code for modem-check, organized into a clean
 /modemcheck-client
 ├── main.go              # Main entry point and orchestration logic
 ├── config.go            # Configuration structs and loading logic
+├── crypto.go            # API key encryption (AES-256-GCM, machine ID)
 ├── diagnostics.go       # Ping and Speedtest logic
 ├── cloud_client.go      # Upload logic and queue management
 ├── updater.go           # Auto-update system with GitHub integration
@@ -34,7 +35,14 @@ This is the main application source code for modem-check, organized into a clean
 - **Clear Dependencies**: Import structure shows relationships clearly
 - **Interface-Based**: Enables testing and mocking
 
-### 4. Native Go Implementations with Fallback
+### 4. API Key Security (v9.4.0)
+- **Encrypted at-rest**: CloudAPIKey encrypted using AES-256-GCM
+- **Machine-bound**: Key derived from machine ID via PBKDF2-SHA256 (100k iterations)
+- **Auto-migration**: Plaintext configs automatically encrypted on first load
+- **Graceful degradation**: App continues in local-only mode if decryption fails
+- **File permissions**: Config files protected with 0600 permissions (owner read/write only)
+
+### 5. Native Go Implementations with Fallback
 - **Native Ping with System Fallback**: Primary implementation uses `github.com/go-ping/ping` library with system ping fallback
   - Tries go-ping library first (fastest, cross-platform)
   - Falls back to system ping command if permissions don't allow go-ping
@@ -79,7 +87,7 @@ cd modemcheck-client
 go build -o ../modem-check .
 
 # Build with version info
-go build -ldflags="-s -w -X main.Version=9.1.0" -o ../modem-check .
+go build -ldflags="-s -w -X main.Version=9.4.0" -o ../modem-check .
 ```
 
 The resulting binary will be placed in the parent directory as `modem-check` (or `modem-check.exe` on Windows).
@@ -207,7 +215,8 @@ Create a `config.json` file in the same directory as the binary:
 | `EnableCloud` | bool | Enable cloud upload | `false` |
 | `CloudHost` | string | Cloud server hostname | `""` |
 | `CloudPort` | string | Cloud server port | `"443"` |
-| `CloudAPIKey` | string | API key for authentication | `""` |
+| `CloudAPIKey` | string | API key for authentication (auto-encrypted) | `""` |
+| `EncryptedCloudAPIKey` | object | Encrypted API key (auto-generated, do not edit) | `null` |
 | `EnforceHTTPS` | bool | Always use HTTPS | `true` |
 | `InsecureTLS` | bool | Allow self-signed certs (dev) | `false` |
 
@@ -253,6 +262,7 @@ go test -v -run TestHMAC
 |------|-------|----------|
 | `cloud_client_test.go` | HMAC signatures, upload queue | Core upload functionality |
 | `config_test.go` | Config validation, state management | Configuration loading |
+| `crypto_test.go` | API key encryption/decryption, permissions | AES-256-GCM encryption |
 | `updater_test.go` | Version comparison, signature verification | Auto-update system |
 | `diagnostics_test.go` | Network diagnostics, IP detection | Ping/speed tests |
 | `config_sync_test.go` | Server config sync, encryption | Config management |
@@ -286,6 +296,11 @@ go test -v -run TestHMAC
 
 ## Version History
 
+- **v9.4.0** - API key encryption (AES-256-GCM), machine-bound key derivation, config file permissions (0600)
+- **v9.3.0** - Traceroute diagnostics, parallel IP detection, UTC timestamp RFC 3339 compliance
+- **v9.2.0** - HTTP connection pooling, timestamp validation, performance improvements
+- **v9.1.x** - Speed test server selection, standardized error handling
+- **v8.x** - Server-side client configuration management, config sync with rollback
 - **v7.x** - Client configuration management, server-side config sync, enforced configurations
 - **v6.x** - Cloud upload security (HMAC signatures), centralized error handling, stability fixes
 - **v5.7.0** - Network information tracking (public IP, ASN, ISP, geolocation), failed detection handling
