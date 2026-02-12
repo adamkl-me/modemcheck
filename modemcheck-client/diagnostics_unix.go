@@ -13,7 +13,7 @@ import (
 
 	// Third-party library for network diagnostics (Unix only)
 	// See THIRD-PARTY-LICENSES.md for full license information
-	"github.com/pixelbender/go-traceroute/traceroute" // MIT License - Copyright (c) 2016 Dmitry Avtonomov
+	"github.com/aeden/traceroute" // MIT License (Fork of pixelbender)
 )
 
 // runTraceroute executes a traceroute to the specified host using the Go library first,
@@ -77,8 +77,25 @@ func (m *ModemCheck) runGoTraceroute(host string) *scraper.TracerouteResult {
 		ip = ips[0].IP
 	}
 
-	// Run traceroute using pure ICMP (like system traceroute)
-	traceHops, err := traceroute.Trace(ip)
+	// Run traceroute options
+	options :=  &traceroute.TracerouteOptions{}
+	options.SetTimeoutMs(500)
+	options.SetRetries(1)
+	options.SetMaxHops(30)
+
+	// Run traceroute
+	// aeden/traceroute takes a channel for async results
+	c := make(chan traceroute.TracerouteHop, 0)
+	go func() {
+		for {
+			_, ok := <-c
+			if !ok {
+				return
+			}
+		}
+	}()
+
+	result, err := traceroute.Traceroute(host, options, c)
 	duration := time.Since(startTime)
 
 	if err != nil {
@@ -90,47 +107,26 @@ func (m *ModemCheck) runGoTraceroute(host string) *scraper.TracerouteResult {
 		}
 	}
 
-	// The library returns a sparse list - only hops that responded.
-	// We need to fill in gaps with timeout entries for a complete picture.
-
-	// First, build a map of distance -> hop data and find max distance
-	hopMap := make(map[int]*traceroute.Hop)
-	maxDistance := 0
-	for _, hop := range traceHops {
-		hopMap[hop.Distance] = hop
-		if hop.Distance > maxDistance {
-			maxDistance = hop.Distance
-		}
-	}
-
-	// Build complete hop list from 1 to maxDistance, filling in timeouts
-	hops := make([]scraper.TracerouteHop, maxDistance)
-	for i := 1; i <= maxDistance; i++ {
-		h := &hops[i-1]
-		h.Hop = i
-
-		if hop, exists := hopMap[i]; exists && len(hop.Nodes) > 0 {
-			node := hop.Nodes[0]
-			h.IP = node.IP.String()
-			h.Host = h.IP // Default to IP, will be updated by concurrent DNS lookup
-			// RTT from first probe (convert to milliseconds)
-			if len(node.RTT) > 0 {
-				rttMs := float64(node.RTT[0].Microseconds()) / 1000.0
-				h.RTT1 = fmt.Sprintf("%.2f ms", rttMs)
-			}
+	hops := make([]scraper.TracerouteHop, len(result.Hops))
+	for i, hop := range result.Hops {
+		h := &hops[i]
+		h.Hop = hop.TTL
+		h.IP = hop.AddressString()
+		h.Host = h.IP // Default to IP
+		if hop.ElapsedTime > 0 {
+			h.RTT1 = fmt.Sprintf("%.2f ms", float64(hop.ElapsedTime)/1000.0/1000.0) // Nanoseconds to ms
 		} else {
-			// No response at this hop - mark as timeout
-			h.Timeout = true
+			h.Timeout = !hop.Success 
 		}
 	}
 
-	// Perform reverse DNS lookups concurrently to avoid 30+ second delays
+	// Perform reverse DNS lookups concurrently
 	// Use a wait group to track all goroutines
 	type dnsResult struct {
 		index    int
 		hostname string
 	}
-	dnsResults := make(chan dnsResult, maxDistance)
+	dnsResults := make(chan dnsResult, len(hops))
 	dnsCtx, dnsCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer dnsCancel()
 
@@ -150,7 +146,7 @@ func (m *ModemCheck) runGoTraceroute(host string) *scraper.TracerouteResult {
 		}
 	}
 
-	// Collect DNS results (non-blocking with timeout already handled by context)
+	// Collect DNS results
 	for j := 0; j < dnsCount; j++ {
 		result := <-dnsResults
 		if result.hostname != "" {
