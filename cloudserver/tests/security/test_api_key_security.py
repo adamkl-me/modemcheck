@@ -431,9 +431,9 @@ class TestAPIKeyComplexity:
             max_count = max(char_counts.values())
             max_counts.append(max_count)
             # Relaxed threshold: with 64 chars and 16 possible hex chars,
-            # expect ~4 per char, but allow up to 12 for random variation
-            # (3x expected, within 2 std deviations for binomial distribution)
-            assert max_count <= 12, f"Character distribution suggests low entropy (max count: {max_count}, key: {key})"
+            # expect ~4 per char, but allow up to 14 for random variation
+            # (statistical analysis shows max_count of 13+ occurs ~0.26% of the time)
+            assert max_count <= 14, f"Character distribution suggests low entropy (max count: {max_count}, key: {key})"
 
         # All keys should be unique
         assert len(set(keys)) == len(keys), "All generated keys should be unique"

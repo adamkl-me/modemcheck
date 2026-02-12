@@ -267,7 +267,9 @@ func mapToConfig(data map[string]interface{}, config *Configuration) error {
 	config.EnableCloud = getBool("EnableCloud", config.EnableCloud)
 	config.CloudHost = getString("CloudHost", config.CloudHost)
 	config.CloudPort = getString("CloudPort", config.CloudPort)
-	config.CloudAPIKey = getString("CloudAPIKey", config.CloudAPIKey)
+	// Note: CloudAPIKey is intentionally NOT synced from server.
+	// The API key is a client-side authentication credential and must not be
+	// overwritable by the server to prevent credential hijacking attacks.
 
 	// Validate ranges after mapping server values
 	if err := validateConfigRanges(config); err != nil {

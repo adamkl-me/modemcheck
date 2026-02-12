@@ -6,7 +6,7 @@ Uses pre-aggregated trend data and extracted metrics for efficiency.
 """
 import statistics
 from typing import List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.schemas.modem_check import (
     TrendDataItem,
@@ -131,12 +131,12 @@ def compute_summary_data(
            (t.upload_speed is not None and t.upload_speed > 0)
     )
 
-    # Convert timestamps to datetime for response
+    # Convert timestamps to datetime for response (naive UTC for asyncpg compatibility)
     period_start = None
     period_end = None
     if timestamps:
-        period_start = datetime.fromtimestamp(min(timestamps))
-        period_end = datetime.fromtimestamp(max(timestamps))
+        period_start = datetime.fromtimestamp(min(timestamps), tz=timezone.utc).replace(tzinfo=None)
+        period_end = datetime.fromtimestamp(max(timestamps), tz=timezone.utc).replace(tzinfo=None)
 
     period = PeriodOverview(
         total_checks=len(trend_items),

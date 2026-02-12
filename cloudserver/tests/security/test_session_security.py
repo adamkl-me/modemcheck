@@ -300,7 +300,7 @@ class TestSessionAnomalyTracking:
     async def test_log_session_anomaly(self):
         """Test logging session anomalies."""
         from app.core.security import get_redis
-        from datetime import datetime
+        from app.core.utils import utc_now
         import json
 
         username = "test_anomaly_user"
@@ -315,7 +315,7 @@ class TestSessionAnomalyTracking:
 
         # Verify anomaly stored
         redis = await get_redis()
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         anomaly_key = f"session_anomaly:{username}:{date_str}"
 
         anomalies = await redis.lrange(anomaly_key, 0, -1)
@@ -346,9 +346,9 @@ class TestSessionAnomalyTracking:
 
         # Cleanup
         from app.core.security import get_redis
-        from datetime import datetime
+        from app.core.utils import utc_now
         redis = await get_redis()
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         await redis.delete(f"session_anomaly:{username}:{date_str}")
 
 
@@ -405,14 +405,14 @@ class TestAuditLogTrimming:
         """Test that anomaly logs are trimmed to 100 entries per day."""
         from app.core.session_security import log_session_anomaly
         from app.core.security import get_redis
-        from datetime import datetime
-        
+        from app.core.utils import utc_now
+
         username = "test_trim_user"
         session_id = "test_session_trim"
         redis = await get_redis()
-        
+
         # Clear any existing data
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         anomaly_key = f"session_anomaly:{username}:{date_str}"
         await redis.delete(anomaly_key)
         
@@ -445,14 +445,14 @@ class TestAuditLogTrimming:
         """Test that anomaly logs expire after 7 days (not 30)."""
         from app.core.session_security import log_session_anomaly
         from app.core.security import get_redis
-        from datetime import datetime
-        
+        from app.core.utils import utc_now
+
         username = "test_expire_user"
         session_id = "test_session_expire"
         redis = await get_redis()
-        
+
         # Clear any existing data
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         anomaly_key = f"session_anomaly:{username}:{date_str}"
         await redis.delete(anomaly_key)
         
@@ -485,14 +485,14 @@ class TestAuditLogTrimming:
         """Test that get_session_anomalies only returns data within retention."""
         from app.core.session_security import log_session_anomaly, get_session_anomalies
         from app.core.security import get_redis
-        from datetime import datetime
-        
+        from app.core.utils import utc_now
+
         username = "test_retention_user"
         session_id = "test_session_retention"
         redis = await get_redis()
-        
+
         # Clear any existing data
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         anomaly_key = f"session_anomaly:{username}:{date_str}"
         await redis.delete(anomaly_key)
         
@@ -521,15 +521,15 @@ class TestAuditLogTrimming:
         """Test that audit logs don't consume excessive memory."""
         from app.core.session_security import log_session_anomaly
         from app.core.security import get_redis
-        from datetime import datetime
-        
+        from app.core.utils import utc_now
+
         redis = await get_redis()
-        
+
         # Simulate 100 users with frequent anomalies
         for user_num in range(100):
             username = f"test_memory_user_{user_num}"
             session_id = f"test_session_{user_num}"
-            
+
             # Create 150 anomalies per user (should be trimmed to 100)
             for i in range(150):
                 await log_session_anomaly(
@@ -538,9 +538,9 @@ class TestAuditLogTrimming:
                     anomaly_type="ip_change",
                     details=f"IP changed to 192.168.1.{i}"
                 )
-        
+
         # Verify total entries
-        date_str = datetime.now().strftime("%Y%m%d")
+        date_str = utc_now().strftime("%Y%m%d")
         total_entries = 0
         
         for user_num in range(100):

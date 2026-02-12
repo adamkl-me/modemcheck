@@ -3,9 +3,11 @@ API tests for database query endpoints (/api/db).
 """
 import pytest
 import httpx
-from datetime import datetime, timedelta
+from datetime import timedelta
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.utils import utc_now
 
 pytestmark = pytest.mark.api
 
@@ -60,17 +62,17 @@ class TestListChecks:
     @pytest.mark.asyncio
     async def test_list_checks_success(self, admin_client_with_token: httpx.AsyncClient, sample_modem_check):
         """Test listing checks for a modem."""
-        today = datetime.now().strftime("%Y-%m-%d")
-        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-        
+        today = utc_now().strftime("%Y-%m-%d")
+        tomorrow = (utc_now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
         response = await admin_client_with_token.get(
             f"/api/db/list_checks?modem_id={sample_modem_check.modem_id}&start_date={today}&end_date={tomorrow}"
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-    
+
     @pytest.mark.asyncio
     async def test_list_checks_invalid_date(self, admin_client_with_token: httpx.AsyncClient):
         """Test listing checks with invalid date format."""
@@ -173,8 +175,8 @@ class TestQueryPerformance:
 
         Should NOT fetch additional data per check.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
-        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
+        tomorrow = (utc_now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         response = await admin_client_with_token.get(
             f"/api/db/list_checks?modem_id={sample_modem_check.modem_id}&start_date={today}&end_date={tomorrow}"

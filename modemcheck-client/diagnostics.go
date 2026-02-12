@@ -695,11 +695,6 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 
 	// Launch both services concurrently
 	go func() {
-		select {
-		case <-ctx.Done():
-			return // Early exit if another service succeeded
-		default:
-		}
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPI(tempData) {
 			select {
@@ -718,11 +713,6 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	}()
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			return // Early exit if another service succeeded
-		default:
-		}
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPICo(tempData) {
 			select {

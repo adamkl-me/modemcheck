@@ -895,10 +895,11 @@ class TestUserManagementWorkflowE2E:
         page, admin_page = admin_browser
 
         await admin_page.click_tab("users")
-        await page.wait_for_timeout(1000)
 
-        # Look for role select dropdowns in user table
+        # Wait for role selects to appear (async load from API)
         role_selects = page.locator("select.role-select[data-current-role]")
+        await expect(role_selects.first).to_be_visible(timeout=10000)
+
         role_count = await role_selects.count()
 
         # Should see at least one role (admin user should be visible)

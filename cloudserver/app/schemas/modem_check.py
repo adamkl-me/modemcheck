@@ -207,7 +207,7 @@ class PeriodOverview(BaseModel):
 
     @field_serializer('period_start', 'period_end')
     def serialize_datetime(self, dt: Optional[datetime]) -> Optional[str]:
-        """Serialize datetime as ISO with Z suffix to indicate UTC."""
+        """Serialize naive UTC datetime as ISO with Z suffix."""
         return dt.isoformat() + 'Z' if dt else None
 
 

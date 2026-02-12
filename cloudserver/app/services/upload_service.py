@@ -176,7 +176,7 @@ class FileProcessor:
             try:
                 # If it's a Unix timestamp (integer), convert to naive UTC datetime and ISO string
                 if isinstance(check_time_raw, int):
-                    check_time = datetime.utcfromtimestamp(check_time_raw)  # Naive UTC
+                    check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc).replace(tzinfo=None)  # Naive UTC
                     check_time_str = check_time.isoformat() + 'Z'
                 else:
                     # If it's already an ISO string, parse and convert to naive UTC

@@ -17,7 +17,7 @@ class ConfigDefaults(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     defaults = Column(JSON, nullable=False)  # Stores the default configuration as JSON
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
         return f"<ConfigDefaults(id={self.id})>"

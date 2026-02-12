@@ -8,7 +8,7 @@ import tempfile
 import zipfile
 from io import BytesIO
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.utils import utc_now
 
@@ -234,7 +234,7 @@ async def _process_json_content(content: bytes, filename: str, db: AsyncSession,
             try:
                 if isinstance(check_time_raw, int):
                     if check_time_raw > 0:
-                        check_time = datetime.utcfromtimestamp(check_time_raw)  # Naive UTC
+                        check_time = datetime.fromtimestamp(check_time_raw, tz=timezone.utc).replace(tzinfo=None)  # Naive UTC
                 else:
                     check_time_str = str(check_time_raw).replace('Z', '+00:00')
                     aware_dt = datetime.fromisoformat(check_time_str)
@@ -502,7 +502,7 @@ async def bulk_download_checks(
     # Prepare response
     tmp.seek(0)
     filename_suffix = f"_{modem_id}" if modem_id else ""
-    download_filename = f"modemcheck_data{filename_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    download_filename = f"modemcheck_data{filename_suffix}_{utc_now().strftime('%Y%m%d_%H%M%S')}.zip"
 
     return StreamingResponse(
         tmp,

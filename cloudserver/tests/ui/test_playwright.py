@@ -1031,10 +1031,17 @@ class TestAdminWithRealData:
 
         # Click Bulk Download subtab
         await page.click('#bulkDownloadSubTab')
-        await page.wait_for_timeout(500)
 
-        # Modem dropdown should have options
+        # Wait for modem options to load from API (more than just "All Modems" default)
         modem_select = page.locator('#downloadModemId')
+        await page.wait_for_function(
+            """() => {
+                const select = document.getElementById('downloadModemId');
+                return select && select.querySelectorAll('option').length > 1;
+            }""",
+            timeout=10000
+        )
+
         options = modem_select.locator('option')
         option_count = await options.count()
 

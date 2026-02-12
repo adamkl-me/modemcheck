@@ -13,6 +13,8 @@ import hashlib
 from datetime import datetime, timedelta
 from statistics import mean, median
 
+from app.core.utils import utc_now
+
 
 pytestmark = pytest.mark.performance
 
@@ -237,8 +239,8 @@ class TestQueryPerformance:
 
         # Create test dataset
         base_time = int(time.time())
-        today = datetime.now().strftime("%Y-%m-%d")
-        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
+        tomorrow = (utc_now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         for i in range(100):
             check = ModemCheck(
