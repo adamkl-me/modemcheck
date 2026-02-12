@@ -15,7 +15,7 @@ redis[hiredis]==5.2.0
 # Security
 passlib[argon2]==1.7.4
 cryptography>=46.0.3  # Pinned for security updates
-python-multipart==0.0.20
+python-multipart==0.0.22
 fastapi-csrf-protect==0.3.4
 slowapi==0.1.9
 
