@@ -839,6 +839,11 @@ func RestartProcess() error {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
+	// Normalize path to avoid executing the .old backup after an update.
+	// On Linux, /proc/self/exe reflects the renamed .old path after DownloadAndApplyUpdate
+	// moves the current binary to .old — without this, syscall.Exec would re-run the old binary.
+	executable = normalizeExecutablePath(executable)
+
 	// Get current process arguments
 	args := os.Args[1:]
 
