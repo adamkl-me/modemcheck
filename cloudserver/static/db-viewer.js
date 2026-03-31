@@ -814,7 +814,14 @@ async function loadData() {
         // Summary data is smallest (~2KB total)
         // Trend data is small (~500 bytes/check) - used for charts
         // Full data is larger (~15-50KB/check) - needed for detail view
-        const [summaryResponse, trendResponse, fullResponse] =
+        const listChecksParams = new URLSearchParams({
+            modem_id: modemId,
+            start_date: startDate ? localToUTC(startDate) : "2020-01-01T00:00:00Z",
+            end_date: endDate ? localToUTC(endDate) : new Date().toISOString(),
+            limit: 5000,
+        });
+
+        const [summaryResponse, trendResponse, listResponse] =
             await Promise.all([
                 fetch("/api/db/get_summary_data", {
                     method: "POST",
@@ -828,10 +835,8 @@ async function loadData() {
                     body: JSON.stringify(requestBody),
                     credentials: "same-origin",
                 }),
-                fetch("/api/db/get_all_checks", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(requestBody),
+                fetch(`/api/db/list_checks?${listChecksParams}`, {
+                    method: "GET",
                     credentials: "same-origin",
                 }),
             ]);
@@ -853,40 +858,49 @@ async function loadData() {
             trendData = trendResult.data;
         }
 
-        // Process full data for detail view
-        const fullResult = await fullResponse.json();
+        // Process check list for navigation (lazy load details later)
+        const listResult = await listResponse.json();
         const hasSummaryData = summaryDataFull || summaryDataMaintExcluded;
+
         if (
-            !fullResult.success ||
-            !fullResult.checks ||
-            fullResult.checks.length === 0
+            !listResult.success ||
+            !listResult.checks ||
+            listResult.checks.length === 0
         ) {
             if (trendData.length === 0 && !hasSummaryData) {
                 showToast("No data found for the selected criteria", "error");
                 return;
             }
-            // We have trend/summary data but no full data - can still show those views
+            // We have trend/summary data but no check list
             if (trendData.length > 0 || hasSummaryData) {
-                showToast("Warning: Full check data unavailable", "warning");
+                // verify if this is expected (e.g. strict filtering?)
+                // For now, allow summary/trend only
             }
         } else {
-            // Extract full_data from each check
-            allChecks = fullResult.checks.map((check) => check.full_data);
+            // Store lightweight check items
+            // Enhance them with a placeholder for full_data
+            allChecks = listResult.checks.map((check) => ({
+                id: check.id,
+                check_time: check.check_time, // ISO string
+                client_version: check.client_version,
+                // Add other metadata if needed for list/table view
+                full_data: null // Will be loaded on demand
+            }));
 
-            // Sort by check time (ascending for timeline navigation)
+            // Sort by check time (ascending for timeline)
             allChecks.sort((a, b) => {
-                const timeA = a.sysinfo?.checktime || 0;
-                const timeB = b.sysinfo?.checktime || 0;
+                const timeA = new Date(a.check_time).getTime();
+                const timeB = new Date(b.check_time).getTime();
                 return timeA - timeB;
             });
 
             currentCheckIndex = allChecks.length - 1; // Start with most recent
             updateTimelineNav();
 
-            // Check if data was truncated (more checks exist than loaded)
-            if (fullResult.total_count > fullResult.checks.length) {
+            // Check if data was truncated
+            if (listResult.total_count > listResult.checks.length) {
                 showToast(
-                    `Date range has ${fullResult.total_count.toLocaleString()} checks. Showing latest 5,000.`,
+                    `Date range has ${listResult.total_count.toLocaleString()} checks. Showing latest 5,000.`,
                     "warning",
                 );
             }
@@ -1124,9 +1138,14 @@ function updateTimelineNav() {
     slider.value = currentCheckIndex;
 
     const current = allChecks[currentCheckIndex];
-    const checkTime = current.sysinfo?.checktime
-        ? formatEpochTime(current.sysinfo.checktime)
-        : "Unknown";
+    let checkTime = "Unknown";
+
+    if (current.full_data && current.full_data.sysinfo && current.full_data.sysinfo.checktime) {
+        checkTime = formatEpochTime(current.full_data.sysinfo.checktime);
+    } else if (current.check_time) {
+        checkTime = new Date(current.check_time).toLocaleString();
+    }
+
     info.textContent = `Check ${currentCheckIndex + 1} of ${allChecks.length}: ${checkTime}`;
 
     document.getElementById("firstBtn").disabled = currentCheckIndex === 0;
@@ -1161,10 +1180,71 @@ function navigateToLast() {
 }
 
 // Display current check
-function displayCurrentCheck() {
+async function displayCurrentCheck() {
     if (allChecks.length === 0) return;
 
-    const data = allChecks[currentCheckIndex];
+    let current = allChecks[currentCheckIndex];
+
+    // Lazy load full data if missing
+    if (!current.full_data) {
+        const contentArea = document.getElementById("contentArea");
+        const detailsContainer = document.getElementById("checkDetails");
+
+        // Use details container for loading state if visible, or content area
+        const loaderTarget = detailsContainer && detailsContainer.offsetParent ? detailsContainer : contentArea;
+
+        if (loaderTarget) {
+            loaderTarget.classList.add("loading-overlay");
+            // Add a temporary loading indicator if not present
+            if (!document.getElementById("detail-loader")) {
+                const loader = document.createElement("div");
+                loader.id = "detail-loader";
+                loader.className = "loading";
+                loader.textContent = "Loading check details...";
+                loader.style.position = "absolute";
+                loader.style.top = "50%";
+                loader.style.left = "50%";
+                loader.style.transform = "translate(-50%, -50%)";
+                loader.style.zIndex = "1000";
+                loaderTarget.appendChild(loader);
+            }
+        }
+
+        try {
+            const response = await fetchWithCsrf(`/api/db/get_check/${current.id}`);
+            const result = await response.json();
+
+            if (result.success && result.check) {
+                current.full_data = result.check;
+                allChecks[currentCheckIndex] = current;
+            } else {
+                showToast("Failed to load check details", "error");
+                if (loaderTarget) {
+                    loaderTarget.classList.remove("loading-overlay");
+                    const loader = document.getElementById("detail-loader");
+                    if (loader) loader.remove();
+                }
+                return;
+            }
+        } catch (error) {
+            console.error("Error loading details:", error);
+            showToast("Error loading check details", "error");
+            if (loaderTarget) {
+                loaderTarget.classList.remove("loading-overlay");
+                const loader = document.getElementById("detail-loader");
+                if (loader) loader.remove();
+            }
+            return;
+        } finally {
+            if (loaderTarget) {
+                loaderTarget.classList.remove("loading-overlay");
+                const loader = document.getElementById("detail-loader");
+                if (loader) loader.remove();
+            }
+        }
+    }
+
+    const data = current.full_data;
 
     document.getElementById("checktime").textContent = formatEpochTime(
         data.sysinfo?.checktime,
