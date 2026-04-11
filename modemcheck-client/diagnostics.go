@@ -545,10 +545,10 @@ func (m *ModemCheck) runSystemTraceroute(host string) *scraper.TracerouteResult 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		// Windows: tracert with DNS resolution to show both hostname and IP
-		cmd = exec.CommandContext(ctx, "tracert", "-h", "30", host)
+		cmd = exec.CommandContext(ctx, "tracert", "-h", "30", host) // #nosec G204 -- host validated above (alphanumeric + .:-); binary hardcoded
 	} else {
 		// Linux/macOS: traceroute with DNS resolution to show hostname (IP) format
-		cmd = exec.CommandContext(ctx, "traceroute", "-m", "30", host)
+		cmd = exec.CommandContext(ctx, "traceroute", "-m", "30", host) // #nosec G204 -- host validated above (alphanumeric + .:-); binary hardcoded
 	}
 
 	output, err := cmd.CombinedOutput()

@@ -183,6 +183,7 @@ func (m *ModemCheck) CleanupOldFiles(baseDir string) {
 	totalSize := int64(0)
 
 	// Walk through all modem directories
+	// #nosec G703 -- baseDir is derived from the executable directory, not user input
 	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // Skip files that can't be accessed
@@ -201,7 +202,7 @@ func (m *ModemCheck) CleanupOldFiles(baseDir string) {
 				// If we can't parse the date, check file modification time instead
 				if info.ModTime().Before(cutoffTime) {
 					m.Log(fmt.Sprintf("Deleting old file (by mod time): %s", info.Name()))
-					if err := os.Remove(path); err == nil {
+					if err := os.Remove(path); err == nil { // #nosec G122 -- deleting own log files within executable dir; TOCTOU risk acceptable
 						deletedCount++
 						totalSize += info.Size()
 					}
@@ -213,7 +214,7 @@ func (m *ModemCheck) CleanupOldFiles(baseDir string) {
 			if fileDate.Before(cutoffTime) {
 				m.Log(fmt.Sprintf("Deleting old file: %s (age: %d days)",
 					info.Name(), int(time.Since(fileDate).Hours()/24)))
-				if err := os.Remove(path); err == nil {
+				if err := os.Remove(path); err == nil { // #nosec G122 -- deleting own log files within executable dir; TOCTOU risk acceptable
 					deletedCount++
 					totalSize += info.Size()
 				}
@@ -243,7 +244,7 @@ func (m *ModemCheck) InitLogFile() error {
 	}
 
 	logPath := filepath.Join(filepath.Dir(os.Args[0]), "modem-check_logs.txt")
-	// #nosec G304,G302 -- logPath from executable dir; log file non-sensitive, 0644 standard
+	// #nosec G304,G302,G703 -- logPath from executable dir; log file non-sensitive, 0644 standard
 	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -593,7 +594,7 @@ func main() {
 	// Custom usage function
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Modem Check v%s - Cable modem diagnostic tool\n\n", Version)
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
 		fmt.Fprintf(os.Stderr, "Command-Line Flags:\n")
 		fmt.Fprintf(os.Stderr, "  -a, --address <ip>        Modem IP address or hostname (default: autodetect)\n")
 		fmt.Fprintf(os.Stderr, "  -c, --config <file>       Path to JSON configuration file\n")
@@ -623,12 +624,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  EnforceHTTPS          Always use HTTPS for uploads (default: true for security)\n")
 		fmt.Fprintf(os.Stderr, "  InsecureTLS           Allow self-signed certs for local dev (default: false)\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s                                 # Auto-detect modem\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -a 192.168.100.1                # Specify modem IP\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -c config.json                  # Use config file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -q -l -n                        # Quiet, no logs, no speed test\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -x mypassword                   # Xfinity modem with password\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -s api.example.com -k KEY       # Cloud mode bootstrap\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s                                 # Auto-detect modem\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
+		fmt.Fprintf(os.Stderr, "  %s -a 192.168.100.1                # Specify modem IP\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
+		fmt.Fprintf(os.Stderr, "  %s -c config.json                  # Use config file\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
+		fmt.Fprintf(os.Stderr, "  %s -q -l -n                        # Quiet, no logs, no speed test\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
+		fmt.Fprintf(os.Stderr, "  %s -x mypassword                   # Xfinity modem with password\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
+		fmt.Fprintf(os.Stderr, "  %s -s api.example.com -k KEY       # Cloud mode bootstrap\n", os.Args[0]) // #nosec G705 -- os.Args[0] is program name printed to stderr; not HTML output
 		fmt.Fprintf(os.Stderr, "\nFor more information, visit: https://github.com/adamkl-me/modemcheck\n")
 	}
 

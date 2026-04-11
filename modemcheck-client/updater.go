@@ -489,7 +489,7 @@ func (m *ModemCheck) CheckForUpdates() (updateAvailable bool, latestVersion stri
 	req.Header.Set("User-Agent", UpdateUserAgent)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- URL is the GitHub releases API endpoint, a known trusted URL
 	if err != nil {
 		m.Log(fmt.Sprintf("Update check failed: %v", err))
 		return false, "", ""
@@ -759,7 +759,7 @@ func downloadFile(filepath string, url string) error {
 	}
 	req.Header.Set("User-Agent", UpdateUserAgent)
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- URL is the GitHub releases API endpoint, a known trusted URL
 	if err != nil {
 		return err
 	}
@@ -850,7 +850,7 @@ func RestartProcess() error {
 	// On Windows, we need to use a different approach
 	if runtime.GOOS == "windows" {
 		// Spawn new process and exit current
-		// #nosec G204 -- executable is the verified updated binary path, args are from current process
+		// #nosec G204,G702 -- executable is the verified updated binary path, args are from current process
 		cmd := exec.Command(executable, args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -864,6 +864,6 @@ func RestartProcess() error {
 	}
 
 	// On Unix systems, use execve to replace current process
-	// #nosec G204 -- executable is the verified updated binary path, args are from current process
+	// #nosec G204,G702 -- executable is the verified updated binary path, args are from current process
 	return syscall.Exec(executable, append([]string{executable}, args...), os.Environ())
 }

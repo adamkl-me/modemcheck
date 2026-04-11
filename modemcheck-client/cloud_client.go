@@ -383,7 +383,7 @@ func (m *ModemCheck) uploadToCloudWithModemID(localFile string, modemID string) 
 	req.Header.Set("X-Request-Signature", signature)
 
 	// Send request using configured client (with proper TLS settings)
-	resp, err := m.client.Do(req)
+	resp, err := m.client.Do(req) // #nosec G704 -- URL is user-configured cloud server endpoint, SSRF is by design
 	if err != nil {
 		return fmt.Errorf("failed to upload file: %v", err)
 	}
@@ -599,7 +599,7 @@ func (m *ModemCheck) cleanupLogFile() error {
 
 	// Only replace log file if we removed some lines
 	if linesKept < linesProcessed {
-		if err := os.Rename(tmpFileName, logFileName); err != nil {
+		if err := os.Rename(tmpFileName, logFileName); err != nil { // #nosec G703 -- tmpFileName/logFileName are constructed from executable dir, not user input
 			return err
 		}
 	}

@@ -50,7 +50,7 @@ func SetConfigSyncURLScheme(scheme string) {
 
 // ConfigSyncRequest represents the request payload for config sync
 type ConfigSyncRequest struct {
-	APIKey     string                 `json:"api_key"`
+	APIKey     string                 `json:"api_key"` // #nosec G117 -- client's own auth credential intentionally transmitted over HTTPS
 	ModemID    string                 `json:"modem_id,omitempty"` // Optional - for tracking metadata only
 	Config     map[string]interface{} `json:"config"`
 	Version    int                    `json:"version"`     // Simple int version (0 for first sync)
@@ -329,8 +329,8 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 		Signature:  signature,
 	}
 
-	// Marshal request
-	requestBody, err := json.Marshal(syncRequest)
+	// Marshal request — api_key is intentionally included; it's the client's own auth credential sent over HTTPS
+	requestBody, err := json.Marshal(syncRequest) // #nosec G117 -- api_key is the client's own credential, not a hardcoded secret; transmitted over HTTPS
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal sync request: %w", err)
 	}
@@ -344,7 +344,7 @@ func SyncConfig(config *Configuration, modemID string, state *ConfigState) (bool
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send request using shared HTTP client
-	resp, err := configSyncHTTPClient.Do(req)
+	resp, err := configSyncHTTPClient.Do(req) // #nosec G704 -- URL is user-configured cloud server endpoint, SSRF is by design
 	if err != nil {
 		return false, fmt.Errorf("failed to send sync request: %w", err)
 	}

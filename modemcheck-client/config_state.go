@@ -208,7 +208,7 @@ func RecoverStateFile() (*ConfigState, error) {
 		if err := json.Unmarshal(data, &state); err == nil {
 			// Backup is valid - restore it as main state file
 			fmt.Fprintf(os.Stderr, "Successfully recovered state from backup file\n")
-			if err := os.WriteFile(stateFile, data, 0600); err != nil {
+			if err := os.WriteFile(stateFile, data, 0600); err != nil { // #nosec G703 -- stateFile is from getStateFilePath(), not user input
 				return nil, fmt.Errorf("failed to restore backup: %w", err)
 			}
 			return &state, nil
@@ -222,7 +222,7 @@ func RecoverStateFile() (*ConfigState, error) {
 		if err := json.Unmarshal(data, &state); err == nil {
 			// Temp file is valid - use it as main state file
 			fmt.Fprintf(os.Stderr, "Successfully recovered state from temp file\n")
-			if err := os.WriteFile(stateFile, data, 0600); err != nil {
+			if err := os.WriteFile(stateFile, data, 0600); err != nil { // #nosec G703 -- stateFile is from getStateFilePath(), not user input
 				return nil, fmt.Errorf("failed to restore from temp file: %w", err)
 			}
 			// Clean up temp file after successful recovery

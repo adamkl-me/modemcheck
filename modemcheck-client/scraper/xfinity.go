@@ -79,7 +79,7 @@ func (s *XfinityScraper) Login() error {
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Referer", fmt.Sprintf("http://%s/", s.modemAddress))
 
-	resp, err := s.client.Do(req)
+	resp, err := s.client.Do(req) // #nosec G704 -- URL is the local modem address (192.168.x.x / 10.x.x.x), SSRF is by design for local device communication
 	if err != nil {
 		s.logger.Log(fmt.Sprintf("Login POST request failed: %v", err))
 		return err
