@@ -6,12 +6,15 @@ reusable service functions that can be unit tested independently.
 """
 import re
 import json
+import logging
 import hashlib
 import secrets
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+logger = logging.getLogger(__name__)
 
 from app.core.utils import utc_now
 from app.models import ModemCheck
@@ -244,8 +247,13 @@ class UploadPersistenceService:
         except IntegrityError:
             await db.rollback()
             raise UploadValidationError("Check already exists", status_code=409)
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             await db.rollback()
+            logger.error(
+                f"Database error saving modem check for modem_id={modem_id}: "
+                f"{type(e).__name__}: {e}",
+                exc_info=True
+            )
             raise UploadValidationError("Database error", status_code=500)
 
 

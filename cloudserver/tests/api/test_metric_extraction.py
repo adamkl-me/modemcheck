@@ -279,3 +279,31 @@ class TestMetricExtraction:
         assert metrics["speedtest_enabled"] == 1
         assert metrics["ping_google_avg"] == 15.2
         assert metrics["public_ip"] == "1.2.3.4"
+
+    def test_extract_large_corrected_errors(self):
+        """Corrected errors exceeding int32 max must be returned as-is (not truncated).
+
+        Regression test: XB10 modem reported 2,992,944,594 correcteds, which exceeds
+        the PostgreSQL INTEGER max of 2,147,483,647. Columns must be BIGINT.
+        """
+        INT32_MAX = 2_147_483_647
+        large_value = 2_992_944_594  # Actual value seen from XB10 modem
+
+        json_data = {
+            "rx": [
+                {
+                    "portid": "20",
+                    "power": "4.2",
+                    "snr": "40.4",
+                    "correcteds": str(large_value),
+                    "uncorrectds": "1"
+                }
+            ]
+        }
+
+        metrics = extract_metrics(json_data)
+
+        assert metrics["total_corrected_errors"] > INT32_MAX, (
+            "total_corrected_errors must exceed int32 max to trigger the overflow bug"
+        )
+        assert metrics["total_corrected_errors"] == large_value

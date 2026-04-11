@@ -487,3 +487,88 @@ class TestUpload:
         result = response.json()
         assert result.get("success") is False
         assert "already exists" in result["error"]["message"].lower()
+
+
+class TestUploadLargeValues:
+    """Tests for upload edge cases involving large numeric values."""
+
+    @pytest.mark.asyncio
+    async def test_upload_large_corrected_errors(
+        self,
+        http_client: httpx.AsyncClient,
+        active_api_key,
+        test_api_key: str,
+    ):
+        """Upload with corrected errors > int32 max should succeed (not 400 Database error).
+
+        Regression test for: XB10 modems with large corrected error counts
+        (e.g. 2,992,944,594) overflowing the PostgreSQL INTEGER column.
+        """
+        modem_data = {
+            "sysinfo": {
+                "systime": 1775840102,
+                "firmware": "SG417DBCT_8.3p5s1_PROD_sey",
+                "uptime": 367391,
+                "modemtype": "XB10",
+                "modemmac": "AABBCCDDEEFF",
+                "checktime": 1775858092,
+                "detection_status": "success"
+            },
+            "rx": [
+                {
+                    "portid": "20",
+                    "frequency": "693",
+                    "power": "4.2",
+                    "snr": "40.4",
+                    "octets": "3908044038",
+                    "correcteds": "2992944594",  # Exceeds int32 max of 2,147,483,647
+                    "uncorrectds": "1"
+                }
+            ],
+            "rxofdm": [],
+            "tx": [{"portid": "1", "frequency": "21", "power": "40.5"}],
+            "txofdm": [],
+            "eventlog": [],
+            "speedtest_enabled": True,
+            "iperf3test_ul": -2,
+            "iperf3test_dl": -2,
+            "client_version": "9.5.3",
+            "client_os": "linux",
+            "client_arch": "arm64"
+        }
+
+        modem_id = "XB10-AABBCCDDEEFF"
+        filename = "2026-01-01_00-00-01.json"
+
+        file_content = json.dumps(modem_data).encode("utf-8")
+        checksum = hashlib.sha256(file_content).hexdigest()
+
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}|{modem_id}|{filename}|{checksum}"
+        signature = hmac.new(
+            test_api_key.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        files = {"file": (filename, BytesIO(file_content), "application/json")}
+        data = {
+            "api_key": test_api_key,
+            "modem_id": modem_id,
+            "filename": filename,
+            "checksum": checksum,
+        }
+        headers = {
+            "X-Request-Timestamp": timestamp,
+            "X-Request-Signature": signature,
+        }
+
+        response = await http_client.post(
+            "/api/upload", files=files, data=data, headers=headers
+        )
+
+        assert response.status_code == 200, (
+            f"Expected 200 but got {response.status_code}: {response.text}"
+        )
+        body = response.json()
+        assert body["success"] is True

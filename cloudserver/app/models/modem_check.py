@@ -1,7 +1,7 @@
 """
 Modem Check model for storing cable modem diagnostic data.
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Index, desc
+from sqlalchemy import Column, Integer, BigInteger, String, Float, DateTime, Text, Index, desc
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
@@ -25,15 +25,15 @@ class ModemCheck(Base):
 
     # System info
     firmware = Column(String(255), nullable=True)
-    uptime_seconds = Column(Integer, nullable=True)
+    uptime_seconds = Column(BigInteger, nullable=True)
     system_time = Column(DateTime, nullable=True)
 
     # Signal quality metrics (for quick queries)
     avg_downstream_power = Column(Float, nullable=True)
     avg_downstream_snr = Column(Float, nullable=True)
     avg_upstream_power = Column(Float, nullable=True)
-    total_corrected_errors = Column(Integer, nullable=True)
-    total_uncorrected_errors = Column(Integer, nullable=True)
+    total_corrected_errors = Column(BigInteger, nullable=True)
+    total_uncorrected_errors = Column(BigInteger, nullable=True)
 
     # Speed test results
     speedtest_enabled = Column(Integer, nullable=True)  # 0=disabled, 1=enabled
