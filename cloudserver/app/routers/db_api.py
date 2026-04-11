@@ -6,6 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, over, case, literal_column
+from sqlalchemy.orm import defer
 
 from app.core.database import get_db
 from app.core.limiter import limiter

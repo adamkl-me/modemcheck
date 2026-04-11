@@ -10,6 +10,7 @@ Or skip these tests with: pytest -m "not ui"
 """
 import re
 import pytest
+from datetime import datetime
 from playwright.async_api import async_playwright, Page, expect
 
 pytestmark = pytest.mark.ui
@@ -1080,6 +1081,10 @@ class TestAdminWithRealData:
                 await modem_select.select_option(first_value)
 
         await page.wait_for_timeout(500)
+
+        # Set date range wide enough to cover fixture data (fixture checks are ~150+ days old)
+        await page.fill('#deleteStartDate', '2020-01-01')
+        await page.fill('#deleteEndDate', datetime.now().strftime('%Y-%m-%d'))
 
         # Click Load Checks button
         await page.click('button:has-text("Load Checks")')

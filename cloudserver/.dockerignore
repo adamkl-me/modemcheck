@@ -1,0 +1,35 @@
+# Secrets and environment
+.env
+.env.*
+
+# Python artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Tests and coverage
+tests/
+htmlcov*/
+coverage.xml
+.coverage
+pytest.ini
+conftest.py
+
+# Shell scripts (not needed in image)
+*.sh
+
+# Backups and logs
+backups/
+logs/
+
+# Docker files (not needed inside the image)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Dev/CI artifacts
+.github/
+*.md

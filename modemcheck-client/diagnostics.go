@@ -689,54 +689,38 @@ func (m *ModemCheck) GetPublicIPInfo(data *scraper.ModemData) {
 	}
 	resultChan := make(chan ipResult, 2)
 
-	// Context for early cancellation when first success is found
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Launch both services concurrently
 	go func() {
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPI(tempData) {
-			select {
-			case resultChan <- ipResult{
+			resultChan <- ipResult{
 				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
 				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ip-api.com",
-			}:
-			case <-ctx.Done():
 			}
 		} else {
-			select {
-			case resultChan <- ipResult{}: // Empty result indicates failure
-			case <-ctx.Done():
-			}
+			resultChan <- ipResult{} // Empty result indicates failure
 		}
 	}()
 
 	go func() {
 		tempData := &scraper.ModemData{}
 		if m.tryIPAPICo(tempData) {
-			select {
-			case resultChan <- ipResult{
+			resultChan <- ipResult{
 				publicIP: tempData.PublicIP, asn: tempData.ASN, ispName: tempData.ISPName,
 				ipCity: tempData.IPCity, ipCountry: tempData.IPCountry, service: "ipapi.co",
-			}:
-			case <-ctx.Done():
 			}
 		} else {
-			select {
-			case resultChan <- ipResult{}: // Empty result indicates failure
-			case <-ctx.Done():
-			}
+			resultChan <- ipResult{} // Empty result indicates failure
 		}
 	}()
 
-	// Wait for first successful result or both failures
+	// Wait for first successful result or both failures.
+	// Buffer size (2) matches goroutine count, so sends are always non-blocking.
 	var successResult *ipResult
 	for i := 0; i < 2; i++ {
 		result := <-resultChan
 		if result.publicIP != "" && successResult == nil {
 			successResult = &result
-			cancel() // Signal other goroutine to stop early
 		}
 	}
 
@@ -840,7 +824,7 @@ func (m *ModemCheck) tryIPAPI(data *scraper.ModemData) bool {
 		Status  string `json:"status"`
 	}
 
-	if err := m.fetchJSONFromService("https://ip-api.com/json/", "ip-api.com", &ipInfo); err != nil {
+	if err := m.fetchJSONFromService("http://ip-api.com/json/", "ip-api.com", &ipInfo); err != nil {
 		return false
 	}
 
@@ -871,7 +855,14 @@ func (m *ModemCheck) trySimpleIP(data *scraper.ModemData) bool {
 	}
 
 	// Try ifconfig.me as plain text fallback
-	resp, err := ipDetectionHTTPClient.Get("https://ifconfig.me/ip")
+	// Must set a User-Agent: ifconfig.me returns 403 to Go's default automated client UA
+	req, err := http.NewRequest("GET", "https://ifconfig.me/ip", nil)
+	if err != nil {
+		m.Log(fmt.Sprintf("ifconfig.me request error: %v", err))
+		return false
+	}
+	req.Header.Set("User-Agent", "modemcheck/"+Version)
+	resp, err := ipDetectionHTTPClient.Do(req)
 	if err != nil {
 		m.Log(fmt.Sprintf("ifconfig.me error: %v", err))
 		return false

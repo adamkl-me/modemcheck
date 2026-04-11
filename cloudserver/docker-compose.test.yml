@@ -99,10 +99,6 @@ services:
 networks:
   modemcheck-test:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.27.0.0/16
-          gateway: 172.27.0.1
 
 volumes:
   modemcheck-test_postgres:
