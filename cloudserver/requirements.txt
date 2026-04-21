@@ -15,7 +15,7 @@ redis[hiredis]==5.2.0
 # Security
 passlib[argon2]==1.7.4
 cryptography>=46.0.3  # Pinned for security updates
-python-multipart==0.0.22
+python-multipart==0.0.26
 fastapi-csrf-protect==0.3.4
 slowapi==0.1.9
 
@@ -25,12 +25,12 @@ pydantic-settings==2.6.1
 email-validator==2.2.0
 
 # Utilities
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 aiofiles==24.1.0
 
 # Testing
-pytest==8.3.4
-pytest-asyncio==0.24.0
+pytest==9.0.3
+pytest-asyncio==1.3.0
 httpx==0.28.1
 faker==33.1.0
 
