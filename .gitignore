@@ -35,6 +35,7 @@ dist/
 *.out
 coverage.out
 coverage*.html
+coverage*.txt
 
 # Minisign signing keys (CRITICAL: Never commit private keys!)
 .signing-keys/
@@ -63,6 +64,7 @@ cloudserver/reset_admin.py
 cloudserver/*.json
 
 # Test artifacts
+.mutmut-cache
 htmlcov/
 htmlcov-unit/
 htmlcov-e2e/
