@@ -100,13 +100,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        # Driven by the `go` directive in go.mod rather than a hardcoded version, with
-        # check-latest so the newest matching patch release (and therefore the newest
-        # standard library) is used instead of a stale pinned toolchain.
+        # 'stable' resolves to the newest stable Go release, so the standard library can
+        # never go stale. Deliberately NOT `go-version-file: go.mod`: modern toolchains
+        # canonicalize the directive to `go 1.25.0`, which setup-go treats as an exact
+        # semver range — that would silently re-pin CI to the go1.25.0 stdlib, which is
+        # the bug this job kept tripping over.
         uses: actions/setup-go@v5
         with:
-          go-version-file: modemcheck-client/go.mod
-          check-latest: true
+          go-version: 'stable'
           cache-dependency-path: modemcheck-client/go.sum
 
       - name: Show Go version
